@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Life & CEO Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="game-file.css">
+    
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- Header Stats Bar (Persistent) -->
+    <header class="bg-slate-800 border-b border-slate-700 p-3 shadow-lg z-10 flex justify-between items-center h-16 shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-slate-700 overflow-hidden flex items-center justify-center border-2 border-slate-600" id="avatar-container">
+                <i class="fas fa-user text-slate-400"></i>
+            </div>
+            <div>
+                <h1 id="header-name" class="font-bold text-sm leading-tight text-white">Player</h1>
+                <div class="text-xs text-slate-400">Age: <span id="header-age" class="text-white font-bold">0</span></div>
+            </div>
+        </div>
+        <div class="text-right">
+            <div id="header-bank" class="font-bold text-green-400 text-lg">$0</div>
+            <div class="text-xs text-slate-500 uppercase tracking-wider">Bank Account</div>
+        </div>
+    </header>
+
+    <!-- Main Game Area -->
+    <main id="game-container" class="flex-1 overflow-y-auto p-4 relative bg-slate-900">
+        <!-- Views injected here -->
+    </main>
+
+    <!-- Modal Overlay -->
+    <div id="modal-overlay" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-50 backdrop-blur-sm p-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-xl max-w-md w-full p-6 shadow-2xl">
+            <h2 id="modal-title" class="text-2xl font-bold mb-4 text-white">Alert</h2>
+            <div id="modal-content" class="text-slate-300 mb-6 leading-relaxed"></div>
+            <div id="modal-actions" class="w-full">
+                <button id="modal-btn" class="w-full btn-primary text-white font-bold py-3 rounded-lg">Dismiss</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
