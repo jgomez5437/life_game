@@ -3,9 +3,9 @@ require('dotenv').config();
 //Import PostgreSQL client library
 import { Pool } from 'pg';
 
-// Create a connection pool using the DATABASE_URL environment variable
+// Create a connection pool using the POSTGRES_URL environment variable
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: process.env.POSTGRES_URL,
 });
 
 export default async (request, resolution) => {

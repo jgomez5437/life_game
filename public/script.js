@@ -74,6 +74,11 @@
             { id: 'premium', name: 'Premium', costMod: 1.4, quality: 95, risk: 0.01 }
         ];
 
+        const API_URL = '/api'
+
+        const moneyEl = document.getElementById('header-bank');
+        const 
+
         // --- GLOBAL STATE ---
         let game = {
             // Life State
@@ -221,122 +226,6 @@
 
         function isStudent() {
             return game.universityEnrolled || game.gradSchoolEnrolled || game.highSchoolRetained || (game.age < 18);
-        }
-
-        // --- PHASE 1: CHARACTER CREATION ---
-
-        function renderCharCreation() {
-            game.age = 0; // Reset
-            game.bank = 0;
-            updateHeader();
-
-            el('game-container').innerHTML = `
-                <div class="fade-in max-w-md mx-auto mt-10">
-                    <div class="text-center mb-8">
-                        <i class="fas fa-baby text-6xl text-green-500 mb-4"></i>
-                        <h2 class="text-3xl font-bold">New Life</h2>
-                        <p class="text-slate-400">Design your destiny.</p>
-                    </div>
-
-                    <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-xl space-y-4">
-                        <div>
-                            <label class="block text-sm text-slate-400 mb-1">Full Name</label>
-                            <input type="text" id="inp-name" class="w-full bg-slate-900 border border-slate-600 rounded p-3 text-white focus:border-blue-500 outline-none" placeholder="e.g. Alex Sterling">
-                        </div>
-
-                        <div>
-                            <label class="block text-sm text-slate-400 mb-1">Gender</label>
-                            <div class="grid grid-cols-2 gap-2">
-                                <button onclick="selectGender('male')" id="btn-male" class="p-3 rounded border border-blue-500 bg-blue-900/30 text-blue-200">Male</button>
-                                <button onclick="selectGender('female')" id="btn-female" class="p-3 rounded border border-slate-600 bg-slate-900 text-slate-400">Female</button>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm text-slate-400 mb-1">Birth City</label>
-                            <select id="inp-city" class="w-full bg-slate-900 border border-slate-600 rounded p-3 text-white outline-none">
-                                ${CITIES.map(c => `<option value="${c}">${c}</option>`).join('')}
-                            </select>
-                        </div>
-
-                        <button onclick="submitCharacter()" class="w-full btn-life text-white font-bold py-4 rounded-xl text-lg mt-4">
-                            Start Life
-                        </button>
-                    </div>
-                </div>
-            `;
-        }
-
-        function selectGender(g) {
-            game.gender = g;
-            if(g === 'male') {
-                el('btn-male').className = "p-3 rounded border border-blue-500 bg-blue-900/30 text-blue-200";
-                el('btn-female').className = "p-3 rounded border border-slate-600 bg-slate-900 text-slate-400";
-            } else {
-                el('btn-male').className = "p-3 rounded border border-slate-600 bg-slate-900 text-slate-400";
-                el('btn-female').className = "p-3 rounded border border-pink-500 bg-pink-900/30 text-pink-200";
-            }
-        }
-
-        function submitCharacter() {
-            const name = el('inp-name').value;
-            if(!name) return showModal("Name Required", "Please enter a name for your character.");
-            
-            game.name = name;
-            game.city = el('inp-city').value;
-            addLog(`Born in ${game.city}. Welcome to the world!`, 'good');
-            
-            updateHeader();
-            renderLifeDashboard();
-        }
-
-        // --- PHASE 2: LIFE DASHBOARD ---
-
-        function renderLifeDashboard() {
-            updateHeader();
-
-            const logHtml = game.lifeLog.map(l => `
-                <div class="mb-2 text-sm border-l-2 border-slate-700 pl-3 py-1">
-                    <span class="font-bold text-slate-500 text-xs">Age ${l.age}</span>
-                    <div class="mt-1 space-y-1">
-                        ${l.events.map(e => `<div class="${e.color}">${e.msg}</div>`).join('')}
-                    </div>
-                </div>
-            `).join('');
-
-            const ageUpAction = game.hasBusiness ? "handleCeoAgeUp()" : "ageUp()";
-            const ageUpText = game.hasBusiness ? "Manage Biz" : "Age Up +";
-            const ageUpColor = game.hasBusiness ? "btn-primary" : "btn-life";
-
-            el('game-container').innerHTML = `
-                <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
-                    <!-- Life Log (Scrollable) -->
-                    <div class="flex-1 overflow-y-auto mb-4 bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
-                        <h3 class="font-bold text-slate-300 mb-4 sticky top-0 bg-transparent backdrop-blur-md py-1 border-b border-slate-700/50">Life History</h3>
-                        <div class="space-y-2">
-                            ${logHtml.length > 0 ? logHtml : '<div class="text-slate-600 text-sm italic">Life has just begun...</div>'}
-                        </div>
-                    </div>
-
-                    <!-- Bottom Nav -->
-                    <div class="grid grid-cols-3 gap-2 pt-2 h-20">
-                         <button onclick="renderAssets()" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700">
-                            <i class="fas fa-home mb-1 text-xl text-yellow-400"></i>
-                            <span class="text-[10px] uppercase tracking-wider">Assets</span>
-                        </button>
-
-                        <button onclick="renderActivities()" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700">
-                            <i class="fas fa-user-graduate mb-1 text-xl text-blue-400"></i>
-                            <span class="text-[10px] uppercase tracking-wider">Occupation</span>
-                        </button>
-
-                        <button onclick="${ageUpAction}" class="${ageUpColor} text-white font-bold rounded-xl shadow-lg flex flex-col items-center justify-center">
-                            <i class="fas fa-arrow-up mb-1 text-xl"></i>
-                            <span class="text-[10px] uppercase tracking-wider">${ageUpText}</span>
-                        </button>
-                    </div>
-                </div>
-            `;
         }
 
         // --- NEW PAGE: ASSETS ---
