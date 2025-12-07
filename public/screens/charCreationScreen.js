@@ -14,7 +14,7 @@ function renderCharCreation() {
                 <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-xl space-y-4">
                     <div>
                         <label class="block text-sm text-slate-400 mb-1">Full Name</label>
-                        <input type="text" id="inp-name" class="w-full bg-slate-900 border border-slate-600 rounded p-3 text-white focus:border-blue-500 outline-none" placeholder="e.g. Alex Sterling">
+                        <input type="text" id="inp-name" class="w-full bg-slate-900 border border-slate-600 rounded p-3 text-white focus:border-blue-500 outline-none" placeholder="First and Last Name">
                     </div>
                     <div>
                         <label class="block text-sm text-slate-400 mb-1">Gender</label>
@@ -51,11 +51,24 @@ function selectGender(g) {
 function submitCharacter() {
     const name = el('inp-name').value;
     if(!name) return showModal("Name Required", "Please enter a name for your character.");
-    
+    const gender = 
     game.name = name;
     game.city = el('inp-city').value;
     addLog(`Born in ${game.city}. Welcome to the world!`, 'good');
-    
-    updateHeader();
-    renderLifeDashboard();
+    const tempAuthId = "user_" + Math.random().toString(36).substr(2, 9);
+    try {
+    const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            auth0_id: tempAuthId,
+        })
+    })
+}
         }
+
+try {
+    const response = await fetch('/api/login', {
+
+    })
+}
