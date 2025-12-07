@@ -1,4 +1,4 @@
-
+const get = id => document.getElementById(id);
 
 function renderCharCreation() {
     game.age = 0; // Reset
@@ -40,20 +40,20 @@ function renderCharCreation() {
 function selectGender(g) {
     game.gender = g;
     if(g === 'male') {
-        el('btn-male').className = "p-3 rounded border border-blue-500 bg-blue-900/30 text-blue-200";
-        el('btn-female').className = "p-3 rounded border border-slate-600 bg-slate-900 text-slate-400";
+        get('btn-male').className = "p-3 rounded border border-blue-500 bg-blue-900/30 text-blue-200";
+        get('btn-female').className = "p-3 rounded border border-slate-600 bg-slate-900 text-slate-400";
     } else {
-        el('btn-male').className = "p-3 rounded border border-slate-600 bg-slate-900 text-slate-400";
-        el('btn-female').className = "p-3 rounded border border-pink-500 bg-pink-900/30 text-pink-200";
-    }
+        get('btn-male').className = "p-3 rounded border border-slate-600 bg-slate-900 text-slate-400";
+        get('btn-female').className = "p-3 rounded border border-pink-500 bg-pink-900/30 text-pink-200";
+    } return g;
         }
 
 function submitCharacter() {
-    const name = el('inp-name').value;
+    const name = get('inp-name').value;
     if(!name) return showModal("Name Required", "Please enter a name for your character.");
-    const gender = 
+    const gender = selectGender();
     game.name = name;
-    game.city = el('inp-city').value;
+    game.city = get('inp-city').value;
     addLog(`Born in ${game.city}. Welcome to the world!`, 'good');
     const tempAuthId = "user_" + Math.random().toString(36).substr(2, 9);
     try {
@@ -62,10 +62,19 @@ function submitCharacter() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             auth0_id: tempAuthId,
+            username: name,
+            gender: gender
         })
-    })
-}
-        }
+    });
+    if (!response.ok) throw new Error('API Login Failed')
+    
+    const userData = await response.json();
+    window.loadAndRenderGame(userData);
+    } catch {
+        
+    }
+
+};
 
 try {
     const response = await fetch('/api/login', {
