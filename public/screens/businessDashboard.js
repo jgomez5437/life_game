@@ -218,7 +218,7 @@ function processQuarter() {
             <strong>Your Bank:</strong> ${formatMoney(game.bank)}<br><br>
             You are now Age ${game.age}.`,
             "Return to Life View",
-            () => renderLifeDashboard()
+            () => renderLifeDashboard(window.gameState)
         );
     } else {
         renderBusinessDashboard(); // Next quarter

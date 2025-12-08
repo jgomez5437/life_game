@@ -100,7 +100,7 @@ window.loadAndRenderGame = (userData) => {
         // Ensure defaults if DB didn't return them
         gender: userData.gender || 'male' 
     };
-
+    addLog(`Born in ${city}. Welcome to the world!`, 'good');
     // Render the Dashboard
     window.renderLifeDashboard(window.gameState);
 };
@@ -116,7 +116,7 @@ async function initGame() {
         // Fetch data and call loadAndRenderGame(data)
     } else {
         // No user found? Send them to Character Creation
-        window.renderCharacterCreation();
+        window.renderCharCreation();
     }
 }
 

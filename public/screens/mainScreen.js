@@ -123,31 +123,37 @@ function ageUp() {
     renderLifeDashboard();
     }
 
-//add lifelog function
+/**
+ * add lifelog function
 function addLog(msg, type='neutral') {
+    const currentAge = window.gameState.user.age;
+    let ageLog = window.gameState.lifeLog.find(l => l.age === currentAge);
     let color = 'text-slate-400';
     if (type === 'good') color = 'text-green-400';
     else if (type === 'bad') color = 'text-red-400';
     else if (type === 'major') color = 'text-yellow-400 font-bold';
     else if (type === 'green') color = 'text-green-400'; // Explicit green request
     
-    if (game.lifeLog.length > 0 && game.lifeLog[0].age === game.age) {
+    if (game.lifeLog.length > 0 && game.lifeLog[0].age === currentAge) {
         game.lifeLog[0].events.push({ msg, color });
     } else {
         game.lifeLog.unshift({ age: game.age, events: [{ msg, color }] });
     }
-}
+}*/
 
 //Define the rendering function globally so script.js can call it.
-window.renderLifeDashboard = (game) => {
+window.renderLifeDashboard = (maybeGameState) => {
     // --- Data Preparation ---
-    
+    const state = maybeGameState || window.gameState;
+    if (!state || !state.user) {
+        console.warn("renderLifeDashboard called before game state existed.");
+        return;}
     //Update the Header Bar using the UI Manager
     //    We assume 'game' holds the key stats needed for the header.
     UI.updateHeader({
-        name: game.user.username,
-        age: game.user.age,
-        bank: game.user.money
+        name: state.user.username,
+        age: state.user.age,
+        bank: state.user.money
     });
 
     //Generate the Life Log HTML
@@ -194,3 +200,28 @@ window.renderLifeDashboard = (game) => {
     //Use the UI Manager to inject the HTML into the game container
     UI.renderScreen(dashboardHTML);
 }
+
+function addLog(msg, type='neutral') {
+    // 1. Get current age from the centralized state
+    const currentAge = window.gameState.user.age;
+    
+    //color for the log
+    let color = 'text-slate-400';
+    if (type === 'good') color = 'text-green-400';
+    else if (type === 'bad') color = 'text-red-400';
+    else if (type === 'major') color = 'text-yellow-400 font-bold';
+    else if (type === 'green') color = 'text-green-400';
+
+    //is there a log for this age?
+    let ageLog = window.gameState.lifeLog.find(l => l.age === currentAge);
+
+    if (ageLog) {
+
+        ageLog.events.push({ msg, color });
+    } else {
+        window.gameState.lifeLog.unshift({ 
+            age: currentAge, 
+            events: [{ msg, color }] 
+        });
+    }
+};

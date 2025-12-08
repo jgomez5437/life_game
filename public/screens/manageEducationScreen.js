@@ -85,12 +85,12 @@ function workHarder() {
     game.schoolActions++;
     game.schoolPerformance = Math.min(100, game.schoolPerformance + 20);
     addLog("Studied hard and improved your grades.", 'good');
-    renderLifeDashboard();
+    renderLifeDashboard(window.gameState);
 }
 function skipSchool() {
     if(game.schoolActions >= 2) return;
     game.schoolActions++;
     game.schoolPerformance = Math.max(0, game.schoolPerformance - 10);
     addLog("Skipped school to hang out. Grades suffered.", 'bad');
-    renderLifeDashboard(); 
+    renderLifeDashboard(window.gameState); 
 }

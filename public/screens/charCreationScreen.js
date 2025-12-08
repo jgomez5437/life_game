@@ -1,10 +1,7 @@
 const get = id => document.getElementById(id);
 
-function renderCharCreation() {
-    game.age = 0; // Reset
-    game.bank = 0;
-    updateHeader();
-    el('game-container').innerHTML = `
+window.renderCharCreation = () => {
+    const creationHTML = `
             <div class="fade-in max-w-md mx-auto mt-10">
                 <div class="text-center mb-8">
                     <i class="fas fa-baby text-6xl text-green-500 mb-4"></i>
@@ -35,26 +32,26 @@ function renderCharCreation() {
                 </div>
             </div>
         `;
+        UI.renderScreen(creationHTML);
     }
 
 function selectGender(g) {
-    game.gender = g;
+    const gender = g;
     if(g === 'male') {
         get('btn-male').className = "p-3 rounded border border-blue-500 bg-blue-900/30 text-blue-200";
         get('btn-female').className = "p-3 rounded border border-slate-600 bg-slate-900 text-slate-400";
     } else {
         get('btn-male').className = "p-3 rounded border border-slate-600 bg-slate-900 text-slate-400";
         get('btn-female').className = "p-3 rounded border border-pink-500 bg-pink-900/30 text-pink-200";
-    } return g;
+    } 
+    return gender;
         }
 
-function submitCharacter() {
+async function submitCharacter() {
     const name = get('inp-name').value;
     if(!name) return showModal("Name Required", "Please enter a name for your character.");
     const gender = selectGender();
-    game.name = name;
-    game.city = get('inp-city').value;
-    addLog(`Born in ${game.city}. Welcome to the world!`, 'good');
+    const city = get('inp-city').value;
     const tempAuthId = "user_" + Math.random().toString(36).substr(2, 9);
     try {
     const response = await fetch('/api/login', {
@@ -63,7 +60,8 @@ function submitCharacter() {
         body: JSON.stringify({
             auth0_id: tempAuthId,
             username: name,
-            gender: gender
+            gender: gender,
+            city: city
         })
     });
     if (!response.ok) throw new Error('API Login Failed')
@@ -71,13 +69,8 @@ function submitCharacter() {
     const userData = await response.json();
     window.loadAndRenderGame(userData);
     } catch {
-        
+        console.error("Creation failed", error);
+        UIEvent.showModal("Error", "Failed to create character. Check your console/server.")
     }
-
+    window.renderLifeDashboard(window.gameState);
 };
-
-try {
-    const response = await fetch('/api/login', {
-
-    })
-}

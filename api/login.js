@@ -9,7 +9,7 @@ module.exports = async (request, resolution) => {
     if (request.method !== 'POST') {
         return resolution.status(405).json({error: 'Method Not Allowed'});
     }
-    const {auth0_id, username} = request.body;
+    const {auth0_id, username, gender, city} = request.body;
 
     if(!auth0_id){
         return resolution.status(400).json({error: 'Missing auth0_id'});
@@ -24,12 +24,12 @@ module.exports = async (request, resolution) => {
         let user;
 
         if (checkResult.rows.length > 0) {
-            user = checkResult[0];
+            user = checkResult.rows[0];
             console.log('Returning player found:', user.username);
         } else {
             const insertResult = await client.query(
-                'INSERT INTO users (auth0_id, username) VALUES ($1, $2) RETURNING *',
-                [auth0_id, username || 'Unknown']
+                'INSERT INTO users (auth0_id, username, gender, city) VALUES ($1, $2, $3, $4) RETURNING *',
+                [auth0_id, username, gender, city || 'Unknown']
             );
             user = insertResult.rows[0];
             console.log('New Player created:', user.username);
