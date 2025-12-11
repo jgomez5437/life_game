@@ -1,16 +1,19 @@
 // --- CONSTANTS ---
+window.GAME_CONSTANTS = {
+    GRAD_SCHOOLS: [
+        { name: "Law School", years: 3, icon: "fa-balance-scale" },
+        { name: "Medical School", years: 4, icon: "fa-user-md" },
+        { name: "Business School", years: 2, icon: "fa-chart-line" },
+        { name: "Psychiatry School", years: 4, icon: "fa-brain" }
+    ]
+} 
+
+
         const CITIES = ["New York", "London", "Tokyo", "Berlin", "San Francisco"];
         const MAJORS = [
             "Psychology", "Computer Science", "English", "Education", "Marketing", 
             "Business", "Nursing", "Religious Studies", "Biology", "Graphic Design", "Chemistry",
             "Political Science", "Criminal Justice"
-        ];
-        
-        const GRAD_SCHOOLS = [
-            { name: "Law School", years: 3, icon: "fa-balance-scale" },
-            { name: "Medical School", years: 4, icon: "fa-user-md" },
-            { name: "Business School", years: 2, icon: "fa-chart-line" },
-            { name: "Psychiatry School", years: 4, icon: "fa-brain" }
         ];
 
         const CAREERS = [
@@ -91,18 +94,25 @@ window.loadAndRenderGame = (userData) => {
 
     // Initialize the Single Source of Truth
     window.gameState = {
-        user: userData,
-        
-        // Initialize Lists (Later we will load these from DB too)
+        user: {
+            ...userData,
+            money: userData.money || 0,
+            gender: userData.gender || 'male',
+            isStudent: userData.is_student || false,
+            universityEnrolled: userData.university_enrolled || false,
+            schoolActions: userData.school_actions || 0,
+            careerActionTaken: userData.career_action_taken || 0,
+            monthlyOutflow: userData.monthly_outflow || 0,
+            studentLoans: userData.student_loans || 0,
+            gradSchoolEnrolled: userData.grad_school_enrolled || false,
+            gradSchoolYear: userData.grad_school_year || 0,
+            gradSchoolDegree: userData.grad_school_degree || null
+        },
         lifeLog: [{ age: 0, events: [{ msg: "Game Loaded.", color: "text-white" }] }],
         assets: [],
-        
-        // Ensure defaults if DB didn't return them
-        gender: userData.gender || 'male' 
     };
-    addLog(`Born in ${city}. Welcome to the world!`, 'good');
-    // Render the Dashboard
-    window.renderLifeDashboard(window.gameState);
+    //.addLog function contains the renderLifeDashboard call
+    window.addLog(`Born in ${userData.city}. Welcome to the world!`, 'good');
 };
 
 // 3. THE TRAFFIC COP (Entry Point)

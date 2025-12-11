@@ -2,22 +2,20 @@
 
 //age up function
 function ageUp() {
-    const currentAge = window.gameState.user.age + 1;
-    window.gameState.user.age = currentAge;
-    game.schoolActions = 0; // Reset school actions every year
-    game.careerActionTaken = false; // Reset career actions
-    
+    const user = window.gameState.user;
+    const currentAge = user.age + 1;
+    user.age = currentAge;
     // Check if currently student at start of year
-    const currentlyStudent = isStudent();
+    const currentlyStudent = user.isStudent;
     // Birthday Money Logic (5 to 18)
     if (currentAge >= 5 && currentAge <= 18) {
         const bdayMoney = Math.floor(Math.random() * 71) + 10; // 10 to 80
-        game.bank += bdayMoney;
-        addLog(`You received $${bdayMoney} for your birthday!`, 'good');
+        user.money += bdayMoney;
+        window.addLog(`You received $${bdayMoney} for your birthday!`, 'good');
     }
     // --- LIVING EXPENSES LOGIC ---
     if (currentAge >= 19 && !currentlyStudent) {
-        game.bank -= 24000; // $2k * 12
+        user.money -= 24000; // $2k * 12
         
         if (!game.hasSeenExpenseMsg) {
             addLog("Your basic living expenses are $2,000 per month.", 'neutral');
@@ -27,26 +25,26 @@ function ageUp() {
     // --- Student Loans Logic ---
     // Deduct every year if age >= 23 AND not in grad school
     // Placed before Grad School logic so you don't pay the same year you graduate
-    if (currentAge >= 23 && game.studentLoans > 0 && !game.gradSchoolEnrolled) {
+    if (currentAge >= 23 && user.studentLoans >= 2400 && !game.gradSchoolEnrolled) {
         const yearlyPayment = 2400; 
-        game.bank -= yearlyPayment;
+        user.money -= yearlyPayment;
     }
     // Grad School Logic
-    if (game.gradSchoolEnrolled) {
-        game.gradSchoolYear++;
-        const school = GRAD_SCHOOLS.find(s => s.name === game.gradSchoolType);
+    if (user.gradSchoolEnrolled) {
+        user.gradSchoolYear++;
+        const school = window.GRAD_SCHOOLS.find(s => s.name === game.gradSchoolType);
         
-        if (game.gradSchoolYear >= school.years) {
-            game.gradSchoolEnrolled = false;
-            game.gradSchoolDegree = game.gradSchoolType;
-            addLog(`Graduated from ${game.gradSchoolType}! You are now qualified for advanced careers.`, 'good');
+        if (user.gradSchoolYear >= school.years) {
+            user.gradSchoolEnrolled = false;
+            user.gradSchoolDegree = user.gradSchoolType;
+            addLog(`Graduated from ${user.gradSchoolType}! You are now qualified for advanced careers.`, 'good');
         } else {
-            addLog(`Completed year ${game.gradSchoolYear} of ${game.gradSchoolType}.`, 'neutral');
+            addLog(`Completed year ${user.gradSchoolYear} of ${user.gradSchoolType}.`, 'neutral');
         }
     }
     // --- JOB SALARY LOGIC ---
     if (game.jobTitle) {
-        game.bank += game.jobSalary;
+        user.bank += game.jobSalary;
         addLog(`Earned ${formatMoney(game.jobSalary)} as a ${game.jobTitle}.`, 'good');
     }
     // High School Graduation / Failure Logic
@@ -104,7 +102,7 @@ function ageUp() {
         }
         else if (roll < 0.2) {
             const gift = Math.floor(Math.random() * 20) + 5;
-            game.bank += gift;
+            user.money += gift;
             addLog(`Found $${gift} on the sidewalk!`, 'good');
         } else if (roll > 0.9) {
              addLog("Got the flu. Stayed home for a week.", 'bad');
@@ -120,7 +118,7 @@ function ageUp() {
              addLog("Another year passes...");
         }
     }
-    renderLifeDashboard();
+    renderLifeDashboard(gameState);
     }
 
 /**
@@ -153,11 +151,11 @@ window.renderLifeDashboard = (maybeGameState) => {
     UI.updateHeader({
         name: state.user.username,
         age: state.user.age,
-        bank: state.user.money
+        money: state.user.money
     });
 
     //Generate the Life Log HTML
-    const logHtml = game.lifeLog.map(l => `
+    const logHtml = state.lifeLog.map(l => `
         <div class="mb-2 text-sm border-l-2 border-slate-700 pl-3 py-1">
             <span class="font-bold text-slate-500 text-xs">Age ${l.age}</span>
             <div class="mt-1 space-y-1">
@@ -201,7 +199,7 @@ window.renderLifeDashboard = (maybeGameState) => {
     UI.renderScreen(dashboardHTML);
 }
 
-function addLog(msg, type='neutral') {
+window.addLog = (msg, type = 'neutral') => {
     // 1. Get current age from the centralized state
     const currentAge = window.gameState.user.age;
     
@@ -224,4 +222,5 @@ function addLog(msg, type='neutral') {
             events: [{ msg, color }] 
         });
     }
+    window.renderLifeDashboard(window.gameState)
 };
