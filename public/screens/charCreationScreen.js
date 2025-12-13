@@ -71,6 +71,6 @@ async function submitCharacter() {
     window.renderLifeDashboard(window.gameState);
     } catch (error) {
         console.error("Creation failed", error);
-        UIEvent.showModal("Error", "Failed to create character. Check your console/server.")
+        window.UI.showModal("Error", "Failed to create character. Check your console/server.")
     }
 };

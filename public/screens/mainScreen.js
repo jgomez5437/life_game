@@ -14,18 +14,18 @@ function ageUp() {
         window.addLog(`You received $${bdayMoney} for your birthday!`, 'good');
     }
     // --- LIVING EXPENSES LOGIC ---
-    if (currentAge >= 19 && !currentlyStudent) {
-        user.money -= 24000; // $2k * 12
+    if (currentAge < 19 || currentlyStudent) return; 
+        user.money -= 24000; // $2k/month * 12
         
-        if (!game.hasSeenExpenseMsg) {
-            addLog("Your basic living expenses are $2,000 per month.", 'neutral');
-            game.hasSeenExpenseMsg = true;
-        }
+    if (!user.hasSeenExpenseMsg) {
+        addLog("Your basic living expenses are $2,000 per month.", 'neutral');
+        user.hasSeenExpenseMsg = true;
     }
+    
     // --- Student Loans Logic ---
     // Deduct every year if age >= 23 AND not in grad school
     // Placed before Grad School logic so you don't pay the same year you graduate
-    if (currentAge >= 23 && user.studentLoans >= 2400 && !game.gradSchoolEnrolled) {
+    if (currentAge >= 23 && user.studentLoans >= 2400 && !user.gradSchoolEnrolled) {
         const yearlyPayment = 2400; 
         user.money -= yearlyPayment;
     }
@@ -42,10 +42,10 @@ function ageUp() {
             addLog(`Completed year ${user.gradSchoolYear} of ${user.gradSchoolType}.`, 'neutral');
         }
     }
-    // --- JOB SALARY LOGIC ---
-    if (game.jobTitle) {
-        user.bank += game.jobSalary;
-        addLog(`Earned ${formatMoney(game.jobSalary)} as a ${game.jobTitle}.`, 'good');
+    // --- JOB SALARY LOGIC ---       //TODO
+    if (user.jobTitle) {
+        user.bank += user.jobSalary;
+        addLog(`Earned ${formatMoney(user.jobSalary)} as a ${user.jobTitle}.`, 'good');
     }
     // High School Graduation / Failure Logic
     if (currentAge === 18) {
@@ -57,35 +57,35 @@ function ageUp() {
             game.highSchoolRetained = true;
         }
     }
-    else if (currentAge === 19 && game.highSchoolRetained) {
-        if (game.schoolPerformance > 25) {
+    else if (currentAge === 19 && user.highSchoolRetained) {
+        if (user.schoolPerformance > 25) {
             addLog("You graduated High School! Enroll in University or find a job.", 'good');
-            game.highSchoolRetained = false;
+            user.highSchoolRetained = false;
         } else {
             addLog("You failed again. One last chance.", 'bad');
-            game.highSchoolRetained = true;
+            user.highSchoolRetained = true;
         }
     }
-    else if (currentAge === 20 && game.highSchoolRetained) {
+    else if (currentAge === 20 && user.highSchoolRetained) {
         addLog("Your high school felt bad and helped you get your GED during evenings. Enroll in University or find a job.", 'green');
-        game.highSchoolRetained = false;
+        user.highSchoolRetained = false;
     }
     // University Graduation Logic (Age 22)
-    if (currentAge === 22 && game.universityEnrolled) {
-        addLog(`You finished University with a degree in ${game.major}. Time to find a career!`, 'good');
+    if (currentAge === 22 && user.universityEnrolled) {
+        addLog(`You finished University with a degree in ${user.major}. Time to find a career!`, 'good');
         
-        if (game.studentLoans > 0) {
+        if (user.studentLoans > 0) {
             addLog("Your student loan payment is $200 per month.", 'neutral');
         }
-        game.universityEnrolled = false;
-        game.universityGraduated = true;
+        user.universityEnrolled = false;
+        user.universityGraduated = true;
     }
     // School Transitions (Normal)
     if (currentAge === 12) {
-        game.schoolPerformance = 50;
+        user.schoolPerformance = 50;
         addLog("Started Middle School.", 'neutral');
     } else if (currentAge === 14) {
-        game.schoolPerformance = 50;
+        user.schoolPerformance = 50;
         addLog("Started High School.", 'neutral');
     }
     // Age Specific Events
@@ -112,32 +112,15 @@ function ageUp() {
     } else {
         // Adult Events
         // If unemployed and not in school, maybe negative events?
-        if (!game.jobTitle && !game.hasBusiness && !game.universityEnrolled && !game.gradSchoolEnrolled && currentAge >= 18) {
+        if (!user.jobTitle && !user.hasBusiness && !user.universityEnrolled && !user.gradSchoolEnrolled && currentAge >= 18) {
              addLog("Unemployed. Savings are dwindling.", 'bad');
         } else {
              addLog("Another year passes...");
         }
     }
     renderLifeDashboard(gameState);
-    }
+    };
 
-/**
- * add lifelog function
-function addLog(msg, type='neutral') {
-    const currentAge = window.gameState.user.age;
-    let ageLog = window.gameState.lifeLog.find(l => l.age === currentAge);
-    let color = 'text-slate-400';
-    if (type === 'good') color = 'text-green-400';
-    else if (type === 'bad') color = 'text-red-400';
-    else if (type === 'major') color = 'text-yellow-400 font-bold';
-    else if (type === 'green') color = 'text-green-400'; // Explicit green request
-    
-    if (game.lifeLog.length > 0 && game.lifeLog[0].age === currentAge) {
-        game.lifeLog[0].events.push({ msg, color });
-    } else {
-        game.lifeLog.unshift({ age: game.age, events: [{ msg, color }] });
-    }
-}*/
 
 //Define the rendering function globally so script.js can call it.
 window.renderLifeDashboard = (maybeGameState) => {
@@ -165,9 +148,7 @@ window.renderLifeDashboard = (maybeGameState) => {
     `).join('');
 
     //Define Action Variables
-    const ageUpAction = ageUp();
     const ageUpText = "Age Up +";
-    const ageUpColor = game.hasBusiness ? "btn-primary" : "btn-life";
 
     //Define the Final HTML String
     const dashboardHTML = `
@@ -187,7 +168,7 @@ window.renderLifeDashboard = (maybeGameState) => {
                     <i class="fas fa-user-graduate mb-1 text-xl text-blue-400"></i>
                     <span class="text-[10px] uppercase tracking-wider">Occupation</span>
                 </button>
-                <button onclick="${ageUpAction}" class="${ageUpColor} text-white font-bold rounded-xl shadow-lg flex flex-col items-center justify-center">
+                <button onclick="ageUp()" class="btn-primary text-white font-bold rounded-xl shadow-lg flex flex-col items-center justify-center">
                     <i class="fas fa-arrow-up mb-1 text-xl"></i>
                     <span class="text-[10px] uppercase tracking-wider">${ageUpText}</span>
                 </button>
@@ -222,5 +203,4 @@ window.addLog = (msg, type = 'neutral') => {
             events: [{ msg, color }] 
         });
     }
-    window.renderLifeDashboard(window.gameState)
 };
