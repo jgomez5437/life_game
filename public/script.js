@@ -84,6 +84,8 @@ const API_URL = '/api'
 // 1. Define Global State Container
 window.gameState = null;
 
+
+
 // 2. THE ENGINE STARTER
 // This function is reusable! It can be called by:
 // - The Character Creation Screen (after new sign up)
@@ -97,6 +99,7 @@ window.loadAndRenderGame = (userData) => {
         user: {
             ...userData,
             money: userData.money || 0,
+            age: userData.age || 0,
             gender: userData.gender || 'male',
             isStudent: userData.is_student || false,
             universityEnrolled: userData.university_enrolled || false,
@@ -122,7 +125,7 @@ window.loadAndRenderGame = (userData) => {
     window.addLog(`Born in ${userData.city}. Welcome to the world!`, 'good');
 };
 
-// 3. THE TRAFFIC COP (Entry Point)
+//initialize game
 async function initGame() {
     console.log("Initializing App...");
 
@@ -141,32 +144,7 @@ async function initGame() {
 initGame();
 
 /** 
-let currentUser = null;
-async function loadAndRenderGame() {
-    const response = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ auth0_id: "123abc", username: "TestPlayer"})
-    });
-
-    if (!response.ok) {
-        UIEvent.showModal("Error", "Could not load player data. Check your Vercel connection");
-        return;
-    }
-    //store data and update HUD
-    const data = await response.json();
-    currentUser = data;
-    //update the HUD using UI.updateHeader function
-    UIEvent.updateHeader({
-        name: currentUser.username,
-        age: 0,
-        bank: currentUser.money
-    });
-    //render initial screen
-    window.renderLifeDashboard(gameState);
-}
         // --- UTILS ---
-        const formatMoney = num => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(num);
         const el = id => document.getElementById(id);
 
         function updateHeader() {
@@ -189,24 +167,6 @@ async function loadAndRenderGame() {
                 : '<i class="fas fa-user-nurse text-pink-400 text-xl"></i>';
             
             if(game.name) el('avatar-container').innerHTML = avatarHtml;
-        }
-
-        function showModal(title, content, btnText = "Continue", callback = null) {
-            el('modal-title').innerText = title;
-            el('modal-content').innerHTML = content;
-            
-            el('modal-actions').innerHTML = `<button id="modal-btn" class="w-full btn-primary text-white font-bold py-3 rounded-lg">${btnText}</button>`;
-            
-            const btn = el('modal-btn');
-            const m = el('modal-overlay');
-            m.classList.remove('hidden');
-            m.classList.add('flex');
-            
-            btn.onclick = () => {
-                m.classList.add('hidden');
-                m.classList.remove('flex');
-                if (callback) callback();
-            };
         }
 
         function getStatusText() {

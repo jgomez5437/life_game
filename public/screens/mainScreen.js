@@ -2,37 +2,38 @@
 
 //age up function
 function ageUp() {
+    console.log("Function called")
     const user = window.gameState.user;
     const currentAge = user.age + 1;
     user.age = currentAge;
     // Check if currently student at start of year
     const currentlyStudent = user.isStudent;
     // Birthday Money Logic (5 to 18)
-    if (currentAge >= 5 && currentAge <= 18) {
+    if (user.age >= 5 && user.age <= 18) {
         const bdayMoney = Math.floor(Math.random() * 71) + 10; // 10 to 80
         user.money += bdayMoney;
         window.addLog(`You received $${bdayMoney} for your birthday!`, 'good');
     }
     // --- LIVING EXPENSES LOGIC ---
-    if (currentAge < 19 || currentlyStudent) return; 
+    if (user.age >= 19 && !currentlyStudent) {
         user.money -= 24000; // $2k/month * 12
         
-    if (!user.hasSeenExpenseMsg) {
-        addLog("Your basic living expenses are $2,000 per month.", 'neutral');
-        user.hasSeenExpenseMsg = true;
-    }
-    
+        if (!user.hasSeenExpenseMsg) {
+            addLog("Your basic living expenses are $2,000 per month.", 'neutral');
+            user.hasSeenExpenseMsg = true;
+        };
+    };
     // --- Student Loans Logic ---
     // Deduct every year if age >= 23 AND not in grad school
     // Placed before Grad School logic so you don't pay the same year you graduate
-    if (currentAge >= 23 && user.studentLoans >= 2400 && !user.gradSchoolEnrolled) {
+    if (user.age >= 23 && user.studentLoans >= 2400 && !user.gradSchoolEnrolled) {
         const yearlyPayment = 2400; 
         user.money -= yearlyPayment;
     }
     // Grad School Logic
     if (user.gradSchoolEnrolled) {
         user.gradSchoolYear++;
-        const school = window.GRAD_SCHOOLS.find(s => s.name === game.gradSchoolType);
+        const school = window.GRAD_SCHOOLS.find(s => s.name === user.gradSchoolType);
         
         if (user.gradSchoolYear >= school.years) {
             user.gradSchoolEnrolled = false;
@@ -45,19 +46,20 @@ function ageUp() {
     // --- JOB SALARY LOGIC ---       //TODO
     if (user.jobTitle) {
         user.bank += user.jobSalary;
-        addLog(`Earned ${formatMoney(user.jobSalary)} as a ${user.jobTitle}.`, 'good');
+
+        addLog(`Earned ${window.Utils.formatMoney(user.jobSalary)} as a ${user.jobTitle}.`, 'good');
     }
     // High School Graduation / Failure Logic
-    if (currentAge === 18) {
-        if (game.schoolPerformance > 25) {
+    if (user.age === 18) {
+        if (user.schoolPerformance > 25) {
             addLog("You graduated High School! Enroll in University or find a job.", 'good');
-            game.highSchoolRetained = false;
+            user.highSchoolRetained = false;
         } else {
             addLog("You failed senior year and stay another year in High School. Try working harder.", 'bad');
-            game.highSchoolRetained = true;
+            user.highSchoolRetained = true;
         }
     }
-    else if (currentAge === 19 && user.highSchoolRetained) {
+    else if (user.age === 19 && user.highSchoolRetained) {
         if (user.schoolPerformance > 25) {
             addLog("You graduated High School! Enroll in University or find a job.", 'good');
             user.highSchoolRetained = false;
@@ -66,12 +68,12 @@ function ageUp() {
             user.highSchoolRetained = true;
         }
     }
-    else if (currentAge === 20 && user.highSchoolRetained) {
+    else if (user.age === 20 && user.highSchoolRetained) {
         addLog("Your high school felt bad and helped you get your GED during evenings. Enroll in University or find a job.", 'green');
         user.highSchoolRetained = false;
     }
     // University Graduation Logic (Age 22)
-    if (currentAge === 22 && user.universityEnrolled) {
+    if (user.age === 22 && user.universityEnrolled) {
         addLog(`You finished University with a degree in ${user.major}. Time to find a career!`, 'good');
         
         if (user.studentLoans > 0) {
@@ -81,23 +83,23 @@ function ageUp() {
         user.universityGraduated = true;
     }
     // School Transitions (Normal)
-    if (currentAge === 12) {
+    if (user.age === 12) {
         user.schoolPerformance = 50;
         addLog("Started Middle School.", 'neutral');
-    } else if (currentAge === 14) {
+    } else if (user.age === 14) {
         user.schoolPerformance = 50;
         addLog("Started High School.", 'neutral');
     }
     // Age Specific Events
-    if (currentAge === 1) addLog("You've discovered building blocks and started throwing them.", 'good');
-    else if (currentAge === 2) addLog("You learned to walk, mostly into furniture.", 'good');
-    else if (currentAge === 3) addLog("You drew a masterpiece on the living room wall with crayons.", 'good');
-    else if (currentAge === 4) addLog("You refused to eat anything green for an entire year.", 'good');
-    else if (currentAge === 5) addLog("You started Elementary School! Time to learn.", 'good');
+    if (user.age === 1) addLog("You've discovered building blocks and started throwing them.", 'good');
+    else if (user.age === 2) addLog("You learned to walk, mostly into furniture.", 'good');
+    else if (user.age === 3) addLog("You drew a masterpiece on the living room wall with crayons.", 'good');
+    else if (user.age === 4) addLog("You refused to eat anything green for an entire year.", 'good');
+    else if (user.age === 5) addLog("You started Elementary School! Time to learn.", 'good');
     // Random Events for older ages
-    else if (currentAge < 18) {
+    else if (user.age < 18) {
         const roll = Math.random();
-        if (currentAge === 16) {
+        if (user.age === 16) {
              addLog("Legal working age reached.", 'neutral');
         }
         else if (roll < 0.2) {
@@ -112,19 +114,21 @@ function ageUp() {
     } else {
         // Adult Events
         // If unemployed and not in school, maybe negative events?
-        if (!user.jobTitle && !user.hasBusiness && !user.universityEnrolled && !user.gradSchoolEnrolled && currentAge >= 18) {
+        if (!user.jobTitle && !user.hasBusiness && !user.universityEnrolled && !user.gradSchoolEnrolled && user.age >= 18) {
              addLog("Unemployed. Savings are dwindling.", 'bad');
         } else {
              addLog("Another year passes...");
         }
     }
-    renderLifeDashboard(gameState);
+    console.log('ageup function')
+    window.renderLifeDashboard(window.gameState);
     };
 
 
 //Define the rendering function globally so script.js can call it.
 window.renderLifeDashboard = (maybeGameState) => {
     // --- Data Preparation ---
+    const userAge = window.gameState.user.age;
     const state = maybeGameState || window.gameState;
     if (!state || !state.user) {
         console.warn("renderLifeDashboard called before game state existed.");
@@ -136,7 +140,6 @@ window.renderLifeDashboard = (maybeGameState) => {
         age: state.user.age,
         money: state.user.money
     });
-
     //Generate the Life Log HTML
     const logHtml = state.lifeLog.map(l => `
         <div class="mb-2 text-sm border-l-2 border-slate-700 pl-3 py-1">
