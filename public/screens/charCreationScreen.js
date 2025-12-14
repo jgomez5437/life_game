@@ -49,9 +49,35 @@ function selectGender(g) {
 
 };
 
+function sanitizeName() {
+    console.log("sanitizeName")
+    const nameRegex = /^[a-zA-Z\s-]+$/;
+    const inputName = get('inp-name').value;
+    const name = inputName.trim().replace(/\s+/g, ' ');
+    try{
+        if (name === "") {
+            window.UI.showModal("Wait!", "You must enter a name to begin.")
+            return;
+        };
+        if (name.length > 25) {
+            window.UI.showModal("Whoa!", "Keep the name to 25 characters or less.")
+            return;
+        }
+        if (!nameRegex.test(name)) {
+            window.UI.showModal("Invalid Name", "Name can only contain letters, spaces, and hyphens.")
+            return;
+        }
+        return name;
+    } catch (error) {
+        console.error("Validation error:", error)
+        return null;;
+    }
+};
+
+
 async function submitCharacter() {
-    const name = get('inp-name').value;
-    if(!name) return showModal("Name Required", "Please enter a name for your character.");
+    const name = sanitizeName();
+    if (!name) return;
     const gender = selectedGender;
     const city = get('inp-city').value;
     const tempAuthId = "user_" + Math.random().toString(36).substr(2, 9);

@@ -60,8 +60,9 @@ showModal: (title, message, onClose = null) => {
     _elements.modalContent.innerHTML = message;
     _elements.modalBtn.innerText = 'Dismiss';
     //show overlay
-    _elements.modalOverlay.classList.add('hidden');
-    _elements.modalOverlay.classList.remove('flex');
+    _elements.modalOverlay.classList.remove('hidden');
+    _elements.modalOverlay.classList.add('flex');
+
     //hide overlay
     _elements.modalBtn.onclick = () => {
             // Hide the overlay
