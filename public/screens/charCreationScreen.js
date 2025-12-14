@@ -1,4 +1,5 @@
 const get = id => document.getElementById(id);
+let selectedGender = 'male';
 
 window.renderCharCreation = () => {
     const creationHTML = `
@@ -36,7 +37,8 @@ window.renderCharCreation = () => {
     }
 
 function selectGender(g) {
-    const gender = g;
+    selectedGender = g
+    console.log(selectedGender)
     if(g === 'male') {
         get('btn-male').className = "p-3 rounded border border-blue-500 bg-blue-900/30 text-blue-200";
         get('btn-female').className = "p-3 rounded border border-slate-600 bg-slate-900 text-slate-400";
@@ -44,13 +46,13 @@ function selectGender(g) {
         get('btn-male').className = "p-3 rounded border border-slate-600 bg-slate-900 text-slate-400";
         get('btn-female').className = "p-3 rounded border border-pink-500 bg-pink-900/30 text-pink-200";
     } 
-    return gender;
-        }
+
+};
 
 async function submitCharacter() {
     const name = get('inp-name').value;
     if(!name) return showModal("Name Required", "Please enter a name for your character.");
-    const gender = selectGender();
+    const gender = selectedGender;
     const city = get('inp-city').value;
     const tempAuthId = "user_" + Math.random().toString(36).substr(2, 9);
     try {
