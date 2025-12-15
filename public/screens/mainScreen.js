@@ -1,5 +1,4 @@
 // public/screens/mainScreen.js
-
 //age up function
 function ageUp() {
     console.log("Function called")
@@ -128,18 +127,32 @@ function ageUp() {
 //Define the rendering function globally so script.js can call it.
 window.renderLifeDashboard = (maybeGameState) => {
     // --- Data Preparation ---
-    const userAge = window.gameState.user.age;
     const state = maybeGameState || window.gameState;
     if (!state || !state.user) {
         console.warn("renderLifeDashboard called before game state existed.");
         return;}
+    const user = state.user;
     //Update the Header Bar using the UI Manager
     //    We assume 'game' holds the key stats needed for the header.
     UI.updateHeader({
-        name: state.user.username,
-        age: state.user.age,
-        money: state.user.money
+        name: user.username,
+        age: user.age,
+        money: user.money
     });
+    //change avatar based on gender
+    let iconClass = '';
+    if (user.age < 5) {
+    iconClass = 'fas fa-baby text-green-400'; // Babies are green/neutral
+    } else if (user.age < 13) {
+    iconClass = 'fas fa-child text-yellow-400'; // Kids are yellow
+    } else {
+    // Adults get gender colors
+    iconClass = user.gender === 'male' 
+        ? 'fas fa-male text-blue-400' 
+        : 'fas fa-female text-pink-400';
+    };
+    const avatarHtml = `<i class="${iconClass} text-2xl"></i>`;
+    if(user.username) get('avatar-container').innerHTML = avatarHtml;
     //Generate the Life Log HTML
     const logHtml = state.lifeLog.map(l => `
         <div class="mb-2 text-sm border-l-2 border-slate-700 pl-3 py-1">

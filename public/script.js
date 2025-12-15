@@ -1,3 +1,4 @@
+const get = id => document.getElementById(id);
 // --- CONSTANTS ---
 window.GAME_CONSTANTS = {
     GRAD_SCHOOLS: [
@@ -7,9 +8,6 @@ window.GAME_CONSTANTS = {
         { name: "Psychiatry School", years: 4, icon: "fa-brain" }
     ]
 } 
-
-
-        const CITIES = ["New York", "London", "Tokyo", "Berlin", "San Francisco"];
         const MAJORS = [
             "Psychology", "Computer Science", "English", "Education", "Marketing", 
             "Business", "Nursing", "Religious Studies", "Biology", "Graphic Design", "Chemistry",
@@ -140,27 +138,14 @@ async function initGame() {
     }
 }
 
-// 4. Run the App
-initGame();
+//Start the app
+document.addEventListener('DOMContentLoaded', () => {
+    initGame();
+});
 
 /** 
         // --- UTILS ---
         const el = id => document.getElementById(id);
-
-        function updateHeader() {
-            el('header-name').innerText = game.name || "Character Creation";
-            el('header-age').innerText = game.age;
-            
-            const bankEl = el('header-bank');
-            bankEl.innerText = formatMoney(game.bank);
-            
-            if (game.bank < 0) {
-                bankEl.classList.remove('text-green-400');
-                bankEl.classList.add('text-red-500');
-            } else {
-                bankEl.classList.remove('text-red-500');
-                bankEl.classList.add('text-green-400');
-            }
             
             const avatarHtml = game.gender === 'male' 
                 ? '<i class="fas fa-user-tie text-blue-400 text-xl"></i>' 
@@ -196,7 +181,4 @@ initGame();
 
         function isStudent() {
             return game.universityEnrolled || game.gradSchoolEnrolled || game.highSchoolRetained || (game.age < 18);
-        }
-
-        // Init
-        window.onload = renderCharCreation;*/
+        } */

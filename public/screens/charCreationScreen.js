@@ -1,5 +1,6 @@
-const get = id => document.getElementById(id);
+//Character creation screen
 let selectedGender = 'male';
+const CITIES = ["New York", "London", "Tokyo", "Berlin", "San Francisco"];
 
 window.renderCharCreation = () => {
     const creationHTML = `

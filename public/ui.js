@@ -15,30 +15,22 @@ const _elements = {
 //Global UI object
 window.UI = {
     /** 
-    *@param {Object} stats - { name, age, bank }
+    *@param {Object} stats - { name, age, money }
     */
    updateHeader: (stats) => {
     //update name and age
     if (stats.name !== undefined) _elements.name.innerText = stats.name;
     if (stats.age !== undefined) _elements.age.innerText = stats.age;
+
     //update bank
-    if (stats.bank !== undefined) {
-        const amount = Number(stats.bank);
-        const formattedMoney = Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
-            maximumFractionDigits: 0
-        }).format(amount);
-    
-    _elements.bank.innerText = formattedMoney;
+    _elements.bank.innerText = window.Utils.formatMoney(stats.money);
     //apply color based on balance
     _elements.bank.classList.remove('text-green-400', 'text-red-400');
-            if (amount < 0) {
+            if (stats.bank < 0) {
                 _elements.bank.classList.add('text-red-400');
             } else {
                 _elements.bank.classList.add('text-green-400');
             }
-        }
     },
 
 //Screen rendering functions
