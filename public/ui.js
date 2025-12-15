@@ -26,7 +26,7 @@ window.UI = {
     _elements.bank.innerText = window.Utils.formatMoney(stats.money);
     //apply color based on balance
     _elements.bank.classList.remove('text-green-400', 'text-red-400');
-            if (stats.bank < 0) {
+            if (stats.money < 0) {
                 _elements.bank.classList.add('text-red-400');
             } else {
                 _elements.bank.classList.add('text-green-400');
