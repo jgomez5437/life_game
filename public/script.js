@@ -99,6 +99,7 @@ window.loadAndRenderGame = (userData) => {
             money: userData.money || 0,
             age: userData.age || 0,
             gender: userData.gender || 'male',
+            city: userData.city || "New York",
             isStudent: userData.is_student || false,
             universityEnrolled: userData.university_enrolled || false,
             major: userData.major || '',
@@ -114,7 +115,9 @@ window.loadAndRenderGame = (userData) => {
             jobSalary: userData.job_salary || 0,
             schoolPerformance: userData.school_performance || 50,
             highSchoolRetained: userData.high_school_retained || false,
-            hasBusiness: userData.has_business || false
+            hasBusiness: userData.has_business || false,
+            companyName: userData.companyName || null,
+            lifeStatus: userData.life_status || "Baby",
         },
         lifeLog: [{ age: 0, events: [{ msg: "Game Loaded.", color: "text-white" }] }],
         assets: [],

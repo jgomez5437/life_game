@@ -223,6 +223,13 @@ function gradEnrollSuccess(schoolType, methodMsg) {
     renderActivities();
 }
 
+const user = window.gameState.user;
+
+function getStatus() {
+    let status = get("status-text");
+    status.innerText = user.lifeStatus;
+}
+
 function renderActivities() {
     updateHeader();
     const isAdult = game.age >= 18;
@@ -233,13 +240,12 @@ function renderActivities() {
         <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4 flex justify-between items-center">
             <div>
                 <h3 class="text-slate-400 text-xs uppercase font-bold mb-1">Current Status</h3>
-                <div class="text-xl font-bold text-white">
-                    ${getStatusText()}
+                <div id="status-text"class="text-xl font-bold text-white">
                 </div>
             </div>
              <div class="text-right">
                 <h3 class="text-slate-400 text-xs uppercase font-bold mb-1">Residence</h3>
-                <div class="text-sm font-bold text-white">${game.city}</div>
+                <div class="text-sm font-bold text-white">${user.city}</div>
             </div>
         </div>
     `;
@@ -249,7 +255,7 @@ function renderActivities() {
             <div class="mb-6">
                  <h3 class="font-bold text-white mb-2">My Company</h3>
                 <button onclick="enterBusinessMode()" class="w-full btn-primary text-white font-bold py-4 rounded-xl mb-2 flex items-center justify-between px-6 shadow-lg">
-                    <span class="flex items-center gap-3"><i class="fas fa-building"></i> Manage ${game.companyName}</span>
+                    <span class="flex items-center gap-3"><i class="fas fa-building"></i> Manage ${user.companyName}</span>
                     <i class="fas fa-chevron-right"></i>
                 </button>
                 <div class="text-xs text-slate-400 px-1">Go to office to manage production, pricing and staff.</div>
@@ -281,22 +287,22 @@ function renderActivities() {
                         <div class="w-8 h-8 rounded-full bg-purple-900/50 flex items-center justify-center text-purple-400">
                             <i class="fas fa-university"></i>
                         </div>
-                        <h3 class="font-bold text-white">${game.gradSchoolType}</h3>
+                        <h3 class="font-bold text-white">${user.gradSchoolType}</h3>
                     </div>
-                    <div class="px-2 py-1 rounded bg-slate-900 text-xs font-bold ${game.schoolPerformance > 75 ? 'text-green-400' : 'text-yellow-400'}">
-                        ${game.schoolPerformance}%
+                    <div class="px-2 py-1 rounded bg-slate-900 text-xs font-bold ${user.schoolPerformance > 75 ? 'text-green-400' : 'text-yellow-400'}">
+                        ${user.schoolPerformance}%
                     </div>
                 </div>
                 <div class="bg-slate-900 p-3 rounded border border-slate-700 flex justify-between items-center">
                     <div>
-                        <div class="text-sm text-white font-bold">Year ${game.gradSchoolYear + 1}</div>
+                        <div class="text-sm text-white font-bold">Year ${user.gradSchoolYear + 1}</div>
                         <div class="text-xs text-purple-400">Enrolled</div>
                     </div>
                     <i class="fas fa-chevron-right text-slate-600"></i>
                 </div>
             </div>
         `;
-    } else if (game.universityGraduated) {
+    } else if (user.universityGraduated) {
          content += `
             <div onclick="renderGradSchoolMarket()" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
                 <div class="flex items-center gap-3 mb-2">
@@ -311,7 +317,7 @@ function renderActivities() {
                 </div>
             </div>
         `;
-    } else if (game.age < 5) {
+    } else if (user.age < 5) {
         content += `
             <div class="bg-slate-800/50 p-4 rounded-xl border border-dashed border-slate-700 mb-4 opacity-60 flex items-center justify-between">
                 <div class="flex items-center gap-3">
@@ -326,7 +332,7 @@ function renderActivities() {
                 <i class="fas fa-lock text-slate-500"></i>
             </div>
         `;
-    } else if (game.age < 18 || game.highSchoolRetained) {
+    } else if (user.age < 18 || user.highSchoolRetained) {
          content += `
             <div onclick="renderEducation()" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
                 <div class="flex items-center justify-between mb-2">
@@ -336,8 +342,8 @@ function renderActivities() {
                         </div>
                         <h3 class="font-bold text-white">Education</h3>
                     </div>
-                    <div class="px-2 py-1 rounded bg-slate-900 text-xs font-bold ${game.schoolPerformance > 75 ? 'text-green-400' : 'text-yellow-400'}">
-                        ${game.schoolPerformance}%
+                    <div class="px-2 py-1 rounded bg-slate-900 text-xs font-bold ${user.schoolPerformance > 75 ? 'text-green-400' : 'text-yellow-400'}">
+                        ${user.schoolPerformance}%
                     </div>
                 </div>
                 <div class="bg-slate-900 p-3 rounded border border-slate-700 flex justify-between items-center">
@@ -349,8 +355,8 @@ function renderActivities() {
                 </div>
             </div>
         `;
-    } else if (game.age >= 18 && !game.highSchoolRetained) {
-        if (game.universityEnrolled) {
+    } else if (user.age >= 18 && !user.highSchoolRetained) {
+        if (user.universityEnrolled) {
              content += `
                 <div onclick="renderEducation()" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
                     <div class="flex items-center justify-between mb-2">
@@ -360,13 +366,13 @@ function renderActivities() {
                             </div>
                             <h3 class="font-bold text-white">University</h3>
                         </div>
-                        <div class="px-2 py-1 rounded bg-slate-900 text-xs font-bold ${game.schoolPerformance > 75 ? 'text-green-400' : 'text-yellow-400'}">
-                            ${game.schoolPerformance}%
+                        <div class="px-2 py-1 rounded bg-slate-900 text-xs font-bold ${user.schoolPerformance > 75 ? 'text-green-400' : 'text-yellow-400'}">
+                            ${user.schoolPerformance}%
                         </div>
                     </div>
                     <div class="bg-slate-900 p-3 rounded border border-slate-700 flex justify-between items-center">
                         <div>
-                            <div class="text-sm text-white font-bold">${game.major}</div>
+                            <div class="text-sm text-white font-bold">${user.major}</div>
                             <div class="text-xs text-blue-400">Enrolled</div>
                         </div>
                         <i class="fas fa-chevron-right text-slate-600"></i>
@@ -391,7 +397,7 @@ function renderActivities() {
         }
     }
     // 4. PART-TIME JOBS
-    if (game.age < 15) {
+    if (user.age < 15) {
          content += `
              <div class="bg-slate-800/50 p-4 rounded-xl border border-dashed border-slate-700 mb-4 opacity-60 flex items-center justify-between">
                 <div class="flex items-center gap-3">
@@ -423,7 +429,7 @@ function renderActivities() {
         `;
     }
     // 5. CAREERS
-    if (game.age < 18) {
+    if (user.age < 18) {
          content += `
              <div class="bg-slate-800/50 p-4 rounded-xl border border-dashed border-slate-700 mb-4 opacity-60 flex items-center justify-between">
                 <div class="flex items-center gap-3">
@@ -438,7 +444,7 @@ function renderActivities() {
                 <i class="fas fa-lock text-slate-500"></i>
             </div>
         `;
-    } else if (game.jobTitle) {
+    } else if (user.jobTitle) {
         // Has Job -> Career Manager
          content += `
             <div onclick="renderCareerManager()" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
@@ -450,14 +456,14 @@ function renderActivities() {
                 </div>
                 <div class="bg-slate-900 p-3 rounded border border-slate-700 flex justify-between items-center">
                      <div>
-                        <div class="text-sm text-white font-bold">${game.jobTitle}</div>
-                        <div class="text-xs text-green-400">${formatMoney(game.jobSalary)}/yr</div>
+                        <div class="text-sm text-white font-bold">${user.jobTitle}</div>
+                        <div class="text-xs text-green-400">${formatMoney(user.jobSalary)}/yr</div>
                      </div>
                      <i class="fas fa-chevron-right text-slate-600"></i>
                 </div>
             </div>
         `;
-    } else if (!game.hasBusiness) {
+    } else if (!user.hasBusiness) {
         // No Job, No Business -> Career Market
         content += `
             <div onclick="renderCareerMarket()" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
@@ -478,7 +484,7 @@ function renderActivities() {
         `;
     }
     // 6. ENTREPRENEURSHIP
-    if (!game.hasBusiness) {
+    if (!user.hasBusiness) {
         if (!isAdult) {
              content += `
                 <div class="bg-slate-800/50 p-4 rounded-xl border border-dashed border-slate-700 mb-6 flex items-center justify-between opacity-60">
@@ -528,5 +534,6 @@ function renderActivities() {
             </div>
         </div>
     `;
+    getStatus()
 }
 
