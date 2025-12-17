@@ -146,13 +146,6 @@ document.addEventListener('DOMContentLoaded', () => {
 /** 
         // --- UTILS ---
         const el = id => document.getElementById(id);
-            
-            const avatarHtml = game.gender === 'male' 
-                ? '<i class="fas fa-user-tie text-blue-400 text-xl"></i>' 
-                : '<i class="fas fa-user-nurse text-pink-400 text-xl"></i>';
-            
-            if(game.name) el('avatar-container').innerHTML = avatarHtml;
-        }
 
         function getStatusText() {
             if (game.gradSchoolEnrolled) return `${game.gradSchoolType} Student`;
