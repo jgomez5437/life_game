@@ -1,7 +1,6 @@
 // public/screens/mainScreen.js
 //age up function
 function ageUp() {
-    console.log("Function called")
     const user = window.gameState.user;
     const currentAge = user.age + 1;
     user.age = currentAge;
@@ -119,7 +118,6 @@ function ageUp() {
              addLog("Another year passes...");
         }
     }
-    console.log('ageup function')
     window.renderLifeDashboard(window.gameState);
     };
 

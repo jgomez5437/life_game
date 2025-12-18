@@ -231,7 +231,6 @@ function getStatus() {
     const user = window.gameState.user;
     let status = get("status-text");
     status.innerText = user.lifeStatus;
-    console.log(user.lifeStatus);
 }
 
 function renderActivities() {
