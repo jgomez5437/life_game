@@ -3,14 +3,16 @@
 //University Pop up
 function openUniversityModal() {
     // Reset flags
-    game.scholarshipTried = false;
-    game.parentsTried = false;
+    const user = window.gameState.user;
+    user.scholarshipTried = false;
+    user.parentsTried = false;
     renderUniversityModalContent();
 }
 function renderUniversityModalContent(selectedMajor = null) {
-    const m = el('modal-overlay');
-    el('modal-title').innerText = "University Enrollment";
-    el('modal-content').innerHTML = `
+    const user = window.gameState.user;
+    const m = get('modal-overlay');
+    get('modal-title').innerText = "University Enrollment";
+    get('modal-content').innerHTML = `
         <div class="mb-4">
             <label class="block text-sm text-slate-400 mb-1">Select Major</label>
             <div class="relative">
@@ -23,32 +25,32 @@ function renderUniversityModalContent(selectedMajor = null) {
     `;
     
     // Render Actions
-    const cashDisabled = game.bank < 40000;
+    const cashDisabled = user.bank < 40000;
     const cashBtn = `<button onclick="attemptEnrollment('cash')" ${cashDisabled ? 'disabled' : ''} class="w-full bg-green-600 hover:bg-green-500 disabled:bg-slate-700 disabled:opacity-50 text-white font-bold py-2 rounded mb-2">Pay Cash ($40k)</button>`;
     
     const loanBtn = `<button onclick="attemptEnrollment('loan')" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded mb-2">Student Loans</button>`;
     
     // Scholarship Button
     let scholarBtn = "";
-    if (game.scholarshipTried) {
+    if (user.scholarshipTried) {
         scholarBtn = `<button disabled class="w-full bg-slate-700 opacity-50 text-slate-400 font-bold py-2 rounded mb-2 cursor-not-allowed">Ineligible</button>`;
     } else {
         scholarBtn = `<button onclick="attemptEnrollment('scholarship')" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded mb-2">Apply for Scholarship</button>`;
     }
     // Parents Button
     let parentBtn = "";
-    if (game.parentsTried) {
+    if (user.parentsTried) {
          parentBtn = `<button disabled class="w-full bg-slate-700 opacity-50 text-slate-400 font-bold py-2 rounded mb-2 cursor-not-allowed">They Refused</button>`;
     } else {
         parentBtn = `<button onclick="attemptEnrollment('parents')" class="w-full bg-pink-600 hover:bg-pink-500 text-white font-bold py-2 rounded mb-2">Ask Parents to Pay</button>`;
     }
-    el('modal-actions').innerHTML = `
+    get('modal-actions').innerHTML = `
         <div class="space-y-1">
             ${cashBtn}
             ${loanBtn}
             ${scholarBtn}
             ${parentBtn}
-            <button onclick="document.getElementById('modal-overlay').classList.add('hidden'); document.getElementById('modal-overlay').classList.remove('flex');" class="w-full mt-4 text-slate-400 hover:text-white text-sm">Cancel</button>
+            <button onclick="document.getElementById('modal-overlay').classList.add('hidden'); document.getElementById('modal-overlay').classList.remove('flex');" class="w-full mt-4 text-slate-400 hover:text-white text-sm">Canget</button>
         </div>
     `;
     m.classList.remove('hidden');
@@ -223,16 +225,18 @@ function gradEnrollSuccess(schoolType, methodMsg) {
     renderActivities();
 }
 
-const user = window.gameState.user;
+
 
 function getStatus() {
+    const user = window.gameState.user;
     let status = get("status-text");
     status.innerText = user.lifeStatus;
+    console.log(user.lifeStatus);
 }
 
 function renderActivities() {
-    updateHeader();
-    const isAdult = game.age >= 18;
+    const user = window.gameState.user;
+    const isAdult = user.age >= 18;
     let content = '';
     
     // 1. STATUS CARD
@@ -250,7 +254,7 @@ function renderActivities() {
         </div>
     `;
     // 2. CEO ACTIONS (Always top if active)
-    if (game.hasBusiness) {
+    if (user.hasBusiness) {
         content += `
             <div class="mb-6">
                  <h3 class="font-bold text-white mb-2">My Company</h3>
@@ -263,7 +267,7 @@ function renderActivities() {
         `;
     }
     // 3. EDUCATION
-    if (game.gradSchoolDegree) {
+    if (user.gradSchoolDegree) {
          // Fully done logic
          content += `
             <div class="bg-slate-800/50 p-4 rounded-xl border border-dashed border-slate-700 mb-4 opacity-60 flex items-center justify-between">
@@ -279,7 +283,7 @@ function renderActivities() {
                 <i class="fas fa-check text-slate-500"></i>
             </div>
         `;
-    } else if (game.gradSchoolEnrolled) {
+    } else if (user.gradSchoolEnrolled) {
          content += `
             <div onclick="renderEducation()" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
                 <div class="flex items-center justify-between mb-2">
@@ -519,7 +523,7 @@ function renderActivities() {
             `;
         }
     }
-    el('game-container').innerHTML = `
+    get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">
                 <button onclick="renderLifeDashboard(window.gameState)" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
