@@ -13,14 +13,14 @@ function ageUp() {
         window.addLog(`You received $${bdayMoney} for your birthday!`, 'good');
     }
     // --- LIVING EXPENSES LOGIC ---
-    if (user.age >= 19 && !currentlyStudent) {
-        user.money -= 24000; // $2k/month * 12
-        
-        if (!user.hasSeenExpenseMsg) {
-            addLog("Your basic living expenses are $2,000 per month.", 'neutral');
-            user.hasSeenExpenseMsg = true;
-        };
+    const annualLivingExpense = window.GameLogic.addLivingExpenses(user.age, user.currentlyStudent);
+    //add annual living expense to monthlyOutflow
+    user.monthlyOutflow += annualLivingExpense;
+    if (annualLivingExpense >0 && !user.hasSeenExpenseMsg) {
+        addLog("Your basic living expenses are $2,000 per month.", 'neutral');
+        user.hasSeenExpenseMsg = true;
     };
+
     // --- Student Loans Logic ---
     // Deduct every year if age >= 23 AND not in grad school
     // Placed before Grad School logic so you don't pay the same year you graduate
@@ -118,6 +118,8 @@ function ageUp() {
              addLog("Another year passes...");
         }
     }
+    //remove monthlyOutflow from user bank account
+    user.money -= user.monthlyOutflow
     window.renderLifeDashboard(window.gameState);
     };
 

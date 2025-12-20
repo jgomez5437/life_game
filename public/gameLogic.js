@@ -20,8 +20,16 @@ if (!rawInput) return { isValid: false, error: "Name cannot be empty." };
     return { isValid: true, cleanedName: cleanedName };
 }
 
+function addLivingExpenses(age, currentlyStudent) {
+    if (age >= 19 && !currentlyStudent) {
+    return 24000; // $2k/month * 12
+    }; 
+    return 0;
+}
+
 const GameLogic = {
-    sanitizeName
+    sanitizeName,
+    addLivingExpenses
 };
 
 if (typeof module !== 'undefined' && module.exports) {
