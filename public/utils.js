@@ -1,4 +1,4 @@
-window.Utils = {
+const Utils = {
     //format money
     formatMoney: (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(num),
     //random integer
@@ -6,3 +6,10 @@ window.Utils = {
         return Math.floor(Math.random() * (max - min + 1)) + min;
     },
 };
+
+//export for Jest testing
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = Utils; // Node/Jest
+} else {
+    window.Utils = Utils;   // Browser
+}

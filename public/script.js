@@ -108,6 +108,7 @@ window.loadAndRenderGame = (userData) => {
             monthlyOutflow: userData.monthly_outflow || 0,
             studentLoans: userData.student_loans || 0,
             gradSchoolEnrolled: userData.grad_school_enrolled || false,
+            gradSchoolType: userData.grad_school_type || null,
             gradSchoolYear: userData.grad_school_year || 0,
             gradSchoolDegree: userData.grad_school_degree || null,
             hasSeenExpenseMsg: userData.has_seen_expense_message || false,
