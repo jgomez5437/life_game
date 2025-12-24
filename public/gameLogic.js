@@ -27,9 +27,14 @@ function addLivingExpenses(age, currentlyStudent) {
     return 0;
 }
 
+function calculateBirthdayMoney() {
+    return Math.floor(Math.random() * 71) + 10;
+}
+
 const GameLogic = {
     sanitizeName,
-    addLivingExpenses
+    addLivingExpenses,
+    calculateBirthdayMoney
 };
 
 if (typeof module !== 'undefined' && module.exports) {

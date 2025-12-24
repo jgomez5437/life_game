@@ -8,7 +8,7 @@ function ageUp() {
     const currentlyStudent = user.isStudent;
     // Birthday Money Logic (5 to 18)
     if (user.age >= 5 && user.age <= 18) {
-        const bdayMoney = Math.floor(Math.random() * 71) + 10; // 10 to 80
+        const bdayMoney = window.GameLogic.calculateBirthdayMoney();
         user.money += bdayMoney;
         window.addLog(`You received $${bdayMoney} for your birthday!`, 'good');
     }

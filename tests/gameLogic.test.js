@@ -12,3 +12,11 @@ test("returns living expenses or 0", () => {
     expect(GameLogic.addLivingExpenses(17, false)).toBe(0);
     expect(GameLogic.addLivingExpenses(22, true)).toBe(0);
 });
+
+test("returns number between 10 & 80, inclusive", () => {
+    for (let i=0; i < 100; i++) { 
+        const result = GameLogic.calculateBirthdayMoney();
+            expect(result).toBeGreaterThanOrEqual(10);
+            expect(result).toBeLessThanOrEqual(80);
+    };
+});
