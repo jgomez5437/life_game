@@ -31,10 +31,18 @@ function calculateBirthdayMoney() {
     return Math.floor(Math.random() * 71) + 10;
 }
 
+function addStudentLoanPayment(age, studentLoanAmount, isStudent) {
+        if (age >= 18 && studentLoanAmount > 0 && !isStudent) {
+            return Math.min(2400, studentLoanAmount);
+        }
+        return 0;
+};
+
 const GameLogic = {
     sanitizeName,
     addLivingExpenses,
-    calculateBirthdayMoney
+    calculateBirthdayMoney,
+    addStudentLoanPayment
 };
 
 if (typeof module !== 'undefined' && module.exports) {

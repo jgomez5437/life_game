@@ -20,3 +20,11 @@ test("returns number between 10 & 80, inclusive", () => {
             expect(result).toBeLessThanOrEqual(80);
     };
 });
+
+test("returns 2400 or 0 depending on age, student loans, and if enrolled", () => {
+    expect(GameLogic.addStudentLoanPayment(24, 2400, false)).toBe(2400);
+    expect(GameLogic.addStudentLoanPayment(24, 0, false)).toBe(0);
+    expect(GameLogic.addStudentLoanPayment(24, 2400, true)).toBe(0);
+    expect(GameLogic.addStudentLoanPayment(22, 2400, false)).toBe(2400);
+    expect(GameLogic.addStudentLoanPayment(25, 500, false)).toBe(500);
+});

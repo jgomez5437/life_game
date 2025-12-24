@@ -4,8 +4,6 @@ function ageUp() {
     const user = window.gameState.user;
     const currentAge = user.age + 1;
     user.age = currentAge;
-    // Check if currently student at start of year
-    const currentlyStudent = user.isStudent;
     // Birthday Money Logic (5 to 18)
     if (user.age >= 5 && user.age <= 18) {
         const bdayMoney = window.GameLogic.calculateBirthdayMoney();
@@ -13,21 +11,19 @@ function ageUp() {
         window.addLog(`You received $${bdayMoney} for your birthday!`, 'good');
     }
     // --- LIVING EXPENSES LOGIC ---
-    const annualLivingExpense = window.GameLogic.addLivingExpenses(user.age, user.currentlyStudent);
+    const annualLivingExpense = window.GameLogic.addLivingExpenses(user.age, user.isStudent);
     //add annual living expense to monthlyOutflow
     user.monthlyOutflow += annualLivingExpense;
-    if (annualLivingExpense >0 && !user.hasSeenExpenseMsg) {
+    if (annualLivingExpense > 0 && !user.hasSeenExpenseMsg) {
         addLog("Your basic living expenses are $2,000 per month.", 'neutral');
         user.hasSeenExpenseMsg = true;
     };
 
-    // --- Student Loans Logic ---
-    // Deduct every year if age >= 23 AND not in grad school
-    // Placed before Grad School logic so you don't pay the same year you graduate
-    if (user.age >= 23 && user.studentLoans >= 2400 && !user.gradSchoolEnrolled) {
-        const yearlyPayment = 2400; 
-        user.money -= yearlyPayment;
-    }
+    // --- STUDENT LOAN EXPENSES LOGIC ---
+    // check if there are student loans and add to monthly outflow if there are
+    const yearlyStudentLoanPayment = window.GameLogic.addStudentLoanPayment(user.age, user.studentLoans, user.isStudent); 
+    user.monthlyOutflow += yearlyStudentLoanPayment;
+
     // Grad School Logic
     if (user.gradSchoolEnrolled) {
         user.gradSchoolYear++;
