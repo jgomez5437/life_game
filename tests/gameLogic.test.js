@@ -28,3 +28,9 @@ test("returns 2400 or 0 depending on age, student loans, and if enrolled", () =>
     expect(GameLogic.addStudentLoanPayment(22, 2400, false)).toBe(2400);
     expect(GameLogic.addStudentLoanPayment(25, 500, false)).toBe(500);
 });
+
+test("returns true or a number depending on grad enrolled status", () => {
+    expect(GameLogic.checkGradSchoolGraduated(1, 4)).toBe(false);
+    expect(GameLogic.checkGradSchoolGraduated(3, 4)).toBe(false);
+    expect(GameLogic.checkGradSchoolGraduated(4, 4)).toBe(true);
+});

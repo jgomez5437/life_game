@@ -24,7 +24,31 @@ function ageUp() {
     const yearlyStudentLoanPayment = window.GameLogic.addStudentLoanPayment(user.age, user.studentLoans, user.isStudent); 
     user.monthlyOutflow += yearlyStudentLoanPayment;
 
-    // Grad School Logic
+    // --- Grad School Graduation Logic ---
+    if (user.gradSchoolEnrolled) {
+        //add a year to year of grad school
+        user.gradSchoolYear++;
+        //find grad school name
+        const school = window.GRAD_SCHOOLS.find(s => s.name === user.gradSchoolType);
+        //check if graduated from grad school yet
+        const isGradSchoolGraduated = window.GameLogic.checkGradSchoolGraduated(user.gradSchoolYear, school.years);
+        if (isGradSchoolGraduated) {
+            user.gradSchoolEnrolled = false;
+            user.gradSchoolDegree = user.gradSchoolType;
+            addLog(`Graduated from ${user.gradSchoolType}! You are now qualified for advanced careers.`, 'good');
+        } else {
+            addLog(`Completed year ${user.gradSchoolYear} of ${user.gradSchoolType}.`, 'neutral');
+        };
+    }
+
+
+    const isGradSchoolGraduated = window.GameLogic.checkGradSchoolGraduated();
+    if (isGradSchoolGraduated) {
+        addLog(`Graduated from ${user.gradSchoolType}! You are now qualified for advanced careers.`, 'good');
+    } else {
+        addLog(`Completed year ${user.gradSchoolYear} of ${user.gradSchoolType}.`, 'neutral');
+    }
+
     if (user.gradSchoolEnrolled) {
         user.gradSchoolYear++;
         const school = window.GRAD_SCHOOLS.find(s => s.name === user.gradSchoolType);
