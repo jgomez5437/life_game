@@ -6,5 +6,5 @@
 - [x] fix occupation screen not rendering
 - [ ] fix assets screen not rendering
 - [ ] fix getSchoolName function error
-- [ ] graduation logic doesnt consider how many years the user has been in university
+- [x] graduation logic doesnt consider how many years the user has been in university
 - [ ] 
