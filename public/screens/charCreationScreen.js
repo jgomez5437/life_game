@@ -4,7 +4,7 @@ const CITIES = ["New York", "London", "Tokyo", "Berlin", "San Francisco"];
 
 window.renderCharCreation = () => {
     const creationHTML = `
-            <div class="fade-in max-w-md mx-auto mt-10">
+            <div class="fade-in max-w-md mx-auto h-full flex flex-col justify-center">
                 <div class="text-center mb-8">
                     <i class="fas fa-baby text-6xl text-green-500 mb-4"></i>
                     <h2 class="text-3xl font-bold">New Life</h2>
