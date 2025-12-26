@@ -38,8 +38,8 @@ function addStudentLoanPayment(age, studentLoanAmount, isStudent) {
         return 0;
 };
 
-function checkGradSchoolGraduated(currentGradSchoolYear, enrolledSchoolYears) {
-    return currentGradSchoolYear >= enrolledSchoolYears;
+function checkSchoolGraduated(currentSchoolYear, enrolledSchoolYears) {
+    return currentSchoolYear >= enrolledSchoolYears;
 }
 
 const GameLogic = {
@@ -47,7 +47,7 @@ const GameLogic = {
     addLivingExpenses,
     calculateBirthdayMoney,
     addStudentLoanPayment,
-    checkGradSchoolGraduated
+    checkSchoolGraduated
 };
 
 if (typeof module !== 'undefined' && module.exports) {
