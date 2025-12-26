@@ -78,7 +78,83 @@ window.GAME_CONSTANTS = {
 // public/script.js
 window.gameState = null;
 const API_URL = '/api'
+//updates game info
+function updateGameInfo(dbUser) {
+    console.log("Updating game state from DB...");
+    const data = dbUser.game_data;
+    const savedUser = data.user || data; 
+    //Set Global Auth Variables
+    window.userAuthId = dbUser.auth0_id;
+    window.userEmail = dbUser.email;
 
+    const rawHistory = data.history || [];
+    
+    const cleanHistory = rawHistory.map(entry => {
+        if (typeof entry === 'object' && entry.events) {
+            return entry;
+        }
+        return {
+            age: savedUser.age || 0,
+            events: [{ msg: entry, color: "text-gray-400" }]
+        };
+    });
+    //CONSTRUCT window.gameState
+    window.gameState = {
+        user: {
+            // --- IDENTITY ---
+            username: savedUser.username || savedUser.name || "Player",
+            gender: savedUser.gender || "male",
+            city: savedUser.city || "New York",
+            
+            // --- CORE STATS ---
+            age: data.stats?.age || savedUser.age || 0,
+            money: data.bank || savedUser.money || 0,
+            lifeStatus: savedUser.lifeStatus || "Adult",
+
+            // --- EDUCATION (Undergrad) ---
+            isStudent: savedUser.isStudent || false,
+            universityEnrolled: savedUser.universityEnrolled || false,
+            universitySchoolYear: savedUser.universitySchoolYear || 0,
+            major: savedUser.major || '',
+            schoolActions: savedUser.schoolActions || 0,
+            schoolPerformance: savedUser.schoolPerformance || 50,
+            highSchoolRetained: savedUser.highSchoolRetained || false,
+            
+            // --- EDUCATION (Grad School) ---
+            gradSchoolEnrolled: savedUser.gradSchoolEnrolled || false,
+            gradSchoolType: savedUser.gradSchoolType || null,
+            gradSchoolYear: savedUser.gradSchoolYear || 0,
+            gradSchoolDegree: savedUser.gradSchoolDegree || null,
+
+            // --- CAREER & FINANCE ---
+            jobTitle: savedUser.jobTitle || (data.job ? data.job.title : "Unemployed"),
+            jobSalary: savedUser.jobSalary || (data.job ? data.job.salary : 0),
+            careerActionTaken: savedUser.careerActionTaken || 0,
+            monthlyOutflow: savedUser.monthlyOutflow || 0,
+            studentLoans: savedUser.studentLoans || 0,
+            
+            // --- BUSINESS ---
+            hasBusiness: savedUser.hasBusiness || false,
+            companyName: savedUser.companyName || null,
+
+            // --- FLAGS ---
+            hasSeenExpenseMsg: savedUser.hasSeenExpenseMsg || false,
+            hasSeenJobSalary: savedUser.hasSeenJobSalary || false
+        },
+        
+        // --- ASSETS & HISTORY ---
+        lifeLog: cleanHistory,
+        assets: data.assets || []
+    };
+    // 5. Render
+    if (typeof window.renderLifeDashboard === "function") {
+        window.renderLifeDashboard(); 
+    } else {
+        console.error("❌ renderLifeDashboard function not found!");
+    }
+
+    console.log("✅ Game Loaded & Ready");
+};
 //Loads and renders the game
 window.loadAndRenderGame = (userData) => {
     console.log("Loading game for:", userData.username);
@@ -119,18 +195,78 @@ window.loadAndRenderGame = (userData) => {
     //.addLog function contains the renderLifeDashboard call
     window.addLog(`Born in ${userData.city}. Welcome to the world!`, 'good');
 };
+//save game function
+// Attach to window so it is globally accessible
+window.saveGame = async function() {
+    
+    // 1. Safety Checks
+    // Don't save if we are a guest (no ID) or if the game hasn't loaded yet (no state)
+    if (!window.userAuthId) {
+        console.log("⚠️ Guest mode. Save skipped.");
+        return;
+    }
+    if (!window.gameState || !window.gameState.user) {
+        console.error("⚠️ Game state not ready. Save skipped.");
+        return;
+    }
 
+    console.log("Saving to Cloud...");
+
+    // 2. The Payload
+    // This captures EVERYTHING: isStudent, loans, history, assets, etc.
+    const payload = {
+        auth0_id: window.userAuthId,
+        email: window.userEmail, // optional helper
+        
+        game_data: {
+            // The "Suitcase" - Contains all flags (isStudent, hasBusiness, etc.)
+            user: window.gameState.user, 
+            
+            // The Lists
+            history: window.gameState.lifeLog,
+            assets: window.gameState.assets,
+            
+            // Redundant top-level helpers for easier DB queries later
+            bank: window.gameState.user.money,
+            job: { 
+                title: window.gameState.user.jobTitle, 
+                salary: window.gameState.user.jobSalary 
+            },
+            stats: {
+                age: window.gameState.user.age
+            }
+        }
+    };
+
+    // 3. Send to API
+    try {
+        const response = await fetch('/api/saveGame', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+            console.log("Save Complete!");
+            
+            // Optional: Visual Feedback (Toast)
+            // showToast("Game Saved"); 
+        } else {
+            console.error("❌ Save Failed:", await response.text());
+        }
+    } catch (e) {
+        console.error("Network Error:", e);
+    }
+};
 // --- Unified Entry Point ---
 window.onload = async () => {
     try {
-        // 1. Wait for Auth0 to finish its handshake
+        //wait for auth0
         await window.configureAuth(); 
         console.log("Auth0 Configured.");
     } catch (e) {
         console.error("Auth Initialization Failed:", e);
     }
-
-    // 2. Only AFTER Auth is ready, start the game logic
     await initGame();
 };
 
@@ -138,25 +274,38 @@ window.onload = async () => {
 async function initGame() {
     console.log("Initializing Game Logic...");
 
-    // 3. REAL Check: Ask Auth0 if the user is logged in
+    // 1. Check Auth0 Status
     const isAuthenticated = await window.auth0Client.isAuthenticated();
 
     if (isAuthenticated) {
         // User is logged in! 
         const user = await window.auth0Client.getUser();
         console.log(`Welcome back, ${user.nickname} (${user.sub})`);
-
-        // TODO: This is where we will eventually fetch their save file from /api/load
-        // For now, since we haven't built the database yet, just send them to character creation
-        // or a temporary "Dashboard" if you have one.
-        window.renderCharCreation(); 
         
-        // Optional: Update global state so other functions know
+        // Save ID immediately so we can use it
         window.userAuthId = user.sub;
+        window.userEmail = user.email;
+
+        try {
+            const response = await fetch(`/api/load?auth0_id=${user.sub}`);
+
+            if (response.ok) {
+                const dbUser = await response.json();
+                updateGameInfo(dbUser);
+            } else {
+                console.log("No save file found. Starting Character Creation.");
+                window.renderCharCreation();
+            }
+        } catch (e) {
+            console.error("Error loading save:", e);
+            window.renderCharCreation();
+        }
+
     } else {
+        // Guest Mode
         window.renderLoginScreen();
     }
-}
+};
 
 
 

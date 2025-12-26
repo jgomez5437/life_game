@@ -51,6 +51,7 @@ function selectGender(g) {
 };
 
 async function submitCharacter() {
+    const user = await window.auth0Client.getUser();
     const inputName = get('inp-name').value;
     const validation = window.GameLogic.sanitizeName(inputName);
 
@@ -63,13 +64,13 @@ async function submitCharacter() {
     if (!name) return;
     const gender = selectedGender;
     const city = get('inp-city').value;
-    const tempAuthId = "user_" + Math.random().toString(36).substr(2, 9);
     try {
     const response = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            auth0_id: tempAuthId,
+            auth0_id: user.sub,
+            email: user.email,
             username: name,
             gender: gender,
             city: city

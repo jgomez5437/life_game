@@ -124,7 +124,11 @@ function ageUp() {
     //remove monthlyOutflow from user bank account
     user.money -= user.monthlyOutflow
     window.renderLifeDashboard(window.gameState);
-    };
+    //auto save
+    if (typeof window.saveGame === "function") {
+        window.saveGame();
+    }
+};
 
 
 //Define the rendering function globally so script.js can call it.
