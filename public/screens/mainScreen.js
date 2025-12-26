@@ -188,7 +188,7 @@ window.renderLifeDashboard = (maybeGameState) => {
 
     //Define the Final HTML String
     const dashboardHTML = `
-        <div class="fade-in flex flex-col h-[full] max-w-lg mx-auto">
+        <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="flex-1 overflow-y-auto mb-4 bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
                 <h3 class="font-bold text-slate-300 mb-4 sticky top-0 bg-transparent backdrop-blur-md py-1 border-b border-slate-700/50">Life History</h3>
                 <div class="space-y-2">
