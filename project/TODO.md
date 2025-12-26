@@ -1,9 +1,10 @@
 ## TODO
-- [ ] for user.jobTitle in mainScreen.js, add to check if user has seen earned income before and udpate to reset when new job acquired
+- [x] for user.jobTitle in mainScreen.js, add to check if user has seen earned income before and udpate to reset when new job acquired
+- [ ] make sure hasSeenJobSalary set to false if user quits job
 - [x] gender is not being sent to database
 - [x] fix ageUp functionality
 - [x] fix occupation screen not rendering
 - [ ] fix assets screen not rendering
 - [ ] fix getSchoolName function error
-- [ ] 
+- [x] graduation logic doesnt consider how many years the user has been in university
 - [ ] 

@@ -31,7 +31,7 @@ function ageUp() {
         //find grad school name
         const school = window.GRAD_SCHOOLS.find(s => s.name === user.gradSchoolType);
         //check if graduated from grad school yet
-        const isGradSchoolGraduated = window.GameLogic.checkGradSchoolGraduated(user.gradSchoolYear, school.years);
+        const isGradSchoolGraduated = window.GameLogic.checkSchoolGraduated(user.gradSchoolYear, school.years);
         if (isGradSchoolGraduated) {
             user.gradSchoolEnrolled = false;
             user.gradSchoolDegree = user.gradSchoolType;
@@ -39,34 +39,14 @@ function ageUp() {
         } else {
             addLog(`Completed year ${user.gradSchoolYear} of ${user.gradSchoolType}.`, 'neutral');
         };
-    }
-
-
-    const isGradSchoolGraduated = window.GameLogic.checkGradSchoolGraduated();
-    if (isGradSchoolGraduated) {
-        addLog(`Graduated from ${user.gradSchoolType}! You are now qualified for advanced careers.`, 'good');
-    } else {
-        addLog(`Completed year ${user.gradSchoolYear} of ${user.gradSchoolType}.`, 'neutral');
-    }
-
-    if (user.gradSchoolEnrolled) {
-        user.gradSchoolYear++;
-        const school = window.GRAD_SCHOOLS.find(s => s.name === user.gradSchoolType);
-        
-        if (user.gradSchoolYear >= school.years) {
-            user.gradSchoolEnrolled = false;
-            user.gradSchoolDegree = user.gradSchoolType;
-            addLog(`Graduated from ${user.gradSchoolType}! You are now qualified for advanced careers.`, 'good');
-        } else {
-            addLog(`Completed year ${user.gradSchoolYear} of ${user.gradSchoolType}.`, 'neutral');
-        }
-    }
+    };
     // --- JOB SALARY LOGIC ---       //TODO
     if (user.jobTitle) {
-        user.bank += user.jobSalary;
-
-        addLog(`Earned ${window.Utils.formatMoney(user.jobSalary)} as a ${user.jobTitle}.`, 'good');
-    }
+        user.money += user.jobSalary;
+        if (user.hasSeenJobSalary){
+            addLog(`Earned ${window.Utils.formatMoney(user.jobSalary)} as a ${user.jobTitle}.`, 'good');
+        };
+    };
     // High School Graduation / Failure Logic
     if (user.age === 18) {
         if (user.schoolPerformance > 25) {
@@ -87,26 +67,29 @@ function ageUp() {
         }
     }
     else if (user.age === 20 && user.highSchoolRetained) {
-        addLog("Your high school felt bad and helped you get your GED during evenings. Enroll in University or find a job.", 'green');
+        addLog("Your high school felt bad and helped you get your GED during the evenings. Enroll in University or find a job.", 'green');
         user.highSchoolRetained = false;
     }
-    // University Graduation Logic (Age 22)
-    if (user.age === 22 && user.universityEnrolled) {
-        addLog(`You finished University with a degree in ${user.major}. Time to find a career!`, 'good');
-        
-        if (user.studentLoans > 0) {
-            addLog("Your student loan payment is $200 per month.", 'neutral');
-        }
-        user.universityEnrolled = false;
-        user.universityGraduated = true;
-    }
+
+    if (user.universityEnrolled) {
+    //add a year to year of grad school
+    user.universitySchoolYear++;
+    const uniSchoolYear = 4
+    //check if graduated from grad school yet
+    const isUniSchoolGraduated = window.GameLogic.checkSchoolGraduated(user.universitySchoolYear, uniSchoolYear);
+        if (isUniSchoolGraduated) {
+            user.universityEnrolled = false;
+            user.universityGraduated = true;
+            addLog(`You finished University with a degree in ${user.major}. Time to find a career!`, 'good');
+        };
+};
     // School Transitions (Normal)
     if (user.age === 12) {
         user.schoolPerformance = 50;
-        addLog("Started Middle School.", 'neutral');
+        addLog("Started Middle School.", 'good');
     } else if (user.age === 14) {
         user.schoolPerformance = 50;
-        addLog("Started High School.", 'neutral');
+        addLog("Started High School.", 'good');
     }
     // Age Specific Events
     if (user.age === 1) addLog("You've discovered building blocks and started throwing them.", 'good');
@@ -219,19 +202,15 @@ window.renderLifeDashboard = (maybeGameState) => {
 window.addLog = (msg, type = 'neutral') => {
     // 1. Get current age from the centralized state
     const currentAge = window.gameState.user.age;
-    
     //color for the log
     let color = 'text-slate-400';
     if (type === 'good') color = 'text-green-400';
     else if (type === 'bad') color = 'text-red-400';
     else if (type === 'major') color = 'text-yellow-400 font-bold';
     else if (type === 'green') color = 'text-green-400';
-
     //is there a log for this age?
     let ageLog = window.gameState.lifeLog.find(l => l.age === currentAge);
-
     if (ageLog) {
-
         ageLog.events.push({ msg, color });
     } else {
         window.gameState.lifeLog.unshift({ 
