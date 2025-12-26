@@ -75,20 +75,11 @@ window.GAME_CONSTANTS = {
             { id: 'premium', name: 'Premium', costMod: 1.4, quality: 95, risk: 0.01 }
         ];
 
+// public/script.js
+window.gameState = null;
 const API_URL = '/api'
 
-// public/script.js
-
-// 1. Define Global State Container
-window.gameState = null;
-
-
-
-// 2. THE ENGINE STARTER
-// This function is reusable! It can be called by:
-// - The Character Creation Screen (after new sign up)
-// - The Login Screen (after signing in)
-// - The Auto-Loader (if user refreshes page and is remembered)
+//Loads and renders the game
 window.loadAndRenderGame = (userData) => {
     console.log("Loading game for:", userData.username);
 
@@ -129,6 +120,52 @@ window.loadAndRenderGame = (userData) => {
     window.addLog(`Born in ${userData.city}. Welcome to the world!`, 'good');
 };
 
+// --- Unified Entry Point ---
+window.onload = async () => {
+    try {
+        // 1. Wait for Auth0 to finish its handshake
+        await window.configureAuth(); 
+        console.log("Auth0 Configured.");
+    } catch (e) {
+        console.error("Auth Initialization Failed:", e);
+    }
+
+    // 2. Only AFTER Auth is ready, start the game logic
+    await initGame();
+};
+
+// --- Updated Game Initializer ---
+async function initGame() {
+    console.log("Initializing Game Logic...");
+
+    // 3. REAL Check: Ask Auth0 if the user is logged in
+    const isAuthenticated = await window.auth0Client.isAuthenticated();
+
+    if (isAuthenticated) {
+        // User is logged in! 
+        const user = await window.auth0Client.getUser();
+        console.log(`Welcome back, ${user.nickname} (${user.sub})`);
+
+        // TODO: This is where we will eventually fetch their save file from /api/load
+        // For now, since we haven't built the database yet, just send them to character creation
+        // or a temporary "Dashboard" if you have one.
+        window.renderCharCreation(); 
+        
+        // Optional: Update global state so other functions know
+        window.userAuthId = user.sub;
+    } else {
+        window.renderLoginScreen();
+    }
+}
+
+
+
+
+
+/** Auth0 initializer
+window.onload = async () => {
+    await configureAuth();
+}
 //initialize game
 async function initGame() {
     console.log("Initializing App...");
@@ -148,6 +185,9 @@ async function initGame() {
 document.addEventListener('DOMContentLoaded', () => {
     initGame();
 });
+
+
+
 
 /** 
         // --- UTILS ---
