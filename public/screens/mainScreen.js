@@ -13,12 +13,13 @@ function ageUp() {
     // --- LIVING EXPENSES LOGIC ---
     const annualLivingExpense = window.GameLogic.addLivingExpenses(user.age, user.isStudent);
     //add annual living expense to monthlyOutflow
-    user.monthlyOutflow += annualLivingExpense;
+    if (annualLivingExpense > 0 && user.monthlyLivingExpense !== annualLivingExpense) {
+        user.monthlyLivingExpense += annualLivingExpense;
+    } 
     if (annualLivingExpense > 0 && !user.hasSeenExpenseMsg) {
         addLog("Your basic living expenses are $2,000 per month.", 'neutral');
         user.hasSeenExpenseMsg = true;
     };
-
     // --- STUDENT LOAN EXPENSES LOGIC ---
     // check if there are student loans and add to monthly outflow if there are
     const yearlyStudentLoanPayment = window.GameLogic.addStudentLoanPayment(user.age, user.studentLoans, user.isStudent); 
@@ -121,10 +122,13 @@ function ageUp() {
              addLog("Another year passes...");
         }
     }
-    //remove monthlyOutflow from user bank account
-    user.money -= user.monthlyOutflow
+    user.money -= user.monthlyLivingExpense;
     window.renderLifeDashboard(window.gameState);
-    };
+    //auto save
+    if (typeof window.saveGame === "function") {
+        window.saveGame();
+    }
+};
 
 
 //Define the rendering function globally so script.js can call it.
