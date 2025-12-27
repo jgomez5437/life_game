@@ -108,7 +108,7 @@ function updateGameInfo(dbUser) {
             
             // --- CORE STATS ---
             age: data.stats?.age || savedUser.age || 0,
-            money: data.bank || savedUser.money || 0,
+            money: data.money || savedUser.money || 0,
             lifeStatus: savedUser.lifeStatus || "Adult",
 
             // --- EDUCATION (Undergrad) ---
@@ -132,6 +132,7 @@ function updateGameInfo(dbUser) {
             careerActionTaken: savedUser.careerActionTaken || 0,
             monthlyOutflow: savedUser.monthlyOutflow || 0,
             studentLoans: savedUser.studentLoans || 0,
+            monthlyLivingExpense: savedUser.monthlyLivingExpense || 0,
             
             // --- BUSINESS ---
             hasBusiness: savedUser.hasBusiness || false,
@@ -174,6 +175,7 @@ window.loadAndRenderGame = (userData) => {
             schoolActions: userData.school_actions || 0,
             careerActionTaken: userData.career_action_taken || 0,
             monthlyOutflow: userData.monthly_outflow || 0,
+            monthlyLivingExpense: userData.monthlyLivingExpense || 0,
             studentLoans: userData.student_loans || 0,
             gradSchoolEnrolled: userData.grad_school_enrolled || false,
             gradSchoolType: userData.grad_school_type || null,

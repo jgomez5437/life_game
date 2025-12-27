@@ -7,4 +7,4 @@
 - [ ] fix assets screen not rendering
 - [ ] fix getSchoolName function error
 - [x] graduation logic doesnt consider how many years the user has been in university
-- [ ] 
+- [ ] living expenses keeps adding more each age up
