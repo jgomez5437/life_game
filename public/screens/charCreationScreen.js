@@ -79,7 +79,7 @@ async function submitCharacter() {
     if (!response.ok) throw new Error('API Login Failed')
     
     const userData = await response.json();
-    window.loadAndRenderGame(userData);
+    window.updateGameInfo(userData);
     window.renderLifeDashboard(window.gameState);
     } catch (error) {
         console.error("Creation failed", error);
