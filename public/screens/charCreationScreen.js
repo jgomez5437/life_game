@@ -51,6 +51,81 @@ function selectGender(g) {
 };
 
 async function submitCharacter() {
+    // 1. Safely check for user
+    let user = null;
+    if (window.auth0Client) {
+        try { user = await window.auth0Client.getUser(); } catch (e) {}
+    }
+
+    const inputName = get('inp-name').value;
+    const validation = window.GameLogic.sanitizeName(inputName);
+
+    if (!validation.isValid) {
+        window.UI.showModal("Wait", validation.error);
+        return;
+    };
+    
+    const finalName = validation.cleanedName;
+    if (!finalName) return;
+    
+    const gender = selectedGender;
+    const city = get('inp-city').value;
+
+    // We declare this outside so both "Guest" and "User" logic can fill it
+    let userData; 
+
+    try {
+        // === IF USER IS LOGGED IN ===
+        if (user) {
+            const response = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    auth0_id: user.sub,
+                    email: user.email,
+                    username: finalName,
+                    gender: gender,
+                    city: city
+                })
+            });
+            if (!response.ok) throw new Error('API Login Failed');
+            
+            // Get data from Database
+            userData = await response.json(); 
+            window.updateGameInfo(userData);
+            window.renderLifeDashboard(window.gameState);
+        } 
+        
+        // === IF GUEST (Band-Aid Fix) ===
+        else {
+            // Manually build the object that your DB normally sends back
+            // vital: Make sure this structure matches your DB columns/response exactly!
+            userData = {
+                username: finalName,
+                gender: gender,
+                city: city,
+                // Add default starting stats here manually since the server isn't doing it
+                stats: { 
+                    health: 100, 
+                    money: 0 
+                },
+                is_guest: true
+            };
+            window.loadAndRenderGame(userData);
+            window.renderLifeDashboard(window.gameState);
+        }
+
+        // === COMMON GAME START ===
+        // This now works for both because userData is guaranteed to exist
+
+    } catch (error) {
+        console.error("Creation failed", error);
+        window.UI.showModal("Error", "Failed to create character.");
+    }
+};
+
+/** 
+async function submitCharacter() {
     const user = await window.auth0Client.getUser();
     const inputName = get('inp-name').value;
     const validation = window.GameLogic.sanitizeName(inputName);
@@ -86,3 +161,4 @@ async function submitCharacter() {
         window.UI.showModal("Error", "Failed to create character. Check your console/server.")
     }
 };
+*/
