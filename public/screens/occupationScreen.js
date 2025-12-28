@@ -25,7 +25,7 @@ function renderUniversityModalContent(selectedMajor = null) {
     `;
     
     // Render Actions
-    const cashDisabled = user.bank < 40000;
+    const cashDisabled = user.money < 40000;
     const cashBtn = `<button onclick="attemptEnrollment('cash')" ${cashDisabled ? 'disabled' : ''} class="w-full bg-green-600 hover:bg-green-500 disabled:bg-slate-700 disabled:opacity-50 text-white font-bold py-2 rounded mb-2">Pay Cash ($40k)</button>`;
     
     const loanBtn = `<button onclick="attemptEnrollment('loan')" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded mb-2">Student Loans</button>`;
@@ -57,10 +57,10 @@ function renderUniversityModalContent(selectedMajor = null) {
     m.classList.add('flex');
 }
 function attemptEnrollment(method) {
-    const major = el('major-select').value;
+    const major = get('major-select').value;
     
     if (method === 'cash') {
-        game.bank -= 40000;
+        user.money -= 40000;
         enrollSuccess(major, "paid with cash");
     } 
     else if (method === 'loan') {
@@ -87,23 +87,22 @@ function attemptEnrollment(method) {
     }
 }
 function enrollSuccess(major, methodMsg) {
-    game.universityEnrolled = true;
-    game.major = major;
-    game.schoolPerformance = 50;
+    const user = window.gameState.user;
+    user.universityEnrolled = true;
+    user.major = major;
+    user.schoolPerformance = 50;
     
     // Close Modal
-    const m = el('modal-overlay');
+    const m = get('modal-overlay');
     m.classList.add('hidden');
     m.classList.remove('flex');
-    addLog(`Enrolled in University of ${game.city} for ${major}. You ${methodMsg}.`, 'good');
-    updateHeader();
+    addLog(`Enrolled in University of ${user.city} for ${major}. You ${methodMsg}.`, 'good');
     renderActivities();
 }
 
 //Grad school pop up
 function renderGradSchoolMarket() {
-    updateHeader();
-    
+    window.updateGameInfo(userData);
     const listHtml = GRAD_SCHOOLS.map(school => `
         <div onclick="openGradEnrollmentModal('${school.name}')" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-3 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
             <div class="flex items-center justify-between">
@@ -120,7 +119,7 @@ function renderGradSchoolMarket() {
             </div>
         </div>
     `).join('');
-    el('game-container').innerHTML = `
+    get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">
                 <button onclick="renderActivities()" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
@@ -137,40 +136,42 @@ function renderGradSchoolMarket() {
     `;
 }
 function openGradEnrollmentModal(schoolType) {
+    const user = window.gameState.user;
     // Reset flags
-    game.scholarshipTried = false;
-    game.parentsTried = false;
+    user.scholarshipTried = false;
+    user.parentsTried = false;
     renderGradModalContent(schoolType);
 }
 function renderGradModalContent(schoolType) {
-    const m = el('modal-overlay');
-    el('modal-title').innerText = "Enroll in " + schoolType;
-    el('modal-content').innerHTML = `
+    const user = window.gameState.user;
+    const m = get('modal-overlay');
+    get('modal-title').innerText = "Enroll in " + schoolType;
+    get('modal-content').innerHTML = `
         <div class="text-sm text-slate-300 mb-4">Total Tuition: <span class="text-white font-bold">$100,000</span></div>
         <div class="text-xs text-slate-400 mb-2">Student loan payments will be deferred while enrolled.</div>
     `;
     
     // Render Actions
-    const cashDisabled = game.bank < 100000;
+    const cashDisabled = user.bank < 100000;
     const cashBtn = `<button onclick="attemptGradEnrollment('${schoolType}', 'cash')" ${cashDisabled ? 'disabled' : ''} class="w-full bg-green-600 hover:bg-green-500 disabled:bg-slate-700 disabled:opacity-50 text-white font-bold py-2 rounded mb-2">Pay Cash ($100k)</button>`;
     
     const loanBtn = `<button onclick="attemptGradEnrollment('${schoolType}', 'loan')" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded mb-2">Student Loans</button>`;
     
     // Scholarship Button
     let scholarBtn = "";
-    if (game.scholarshipTried) {
+    if (user.scholarshipTried) {
         scholarBtn = `<button disabled class="w-full bg-slate-700 opacity-50 text-slate-400 font-bold py-2 rounded mb-2 cursor-not-allowed">Ineligible</button>`;
     } else {
         scholarBtn = `<button onclick="attemptGradEnrollment('${schoolType}', 'scholarship')" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded mb-2">Apply for Scholarship</button>`;
     }
     // Parents Button
     let parentBtn = "";
-    if (game.parentsTried) {
+    if (user.parentsTried) {
          parentBtn = `<button disabled class="w-full bg-slate-700 opacity-50 text-slate-400 font-bold py-2 rounded mb-2 cursor-not-allowed">They Refused</button>`;
     } else {
         parentBtn = `<button onclick="attemptGradEnrollment('${schoolType}', 'parents')" class="w-full bg-pink-600 hover:bg-pink-500 text-white font-bold py-2 rounded mb-2">Ask Parents to Pay</button>`;
     }
-    el('modal-actions').innerHTML = `
+    get('modal-actions').innerHTML = `
         <div class="space-y-1">
             ${cashBtn}
             ${loanBtn}
@@ -183,12 +184,13 @@ function renderGradModalContent(schoolType) {
     m.classList.add('flex');
 }
 function attemptGradEnrollment(schoolType, method) {
+    const user = window.gameState.user;
     if (method === 'cash') {
-        game.bank -= 100000;
+        user.bank -= 100000;
         gradEnrollSuccess(schoolType, "paid with cash");
     } 
     else if (method === 'loan') {
-        game.studentLoans += 100000;
+        user.studentLoans += 100000;
         gradEnrollSuccess(schoolType, "took out student loans");
     }
     else if (method === 'scholarship') {
@@ -196,7 +198,7 @@ function attemptGradEnrollment(schoolType, method) {
         if (roll < 0.3) {
             gradEnrollSuccess(schoolType, "received a full scholarship");
         } else {
-            game.scholarshipTried = true;
+            user.scholarshipTried = true;
             renderGradModalContent(schoolType); 
         }
     }
@@ -205,45 +207,94 @@ function attemptGradEnrollment(schoolType, method) {
         if (roll < 0.3) {
             gradEnrollSuccess(schoolType, "parents paid your tuition");
         } else {
-            game.parentsTried = true;
+            user.parentsTried = true;
             renderGradModalContent(schoolType); 
         }
     }
 }
 function gradEnrollSuccess(schoolType, methodMsg) {
-    game.gradSchoolEnrolled = true;
-    game.gradSchoolType = schoolType;
-    game.gradSchoolYear = 0;
-    game.schoolPerformance = 50;
+    const user = window.gameState.user;
+    user.gradSchoolEnrolled = true;
+    user.gradSchoolType = schoolType;
+    user.gradSchoolYear = 0;
+    user.schoolPerformance = 50;
     
     // Close Modal
-    const m = el('modal-overlay');
+    const m = get('modal-overlay');
     m.classList.add('hidden');
     m.classList.remove('flex');
     addLog(`Enrolled in ${schoolType}. You ${methodMsg}.`, 'good');
-    updateHeader();
+    window.updateGameInfo(userData);
     renderActivities();
 }
 
+function updateLifeStatus() {
+    const user = window.gameState.user;
+    let status; // Default fallback
 
+    // Determine the status string
+    if (user.gradSchoolEnrolled) {
+        status = `${user.gradSchoolType} Student`;
+    } else if (user.universityEnrolled) {
+        status = "University Student";
+    } else if (user.hasBusiness) {
+        status = "CEO & Founder";
+    } else if (user.jobTitle) {
+        status = user.jobTitle;
+    } else if (user.gradSchoolDegree) {
+        status = `${user.gradSchoolDegree} Graduate`;
+    } else if (user.universityGraduated) {
+        status = "University Graduate";
+    } else if (user.age === 0) {
+        status = "Baby";
+    } else if (user.age < 5) {
+        status = "Toddler";
+    } else if (user.age < 18) {
+        status = "Student";
+    } else if (user.highSchoolRetained) {
+        status = "Student (Retaking)";
+    }
+
+    // SAVE the status to the user object
+    user.lifeStatus = status;
+
+    return status;
+};
+function getSchoolName() {
+    const user = window.gameState.user;
+    if (user.gradSchoolEnrolled) {
+        const school = GRAD_SCHOOLS.find(s => s.name === user.gradSchoolType);
+        return `${user.gradSchoolType} (Year ${user.gradSchoolYear + 1}/${school.years})`;
+    }
+    if (user.universityEnrolled) return `University of ${user.city}`;
+    if (user.age < 12) return `${user.city} Elementary School`;
+    if (user.age < 14) return `${user.city} Middle School`;
+    return `${user.city} High School`;
+};
+
+function isStudent() {
+    const user = window.gameState.user;
+    return user.universityEnrolled || user.gradSchoolEnrolled || user.highSchoolRetained || (user.age < 18);
+};
 
 function getStatus() {
+    updateLifeStatus();
     const user = window.gameState.user;
     let status = get("status-text");
     status.innerText = user.lifeStatus;
-}
+};
 
 function renderActivities() {
     const user = window.gameState.user;
     const isAdult = user.age >= 18;
     let content = '';
-    
+    const currentStatusText = updateLifeStatus();
     // 1. STATUS CARD
     content += `
         <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4 flex justify-between items-center">
             <div>
                 <h3 class="text-slate-400 text-xs uppercase font-bold mb-1">Current Status</h3>
-                <div id="status-text"class="text-xl font-bold text-white">
+                <div id="status-text"class="text-xl font-bold text-white">${currentStatusText}
                 </div>
             </div>
              <div class="text-right">
@@ -537,6 +588,5 @@ function renderActivities() {
             </div>
         </div>
     `;
-    getStatus()
 }
 
