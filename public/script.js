@@ -109,7 +109,7 @@ function updateGameInfo(dbUser) {
             // --- CORE STATS ---
             age: data.stats?.age || savedUser.age || 0,
             money: data.money || savedUser.money || 0,
-            lifeStatus: savedUser.lifeStatus || "Adult",
+            lifeStatus: savedUser.lifeStatus || "Baby",
 
             // --- EDUCATION (Undergrad) ---
             isStudent: savedUser.isStudent || false,
@@ -125,9 +125,10 @@ function updateGameInfo(dbUser) {
             gradSchoolType: savedUser.gradSchoolType || null,
             gradSchoolYear: savedUser.gradSchoolYear || 0,
             gradSchoolDegree: savedUser.gradSchoolDegree || null,
+            parentsTried: userData.parents_tried || false,
 
             // --- CAREER & FINANCE ---
-            jobTitle: savedUser.jobTitle || (data.job ? data.job.title : "Unemployed"),
+            jobTitle: savedUser.jobTitle || (data.job ? data.job.title : ""),
             jobSalary: savedUser.jobSalary || (data.job ? data.job.salary : 0),
             careerActionTaken: savedUser.careerActionTaken || 0,
             monthlyOutflow: savedUser.monthlyOutflow || 0,
@@ -172,6 +173,7 @@ window.loadAndRenderGame = (userData) => {
             universityEnrolled: userData.university_enrolled || false,
             universitySchoolYear: userData.university_school_year || 0,
             major: userData.major || '',
+            parentsTried: userData.parents_tried || false,
             schoolActions: userData.school_actions || 0,
             careerActionTaken: userData.career_action_taken || 0,
             monthlyOutflow: userData.monthly_outflow || 0,
@@ -308,67 +310,3 @@ async function initGame() {
         window.renderLoginScreen();
     }
 };
-
-
-
-
-
-/** Auth0 initializer
-window.onload = async () => {
-    await configureAuth();
-}
-//initialize game
-async function initGame() {
-    console.log("Initializing App...");
-
-    // TODO: Later, we will check Auth0 here to see if user is already logged in.
-    const isReturningUser = false; // Hardcoded for now
-
-    if (isReturningUser) {
-        // Fetch data and call loadAndRenderGame(data)
-    } else {
-        // No user found? Send them to Character Creation
-        window.renderCharCreation();
-    }
-}
-
-//Start the app
-document.addEventListener('DOMContentLoaded', () => {
-    initGame();
-});
-
-
-
-
-/** 
-        // --- UTILS ---
-        const el = id => document.getElementById(id);
-
-        function getStatusText() {
-            if (game.gradSchoolEnrolled) return `${game.gradSchoolType} Student`;
-            if (game.universityEnrolled) return "University Student";
-            if (game.hasBusiness) return "CEO & Founder";
-            if (game.jobTitle) return game.jobTitle; 
-            if (game.gradSchoolDegree) return `${game.gradSchoolDegree} Graduate`;
-            if (game.universityGraduated) return "University Graduate";
-            if (game.age === 0) return "Baby";
-            if (game.age < 5) return "Toddler";
-            if (game.age < 18) return "Student";
-            if (game.highSchoolRetained) return "Student (Retaking)";
-            return "Unemployed";
-        }
-
-        function getSchoolName() {
-            if (game.gradSchoolEnrolled) {
-                const school = GRAD_SCHOOLS.find(s => s.name === game.gradSchoolType);
-                return `${game.gradSchoolType} (Year ${game.gradSchoolYear + 1}/${school.years})`;
-            }
-            if (game.universityEnrolled) return `University of ${game.city}`;
-            if (game.age < 12) return `${game.city} Elementary School`;
-            if (game.age < 14) return `${game.city} Middle School`;
-            return `${game.city} High School`;
-        }
-
-        function isStudent() {
-            return game.universityEnrolled || game.gradSchoolEnrolled || game.highSchoolRetained || (game.age < 18);
-        } */

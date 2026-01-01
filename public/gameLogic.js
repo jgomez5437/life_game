@@ -42,12 +42,39 @@ function checkSchoolGraduated(currentSchoolYear, enrolledSchoolYears) {
     return currentSchoolYear >= enrolledSchoolYears;
 }
 
+function checkLifeStatus(user) {
+    if (user.gradSchoolEnrolled) {
+       return `${user.gradSchoolType} Student`;
+    } else if (user.universityEnrolled) {
+       return "University Student";
+    } else if (user.hasBusiness) {
+       return "CEO & Founder";
+    } else if (user.jobTitle) {
+       return user.jobTitle;
+    } else if (user.gradSchoolDegree) {
+       return `${user.gradSchoolDegree} Graduate`;
+    } else if (user.universityGraduated) {
+       return "University Graduate";
+    } else if (user.age > 17 && !user.jobTitle) {
+       return "Unemployed"
+    } else if (user.age === 0) {
+       return "Baby";
+    } else if (user.age < 5) {
+       return "Toddler";
+    } else if (user.age < 18) {
+       return "Student";
+    } else if (user.highSchoolRetained) {
+       return "Student (Retaking)";
+    }
+}
+
 const GameLogic = {
     sanitizeName,
     addLivingExpenses,
     calculateBirthdayMoney,
     addStudentLoanPayment,
-    checkSchoolGraduated
+    checkSchoolGraduated,
+    checkLifeStatus
 };
 
 if (typeof module !== 'undefined' && module.exports) {
