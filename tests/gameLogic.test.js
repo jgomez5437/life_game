@@ -34,3 +34,8 @@ test("returns true or a number depending on grad enrolled status", () => {
     expect(GameLogic.checkSchoolGraduated(3, 4)).toBe(false);
     expect(GameLogic.checkSchoolGraduated(4, 4)).toBe(true);
 });
+
+test("returns string life status of CEO & Founder", () => {
+    const user = {age: 19, hasBusiness: true}
+    expect(GameLogic.checkLifeStatus(user)).toBe("CEO & Founder")
+});
