@@ -5,6 +5,7 @@
 - [ ] create localStorage for guest users
 - [ ] create a button for guests to where they can sign in
 - [ ] refactor manageEducationScreen
+- [ ] living expense still gets taken out when enrolled in school
 
 ## COMPLETED
 - [x] for user.jobTitle in mainScreen.js, add to check if user has seen earned income before and udpate to reset when new job acquired
