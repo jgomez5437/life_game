@@ -125,7 +125,7 @@ function updateGameInfo(dbUser) {
             gradSchoolType: savedUser.gradSchoolType || null,
             gradSchoolYear: savedUser.gradSchoolYear || 0,
             gradSchoolDegree: savedUser.gradSchoolDegree || null,
-            parentsTried: userData.parents_tried || false,
+            parentsTried: savedUser.parents_tried || false,
 
             // --- CAREER & FINANCE ---
             jobTitle: savedUser.jobTitle || (data.job ? data.job.title : ""),
