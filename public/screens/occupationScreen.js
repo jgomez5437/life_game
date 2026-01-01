@@ -261,7 +261,7 @@ function getStatus() {
     status.innerText = user.lifeStatus;
 };
 
-function renderActivities() {
+window.renderActivities = () => {
     const user = window.gameState.user;
     const isAdult = user.age >= 18;
     let content = '';
@@ -488,7 +488,7 @@ function renderActivities() {
                 <div class="bg-slate-900 p-3 rounded border border-slate-700 flex justify-between items-center">
                      <div>
                         <div class="text-sm text-white font-bold">${user.jobTitle}</div>
-                        <div class="text-xs text-green-400">${formatMoney(user.jobSalary)}/yr</div>
+                        <div class="text-xs text-green-400">${window.Utils.formatMoney(user.jobSalary)}/yr</div>
                      </div>
                      <i class="fas fa-chevron-right text-slate-600"></i>
                 </div>
