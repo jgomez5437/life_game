@@ -50,13 +50,14 @@ function renderUniversityModalContent(selectedMajor = null) {
             ${loanBtn}
             ${scholarBtn}
             ${parentBtn}
-            <button onclick="document.getElementById('modal-overlay').classList.add('hidden'); document.getElementById('modal-overlay').classList.remove('flex');" class="w-full mt-4 text-slate-400 hover:text-white text-sm">Canget</button>
+            <button onclick="document.getElementById('modal-overlay').classList.add('hidden'); document.getElementById('modal-overlay').classList.remove('flex');" class="w-full mt-4 text-slate-400 hover:text-white text-sm">Cancel</button>
         </div>
     `;
     m.classList.remove('hidden');
     m.classList.add('flex');
 }
 function attemptEnrollment(method) {
+    const user = window.gameState.user;
     const major = get('major-select').value;
     
     if (method === 'cash') {
@@ -64,7 +65,7 @@ function attemptEnrollment(method) {
         enrollSuccess(major, "paid with cash");
     } 
     else if (method === 'loan') {
-        game.studentLoans += 40000;
+        user.studentLoans += 40000;
         enrollSuccess(major, "took out student loans");
     }
     else if (method === 'scholarship') {
@@ -72,7 +73,7 @@ function attemptEnrollment(method) {
         if (roll < 0.3) {
             enrollSuccess(major, "received a full scholarship");
         } else {
-            game.scholarshipTried = true;
+            user.scholarshipTried = true;
             renderUniversityModalContent(major); // Preserve major choice
         }
     }
@@ -81,7 +82,7 @@ function attemptEnrollment(method) {
         if (roll < 0.3) {
             enrollSuccess(major, "parents paid your tuition");
         } else {
-            game.parentsTried = true;
+            user.parentsTried = true;
             renderUniversityModalContent(major); // Preserve major choice
         }
     }
@@ -226,38 +227,14 @@ function gradEnrollSuccess(schoolType, methodMsg) {
     addLog(`Enrolled in ${schoolType}. You ${methodMsg}.`, 'good');
     window.updateGameInfo(userData);
     renderActivities();
-}
+};
 
 function updateLifeStatus() {
     const user = window.gameState.user;
     let status; // Default fallback
-
-    // Determine the status string
-    if (user.gradSchoolEnrolled) {
-        status = `${user.gradSchoolType} Student`;
-    } else if (user.universityEnrolled) {
-        status = "University Student";
-    } else if (user.hasBusiness) {
-        status = "CEO & Founder";
-    } else if (user.jobTitle) {
-        status = user.jobTitle;
-    } else if (user.gradSchoolDegree) {
-        status = `${user.gradSchoolDegree} Graduate`;
-    } else if (user.universityGraduated) {
-        status = "University Graduate";
-    } else if (user.age === 0) {
-        status = "Baby";
-    } else if (user.age < 5) {
-        status = "Toddler";
-    } else if (user.age < 18) {
-        status = "Student";
-    } else if (user.highSchoolRetained) {
-        status = "Student (Retaking)";
-    }
-
+    status = window.GameLogic.checkLifeStatus(user)
     // SAVE the status to the user object
     user.lifeStatus = status;
-
     return status;
 };
 function getSchoolName() {

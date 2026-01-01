@@ -125,6 +125,7 @@ function updateGameInfo(dbUser) {
             gradSchoolType: savedUser.gradSchoolType || null,
             gradSchoolYear: savedUser.gradSchoolYear || 0,
             gradSchoolDegree: savedUser.gradSchoolDegree || null,
+            parentsTried: userData.parents_tried || false,
 
             // --- CAREER & FINANCE ---
             jobTitle: savedUser.jobTitle || (data.job ? data.job.title : ""),
@@ -172,6 +173,7 @@ window.loadAndRenderGame = (userData) => {
             universityEnrolled: userData.university_enrolled || false,
             universitySchoolYear: userData.university_school_year || 0,
             major: userData.major || '',
+            parentsTried: userData.parents_tried || false,
             schoolActions: userData.school_actions || 0,
             careerActionTaken: userData.career_action_taken || 0,
             monthlyOutflow: userData.monthly_outflow || 0,
