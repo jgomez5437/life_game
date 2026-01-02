@@ -59,10 +59,8 @@ function applyForJob(title, salary, reqDegree, reqGrad) {
     if (reqGrad && reqGrad !== 'undefined' && reqGrad !== 'null' && user.gradSchoolDegree !== reqGrad) {
         return showModal("Qualifications Missing", `This job requires a degree from ${reqGrad}.`);
     }
-    
     user.jobTitle = title;
     user.jobSalary = salary;
-    
     // Reset job-specific stats
     user.jobPerformance = 50;
     user.careerActionTaken = false;
