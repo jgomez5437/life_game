@@ -122,6 +122,8 @@ function ageUp() {
              addLog("Another year passes...");
         }
     }
+    //reset career action taken
+    checkActionTaken()
     user.money -= user.monthlyLivingExpense;
     window.renderLifeDashboard(window.gameState);
     //auto save
