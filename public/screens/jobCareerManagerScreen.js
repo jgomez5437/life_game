@@ -116,6 +116,7 @@ function confirmQuitCareer() {
     m.classList.remove('hidden');
     m.classList.add('flex');
 }
+
 function quitCareer() {
     const user = window.gameState.user;
     const oldJob = user.jobTitle;
@@ -131,4 +132,11 @@ function quitCareer() {
     addLog(`Resigned from position as ${oldJob}.`, 'major'); 
     
     renderActivities();
+}
+
+function checkActionTaken() {
+    const user = window.gameState.user;
+    if (user.careerActionTaken) {
+        user.careerActionTaken = false
+    };
 }
