@@ -90,6 +90,7 @@ function attemptEnrollment(method) {
 function enrollSuccess(major, methodMsg) {
     const user = window.gameState.user;
     user.universityEnrolled = true;
+    user.isStudent = true;
     user.major = major;
     user.schoolPerformance = 50;
     
