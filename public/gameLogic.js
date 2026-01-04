@@ -68,6 +68,7 @@ function checkLifeStatus(user) {
     }
 }
 
+
 const GameLogic = {
     sanitizeName,
     addLivingExpenses,

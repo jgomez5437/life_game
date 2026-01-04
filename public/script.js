@@ -130,6 +130,7 @@ function updateGameInfo(dbUser) {
             // --- CAREER & FINANCE ---
             jobTitle: savedUser.jobTitle || (data.job ? data.job.title : ""),
             jobSalary: savedUser.jobSalary || (data.job ? data.job.salary : 0),
+            jobPerformance: savedUser.jobPerformance || 50,
             careerActionTaken: savedUser.careerActionTaken || 0,
             monthlyOutflow: savedUser.monthlyOutflow || 0,
             studentLoans: savedUser.studentLoans || 0,
@@ -138,15 +139,18 @@ function updateGameInfo(dbUser) {
             // --- BUSINESS ---
             hasBusiness: savedUser.hasBusiness || false,
             companyName: savedUser.companyName || null,
+            ceoSalary: savedUser.ceoSalary || 0,
 
             // --- FLAGS ---
             hasSeenExpenseMsg: savedUser.hasSeenExpenseMsg || false,
-            hasSeenJobSalary: savedUser.hasSeenJobSalary || false
+            hasSeenJobSalary: savedUser.hasSeenJobSalary || false,
+
+            // --- ASSETS ---
+            assets: savedUser.assets || []
         },
         
         // --- ASSETS & HISTORY ---
-        lifeLog: cleanHistory,
-        assets: data.assets || []
+        lifeLog: cleanHistory
     };
     // 5. Render
     if (typeof window.renderLifeDashboard === "function") {
@@ -186,15 +190,17 @@ window.loadAndRenderGame = (userData) => {
             hasSeenExpenseMsg: userData.has_seen_expense_message || false,
             jobTitle: userData.job_title || '',
             jobSalary: userData.job_salary || 0,
+            jobPerformance: savedUser.jobPerformance || 50,
             hasSeenJobSalary: userData.has_seen_job_salary || false,
             schoolPerformance: userData.school_performance || 50,
             highSchoolRetained: userData.high_school_retained || false,
             hasBusiness: userData.has_business || false,
             companyName: userData.companyName || null,
+            ceoSalary: userData.ceoSalary || 0,
             lifeStatus: userData.life_status || "Baby",
+            assets: userData.assets || []
         },
-        lifeLog: [{ age: 0, events: [{ msg: "Game Loaded.", color: "text-white" }] }],
-        assets: [],
+        lifeLog: [{ age: 0, events: [{ msg: "Game Loaded.", color: "text-white" }] }]    
     };
     //.addLog function contains the renderLifeDashboard call
     window.addLog(`Born in ${userData.city}. Welcome to the world!`, 'good');
