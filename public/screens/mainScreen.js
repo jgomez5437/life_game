@@ -144,11 +144,7 @@ window.renderLifeDashboard = (maybeGameState) => {
     const user = state.user;
     //Update the Header Bar using the UI Manager
     //    We assume 'game' holds the key stats needed for the header.
-    UI.updateHeader({
-        name: user.username,
-        age: user.age,
-        money: user.money
-    });
+    UI.updateHeader(user);
     //change avatar based on gender
     let iconClass = '';
     if (user.age < 5) {

@@ -1,6 +1,6 @@
 //Character creation screen
 let selectedGender = 'male';
-const CITIES = ["New York", "London", "Tokyo", "Berlin", "San Francisco"];
+const CITIES = ["New York", "Los Angeles", "San Francisco", "Houston", "Miami", "Tucson", "London", "Osaka", "Tokyo", "Berlin", "Madrid", "Paris", "Beijing", "Toronto", "Mexico City", "Cairo"];
 
 window.renderCharCreation = () => {
     const creationHTML = `
@@ -123,42 +123,3 @@ async function submitCharacter() {
         window.UI.showModal("Error", "Failed to create character.");
     }
 };
-
-/** 
-async function submitCharacter() {
-    const user = await window.auth0Client.getUser();
-    const inputName = get('inp-name').value;
-    const validation = window.GameLogic.sanitizeName(inputName);
-
-    if (!validation.isValid) {
-        window.UI.showModal("Wait", validation.error);
-        return;
-    };
-    const finalName = validation.cleanedName;
-    const name = finalName
-    if (!name) return;
-    const gender = selectedGender;
-    const city = get('inp-city').value;
-    try {
-    const response = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            auth0_id: user.sub,
-            email: user.email,
-            username: name,
-            gender: gender,
-            city: city
-        })
-    });
-    if (!response.ok) throw new Error('API Login Failed')
-    
-    const userData = await response.json();
-    window.updateGameInfo(userData);
-    window.renderLifeDashboard(window.gameState);
-    } catch (error) {
-        console.error("Creation failed", error);
-        window.UI.showModal("Error", "Failed to create character. Check your console/server.")
-    }
-};
-*/
