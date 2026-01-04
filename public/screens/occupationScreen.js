@@ -93,6 +93,7 @@ function enrollSuccess(major, methodMsg) {
     user.isStudent = true;
     user.major = major;
     user.schoolPerformance = 50;
+    user.schoolActions = 0;
     
     // Close Modal
     const m = get('modal-overlay');

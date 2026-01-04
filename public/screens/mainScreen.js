@@ -76,7 +76,7 @@ function ageUp() {
         addLog("Your high school felt bad and helped you get your GED during the evenings. Enroll in University or find a job.", 'green');
         user.highSchoolRetained = false;
     }
-//University graduation logic
+    //University graduation logic
     if (user.universityEnrolled) {
     //add a year to year of grad school
     user.universitySchoolYear++;
@@ -128,8 +128,9 @@ function ageUp() {
              addLog("Another year passes...");
         }
     }
-    //reset career action taken
-    checkActionTaken()
+    //reset actions taken
+    checkSchoolActionTaken(user);
+    checkActionTaken();
     console.log(annualLivingExpense);
     //withdraw money if needed
     user.money -= user.monthlyLivingExpense;
