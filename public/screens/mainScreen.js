@@ -24,7 +24,8 @@ function ageUp() {
     // check if there are student loans and add to monthly outflow if there are
     const yearlyStudentLoanPayment = window.GameLogic.addStudentLoanPayment(user.age, user.studentLoans, user.isStudent); 
     user.monthlyOutflow += yearlyStudentLoanPayment;
-
+    //deduct student loan payment from student loans
+    user.studentLoans -= yearlyStudentLoanPayment;
     // --- Grad School Graduation Logic ---
     if (user.gradSchoolEnrolled) {
         //add a year to year of grad school

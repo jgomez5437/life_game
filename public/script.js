@@ -139,15 +139,18 @@ function updateGameInfo(dbUser) {
             // --- BUSINESS ---
             hasBusiness: savedUser.hasBusiness || false,
             companyName: savedUser.companyName || null,
+            ceoSalary: savedUser.ceoSalary || 0,
 
             // --- FLAGS ---
             hasSeenExpenseMsg: savedUser.hasSeenExpenseMsg || false,
-            hasSeenJobSalary: savedUser.hasSeenJobSalary || false
+            hasSeenJobSalary: savedUser.hasSeenJobSalary || false,
+
+            // --- ASSETS ---
+            assets: savedUser.assets || []
         },
         
         // --- ASSETS & HISTORY ---
-        lifeLog: cleanHistory,
-        assets: data.assets || []
+        lifeLog: cleanHistory
     };
     // 5. Render
     if (typeof window.renderLifeDashboard === "function") {
@@ -193,10 +196,11 @@ window.loadAndRenderGame = (userData) => {
             highSchoolRetained: userData.high_school_retained || false,
             hasBusiness: userData.has_business || false,
             companyName: userData.companyName || null,
+            ceoSalary: userData.ceoSalary || 0,
             lifeStatus: userData.life_status || "Baby",
+            assets: userData.assets || []
         },
-        lifeLog: [{ age: 0, events: [{ msg: "Game Loaded.", color: "text-white" }] }],
-        assets: [],
+        lifeLog: [{ age: 0, events: [{ msg: "Game Loaded.", color: "text-white" }] }]    
     };
     //.addLog function contains the renderLifeDashboard call
     window.addLog(`Born in ${userData.city}. Welcome to the world!`, 'good');
