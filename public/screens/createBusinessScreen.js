@@ -28,7 +28,7 @@ function renderBusinessSetup() {
                 <div class="bg-blue-900/20 border border-blue-500/30 p-3 rounded mb-6 text-sm text-blue-200">
                     <i class="fas fa-info-circle"></i> Requires <strong>personal capital</strong> to start.
                 </div>
-                <button onclick="initBusiness()" class="w-full btn-primary text-white font-bold py-4 rounded-lg text-lg shadow-lg">Launch Company</button>
+                <button onclick="window.UI.showModal('Coming Soon', 'Currently being developed.')" class="w-full btn-primary text-white font-bold py-4 rounded-lg text-lg shadow-lg">Launch Company</button>
             </div>
         </div>
     `;
