@@ -190,7 +190,7 @@ window.loadAndRenderGame = (userData) => {
             hasSeenExpenseMsg: userData.has_seen_expense_message || false,
             jobTitle: userData.job_title || '',
             jobSalary: userData.job_salary || 0,
-            jobPerformance: savedUser.jobPerformance || 50,
+            jobPerformance: userData.jobPerformance || 50,
             hasSeenJobSalary: userData.has_seen_job_salary || false,
             schoolPerformance: userData.school_performance || 50,
             highSchoolRetained: userData.high_school_retained || false,
