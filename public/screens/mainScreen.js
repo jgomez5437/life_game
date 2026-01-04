@@ -14,18 +14,21 @@ function ageUp() {
     const annualLivingExpense = window.GameLogic.addLivingExpenses(user.age, user.isStudent);
     //add annual living expense to monthlyOutflow
     if (annualLivingExpense > 0 && user.monthlyLivingExpense !== annualLivingExpense) {
-        user.monthlyLivingExpense += annualLivingExpense;
-    } 
+        user.monthlyLivingExpense = annualLivingExpense;
+    }  
     if (annualLivingExpense > 0 && !user.hasSeenExpenseMsg) {
         addLog("Your basic living expenses are $2,000 per month.", 'neutral');
         user.hasSeenExpenseMsg = true;
     };
+    console.log(user.isStudent);
+    console.log(annualLivingExpense);
     // --- STUDENT LOAN EXPENSES LOGIC ---
     // check if there are student loans and add to monthly outflow if there are
     const yearlyStudentLoanPayment = window.GameLogic.addStudentLoanPayment(user.age, user.studentLoans, user.isStudent); 
     user.monthlyOutflow += yearlyStudentLoanPayment;
     //deduct student loan payment from student loans
     user.studentLoans -= yearlyStudentLoanPayment;
+
     // --- Grad School Graduation Logic ---
     if (user.gradSchoolEnrolled) {
         //add a year to year of grad school
@@ -36,6 +39,7 @@ function ageUp() {
         const isGradSchoolGraduated = window.GameLogic.checkSchoolGraduated(user.gradSchoolYear, school.years);
         if (isGradSchoolGraduated) {
             user.gradSchoolEnrolled = false;
+            user.isStudent = false;
             user.gradSchoolDegree = user.gradSchoolType;
             addLog(`Graduated from ${user.gradSchoolType}! You are now qualified for advanced careers.`, 'good');
         } else {
@@ -72,7 +76,7 @@ function ageUp() {
         addLog("Your high school felt bad and helped you get your GED during the evenings. Enroll in University or find a job.", 'green');
         user.highSchoolRetained = false;
     }
-
+//University graduation logic
     if (user.universityEnrolled) {
     //add a year to year of grad school
     user.universitySchoolYear++;
@@ -81,10 +85,11 @@ function ageUp() {
     const isUniSchoolGraduated = window.GameLogic.checkSchoolGraduated(user.universitySchoolYear, uniSchoolYear);
         if (isUniSchoolGraduated) {
             user.universityEnrolled = false;
+            user.isStudent = false;
             user.universityGraduated = true;
             addLog(`You finished University with a degree in ${user.major}. Time to find a career!`, 'good');
         };
-};
+};  
     // School Transitions (Normal)
     if (user.age === 12) {
         user.schoolPerformance = 50;
@@ -125,6 +130,8 @@ function ageUp() {
     }
     //reset career action taken
     checkActionTaken()
+    console.log(annualLivingExpense);
+    //withdraw money if needed
     user.money -= user.monthlyLivingExpense;
     window.renderLifeDashboard(window.gameState);
     //auto save
