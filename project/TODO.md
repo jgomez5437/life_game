@@ -14,3 +14,4 @@
 - [x] fix occupation screen not rendering
 - [x] graduation logic doesnt consider how many years the user has been in university
 - [x] living expenses keeps adding more each age up
+- [x] deduct student loans when aging up

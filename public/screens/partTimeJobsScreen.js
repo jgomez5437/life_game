@@ -1,12 +1,12 @@
 //PART TIME JOBS JOB MARKET PAGE
 
 function renderJobMarket() {
-    updateHeader();
+    const user = window.gameState.user;
     
     // Sort jobs by hourly pay
     const sortedJobs = [...PART_TIME_JOBS].sort((a, b) => b.hourly - a.hourly);
     const listHtml = sortedJobs.map(job => {
-        const isCurrent = game.jobTitle === job.title;
+        const isCurrent = user.jobTitle === job.title;
         const btnText = isCurrent ? "Current" : "Apply";
         const btnClass = isCurrent 
             ? "bg-green-600/20 text-green-400 border border-green-600/50 cursor-default" 
@@ -20,7 +20,7 @@ function renderJobMarket() {
                     </div>
                     <div>
                         <h3 class="font-bold text-white">${job.title}</h3>
-                        <div class="text-xs text-green-400">$${job.hourly}/hr <span class="text-slate-500">(${formatMoney(job.salary)}/yr)</span></div>
+                        <div class="text-xs text-green-400">$${job.hourly}/hr <span class="text-slate-500">(${window.Utils.formatMoney(job.salary)}/yr)</span></div>
                     </div>
                 </div>
                 <button onclick="${!isCurrent ? `applyForJob('${job.title}', ${job.salary}, false, false)` : ''}" class="${btnClass} text-xs font-bold py-2 px-4 rounded-lg transition">
@@ -29,7 +29,7 @@ function renderJobMarket() {
             </div>
         </div>
     `}).join('');
-    el('game-container').innerHTML = `
+    get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">
                 <button onclick="renderActivities()" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">

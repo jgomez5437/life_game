@@ -1,7 +1,7 @@
 //CREATE BUSINESS SCREEN
 
 function renderBusinessSetup() {
-    el('game-container').innerHTML = `
+    get('game-container').innerHTML = `
         <div class="fade-in max-w-lg mx-auto">
             <button onclick="renderActivities()" class="mb-4 text-slate-400 hover:text-white text-sm flex items-center gap-2"><i class="fas fa-arrow-left"></i> Cancel</button>
             
@@ -20,7 +20,7 @@ function renderBusinessSetup() {
                             <div>
                                 <div class="font-bold text-white">${INDUSTRIES[key].name}</div>
                                 <div class="text-xs text-slate-400">${INDUSTRIES[key].description}</div>
-                                <div class="text-xs text-green-400 font-bold mt-1">Startup Cost: ${formatMoney(INDUSTRIES[key].startupCost)}</div>
+                                <div class="text-xs text-green-400 font-bold mt-1">Startup Cost: ${window.Utils.formatMoney(INDUSTRIES[key].startupCost)}</div>
                             </div>
                         </div>
                     `).join('')}
@@ -28,44 +28,46 @@ function renderBusinessSetup() {
                 <div class="bg-blue-900/20 border border-blue-500/30 p-3 rounded mb-6 text-sm text-blue-200">
                     <i class="fas fa-info-circle"></i> Requires <strong>personal capital</strong> to start.
                 </div>
-                <button onclick="initBusiness()" class="w-full btn-primary text-white font-bold py-4 rounded-lg text-lg shadow-lg">Launch Company</button>
+                <button onclick="window.UI.showModal('Coming Soon', 'Currently being developed.')" class="w-full btn-primary text-white font-bold py-4 rounded-lg text-lg shadow-lg">Launch Company</button>
             </div>
         </div>
     `;
     selectIndustry('tech');
 }
 function selectIndustry(key) {
-    game.industry = key;
-    document.querySelectorAll('.industry-card').forEach(el => {
-        el.classList.remove('border-blue-500', 'bg-slate-700');
-        el.classList.add('border-slate-600');
+    const user = window.gameState.user;
+    user.industry = key;
+    document.querySelectorAll('.industry-card').forEach(get => {
+        get.classList.remove('border-blue-500', 'bg-slate-700');
+        get.classList.add('border-slate-600');
     });
-    const selected = el(`ind-${key}`);
+    const selected = get(`ind-${key}`);
     selected.classList.remove('border-slate-600');
     selected.classList.add('border-blue-500', 'bg-slate-700');
 }
 function initBusiness() {
-    const name = el('inp-comp-name').value;
+    const user = window.gameState.user;
+    const name = get('inp-comp-name').value;
     if (!name) return showModal("Error", "Enter a company name.");
     
-    const ind = INDUSTRIES[game.industry];
+    const ind = INDUSTRIES[user.industry];
     
-    if (game.bank < ind.startupCost) {
-        return showModal("Insufficient Funds", `You need ${formatMoney(ind.startupCost)} to start this business. You currently have ${formatMoney(game.bank)}.`);
+    if (user.money < ind.startupCost) {
+        return showModal("Insufficient Funds", `You need ${formatMoney(ind.startupCost)} to start this business. You currently have ${formatMoney(user.bank)}.`);
     }
     
     // Deduct cost from personal bank
-    game.bank -= ind.startupCost;
+    user.money -= ind.startupCost;
     
-    game.companyName = name;
-    game.hasBusiness = true;
-    game.compCash = ind.startupCost; // Capital Injection
-    game.quarter = 1;
+    user.companyName = name;
+    user.hasBusiness = true;
+    user.compCash = ind.startupCost; // Capital Injection
+    user.quarter = 1;
     
     // Set Defaults
-    game.salaryOffer = ind.baseSalary;
-    game.sellingPrice = ind.unitPrice;
-    game.productionTarget = Math.floor(ind.baseDemand * 0.8);
+    user.salaryOffer = ind.baseSalary;
+    user.sellingPrice = ind.unitPrice;
+    user.productionTarget = Math.floor(ind.baseDemand * 0.8);
     addLog(`Founded ${name} (${ind.name})! Invested ${formatMoney(ind.startupCost)}.`, 'good');
     renderBusinessDashboard();
 }

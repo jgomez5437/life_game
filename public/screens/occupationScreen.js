@@ -266,6 +266,11 @@ window.renderActivities = () => {
     const isAdult = user.age >= 18;
     let content = '';
     const currentStatusText = updateLifeStatus();
+    const currentJobIsPartTime = PART_TIME_JOBS.some(j => j.title === user.jobTitle);
+    
+    // If they have a job title but it's NOT part-time, it must be a Career
+    const hasCareer = user.jobTitle && !currentJobIsPartTime;
+    const hasPartTime = user.jobTitle && currentJobIsPartTime;
     // 1. STATUS CARD
     content += `
         <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4 flex justify-between items-center">
@@ -427,8 +432,8 @@ window.renderActivities = () => {
             `;
         }
     }
-    // 4. PART-TIME JOBS
-    if (user.age < 15) {
+if (user.age < 15) {
+        // ... (Keep your existing "Locked" code here) ...
          content += `
              <div class="bg-slate-800/50 p-4 rounded-xl border border-dashed border-slate-700 mb-4 opacity-60 flex items-center justify-between">
                 <div class="flex items-center gap-3">
@@ -443,8 +448,28 @@ window.renderActivities = () => {
                 <i class="fas fa-lock text-slate-500"></i>
             </div>
         `;
+    } else if (hasPartTime) {
+        // SCENARIO: User HAS a part-time job -> Show Manage Card
+        content += `
+            <div onclick="renderCareerManager()" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
+                <div class="flex items-center gap-3 mb-2">
+                     <div class="w-8 h-8 rounded-full bg-orange-900/50 flex items-center justify-center text-orange-400">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <h3 class="font-bold text-white">Part-Time Job</h3>
+                </div>
+                <div class="bg-slate-900 p-3 rounded border border-slate-700 flex justify-between items-center">
+                     <div>
+                        <div class="text-sm text-white font-bold">${user.jobTitle}</div>
+                        <div class="text-xs text-green-400">${window.Utils.formatMoney(user.jobSalary)}/yr</div>
+                     </div>
+                     <i class="fas fa-chevron-right text-slate-600"></i>
+                </div>
+            </div>
+        `;
     } else {
-         content += `
+        // SCENARIO: User has NO part-time job -> Show "Find Job" Market
+        content += `
             <div onclick="renderJobMarket()" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
                 <div class="flex items-center gap-3 mb-2">
                      <div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-slate-400">
@@ -459,8 +484,10 @@ window.renderActivities = () => {
             </div>
         `;
     }
-    // 5. CAREERS
+
+    // 5. CAREERS SECTION
     if (user.age < 18) {
+         // ... (Keep your existing "Locked" code here) ...
          content += `
              <div class="bg-slate-800/50 p-4 rounded-xl border border-dashed border-slate-700 mb-4 opacity-60 flex items-center justify-between">
                 <div class="flex items-center gap-3">
@@ -475,9 +502,9 @@ window.renderActivities = () => {
                 <i class="fas fa-lock text-slate-500"></i>
             </div>
         `;
-    } else if (user.jobTitle) {
-        // Has Job -> Career Manager
-         content += `
+    } else if (hasCareer) {
+        // SCENARIO: User HAS a career -> Show Manage Card
+        content += `
             <div onclick="renderCareerManager()" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
                 <div class="flex items-center gap-3 mb-2">
                      <div class="w-8 h-8 rounded-full bg-blue-900/50 flex items-center justify-center text-blue-400">
@@ -494,8 +521,27 @@ window.renderActivities = () => {
                 </div>
             </div>
         `;
-    } else if (!user.hasBusiness) {
+    }  else if (!user.hasBusiness) {
         // No Job, No Business -> Career Market
+        content += `
+            <div onclick="renderCareerMarket()" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
+                <div class="flex items-center gap-3 mb-2">
+                     <div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-slate-400">
+                        <i class="fas fa-briefcase"></i>
+                    </div>
+                    <h3 class="font-bold text-white">Careers</h3>
+                </div>
+                <div class="bg-slate-900 p-3 rounded border border-slate-700 flex justify-between items-center">
+                     <div>
+                        <div class="text-sm text-white font-bold">Find a career</div>
+                        <div class="text-xs text-slate-500 italic">No active job offers found.</div>
+                     </div>
+                     <i class="fas fa-chevron-right text-slate-600"></i>
+                </div>
+            </div>
+        `;
+    } else {
+        // SCENARIO: User has NO career -> Show Market
         content += `
             <div onclick="renderCareerMarket()" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
                 <div class="flex items-center gap-3 mb-2">
