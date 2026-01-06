@@ -122,7 +122,7 @@ function ageUp() {
     } else {
         // Adult Events
         // If unemployed and not in school, maybe negative events?
-        if (!user.jobTitle && !user.hasBusiness && !user.universityEnrolled && !user.gradSchoolEnrolled && user.age >= 18) {
+        if (!user.highSchoolRetained && !user.jobTitle && !user.hasBusiness && !user.universityEnrolled && !user.gradSchoolEnrolled && user.age >= 18) {
              addLog("Unemployed. Savings are dwindling.", 'bad');
         } else {
              addLog("Another year passes...");
