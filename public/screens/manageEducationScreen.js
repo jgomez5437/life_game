@@ -27,7 +27,7 @@ function renderEducation() {
         : "bg-slate-800 p-4 rounded-xl border border-slate-700 flex items-center justify-between hover:bg-red-900/20 hover:border-red-500/50 transition group cursor-pointer";
 
     // 4. RENDER
-    const schoolName = "University"; // Or getSchoolName() if you have that helper
+    const schoolName = getSchoolName();
     let majorDisplay = "";
     if (user.universityEnrolled) {
         majorDisplay = `<div class="text-sm text-blue-300 mt-1">Major: ${user.major}</div>`;
