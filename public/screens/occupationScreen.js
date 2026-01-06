@@ -6,6 +6,7 @@ const GRAD_SCHOOLS = [
     { name: "Business School", years: 2, icon: "fa-chart-line" },
     { name: "Psychiatry School", years: 4, icon: "fa-brain" }
 ]
+window.GRAD_SCHOOLS = GRAD_SCHOOLS;
 //University Pop up
 function openUniversityModal() {
     // Reset flags
