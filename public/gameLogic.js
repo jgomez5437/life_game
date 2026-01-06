@@ -55,8 +55,10 @@ function checkLifeStatus(user) {
        return `${user.gradSchoolDegree} Graduate`;
     } else if (user.universityGraduated) {
        return "University Graduate";
+    } else if (user.age > 17 && user.highSchoolRetained) {
+       return "Student (Retaking)";
     } else if (user.age > 17 && !user.jobTitle) {
-       return "Unemployed"
+       return "Unemployed";
     } else if (user.age === 0) {
        return "Baby";
     } else if (user.age < 5) {
