@@ -8,9 +8,10 @@ const get = id => document.getElementById(id);
         ];
 
         const CAREERS = [
-            { title: "Jr. Associate", salary: 75000, icon: "fa-briefcase", reqDegree: true, reqGrad: "Law School" },
+            { title: "Jr. Associate", salary: 70000, icon: "fa-briefcase", reqDegree: true, reqGrad: "Law School" },
             { title: "Firefighter", salary: 57000, icon: "fa-fire-extinguisher", reqDegree: false, reqLaw: false },
             { title: "Graphic Designer", salary: 55000, icon: "fa-pen-nib", reqDegree: true, reqLaw: false }, 
+            { title: "Resident Doctor", salary: 65000, icon: "fa-user-md", reqDegree: true, reqGrad: "Medical School" },
             { title: "Police Officer", salary: 55000, icon: "fa-user-shield", reqDegree: false, reqLaw: false },
             { title: "Jr. Software Developer", salary: 50000, icon: "fa-code", reqDegree: true, reqLaw: false }, 
             { title: "Banker", salary: 40000, icon: "fa-money-check-dollar", reqDegree: true, reqLaw: false }, 
