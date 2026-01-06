@@ -1,13 +1,6 @@
 const get = id => document.getElementById(id);
 // --- CONSTANTS ---
-window.GAME_CONSTANTS = {
-    GRAD_SCHOOLS: [
-        { name: "Law School", years: 3, icon: "fa-balance-scale" },
-        { name: "Medical School", years: 4, icon: "fa-user-md" },
-        { name: "Business School", years: 2, icon: "fa-chart-line" },
-        { name: "Psychiatry School", years: 4, icon: "fa-brain" }
-    ]
-} 
+
         const MAJORS = [
             "Psychology", "Computer Science", "English", "Education", "Marketing", 
             "Business", "Nursing", "Religious Studies", "Biology", "Graphic Design", "Chemistry",
