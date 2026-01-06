@@ -1,6 +1,6 @@
 //Character creation screen
 let selectedGender = 'male';
-const CITIES = ["New York", "Los Angeles", "San Francisco", "Houston", "Miami", "Tucson", "London", "Osaka", "Tokyo", "Berlin", "Madrid", "Paris", "Beijing", "Toronto", "Mexico City", "Cairo"];
+const CITIES = ["New York", "Los Angeles", "San Francisco", "Houston", "Miami", "Tucson", "London", "Osaka", "Tokyo", "Berlin", "Madrid","Bandar Seri Begawan", "Paris", "Beijing", "Toronto", "Mexico City", "Cairo"];
 
 window.renderCharCreation = () => {
     const creationHTML = `

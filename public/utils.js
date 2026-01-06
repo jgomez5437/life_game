@@ -27,6 +27,7 @@ const Utils = {
             "Berlin": "de",
             "Madrid": "es",
             "Rome": "it",
+            "Bandar Seri Begawan": "bn",
             "Beijing": "cn",
             "Shanghai": "cn",
             "Seoul": "kr",
