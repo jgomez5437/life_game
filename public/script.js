@@ -108,6 +108,7 @@ function updateGameInfo(dbUser) {
             isStudent: savedUser.isStudent || false,
             universityEnrolled: savedUser.universityEnrolled || false,
             universitySchoolYear: savedUser.universitySchoolYear || 0,
+            universityGraduated: savedUser.universityGraduated || false,
             major: savedUser.major || '',
             schoolActions: savedUser.schoolActions || 0,
             schoolPerformance: savedUser.schoolPerformance || 50,
@@ -167,9 +168,11 @@ window.loadAndRenderGame = (userData) => {
             age: userData.age || 0,
             gender: userData.gender || 'male',
             city: userData.city || "New York",
+            //education
             isStudent: userData.is_student || false,
             universityEnrolled: userData.university_enrolled || false,
             universitySchoolYear: userData.university_school_year || 0,
+            universityGraduated: userData.universityGraduated || false,
             major: userData.major || '',
             parentsTried: userData.parents_tried || false,
             schoolActions: userData.school_actions || 0,
@@ -182,6 +185,7 @@ window.loadAndRenderGame = (userData) => {
             gradSchoolYear: userData.grad_school_year || 0,
             gradSchoolDegree: userData.grad_school_degree || null,
             hasSeenExpenseMsg: userData.has_seen_expense_message || false,
+            //job
             jobTitle: userData.job_title || '',
             jobSalary: userData.job_salary || 0,
             jobPerformance: userData.jobPerformance || 50,
@@ -189,6 +193,7 @@ window.loadAndRenderGame = (userData) => {
             schoolPerformance: userData.school_performance || 50,
             schoolActions: userData.schoolActions || 0,
             highSchoolRetained: userData.high_school_retained || false,
+            //ceo
             hasBusiness: userData.has_business || false,
             companyName: userData.companyName || null,
             ceoSalary: userData.ceoSalary || 0,
