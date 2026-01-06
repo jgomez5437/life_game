@@ -73,18 +73,22 @@ const countryCode = window.Utils.getCountryCode(stats.city);
     showModal: (title, message, onClose = null) => {
         _elements.modalTitle.innerText = title;
         _elements.modalContent.innerHTML = message;
-        _elements.modalBtn.innerText = 'Dismiss';
         
-        //show overlay
-        _elements.modalOverlay.classList.remove('hidden');
-        _elements.modalOverlay.classList.add('flex');
+        _elements.modalActions.innerHTML = `
+            <button id="modal-btn" class="w-full btn-primary text-white font-bold py-3 rounded-lg">Dismiss</button>
+        `;
 
-        //hide overlay logic
-        _elements.modalBtn.onclick = () => {
+        const newDismissBtn = document.getElementById('modal-btn');
+        
+        newDismissBtn.onclick = () => {
             // Hide the overlay
             _elements.modalOverlay.classList.add('hidden');
             _elements.modalOverlay.classList.remove('flex');
             if (onClose) onClose();
         }
+
+        // Show overlay
+        _elements.modalOverlay.classList.remove('hidden');
+        _elements.modalOverlay.classList.add('flex');
     }
 }
