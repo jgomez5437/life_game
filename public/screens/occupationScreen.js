@@ -1,5 +1,11 @@
 //OCCUPATION/EDUCATION/ENTREPRENUER MANAGER SCREEN
 
+const GRAD_SCHOOLS = [
+    { name: "Law School", years: 3, icon: "fa-balance-scale" },
+    { name: "Medical School", years: 4, icon: "fa-user-md" },
+    { name: "Business School", years: 2, icon: "fa-chart-line" },
+    { name: "Psychiatry School", years: 4, icon: "fa-brain" }
+]
 //University Pop up
 function openUniversityModal() {
     // Reset flags
@@ -105,7 +111,6 @@ function enrollSuccess(major, methodMsg) {
 
 //Grad school pop up
 function renderGradSchoolMarket() {
-    window.updateGameInfo(userData);
     const listHtml = GRAD_SCHOOLS.map(school => `
         <div onclick="openGradEnrollmentModal('${school.name}')" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-3 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
             <div class="flex items-center justify-between">
@@ -155,7 +160,7 @@ function renderGradModalContent(schoolType) {
     `;
     
     // Render Actions
-    const cashDisabled = user.bank < 100000;
+    const cashDisabled = user.money < 100000;
     const cashBtn = `<button onclick="attemptGradEnrollment('${schoolType}', 'cash')" ${cashDisabled ? 'disabled' : ''} class="w-full bg-green-600 hover:bg-green-500 disabled:bg-slate-700 disabled:opacity-50 text-white font-bold py-2 rounded mb-2">Pay Cash ($100k)</button>`;
     
     const loanBtn = `<button onclick="attemptGradEnrollment('${schoolType}', 'loan')" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded mb-2">Student Loans</button>`;
@@ -189,7 +194,7 @@ function renderGradModalContent(schoolType) {
 function attemptGradEnrollment(schoolType, method) {
     const user = window.gameState.user;
     if (method === 'cash') {
-        user.bank -= 100000;
+        user.money -= 100000;
         gradEnrollSuccess(schoolType, "paid with cash");
     } 
     else if (method === 'loan') {
@@ -218,6 +223,7 @@ function attemptGradEnrollment(schoolType, method) {
 function gradEnrollSuccess(schoolType, methodMsg) {
     const user = window.gameState.user;
     user.gradSchoolEnrolled = true;
+    user.isStudent = true;
     user.gradSchoolType = schoolType;
     user.gradSchoolYear = 0;
     user.schoolPerformance = 50;
@@ -227,7 +233,6 @@ function gradEnrollSuccess(schoolType, methodMsg) {
     m.classList.add('hidden');
     m.classList.remove('flex');
     addLog(`Enrolled in ${schoolType}. You ${methodMsg}.`, 'good');
-    window.updateGameInfo(userData);
     renderActivities();
 };
 
