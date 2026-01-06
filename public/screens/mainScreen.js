@@ -58,9 +58,11 @@ function ageUp() {
         if (user.schoolPerformance > 25) {
             addLog("You graduated High School! Enroll in University or find a job.", 'good');
             user.highSchoolRetained = false;
+            user.isStudent = false;
         } else {
             addLog("You failed senior year and stay another year in High School. Try working harder.", 'bad');
             user.highSchoolRetained = true;
+            user.isStudent = true;
         }
     }
     else if (user.age === 19 && user.highSchoolRetained) {
@@ -75,6 +77,7 @@ function ageUp() {
     else if (user.age === 20 && user.highSchoolRetained) {
         addLog("Your high school felt bad and helped you get your GED during the evenings. Enroll in University or find a job.", 'green');
         user.highSchoolRetained = false;
+        user.isStudent = false;
     }
     //University graduation logic
     if (user.universityEnrolled) {
