@@ -134,9 +134,8 @@ function ageUp() {
     //reset actions taken
     checkSchoolActionTaken(user);
     checkActionTaken();
-    console.log(annualLivingExpense);
     //withdraw money if needed
-    user.money -= user.monthlyLivingExpense;
+    user.money -= annualLivingExpense;
     window.renderLifeDashboard(window.gameState);
     //auto save
     if (typeof window.saveGame === "function") {
