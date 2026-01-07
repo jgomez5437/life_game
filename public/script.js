@@ -8,12 +8,15 @@ const get = id => document.getElementById(id);
         ];
 
         const CAREERS = [
-            { title: "Jr. Associate", salary: 75000, icon: "fa-briefcase", reqDegree: true, reqGrad: "Law School" },
+            { title: "Jr. Associate", salary: 70000, icon: "fa-briefcase", reqDegree: true, reqGrad: "Law School" },
             { title: "Firefighter", salary: 57000, icon: "fa-fire-extinguisher", reqDegree: false, reqLaw: false },
             { title: "Graphic Designer", salary: 55000, icon: "fa-pen-nib", reqDegree: true, reqLaw: false }, 
+            { title: "Resident Doctor", salary: 65000, icon: "fa-user-md", reqDegree: true, reqGrad: "Medical School" },
+            { title: "Psychiatry Resident", salary: 65000, icon: "fa-brain", reqDegree: true, reqGrad: "Psychiatry School" },
             { title: "Police Officer", salary: 55000, icon: "fa-user-shield", reqDegree: false, reqLaw: false },
             { title: "Jr. Software Developer", salary: 50000, icon: "fa-code", reqDegree: true, reqLaw: false }, 
             { title: "Banker", salary: 40000, icon: "fa-money-check-dollar", reqDegree: true, reqLaw: false }, 
+            { title: "Jr. Business Analyst", salary: 65000, icon: "fa-chart-line", reqDegree: true, reqGrad: "Business School" },
             { title: "Apprentice Plumber", salary: 40000, icon: "fa-wrench", reqDegree: false, reqLaw: false },
             { title: "Baker", salary: 35000, icon: "fa-bread-slice", reqDegree: false, reqLaw: false }
         ];
