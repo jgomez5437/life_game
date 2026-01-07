@@ -67,7 +67,7 @@ function renderCareerManager() {
                     </div>
                     <i class="fas fa-chevron-right text-slate-600"></i>
                 </button>
-                <button onclick="confirmQuitCareer()" class="bg-red-900/50 p-4 rounded-xl border border-red-700 flex items-center justify-between hover:bg-red-900 transition group mt-4">
+                <button onclick="confirmQuitCareer()" class="bg-red-900/50 p-4 rounded-xl border border-red-700 flex items-center justify-between hover:bg-red-900 transition group mt-4 mb-8">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-full bg-red-900/30 flex items-center justify-center text-red-400">
                             <i class="fas fa-door-open"></i>
