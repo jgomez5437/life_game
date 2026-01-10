@@ -70,6 +70,33 @@ function checkLifeStatus(user) {
     }
 }
 
+const VEHICLE_TYPES = {
+    // Standard Cars
+    sedan: { icon: "fa-car", color: "text-blue-400" },
+    coupe: { icon: "fa-car-side", color: "text-indigo-400" },
+    hatchback: { icon: "fa-car", color: "text-slate-400" },
+    
+    // Larger Vehicles
+    suv: { icon: "fa-shuttle-van", color: "text-emerald-400" }, // Use shuttle van for SUV
+    truck: { icon: "fa-truck-pickup", color: "text-orange-400" },
+    van: { icon: "fa-van-shuttle", color: "text-slate-500" },
+
+    // Special
+    sports: { icon: "fa-car-burst", color: "text-red-500" }, // "Fast" car icon
+    supercar: { icon: "fa-fire", color: "text-red-600" }, // Or use fire/rocket for exotic
+    motorcycle: { icon: "fa-motorcycle", color: "text-yellow-400" },
+    
+    // Default fallback
+    default: { icon: "fa-car", color: "text-gray-400" }
+};
+
+function getVehicleIcon(type) {
+    // Convert type to lowercase to match keys
+    const key = type ? type.toLowerCase() : 'default';
+    return VEHICLE_TYPES[key] || window.VEHICLE_TYPES.default;
+};
+
+
 
 const GameLogic = {
     sanitizeName,
@@ -77,7 +104,8 @@ const GameLogic = {
     calculateBirthdayMoney,
     addStudentLoanPayment,
     checkSchoolGraduated,
-    checkLifeStatus
+    checkLifeStatus,
+    getVehicleIcon
 };
 
 if (typeof module !== 'undefined' && module.exports) {
