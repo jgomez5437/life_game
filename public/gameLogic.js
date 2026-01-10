@@ -96,6 +96,40 @@ function getVehicleIcon(type) {
     return VEHICLE_TYPES[key] || window.VEHICLE_TYPES.default;
 };
 
+// gameLogic.js inside window.GameLogic = { ... }
+
+    // Simulates market fluctuation
+function simulateVehicleMarket() {
+    // This generates a number between -0.08 (-8%) and 0.08 (+8%)
+    const marketForce = (Math.random() * 0.16) - 0.08;
+    
+    // 2. Apply to every car
+    window.VEHICLES_FOR_SALE.forEach(car => {
+        // Each car has a slight individual variance on top of the market force
+        const individualVariance = (Math.random() * 0.04) - 0.02; // +/- 2%
+        const totalChangePercent = 1 + marketForce + individualVariance;
+        
+        // Calculate new price
+        let newPrice = Math.floor(car.price * totalChangePercent);
+        
+        // Round to nearest $10 or $100 for cleaner numbers
+        if (newPrice > 10000) {
+            newPrice = Math.round(newPrice / 100) * 100;
+        } else {
+            newPrice = Math.round(newPrice / 10) * 10;
+        }
+        // Safety: Don't let prices drop below 50% of original or go too crazy
+        // (Optional, but keeps Rusty Camrys from becoming free)
+        newPrice = Math.max(500, newPrice); 
+        // Update the global object
+        car.price = newPrice;
+        
+        // Store the % change to show UI arrows later (Optional feature)
+        car.lastChange = totalChangePercent > 1 ? 'up' : 'down';
+    });
+    return marketForce;
+};
+
 
 
 const GameLogic = {
@@ -105,7 +139,8 @@ const GameLogic = {
     addStudentLoanPayment,
     checkSchoolGraduated,
     checkLifeStatus,
-    getVehicleIcon
+    getVehicleIcon,
+    simulateVehicleMarket
 };
 
 if (typeof module !== 'undefined' && module.exports) {

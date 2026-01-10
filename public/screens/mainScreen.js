@@ -131,6 +131,13 @@ function ageUp() {
              addLog("Another year passes...");
         }
     }
+    //vehicle market change check
+    const marketForce = window.GameLogic.simulateVehicleMarket();
+    if (marketForce > 0.06 && user.age > 15) {
+            window.addLog("Inflation hits the auto market! Car prices are up.", "bad");
+        } else if (marketForce < -0.06 && user.age > 15) {
+             window.addLog("Auto market crash! Vehicle prices are down.", "good");
+        }
     //reset actions taken
     checkSchoolActionTaken(user);
     checkActionTaken();

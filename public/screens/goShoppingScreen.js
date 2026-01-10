@@ -1,7 +1,7 @@
 // screens/shoppingScreen.js
 
 // Vehicle list
-const VEHICLES_FOR_SALE = [
+window.VEHICLES_FOR_SALE = [
     { id: 1, name: "Rusty Toyota Camry", type: "sedan", price: 2000, condition: 60 },
     { id: 2, name: "Rusty Honda Civic", type: "sedan", price: 2200, condition: 60 },
     { id: 3, name: "Used Honda Fit", type: "hatchback", price: 6000, condition: 80 },
@@ -84,7 +84,7 @@ window.renderShoppingHub = () => {
 window.renderVehicleDealer = () => {
     const user = window.gameState.user;
     
-    const carListHtml = VEHICLES_FOR_SALE.map(car => {
+    const carListHtml = window.VEHICLES_FOR_SALE.map(car => {
         const canAfford = user.money >= car.price;
         const style = window.GameLogic.getVehicleIcon(car.type);
         
@@ -144,7 +144,7 @@ window.renderVehicleDealer = () => {
 
 window.buyVehicle = (carId) => {
     const user = window.gameState.user;
-    const car = VEHICLES_FOR_SALE.find(c => c.id === carId);
+    const car = window.VEHICLES_FOR_SALE.find(c => c.id === carId);
 
     if (!car) return;
 
