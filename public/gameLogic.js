@@ -96,8 +96,6 @@ function getVehicleIcon(type) {
     return VEHICLE_TYPES[key] || window.VEHICLE_TYPES.default;
 };
 
-// gameLogic.js inside window.GameLogic = { ... }
-
     // Simulates market fluctuation
 function simulateVehicleMarket() {
     // This generates a number between -0.08 (-8%) and 0.08 (+8%)
@@ -130,6 +128,38 @@ function simulateVehicleMarket() {
     return marketForce;
 };
 
+function updateOwnedVehicles(user, marketForce) {
+    if (!user.assets || user.assets.length === 0) return;
+    user.assets.forEach(asset => {
+        // Only affect vehicles
+        if (asset.category === 'vehicle') {
+            // Lose between 3% and 7% condition every year randomly
+            const decay = Math.floor(Math.random() * 5) + 3; 
+            asset.condition = Math.max(0, asset.condition - decay);
+            // Base depreciation (cars lose ~15% value naturally)
+            const baseDepreciation = 0.85; 
+            
+            // Market Impact: If market is up (+8%), depreciation is less severe
+            // We use 0.5 to dampen the market effect on used cars
+            const marketImpact = 1 + (marketForce * 0.5); 
+            // Calculate new value
+            let newValue = Math.floor(asset.value * baseDepreciation * marketImpact);
+            
+            // Penalty: If condition is terrible (< 40%), value drops harder
+            if (asset.condition < 40) {
+                newValue = Math.floor(newValue * 0.80); // Extra 20% drop
+            }
+            asset.value = Math.max(0, newValue);
+            // CRITICAL WARNINGS
+            // If the car just hit 0% or low condition, warn the user
+            if (asset.condition === 0) {
+                 window.addLog(`URGENT: Your ${asset.name} has broken down completely!`, 'bad');
+            } else if (asset.condition < 20 && asset.condition + decay >= 20) {
+                 window.addLog(`Your ${asset.name} is falling apart. Repair it soon!`, 'bad');
+            }
+        }
+    });
+}
 
 
 const GameLogic = {
@@ -140,7 +170,8 @@ const GameLogic = {
     checkSchoolGraduated,
     checkLifeStatus,
     getVehicleIcon,
-    simulateVehicleMarket
+    simulateVehicleMarket,
+    updateOwnedVehicles
 };
 
 if (typeof module !== 'undefined' && module.exports) {

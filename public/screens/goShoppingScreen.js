@@ -159,6 +159,7 @@ window.buyVehicle = (carId) => {
     // 2. Add to Assets
     // We create a new object so we don't link directly to the store reference
     const newAsset = {
+        id: Date.now(),
         name: car.name,
         type: car.type,
         value: car.price,
