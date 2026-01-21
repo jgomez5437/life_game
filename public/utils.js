@@ -44,9 +44,54 @@ const Utils = {
         const foundKey = Object.keys(CITY_CODES).find(k => k.toLowerCase() === cleanInput.toLowerCase());
         
         return foundKey ? CITY_CODES[foundKey] : null;
+    },
+    // Guest Storage for saving/loading
+    guestStorage: {
+        SAVE_KEY: 'startALife_saveData',
+
+        /**
+         * Saves the current gameState to browser storage
+         */
+        saveGame: () => {
+            const state = window.gameState;
+            try {
+                // Convert the huge object into a single string
+                const serializedState = JSON.stringify(state);
+                // Access the key via the parent object structure
+                localStorage.setItem(Utils.guestStorage.SAVE_KEY, serializedState);
+                console.log("Game saved successfully.");
+            } catch (err) {
+                console.error("Save failed:", err);
+            }
+        },
+
+        /**
+         * Loads data from storage
+         * Returns: The state object OR null if no save exists
+         */
+        loadGame: () => {
+            try {
+                const serializedState = localStorage.getItem(Utils.guestStorage.SAVE_KEY);
+                if (serializedState === null) {
+                    return null; // No save found
+                }
+                // Turn the string back into a JavaScript Object
+                return JSON.parse(serializedState);
+            } catch (err) {
+                console.error("Load failed:", err);
+                return null;
+            }
+        },
+
+        /**
+         * Wipes the save (for Game Over or New Game)
+         */
+        clearSave: () => {
+            localStorage.removeItem(Utils.guestStorage.SAVE_KEY);
+            console.log("Save file deleted.");
+        }
     }
 };
-
 
 //export for Jest testing
 if (typeof module !== 'undefined' && module.exports) {
