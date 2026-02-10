@@ -184,6 +184,7 @@ window.renderLifeDashboard = (maybeGameState) => {
     const ageUpText = "Age Up +";
 
     //Define the Final HTML String
+    //Define the Final HTML String
     const dashboardHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="flex-1 overflow-y-auto mb-4 bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
@@ -192,19 +193,34 @@ window.renderLifeDashboard = (maybeGameState) => {
                     ${logHtml.length > 0 ? logHtml : '<div class="text-slate-600 text-sm italic">Life has just begun...</div>'}
                 </div>
             </div>
-            <div class="grid grid-cols-3 gap-2 pt-2 h-20">
+            
+            <div class="grid grid-cols-5 gap-2 pt-2 h-20">
+                
                 <button onclick="renderAssets()" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700">
                     <i class="fas fa-home mb-1 text-xl text-yellow-400"></i>
                     <span class="text-[10px] uppercase tracking-wider">Assets</span>
                 </button>
+                
                 <button onclick="renderActivities()" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700">
                     <i class="fas fa-user-graduate mb-1 text-xl text-blue-400"></i>
-                    <span class="text-[10px] uppercase tracking-wider">Occupation</span>
+                    <span class="text-[10px] uppercase tracking-wider">Work</span>
                 </button>
+                
                 <button onclick="ageUp()" class="btn-primary text-white font-bold rounded-xl shadow-lg flex flex-col items-center justify-center">
                     <i class="fas fa-arrow-up mb-1 text-xl"></i>
                     <span class="text-[10px] uppercase tracking-wider">${ageUpText}</span>
                 </button>
+
+                <button onclick="window.UI.showModal('Coming Soon', 'This section is under construction.')" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700">
+                    <i class="fas fa-users mb-1 text-xl text-pink-400"></i>
+                    <span class="text-[10px] uppercase tracking-wider">Relationships</span>
+                </button>
+
+                <button onclick="window.UI.showModal('Coming Soon', 'This section is under construction.')" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700">
+                    <i class="fas fa-ellipsis-h mb-1 text-xl text-slate-400"></i>
+                    <span class="text-[10px] uppercase tracking-wider">More</span>
+                </button>
+
             </div>
         </div>
     `;
