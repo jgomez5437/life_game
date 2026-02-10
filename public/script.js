@@ -215,7 +215,8 @@ window.saveGame = async function() {
     // 1. Safety Checks
     // Don't save if we are a guest (no ID) or if the game hasn't loaded yet (no state)
     if (!window.userAuthId) {
-        console.log("⚠️ Guest mode. Save skipped.");
+        window.Utils.guestStorage.saveGame()
+        console.log("⚠️ Guest mode. Saved locally.");
         return;
     }
     if (!window.gameState || !window.gameState.user) {
@@ -274,12 +275,18 @@ window.saveGame = async function() {
 // --- Unified Entry Point ---
 window.onload = async () => {
     try {
-        //wait for auth0
-        await window.configureAuth(); 
-        console.log("Auth0 Configured.");
+        // Wrap this in a robust try/catch to silence SDK errors
+        if (window.configureAuth) {
+            await window.configureAuth().catch(err => {
+                console.warn("Auth0 check skipped or blocked (Guest Mode active)."), err;
+            }); 
+            console.log("Auth0 Configured.");
+        }
     } catch (e) {
-        console.error("Auth Initialization Failed:", e);
+        console.warn("Auth Initialization warning:", e);
     }
+
+    // Continue to game initialization regardless of Auth0 errors
     await initGame();
 };
 
@@ -315,7 +322,22 @@ async function initGame() {
         }
 
     } else {
-        // Guest Mode
-        window.renderLoginScreen();
+        // Guest Mode - Check for local storage save
+        console.log("Guest mode detected.");
+        const guestSave = window.Utils.guestStorage.loadGame();
+        
+        if (guestSave) {
+            // Guest has a saved game - load it
+            console.log("Loading guest save from local storage...");
+            window.gameState = guestSave;
+            if (typeof window.renderLifeDashboard === "function") {
+                window.renderLifeDashboard();
+            } else {
+                console.error("renderLifeDashboard function not found!");
+            }
+        } else {
+            // No guest save - show login screen
+            window.renderLoginScreen();
+        }
     }
 };
