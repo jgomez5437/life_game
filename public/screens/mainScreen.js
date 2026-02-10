@@ -1,158 +1,150 @@
 // public/screens/mainScreen.js
 //age up function
+// mainScreen.js
+
 function ageUp() {
     const user = window.gameState.user;
-    const currentAge = user.age + 1;
-    user.age = currentAge;
-    // Birthday Money Logic (5 to 18)
+    
+    // 1. The Core Update
+    user.age++;
+
+    // 2. Run The Sub-Systems
+    handleFinances(user);
+    handleEducation(user);
+    handleMarket(user);
+    handleLifeEvents(user);
+
+    // 3. Cleanup & Render
+    checkSchoolActionTaken(user); // Reset flags
+    checkActionTaken();           // Reset flags
+    
+    window.renderLifeDashboard(window.gameState);
+    
+    // Auto Save
+    if (typeof window.saveGame === "function") {
+        window.saveGame();
+    }
+}
+
+// sub systems that ageup calls
+function handleFinances(user) {
+    // 1. Birthday Money (Kids only)
     if (user.age >= 5 && user.age <= 18) {
         const bdayMoney = window.GameLogic.calculateBirthdayMoney();
         user.money += bdayMoney;
-        window.addLog(`You received $${bdayMoney} for your birthday!`, 'good');
+        window.addLog(`You received ${window.Utils.formatMoney(bdayMoney)} for your birthday!`, 'good');
     }
-    // --- LIVING EXPENSES LOGIC ---
-    const annualLivingExpense = window.GameLogic.addLivingExpenses(user.age, user.isStudent);
-    //add annual living expense to monthlyOutflow
-    if (annualLivingExpense > 0 && user.monthlyLivingExpense !== annualLivingExpense) {
-        user.monthlyLivingExpense = annualLivingExpense;
-    }  
-    if (annualLivingExpense > 0 && !user.hasSeenExpenseMsg) {
-        addLog("Your basic living expenses are $2,000 per month.", 'neutral');
-        user.hasSeenExpenseMsg = true;
-    };
-    console.log(user.isStudent);
-    console.log(annualLivingExpense);
-    // --- STUDENT LOAN EXPENSES LOGIC ---
-    // check if there are student loans and add to monthly outflow if there are
-    const yearlyStudentLoanPayment = window.GameLogic.addStudentLoanPayment(user.age, user.studentLoans, user.isStudent); 
-    user.monthlyOutflow += yearlyStudentLoanPayment;
-    //deduct student loan payment from student loans
-    user.studentLoans -= yearlyStudentLoanPayment;
 
-    // --- Grad School Graduation Logic ---
-    if (user.gradSchoolEnrolled) {
-        //add a year to year of grad school
-        user.gradSchoolYear++;
-        //find grad school name
-        const school = window.GRAD_SCHOOLS.find(s => s.name === user.gradSchoolType);
-        //check if graduated from grad school yet
-        const isGradSchoolGraduated = window.GameLogic.checkSchoolGraduated(user.gradSchoolYear, school.years);
-        if (isGradSchoolGraduated) {
-            user.gradSchoolEnrolled = false;
-            user.isStudent = false;
-            user.gradSchoolDegree = user.gradSchoolType;
-            addLog(`Graduated from ${user.gradSchoolType}! You are now qualified for advanced careers.`, 'good');
-        } else {
-            addLog(`Completed year ${user.gradSchoolYear} of ${user.gradSchoolType}.`, 'neutral');
-        };
-    };
-    // --- JOB SALARY LOGIC ---       //TODO
+    // 2. Job Salary
     if (user.jobTitle) {
         user.money += user.jobSalary;
         if (user.hasSeenJobSalary){
             addLog(`Earned ${window.Utils.formatMoney(user.jobSalary)} as a ${user.jobTitle}.`, 'good');
-        };
-    };
-    // High School Graduation / Failure Logic
-    if (user.age === 18) {
+        }
+    }
+
+    // 3. Living Expenses
+    const annualLivingExpense = window.GameLogic.addLivingExpenses(user.age, user.isStudent);
+    if (annualLivingExpense > 0) {
+        user.monthlyLivingExpense = annualLivingExpense;
+        user.money -= annualLivingExpense; // Deduct immediately
+        
+        if (!user.hasSeenExpenseMsg) {
+            addLog("Your basic living expenses are $2,000 per month.", 'neutral');
+            user.hasSeenExpenseMsg = true;
+        }
+    }
+
+    // 4. Student Loans
+    const yearlyStudentLoanPayment = window.GameLogic.addStudentLoanPayment(user.age, user.studentLoans, user.isStudent); 
+    user.monthlyOutflow += yearlyStudentLoanPayment;
+    user.studentLoans -= yearlyStudentLoanPayment;
+}
+
+function handleEducation(user) {
+    // 1. High School Logic
+    if (user.age === 18 || (user.age === 19 && user.highSchoolRetained)) {
         if (user.schoolPerformance > 25) {
             addLog("You graduated High School! Enroll in University or find a job.", 'good');
             user.highSchoolRetained = false;
             user.isStudent = false;
         } else {
-            addLog("You failed senior year and stay another year in High School. Try working harder.", 'bad');
+            addLog("You failed. You must stay another year in High School.", 'bad');
             user.highSchoolRetained = true;
             user.isStudent = true;
         }
-    }
-    else if (user.age === 19 && user.highSchoolRetained) {
-        if (user.schoolPerformance > 25) {
-            addLog("You graduated High School! Enroll in University or find a job.", 'good');
-            user.highSchoolRetained = false;
-        } else {
-            addLog("You failed again. One last chance.", 'bad');
-            user.highSchoolRetained = true;
-        }
-    }
-    else if (user.age === 20 && user.highSchoolRetained) {
-        addLog("Your high school felt bad and helped you get your GED during the evenings. Enroll in University or find a job.", 'green');
+    } else if (user.age === 20 && user.highSchoolRetained) {
+        addLog("Your high school took pity on you. You passed with a GED.", 'green');
         user.highSchoolRetained = false;
         user.isStudent = false;
     }
-    //University graduation logic
+
+    // 2. University Logic
     if (user.universityEnrolled) {
-    //add a year to year of grad school
-    user.universitySchoolYear++;
-    const uniSchoolYear = 4
-    //check if graduated from grad school yet
-    const isUniSchoolGraduated = window.GameLogic.checkSchoolGraduated(user.universitySchoolYear, uniSchoolYear);
-        if (isUniSchoolGraduated) {
+        user.universitySchoolYear++;
+        if (window.GameLogic.checkSchoolGraduated(user.universitySchoolYear, 4)) {
             user.universityEnrolled = false;
             user.isStudent = false;
             user.universityGraduated = true;
-            addLog(`You finished University with a degree in ${user.major}. Time to find a career!`, 'good');
-        };
-};  
-    // School Transitions (Normal)
-    if (user.age === 12) {
-        user.schoolPerformance = 50;
-        addLog("Started Middle School.", 'good');
-    } else if (user.age === 14) {
-        user.schoolPerformance = 50;
-        addLog("Started High School.", 'good');
-    }
-    // Age Specific Events
-    if (user.age === 1) addLog("You've discovered building blocks and started throwing them.", 'good');
-    else if (user.age === 2) addLog("You learned to walk, mostly into furniture.", 'good');
-    else if (user.age === 3) addLog("You drew a masterpiece on the living room wall with crayons.", 'good');
-    else if (user.age === 4) addLog("You refused to eat anything green for an entire year.", 'good');
-    else if (user.age === 5) addLog("You started Elementary School! Time to learn.", 'good');
-    // Random Events for older ages
-    else if (user.age < 18) {
-        const roll = Math.random();
-        if (user.age === 16) {
-             addLog("Legal working age reached.", 'neutral');
+            addLog(`You finished University with a degree in ${user.major}.`, 'good');
         }
-        else if (roll < 0.2) {
+    }
+
+    // 3. Grad School Logic
+    if (user.gradSchoolEnrolled) {
+        user.gradSchoolYear++;
+        const school = window.GRAD_SCHOOLS.find(s => s.name === user.gradSchoolType);
+        if (window.GameLogic.checkSchoolGraduated(user.gradSchoolYear, school.years)) {
+            user.gradSchoolEnrolled = false;
+            user.isStudent = false;
+            user.gradSchoolDegree = user.gradSchoolType;
+            addLog(`Graduated from ${user.gradSchoolType}!`, 'good');
+        } else {
+            addLog(`Completed year ${user.gradSchoolYear} of ${user.gradSchoolType}.`, 'neutral');
+        }
+    }
+
+    // 4. Transitions
+    if (user.age === 12) addLog("Started Middle School.", 'good');
+    if (user.age === 14) addLog("Started High School.", 'good');
+}
+
+function handleMarket(user) {
+    const marketForce = window.GameLogic.simulateVehicleMarket();
+    window.GameLogic.updateOwnedVehicles(user, marketForce);
+    
+    if (marketForce > 0.06 && user.age > 15) {
+        window.addLog("Inflation hits the auto market! Car prices are up.", "bad");
+    } else if (marketForce < -0.06 && user.age > 15) {
+        window.addLog("Auto market crash! Vehicle prices are down.", "good");
+    }
+}
+
+function handleLifeEvents(user) {
+    // Baby Events
+    if (user.age === 1) addLog("You've discovered building blocks.", 'good');
+    else if (user.age === 2) addLog("You learned to walk.", 'good');
+    else if (user.age === 3) addLog("You drew on the walls.", 'good');
+    else if (user.age === 5) addLog("Started Elementary School!", 'good');
+    
+    // Random Events
+    else if (user.age < 18 && user.age > 5) {
+        if (user.age === 16) addLog("Legal working age reached.", 'neutral');
+        
+        const roll = Math.random();
+        if (roll < 0.2) {
             const gift = Math.floor(Math.random() * 20) + 5;
             user.money += gift;
             addLog(`Found $${gift} on the sidewalk!`, 'good');
         } else if (roll > 0.9) {
-             addLog("Got the flu. Stayed home for a week.", 'bad');
-        } else {
-            addLog("Another year passes...");
+            addLog("Got the flu. Stayed home for a week.", 'bad');
         }
-    } else {
-        // Adult Events
-        // If unemployed and not in school, maybe negative events?
-        if (!user.highSchoolRetained && !user.jobTitle && !user.hasBusiness && !user.universityEnrolled && !user.gradSchoolEnrolled && user.age >= 18) {
-             addLog("Unemployed. Savings are dwindling.", 'bad');
-        } else {
-             addLog("Another year passes...");
-        }
+    } 
+    // Adult Empty State
+    else if (!user.highSchoolRetained && !user.jobTitle && !user.hasBusiness && !user.universityEnrolled && user.age >= 18) {
+         addLog("Unemployed. Savings are dwindling.", 'bad');
     }
-    //vehicle market change check
-    const marketForce = window.GameLogic.simulateVehicleMarket();
-    //Update condition
-    window.GameLogic.updateOwnedVehicles(user, marketForce);
-    if (marketForce > 0.06 && user.age > 15) {
-            window.addLog("Inflation hits the auto market! Car prices are up.", "bad");
-        } else if (marketForce < -0.06 && user.age > 15) {
-             window.addLog("Auto market crash! Vehicle prices are down.", "good");
-        }
-    //reset actions taken
-    checkSchoolActionTaken(user);
-    checkActionTaken();
-    //withdraw money if needed
-    user.money -= annualLivingExpense;
-    window.renderLifeDashboard(window.gameState);
-    //auto save
-    if (typeof window.saveGame === "function") {
-        window.saveGame();
-    }
-};
-
-
+}
 //Define the rendering function globally so script.js can call it.
 window.renderLifeDashboard = (maybeGameState) => {
     // --- Data Preparation ---
