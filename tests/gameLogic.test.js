@@ -1,4 +1,4 @@
-const GameLogic = require('../src/gameLogic')
+const GameLogic = require('../public/gameLogic')
 
 test("sanitizeName validates name and returns", () => {
     expect(GameLogic.sanitizeName("1234")).toEqual({

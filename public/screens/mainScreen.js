@@ -170,12 +170,22 @@ window.renderLifeDashboard = (maybeGameState) => {
     };
     const avatarHtml = `<i class="${iconClass} text-2xl"></i>`;
     if(user.username) get('avatar-container').innerHTML = avatarHtml;
-    //Generate the Life Log HTML
+// Generate the Life Log HTML 
     const logHtml = state.lifeLog.map(l => `
-        <div class="mb-2 text-sm border-l-2 border-slate-700 pl-3 py-1">
-            <span class="font-bold text-slate-500 text-xs">Age ${l.age}</span>
-            <div class="mt-1 space-y-1">
-                ${l.events.map(e => `<div class="${e.color}">${e.msg}</div>`).join('')}
+        <div class="mb-5 group">
+            <div class="flex items-center mb-2">
+                <div class="bg-slate-800 text-blue-100 text-[10px] uppercase font-bold px-3 py-1 rounded-full border border-slate-600 shadow-sm z-10">
+                    Age ${l.age}
+                </div>
+                <div class="h-px bg-gradient-to-r from-slate-700 to-transparent flex-grow ml-2"></div>
+            </div>
+
+            <div class="pl-4 border-l border-slate-700/50 ml-4 space-y-2 pb-1">
+                ${l.events.map(e => `
+                    <div class="${e.color} text-sm py-0.5 transition-transform duration-200 hover:translate-x-1">
+                        ${e.msg}
+                    </div>
+                `).join('')}
             </div>
         </div>
     `).join('');

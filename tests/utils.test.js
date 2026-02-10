@@ -1,4 +1,4 @@
-const Utils = require('../src/utils')
+const Utils = require('../public/utils')
 
 test('formatMoney adds dollar sign and commas', () => {
     expect(Utils.formatMoney(2000)).toBe('$2,000');
