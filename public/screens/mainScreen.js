@@ -170,12 +170,22 @@ window.renderLifeDashboard = (maybeGameState) => {
     };
     const avatarHtml = `<i class="${iconClass} text-2xl"></i>`;
     if(user.username) get('avatar-container').innerHTML = avatarHtml;
-    //Generate the Life Log HTML
+// Generate the Life Log HTML 
     const logHtml = state.lifeLog.map(l => `
-        <div class="mb-2 text-sm border-l-2 border-slate-700 pl-3 py-1">
-            <span class="font-bold text-slate-500 text-xs">Age ${l.age}</span>
-            <div class="mt-1 space-y-1">
-                ${l.events.map(e => `<div class="${e.color}">${e.msg}</div>`).join('')}
+        <div class="mb-5 group">
+            <div class="flex items-center mb-2">
+                <div class="bg-slate-800 text-blue-100 text-[10px] uppercase font-bold px-3 py-1 rounded-full border border-slate-600 shadow-sm z-10">
+                    Age ${l.age}
+                </div>
+                <div class="h-px bg-gradient-to-r from-slate-700 to-transparent flex-grow ml-2"></div>
+            </div>
+
+            <div class="pl-4 border-l border-slate-700/50 ml-4 space-y-2 pb-1">
+                ${l.events.map(e => `
+                    <div class="${e.color} text-sm py-0.5 transition-transform duration-200 hover:translate-x-1">
+                        ${e.msg}
+                    </div>
+                `).join('')}
             </div>
         </div>
     `).join('');
@@ -183,6 +193,7 @@ window.renderLifeDashboard = (maybeGameState) => {
     //Define Action Variables
     const ageUpText = "Age Up +";
 
+    //Define the Final HTML String
     //Define the Final HTML String
     const dashboardHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
@@ -192,19 +203,34 @@ window.renderLifeDashboard = (maybeGameState) => {
                     ${logHtml.length > 0 ? logHtml : '<div class="text-slate-600 text-sm italic">Life has just begun...</div>'}
                 </div>
             </div>
-            <div class="grid grid-cols-3 gap-2 pt-2 h-20">
+            
+            <div class="grid grid-cols-5 gap-2 pt-2 h-20">
+                
                 <button onclick="renderAssets()" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700">
                     <i class="fas fa-home mb-1 text-xl text-yellow-400"></i>
                     <span class="text-[10px] uppercase tracking-wider">Assets</span>
                 </button>
+                
                 <button onclick="renderActivities()" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700">
                     <i class="fas fa-user-graduate mb-1 text-xl text-blue-400"></i>
-                    <span class="text-[10px] uppercase tracking-wider">Occupation</span>
+                    <span class="text-[10px] uppercase tracking-wider">Work</span>
                 </button>
+                
                 <button onclick="ageUp()" class="btn-primary text-white font-bold rounded-xl shadow-lg flex flex-col items-center justify-center">
                     <i class="fas fa-arrow-up mb-1 text-xl"></i>
                     <span class="text-[10px] uppercase tracking-wider">${ageUpText}</span>
                 </button>
+
+                <button onclick="window.UI.showModal('Coming Soon', 'This section is under construction.')" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700">
+                    <i class="fas fa-users mb-1 text-xl text-pink-400"></i>
+                    <span class="text-[10px] uppercase tracking-wider">Relationships</span>
+                </button>
+
+                <button onclick="window.UI.showModal('Coming Soon', 'This section is under construction.')" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700">
+                    <i class="fas fa-ellipsis-h mb-1 text-xl text-slate-400"></i>
+                    <span class="text-[10px] uppercase tracking-wider">More</span>
+                </button>
+
             </div>
         </div>
     `;
