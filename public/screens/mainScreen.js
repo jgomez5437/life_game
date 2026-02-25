@@ -221,7 +221,7 @@ window.renderLifeDashboard = (maybeGameState) => {
                     <span class="text-[10px] uppercase tracking-wider">${ageUpText}</span>
                 </button>
 
-                <button onclick="renderRelationships()" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700">
+                <button onclick="window.UI.showModal('Coming Soon', 'This section is under construction.')" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700">
                     <i class="fas fa-users mb-1 text-xl text-pink-400"></i>
                     <span class="text-[10px] uppercase tracking-wider">Relationships</span>
                 </button>
