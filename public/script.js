@@ -144,7 +144,10 @@ function updateGameInfo(dbUser) {
             hasSeenJobSalary: savedUser.hasSeenJobSalary || false,
 
             // --- ASSETS ---
-            assets: savedUser.assets || []
+            assets: savedUser.assets || [],
+
+            // --- RELATIONSHIPS ---
+            relationships: savedUser.relationships || []
         },
         
         // --- ASSETS & HISTORY ---
@@ -201,7 +204,10 @@ window.loadAndRenderGame = (userData) => {
             companyName: userData.companyName || null,
             ceoSalary: userData.ceoSalary || 0,
             lifeStatus: userData.life_status || "Baby",
-            assets: userData.assets || []
+            assets: userData.assets || [],
+
+            // --- RELATIONSHIPS ---
+            relationships: userData.relationships || []
         },
         lifeLog: [{ age: 0, events: [{ msg: "Game Loaded.", color: "text-white" }] }]    
     };
