@@ -213,7 +213,7 @@ window.renderLifeDashboard = (maybeGameState) => {
                 
                 <button onclick="renderActivities()" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700">
                     <i class="fas fa-user-graduate mb-1 text-xl text-blue-400"></i>
-                    <span class="text-[10px] uppercase tracking-wider">Occupation</span>
+                    <span class="text-[10px] uppercase tracking-wider">Work</span>
                 </button>
                 
                 <button onclick="ageUp()" class="btn-primary text-white font-bold rounded-xl shadow-lg flex flex-col items-center justify-center">
@@ -223,7 +223,7 @@ window.renderLifeDashboard = (maybeGameState) => {
 
                 <button onclick="renderRelationships()" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700">
                     <i class="fas fa-users mb-1 text-xl text-pink-400"></i>
-                    <span class="text-[10px] uppercase tracking-wider">Relationships</span>
+                    <span class="text-[10px] uppercase tracking-wider">Social</span>
                 </button>
 
                 <button onclick="window.UI.showModal('Coming Soon', 'This section is under construction.')" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700">
