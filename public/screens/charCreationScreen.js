@@ -95,7 +95,8 @@ async function submitCharacter() {
                     email: user.email,
                     username: finalName,
                     gender: gender,
-                    city: city
+                    city: city,
+                    relationships: startingFamily
                 })
             });
             if (!response.ok) throw new Error('API Login Failed');

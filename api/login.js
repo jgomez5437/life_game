@@ -29,7 +29,7 @@ export default async function handler(request, response) {
             gender: gender,
             city: city,
             assets: [],
-
+            relationships: [],
             // ✅ FIX: Store it as an Object Array, not a String Array
             history: [
                 { 
