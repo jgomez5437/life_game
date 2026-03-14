@@ -16,7 +16,6 @@ export default async function handler(request, response) {
     }
 
     // 4. The "UPSERT" Query
-    // This looks complex, but it just means: "Try to insert. If ID exists, update instead."
     await sql`
       INSERT INTO users (auth0_id, email, game_data, last_played_at)
       VALUES (${auth0_id}, ${email}, ${game_data}, NOW())
