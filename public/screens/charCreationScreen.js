@@ -38,8 +38,8 @@ window.renderCharCreation = () => {
     }
 
 function selectGender(g) {
-    selectedGender = g
-    console.log(selectedGender)
+    selectedGender = g;
+    console.log(selectedGender);
     if(g === 'male') {
         get('btn-male').className = "p-3 rounded border border-blue-500 bg-blue-900/30 text-blue-200";
         get('btn-female').className = "p-3 rounded border border-slate-600 bg-slate-900 text-slate-400";
@@ -47,8 +47,7 @@ function selectGender(g) {
         get('btn-male').className = "p-3 rounded border border-slate-600 bg-slate-900 text-slate-400";
         get('btn-female').className = "p-3 rounded border border-pink-500 bg-pink-900/30 text-pink-200";
     } 
-
-};
+}
 
 async function submitCharacter() {
     // 1. Safely check for user
@@ -63,16 +62,27 @@ async function submitCharacter() {
     if (!validation.isValid) {
         window.UI.showModal("Wait", validation.error);
         return;
-    };
+    }
     
     const finalName = validation.cleanedName;
     if (!finalName) return;
+
+    // Extract Last Name for Family Generation
+    const nameParts = finalName.trim().split(' ');
+    const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : finalName;
     
     const gender = selectedGender;
     const city = get('inp-city').value;
 
-    // We declare this outside so both "Guest" and "User" logic can fill it
-    let userData; 
+    // === 1. GENERATE LOCAL ARRAY (DO NOT MUTATE STATE YET) ===
+    let startingFamily = [];
+    if (window.FamilyFactory) {
+        startingFamily = window.FamilyFactory.generateFamily(lastName);
+    } else {
+        console.error("FamilyFactory is not loaded. Relationships array will be empty.");
+    }
+
+    let userData;
 
     try {
         // === IF USER IS LOGGED IN ===
@@ -90,36 +100,33 @@ async function submitCharacter() {
             });
             if (!response.ok) throw new Error('API Login Failed');
             
-            // Get data from Database
             userData = await response.json(); 
+            userData.relationships = startingFamily; // Inject before update
             window.updateGameInfo(userData);
-            window.renderLifeDashboard(window.gameState);
         } 
-        
-        // === IF GUEST (Band-Aid Fix) ===
+        // === IF GUEST ===
         else {
-            // Manually build the object that your DB normally sends back
-            // vital: Make sure this structure matches your DB columns/response exactly!
             userData = {
                 username: finalName,
                 gender: gender,
                 city: city,
-                // Add default starting stats here manually since the server isn't doing it
                 stats: { 
                     health: 100, 
                     money: 0 
                 },
-                is_guest: true
+                is_guest: true,
+                relationships: startingFamily // Inject before load
             };
             window.loadAndRenderGame(userData);
-            window.renderLifeDashboard(window.gameState);
         }
 
-        // === COMMON GAME START ===
-        // This now works for both because userData is guaranteed to exist
+        // Render the UI only after all state has been initialized
+        // Note: updateGameInfo/loadAndRenderGame should be responsible for calling this, 
+        // but if left here, it will execute after gameState exists.
+        window.renderLifeDashboard(window.gameState);
 
     } catch (error) {
         console.error("Creation failed", error);
         window.UI.showModal("Error", "Failed to create character.");
     }
-};
+}

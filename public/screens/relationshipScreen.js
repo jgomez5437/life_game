@@ -1,24 +1,51 @@
+// --- ADD NEW RELATIONSHIP GLOBAL METHOD ---
+// Call this function when befriending someone at school, work, etc.
+window.addNewRelationship = (name, age, type, status, category = 'friend') => {
+    const user = window.gameState.user;
+    if (!user.relationships) user.relationships = [];
+
+    // Auto-categorize non-relatives immediately upon creation
+    let finalCategory = category;
+    let finalType = type;
+    
+    if (!['family', 'spouse', 'child'].includes(finalCategory)) {
+        if (status < 30) {
+            finalCategory = 'enemy';
+            finalType = 'Enemy';
+        } else {
+            finalCategory = 'friend';
+            if (finalType === 'Enemy') finalType = 'Friend';
+        }
+    }
+
+    const newPerson = {
+        // Use crypto for unique IDs to prevent rendering collisions
+        id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'rel_' + Date.now() + Math.floor(Math.random() * 1000),
+        name: name,
+        age: age,
+        type: finalType,
+        status: status,
+        category: finalCategory
+    };
+
+    user.relationships.push(newPerson);
+    return newPerson;
+};
+
+// --- RENDER SCREEN ---
 window.renderRelationships = () => {
     const user = window.gameState.user;
 
-    // --- 1. DATA PREP (Mock Data if none exists) ---
-    // If user.relationships doesn't exist, let's create some dummy data for testing
-    if (!user.relationships) {
-        user.relationships = [
-            { id: 1, name: "Maria", age: 34, type: "Mother", status: 90, category: "family" },
-            { id: 2, name: "John", age: 36, type: "Father", status: 85, category: "family" },
-            { id: 3, name: "Sarah", age: 8, type: "Sister", status: 60, category: "family" },
-            { id: 4, name: "Mike", age: 12, type: "Friend", status: 75, category: "friend" },
-            { id: 5, name: "Bully Bob", age: 13, type: "Enemy", status: 10, category: "enemy" }
-        ];
+if (!user.relationships) {
+        user.relationships = [];
     }
 
-    // Filter by category
+    // Filter by category directly from state
     const family = user.relationships.filter(r => r.category === 'family' || r.category === 'spouse' || r.category === 'child');
     const friends = user.relationships.filter(r => r.category === 'friend');
     const enemies = user.relationships.filter(r => r.category === 'enemy');
 
-    // --- 2. HELPER: Generate Card HTML ---
+    // --- HELPER: Generate Card HTML ---
     const getPersonCard = (person) => {
         // A. Determine Wellness Bar Color
         let barColor = 'bg-green-500';
@@ -31,8 +58,8 @@ window.renderRelationships = () => {
         else if (person.category === 'enemy') icon = 'fa-angry text-red-400';
         else if (person.category === 'child') icon = 'fa-baby text-blue-300';
 
-        // C. Determine Badge Style (The Fix for Readability)
-        let badgeStyle = "bg-slate-600 text-slate-100 border-slate-500"; // Default
+        // C. Determine Badge Style
+        let badgeStyle = "bg-slate-600 text-slate-100 border-slate-500"; 
         
         if (['family', 'spouse', 'child'].includes(person.category)) {
             badgeStyle = "bg-blue-600 text-white border-blue-400 shadow-sm shadow-blue-900/20"; 
@@ -43,7 +70,7 @@ window.renderRelationships = () => {
         }
 
         return `
-            <div onclick="openPersonOptions(${person.id})" class="bg-slate-800 p-3 rounded-xl border border-slate-700 mb-3 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition flex items-center justify-between group">
+            <div onclick="openPersonOptions('${person.id}')" class="bg-slate-800 p-3 rounded-xl border border-slate-700 mb-3 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition flex items-center justify-between group">
                 <div class="flex items-center gap-4">
                     <div class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-slate-400 group-hover:bg-slate-600 transition border border-slate-600">
                         <i class="fas ${icon}"></i>
@@ -71,7 +98,7 @@ window.renderRelationships = () => {
         `;
     };
 
-    // --- 3. BUILD SECTIONS ---
+    // --- BUILD SECTIONS ---
     let content = '';
 
     // A. Family Section
@@ -94,7 +121,7 @@ window.renderRelationships = () => {
         content += enemies.map(p => getPersonCard(p)).join('');
     }
 
-    // --- 4. RENDER TO DOM ---
+    // --- RENDER TO DOM ---
     const container = document.getElementById('game-container');
     container.innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
@@ -124,7 +151,6 @@ window.renderPersonInteraction = (id) => {
     const person = user.relationships.find(r => r.id === id);
     if (!person) return;
 
-    // Interaction definitions (order matters for actionIndex)
     const interactions = [
         { name: 'Spend Time', key: 'spend_time', statusChange: 15, cost: 0, icon: 'fa-clock', desc: 'Spend quality time together' },
         { name: 'Give Money', key: 'give_money', statusChange: 10, cost: 500, icon: 'fa-money-bill', desc: 'Give a monetary gift' },
@@ -138,7 +164,7 @@ window.renderPersonInteraction = (id) => {
         const disabledAttr = canAfford ? '' : 'disabled';
         const btnClass = canAfford ? 'bg-slate-800 hover:bg-slate-750' : 'bg-slate-700 text-slate-500 cursor-not-allowed';
         return `
-            <button ${disabledAttr} onclick="openRelationshipConfirm(${person.id}, ${i})" class="w-full p-3 rounded-xl border border-slate-700 mb-3 ${btnClass} flex items-center gap-3">
+            <button ${disabledAttr} onclick="openRelationshipConfirm('${person.id}', ${i})" class="w-full p-3 rounded-xl border border-slate-700 mb-3 ${btnClass} flex items-center gap-3">
                 <div class="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center text-lg">
                     <i class="fas ${it.icon} text-slate-400"></i>
                 </div>
@@ -151,13 +177,11 @@ window.renderPersonInteraction = (id) => {
         `;
     }).join('');
 
-    // badge style
     let badgeStyle = "bg-slate-600 text-slate-100 border-slate-500";
     if (['family', 'spouse', 'child'].includes(person.category)) badgeStyle = "bg-blue-600 text-white border-blue-400";
     else if (person.category === 'friend') badgeStyle = "bg-emerald-600 text-white border-emerald-400";
     else if (person.category === 'enemy') badgeStyle = "bg-red-600 text-white border-red-400";
 
-    // status bar color
     let barColor = 'bg-green-500';
     if (person.status < 30) barColor = 'bg-red-500';
     else if (person.status < 60) barColor = 'bg-yellow-500';
@@ -216,9 +240,7 @@ window.openRelationshipConfirm = (personId, actionIndex) => {
     const message = `<div class="text-sm text-slate-300 mb-4">Are you sure you want to <strong>${action.name}</strong> ${person.name}?` +
         (action.cost ? `<div class="mt-2 text-xs text-slate-400">This will cost ${window.Utils.formatMoney(action.cost)}</div>` : '') + `</div>`;
 
-    // Use UI.showConfirm (added to ui.js) to present confirm/cancel
     window.UI.showConfirm(action.name, message, action.name, () => {
-        // on confirm
         performRelationshipAction(personId, actionIndex);
     });
 };
@@ -228,7 +250,7 @@ window.openPersonOptions = (id) => {
     window.renderPersonInteraction(id);
 };
 
-// --- PERFORM ACTION ---
+// --- PERFORM ACTION & SHIFT CATEGORY ---
 window.performRelationshipAction = (personId, actionIndex) => {
     const user = window.gameState.user;
     const person = user.relationships.find(r => r.id === personId);
@@ -258,6 +280,19 @@ window.performRelationshipAction = (personId, actionIndex) => {
     const prev = person.status || 0;
     person.status = Math.max(0, Math.min(100, prev + action.statusChange));
     const delta = person.status - prev;
+
+    // --- NON-RELATIVE CATEGORY SHIFT LOGIC ---
+    if (!['family', 'spouse', 'child'].includes(person.category)) {
+        if (person.status < 30 && person.category !== 'enemy') {
+            person.category = 'enemy';
+            person.type = 'Enemy';
+            window.addLog(`${person.name} is now your Enemy!`, 'bad');
+        } else if (person.status >= 30 && person.category === 'enemy') {
+            person.category = 'friend';
+            person.type = 'Friend';
+            window.addLog(`You made amends with ${person.name}. They are now a Friend.`, 'good');
+        }
+    }
 
     // Log
     const color = delta > 0 ? 'good' : delta < 0 ? 'bad' : 'neutral';
