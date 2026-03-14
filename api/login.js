@@ -5,7 +5,8 @@ export default async function handler(request, response) {
         return response.status(405).json({ error: 'Method Not Allowed' });
     }
 
-    const { auth0_id, email, username, gender, city } = request.body;
+    // THE FIX: Destructure 'relationships' from the incoming body
+    const { auth0_id, email, username, gender, city, relationships } = request.body;
 
     if (!auth0_id) {
         return response.status(400).json({ error: 'Missing auth0_id' });
@@ -23,21 +24,20 @@ export default async function handler(request, response) {
         } 
         
         // 2. If new, create them with the JSONB structure
-        // We pack the form data into the 'game_data' column
         const initialGameData = {
             name: username,
             gender: gender,
             city: city,
             assets: [],
-            relationships: [],
-            // ✅ FIX: Store it as an Object Array, not a String Array
+            // THE FIX: Inject the payload array, fallback to empty array if missing
+            relationships: relationships || [], 
             history: [
                 { 
                     age: 0, 
                     events: [{ msg: `Born in ${city}`, color: "text-blue-400" }] 
                 }
             ]
-};
+        };
 
         const insertResult = await sql`
             INSERT INTO users (auth0_id, email, game_data, last_played_at)
