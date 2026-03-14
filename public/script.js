@@ -144,7 +144,10 @@ function updateGameInfo(dbUser) {
             hasSeenJobSalary: savedUser.hasSeenJobSalary || false,
 
             // --- ASSETS ---
-            assets: savedUser.assets || []
+            assets: savedUser.assets || [],
+
+            // --- RELATIONSHIPS ---
+            relationships: savedUser.relationships || []
         },
         
         // --- ASSETS & HISTORY ---
@@ -201,10 +204,33 @@ window.loadAndRenderGame = (userData) => {
             companyName: userData.companyName || null,
             ceoSalary: userData.ceoSalary || 0,
             lifeStatus: userData.life_status || "Baby",
-            assets: userData.assets || []
+            assets: userData.assets || [],
+
+            // --- RELATIONSHIPS ---
+            relationships: userData.relationships || []
         },
         lifeLog: [{ age: 0, events: [{ msg: "Game Loaded.", color: "text-white" }] }]    
     };
+// --- PARENTAGE LOGIC ---
+    const rels = window.gameState.user.relationships;
+    const mother = rels.find(r => r.type === 'Mother');
+    const father = rels.find(r => r.type === 'Father');
+    const siblings = rels.filter(r => r.type === 'Brother' || r.type === 'Sister').length;
+
+    if (mother && father) {
+        window.addLog(`You were born to ${mother.name} (Age ${mother.age}) and ${father.name} (Age ${father.age}).`, 'neutral');
+    } else if (mother) {
+        window.addLog(`You were born to a single mother, ${mother.name} (Age ${mother.age}).`, 'neutral');
+    } else if (father) {
+        window.addLog(`You were born to a single father, ${father.name} (Age ${father.age}).`, 'neutral');
+    } else {
+        window.addLog(`You were born an orphan with no known parents.`, 'bad');
+    }
+
+    if (siblings > 0) {
+        window.addLog(`You have ${siblings} older sibling${siblings > 1 ? 's' : ''}.`, 'neutral');
+    }
+
     //.addLog function contains the renderLifeDashboard call
     window.addLog(`Born in ${userData.city}. Welcome to the world!`, 'good');
 };
