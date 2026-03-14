@@ -1,23 +1,26 @@
 function sanitizeName(rawInput) {
-if (!rawInput) return { isValid: false, error: "Name cannot be empty." };
-
-    // Clean it (Trim spaces)
-    const cleanedName = rawInput.trim().replace(/\s+/g, ' ');
-    const nameRegex = /^[a-zA-Z\s-]+$/;
-
-    // Check Rules
-    if (cleanedName === "") {
-        return { isValid: false, error: "You must enter a name to begin." };
+    if (!rawInput || typeof rawInput !== 'string') {
+        return { isValid: false, error: "Name cannot be empty." };
     }
+
+    const cleanedName = rawInput.trim().replace(/\s+/g, ' ');
+    const nameParts = cleanedName.split(' ');
+
+    if (nameParts.length < 2) {
+        return { isValid: false, error: "You must enter both a first and last name." };
+    }
+
     if (cleanedName.length > 25) {
         return { isValid: false, error: "Keep the name to 25 characters or less." };
     }
-    if (!nameRegex.test(cleanedName)) {
-        return { isValid: false, error: "Name can only contain letters, spaces, and hyphens." };
+
+    const validFormatRegex = /^[A-Za-z]+(?:[- ][A-Za-z]+)*$/;
+
+    if (!validFormatRegex.test(cleanedName)) {
+        return { isValid: false, error: "Name can only contain letters, spaces, and single hyphens. Cannot start or end with a hyphen." };
     }
 
-    // Success!
-    return { isValid: true, cleanedName: cleanedName };
+    return { isValid: true, cleanedName };
 }
 
 function addLivingExpenses(age, currentlyStudent) {
