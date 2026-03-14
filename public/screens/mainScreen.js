@@ -13,6 +13,7 @@ function ageUp() {
     handleEducation(user);
     handleMarket(user);
     handleLifeEvents(user);
+    handleRelationships(user);
 
     // 3. Cleanup & Render
     checkSchoolActionTaken(user); // Reset flags
@@ -145,6 +146,18 @@ function handleLifeEvents(user) {
          addLog("Unemployed. Savings are dwindling.", 'bad');
     }
 }
+
+function handleRelationships(user) {
+    // Guard clause prevents crashes if the array is missing or malformed
+    if (!user.relationships || !Array.isArray(user.relationships)) return;
+    
+    user.relationships.forEach(rel => {
+        rel.age++;
+        // Note: Future relationship logic (e.g., passive relationship decay, 
+        // relatives passing away from old age) should be added inside this loop.
+    });
+}
+
 //Define the rendering function globally so script.js can call it.
 window.renderLifeDashboard = (maybeGameState) => {
     // --- Data Preparation ---
