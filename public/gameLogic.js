@@ -164,6 +164,61 @@ function updateOwnedVehicles(user, marketForce) {
     });
 }
 
+const MORTALITY_RATES = [
+    { maxAge: 0, rate: 0.005, causes: ["complications at birth.", "SIDS."] },
+    { maxAge: 15, rate: 0.0001, causes: ["a tragic childhood accident.", "a rare illness."] },
+    { maxAge: 25, rate: 0.001, causes: ["a fatal car crash.", "a reckless accident."] },
+    { maxAge: 50, rate: 0.002, causes: ["an unforeseen medical emergency.", "a workplace accident."] },
+    { maxAge: 70, rate: 0.01, causes: ["a sudden heart attack.", "cancer."] },
+    { maxAge: 90, rate: 0.05, causes: ["a stroke.", "natural causes."] },
+    { maxAge: 110, rate: 0.15, causes: ["old age.", "organ failure."] },
+    { maxAge: Infinity, rate: 1.0, causes: ["extreme old age."] }
+];
+function checkMortality(age, health = 100) {
+    const bracket = MORTALITY_RATES.find(b => age <= b.maxAge);
+    let chance = bracket.rate;
+
+    // Health Modifier: Scales risk up to 300% if health is critically low (< 30)
+    if (health < 30) {
+        const penaltyMultiplier = 1 + ((30 - Math.max(0, health)) / 10);
+        chance *= penaltyMultiplier;
+    }
+
+    if (Math.random() < chance) {
+        const cause = bracket.causes[Math.floor(Math.random() * bracket.causes.length)];
+        return { isDead: true, cause };
+    }
+    
+    return { isDead: false };
+}
+
+
+
+/**
+ * Calculates base biological health decay per year.
+ * @param {number} age - Current player age.
+ * @param {number} [roll=Math.random()] - Injected randomness for pure unit testing (0.0 to 0.999).
+ * @returns {number} Health points to deduct.
+ */
+function calculateHealthDecay(age, roll = Math.random()) {
+    if (age <= 18) {
+        return roll < 0.10 ? 1 : 0;
+    } else if (age <= 30) {
+        return roll < 0.30 ? 1 : 0;
+    } else if (age <= 50) {
+        // 20% chance for 2 decay, 80% chance for 1 decay
+        return roll < 0.20 ? 2 : 1;
+    } else if (age <= 70) {
+        // Uniform distribution: 1, 2, or 3
+        return Math.floor(roll * 3) + 1; 
+    } else {
+        // Extreme Old Age: 2, 3, or 4
+        return Math.floor(roll * 3) + 2; 
+    }
+}
+
+// Ensure it is exported or attached to your global GameLogic object
+// window.GameLogic.calculateHealthDecay = calculateHealthDecay;
 
 const GameLogic = {
     sanitizeName,
@@ -174,7 +229,9 @@ const GameLogic = {
     checkLifeStatus,
     getVehicleIcon,
     simulateVehicleMarket,
-    updateOwnedVehicles
+    updateOwnedVehicles,
+    checkMortality,
+    calculateHealthDecay
 };
 
 if (typeof module !== 'undefined' && module.exports) {
