@@ -5,10 +5,21 @@
 function ageUp() {
     const user = window.gameState.user;
     
+    // 1. Mortality Check (Execute BEFORE age modification)
+    // Safely fallback to 100 if stats object is missing on older save files
+    const currentHealth = user.stats?.health ?? 100; 
+    const deathCheck = window.GameLogic.checkMortality(user.age, currentHealth);
+    
+    if (deathCheck.isDead) {
+        handleDeath(user, deathCheck.cause);
+        return; // Terminate pipeline
+    }
+
     // 1. The Core Update
     user.age++;
 
     // 2. Run The Sub-Systems
+    handleHealth(user);
     handleFinances(user);
     handleEducation(user);
     handleMarket(user);
@@ -24,6 +35,146 @@ function ageUp() {
     // Auto Save
     if (typeof window.saveGame === "function") {
         window.saveGame();
+    }
+}
+
+function handleDeath(user, cause) {
+    user.lifeStatus = "Deceased";
+    window.addLog(`You died at age ${user.age} from ${cause}`, 'bad');
+    
+    // Auto-save the death state before transitioning
+    if (typeof window.saveGame === "function") {
+        window.saveGame();
+    }
+    
+    renderDeathScreen(user, cause);
+}
+//
+function renderDeathScreen(user, cause) {
+    // 1. Calculate Inheritance
+    const children = user.relationships.filter(r => r.type === 'Son' || r.type === 'Daughter');
+    const hasChildren = children.length > 0;
+    
+    // Liquidate assets into net worth before splitting
+    const assetValue = user.assets ? user.assets.reduce((sum, a) => sum + (a.value || 0), 0) : 0;
+    const totalEstate = user.money + assetValue;
+    
+    // Prevent debt from being inherited
+    const inheritancePerChild = (hasChildren && totalEstate > 0) ? Math.floor(totalEstate / children.length) : 0;
+
+    // 2. Build Estate Messaging
+    let estateMessage = '';
+    const moneyColorClass = totalEstate >= 0 ? 'text-green-400' : 'text-red-500';
+
+    if (totalEstate < 0) {
+        if (hasChildren) {
+            estateMessage = `<p class="text-slate-300 text-sm mb-4">You died in debt. Creditors seized the estate, leaving your ${children.length} children with nothing.</p>`;
+        } else {
+            estateMessage = `<p class="text-slate-400 text-sm mb-4 italic">You died in debt. Your creditors absorbed the loss.</p>`;
+        }
+    } else {
+        if (hasChildren) {
+            estateMessage = `<p class="text-slate-300 text-sm mb-4">Wealth split evenly among ${children.length} children<br><span class="text-green-400 font-bold">+$${inheritancePerChild.toLocaleString()} each</span></p>`;
+        } else {
+            estateMessage = `<p class="text-slate-400 text-sm mb-4 italic">Having no heirs, your estate was surrendered to the government.</p>`;
+        }
+    }
+
+    // 3. Build Child Selection UI
+    let childrenOptionsHtml = '';
+    if (hasChildren) {
+        childrenOptionsHtml = children.map((child, index) => `
+            <button onclick="continueAsChild(${index}, ${inheritancePerChild})" class="w-full btn-nav text-white font-bold py-3 rounded-xl mb-2 shadow hover:bg-slate-700 transition">
+                Play as ${child.name} (Age ${child.age})
+            </button>
+        `).join('');
+    }
+
+    // 4. Render Terminal Screen
+    const deathHTML = `
+        <div class="fade-in max-w-md mx-auto h-full flex flex-col justify-center items-center text-center px-4">
+            <i class="fas fa-skull text-6xl text-slate-500 mb-6"></i>
+            <h1 class="text-4xl font-bold text-red-500 mb-2">You Died</h1>
+            <p class="text-slate-300 text-lg mb-6">Age ${user.age} • Cause: ${cause}</p>
+            
+            <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 w-full mb-6 shadow-2xl">
+                <h3 class="text-xl font-bold text-slate-400 mb-2 uppercase tracking-wider text-sm">Final Estate Value</h3>
+                <p class="${moneyColorClass} text-3xl font-bold mb-4">${window.Utils ? window.Utils.formatMoney(totalEstate) : '$' + totalEstate.toLocaleString()}</p>
+                ${estateMessage}
+            </div>
+
+            <div class="w-full space-y-3">
+                ${childrenOptionsHtml}
+                <button onclick="window.renderCharCreation()" class="w-full btn-primary text-white font-bold py-4 rounded-xl text-lg mt-4 shadow-lg">
+                    Start New Life
+                </button>
+            </div>
+        </div>
+    `;
+    
+    window.UI.renderScreen(deathHTML);
+}
+//allows user to continue as their child, implements
+window.continueAsChild = (childIndex, inheritedMoney) => {
+    const parentState = window.gameState.user;
+    const children = parentState.relationships.filter(r => r.type === 'Son' || r.type === 'Daughter');
+    const selectedChild = children[childIndex];
+
+    // 1. Deep wipe and reconstruct user state
+    const newUserState = {
+        username: selectedChild.name,
+        gender: selectedChild.type === 'Son' ? 'male' : 'female',
+        city: parentState.city, // Inherits physical location
+        age: selectedChild.age,
+        money: inheritedMoney,
+        health: 100,
+        
+        // Reset dynamic flags
+        isStudent: selectedChild.age >= 5 && selectedChild.age <= 18,
+        universityEnrolled: false,
+        universitySchoolYear: 0,
+        universityGraduated: false,
+        major: '',
+        jobTitle: '',
+        jobSalary: 0,
+        jobPerformance: 50,
+        hasBusiness: false,
+        assets: [], 
+        relationships: [] // Legacy relationships are purged to prevent cyclical graphing
+    };
+
+    // Calculate initial life status
+    newUserState.lifeStatus = window.GameLogic.checkLifeStatus(newUserState);
+
+    // 2. Overwrite Single Source of Truth
+    window.gameState.user = newUserState;
+    
+    // 3. Purge and restart Life Log at child's chronological age
+    window.gameState.lifeLog = [{
+        age: newUserState.age,
+        events: [
+            { msg: `You took over the life of ${newUserState.username} following your parent's death.`, color: "text-blue-400 font-bold" },
+            { msg: `Inherited $${inheritedMoney.toLocaleString()} from the estate.`, color: "text-green-400" }
+        ]
+    }];
+
+    // 4. Force cloud sync of the new character state, then mount UI
+    if (typeof window.saveGame === "function") window.saveGame();
+    window.renderLifeDashboard(window.gameState);
+};
+
+function handleHealth(user) {
+    if (typeof user.health !== 'number') user.health = 100;
+    
+    // Call the pure function
+    const decay = window.GameLogic.calculateHealthDecay(user.age);
+
+    // Mutate state with a hard floor of 0
+    user.health = Math.max(0, user.health - decay);
+
+    // Execute UI side-effects
+    if (user.health < 30 && (user.health + decay) >= 30) {
+        window.addLog("Your health has reached a critical low. Your risk of death is severely elevated.", "major");
     }
 }
 

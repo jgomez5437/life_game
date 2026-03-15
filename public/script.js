@@ -104,8 +104,10 @@ function updateGameInfo(dbUser) {
             
             // --- CORE STATS ---
             age: data.stats?.age || savedUser.age || 0,
+            health: data.stats?.health || savedUser.health || 100,
             money: data.money || savedUser.money || 0,
             lifeStatus: savedUser.lifeStatus || "Baby",
+            isDead: savedUser.isDead || false,
 
             // --- EDUCATION (Undergrad) ---
             isStudent: savedUser.isStudent || false,
@@ -172,8 +174,10 @@ window.loadAndRenderGame = (userData) => {
             ...userData,
             money: userData.money || 0,
             age: userData.age || 0,
+            health: userData.health || 100,
             gender: userData.gender || 'male',
             city: userData.city || "New York",
+            isDead: userData.is_dead || false,
             //education
             isStudent: userData.is_student || false,
             universityEnrolled: userData.university_enrolled || false,
@@ -253,7 +257,8 @@ window.saveGame = async function() {
                 salary: window.gameState.user.jobSalary 
             },
             stats: {
-                age: window.gameState.user.age
+                age: window.gameState.user.age,
+                health: window.gameState.user.health
             }
         }
     };
