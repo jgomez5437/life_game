@@ -8,19 +8,19 @@ export default async function handler(request, response) {
     const apiKey = process.env.GEMINI_API_KEY; // Must be set in Vercel dashboard
 
     const prompt = `You are writing a biographical summary for a life simulation game character named ${username}.
-    
+
     STRICT REQUIREMENTS:
     - Write EXACTLY 3 sentences.
-    - Each sentence must be between 14 and 20 words.
+    - Each sentence must be between 8 and 16 words.
     - Use specific details from the life events (career, milestones, cause of death).
     - Do NOT be vague, generic, or overly brief.
     - Do NOT use bullet points or lists.
     - Do NOT cut off mid-sentence.
-    
+
     STYLE:
     - Tone should be slightly cynical, reflective, and a bit darkly humorous.
     - Write as if summarizing a flawed but human life.
-    
+
     OUTPUT FORMAT:
     - One single paragraph of exactly 3 complete sentences.
     
@@ -34,7 +34,7 @@ export default async function handler(request, response) {
             body: JSON.stringify({
                 contents: [{ parts: [{ text: prompt }] }],
                 generationConfig: { 
-                    maxOutputTokens: 800, 
+                    maxOutputTokens: 1000, 
                     temperature: 0.7 
                 },
 
