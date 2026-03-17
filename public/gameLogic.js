@@ -217,8 +217,22 @@ function calculateHealthDecay(age, roll = Math.random()) {
     }
 }
 
-// Ensure it is exported or attached to your global GameLogic object
-// window.GameLogic.calculateHealthDecay = calculateHealthDecay;
+// Add to gameLogic.js
+function compressLifeLog(lifeLog) {
+    return lifeLog
+        .map(year => {
+            // Filter out fluff and map to plain text
+            const significantEvents = year.events
+                .filter(e => e.msg !== "You didn't do much all year.")
+                .map(e => e.msg)
+                .join(" ");
+            
+            // Only return years where things actually happened
+            return significantEvents ? `Age ${year.age}: ${significantEvents}` : null;
+        })
+        .filter(Boolean) // Remove nulls
+        .join("\n");
+};
 
 const GameLogic = {
     sanitizeName,
@@ -231,7 +245,8 @@ const GameLogic = {
     simulateVehicleMarket,
     updateOwnedVehicles,
     checkMortality,
-    calculateHealthDecay
+    calculateHealthDecay,
+    compressLifeLog
 };
 
 if (typeof module !== 'undefined' && module.exports) {
