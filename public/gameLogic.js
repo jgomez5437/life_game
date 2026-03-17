@@ -217,20 +217,28 @@ function calculateHealthDecay(age, roll = Math.random()) {
     }
 }
 
-// Add to gameLogic.js
-function compressLifeLog(lifeLog) {
-    return lifeLog
+window.GameLogic.compressLifeLog = function(lifeLog) {
+    // 1. Create a shallow copy and reverse it to true chronological order (Birth -> Death)
+    const chronologicalLog = [...lifeLog].reverse();
+
+    return chronologicalLog
         .map(year => {
-            // Filter out fluff and map to plain text
+            // 2. Filter out UI fluff and annual spam loops
             const significantEvents = year.events
-                .filter(e => e.msg !== "You didn't do much all year.")
+                .filter(e => {
+                    const msg = e.msg;
+                    if (msg === "You didn't do much all year.") return false;
+                    if (msg.startsWith("Earned $")) return false; // Ignore annual salary
+                    if (msg.includes("basic living expenses")) return false; // Ignore annual expenses
+                    if (msg.includes("Completed year")) return false; // Ignore mid-degree updates
+                    return true;
+                })
                 .map(e => e.msg)
                 .join(" ");
             
-            // Only return years where things actually happened
             return significantEvents ? `Age ${year.age}: ${significantEvents}` : null;
         })
-        .filter(Boolean) // Remove nulls
+        .filter(Boolean) // Remove years that are now empty after filtering
         .join("\n");
 };
 
