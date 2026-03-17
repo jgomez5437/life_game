@@ -24,13 +24,15 @@ export default async function handler(request, response) {
         } 
         
         // 2. If new, create them with the JSONB structure
-        const initialGameData = {
+      const initialGameData = {
             name: username,
             gender: gender,
             city: city,
             assets: [],
-            // THE FIX: Inject the payload array, fallback to empty array if missing
             relationships: relationships || [], 
+            stats: {
+                health: 100
+            },
             history: [
                 { 
                     age: 0, 
