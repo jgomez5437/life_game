@@ -14,12 +14,22 @@ export default async function handler(request, response) {
     ${compressedLog}`;
 
     try {
-        const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+       const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: { maxOutputTokens: 150, temperature: 0.7 }
+                generationConfig: { 
+                    maxOutputTokens: 250, // Bumped slightly to guarantee headroom
+                    temperature: 0.7 
+                },
+                // THE FIX: Override default safety blocks for fictional game events
+                safetySettings: [
+                    { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+                    { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+                    { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+                    { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" }
+                ]
             })
         });
 
