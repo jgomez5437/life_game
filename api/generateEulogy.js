@@ -20,10 +20,10 @@ export default async function handler(request, response) {
             body: JSON.stringify({
                 contents: [{ parts: [{ text: prompt }] }],
                 generationConfig: { 
-                    maxOutputTokens: 250, // Bumped slightly to guarantee headroom
+                    maxOutputTokens: 250, 
                     temperature: 0.7 
                 },
-                // THE FIX: Override default safety blocks for fictional game events
+
                 safetySettings: [
                     { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
                     { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
@@ -36,6 +36,7 @@ export default async function handler(request, response) {
         const data = await geminiRes.json();
         const eulogy = data.candidates[0].content.parts[0].text;
         console.log(eulogy);
+        console.log(data.candidates[0].finishReason);
         return response.status(200).json({ eulogy });
     } catch (error) {
         console.error('Gemini API Error:', error);
