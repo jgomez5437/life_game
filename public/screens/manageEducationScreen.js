@@ -92,7 +92,7 @@ function renderEducation() {
     `;
 }
 function checkSchoolActionTaken(user) {
-    if(user.schoolActions === 2) {
+    if(user.schoolActions > 0) {
         user.schoolActions = 0
     }
 }
