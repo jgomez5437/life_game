@@ -35,7 +35,7 @@ export default async function handler(request, response) {
 
         const data = await geminiRes.json();
         const eulogy = data.candidates[0].content.parts[0].text;
-        
+        console.log(eulogy);
         return response.status(200).json({ eulogy });
     } catch (error) {
         console.error('Gemini API Error:', error);
