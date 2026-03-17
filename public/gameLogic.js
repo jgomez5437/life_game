@@ -217,7 +217,7 @@ function calculateHealthDecay(age, roll = Math.random()) {
     }
 }
 
-window.GameLogic.compressLifeLog = function(lifeLog) {
+function compressLifeLog(lifeLog) {
     // 1. Create a shallow copy and reverse it to true chronological order (Birth -> Death)
     const chronologicalLog = [...lifeLog].reverse();
 
