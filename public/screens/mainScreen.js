@@ -3,36 +3,41 @@
 // mainScreen.js
 
 function ageUp() {
-    const user = window.gameState.user;
+    const state = window.gameState;
+    const user = state.user;
     
-    // 1. Mortality Check (Execute BEFORE age modification)
-    // Safely fallback to 100 if stats object is missing on older save files
-    const currentHealth = user.stats?.health ?? 100; 
+    // 1. Mortality Check
+    const currentHealth = user.stats?.health ?? user.health ?? 100; 
     const deathCheck = window.GameLogic.checkMortality(user.age, currentHealth);
     
     if (deathCheck.isDead) {
         handleDeath(user, deathCheck.cause);
-        return; // Terminate pipeline
+        return; 
     }
 
-    // 1. The Core Update
+    // 2. The Core Update
     user.age++;
 
-    // 2. Run The Sub-Systems
+    // 3. Run The Sub-Systems
     handleHealth(user);
     handleFinances(user);
     handleEducation(user);
     handleMarket(user);
     handleLifeEvents(user);
-    handleRelationships(user);
+    handleRelationships(user); 
 
-    // 3. Cleanup & Render
-    checkSchoolActionTaken(user); // Reset flags
-    checkActionTaken();           // Reset flags
+    // 4. Empty Year Validation (The Fix)
+    const currentAgeLog = state.lifeLog.find(l => l.age === user.age);
+    if (!currentAgeLog || currentAgeLog.events.length === 0) {
+        window.addLog("You didn't do much all year.", 'neutral');
+    }
+
+    // 5. Cleanup & Render
+    checkSchoolActionTaken(user);
+    checkActionTaken();          
     
-    window.renderLifeDashboard(window.gameState);
+    window.renderLifeDashboard(state);
     
-    // Auto Save
     if (typeof window.saveGame === "function") {
         window.saveGame();
     }
@@ -239,6 +244,8 @@ function handleEducation(user) {
             user.isStudent = false;
             user.universityGraduated = true;
             addLog(`You finished University with a degree in ${user.major}.`, 'good');
+        } else {
+            addLog(`Completed year ${user.universitySchoolYear} of University.`, 'neutral');
         }
     }
 
