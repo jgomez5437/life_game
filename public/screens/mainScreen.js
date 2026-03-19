@@ -111,10 +111,9 @@ window.renderDeathScreen = async function(user, cause) {
                 <p class="${moneyColorClass} text-3xl font-bold mb-4">${window.Utils ? window.Utils.formatMoney(totalEstate) : '$' + totalEstate.toLocaleString()}</p>
                 ${estateMessage}
             </div>
-
             <div class="w-full space-y-3">
                 ${childrenOptionsHtml}
-                <button onclick="window.renderCharCreation()" class="w-full btn-primary text-white font-bold py-4 rounded-xl text-lg mt-4 shadow-lg">
+                <button onclick="window.resetGame()" class="w-full btn-primary text-white font-bold py-4 rounded-xl text-lg mt-4 shadow-lg">
                     Start New Life
                 </button>
             </div>
