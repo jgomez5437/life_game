@@ -321,7 +321,7 @@ function handleLifeEvents(user) {
     
     // Random Events
     else if (user.age < 18 && user.age > 5) {
-        if (user.age === 16) addLog("Legal working age reached.", 'neutral');
+        if (user.age === 15) addLog("Legal working age reached.", 'neutral');
         
         const roll = Math.random();
         if (roll < 0.2) {
@@ -333,7 +333,7 @@ function handleLifeEvents(user) {
         }
     } 
     // Adult Empty State
-    else if (!user.highSchoolRetained && !user.jobTitle && !user.hasBusiness && !user.universityEnrolled && user.age >= 18) {
+    else if (!user.highSchoolRetained && !user.jobTitle && !user.hasBusiness && !user.universityEnrolled && user.age >= 18 && user.age < 65) {
          addLog("Unemployed. Savings are dwindling.", 'bad');
     }
 }
