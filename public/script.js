@@ -156,7 +156,13 @@ function updateGameInfo(dbUser) {
         lifeLog: cleanHistory
     };
     // 5. Render
-    if (typeof window.renderLifeDashboard === "function") {
+   if (window.gameState.user.lifeStatus === "Deceased") {
+        console.log("Dead character detected. Locking to death screen.");
+        const cause = window.gameState.user.deathCause || "natural causes";
+        if (typeof window.renderDeathScreen === "function") {
+            window.renderDeathScreen(window.gameState.user, cause);
+        }
+    } else if (typeof window.renderLifeDashboard === "function") {
         window.renderLifeDashboard(); 
     } else {
         console.error("❌ renderLifeDashboard function not found!");
@@ -337,14 +343,26 @@ async function initGame() {
         console.log("Guest mode detected.");
         const guestSave = window.Utils.guestStorage.loadGame();
         
-        if (guestSave) {
-            // Guest has a saved game - load it
-            console.log("Loading guest save from local storage...");
-            window.gameState = guestSave;
-            if (typeof window.renderLifeDashboard === "function") {
-                window.renderLifeDashboard();
+    if (guestSave) {
+            // THE FIX: Intercept and destroy dead guest saves
+            if (guestSave.user && guestSave.user.lifeStatus === "Deceased") {
+                console.log("Guest character is dead. Wiping local save.");
+                
+                // Clear state and overwrite local storage with empty data
+                window.gameState = null;
+                if (window.Utils.guestStorage.saveGame) {
+                    window.Utils.guestStorage.saveGame(); 
+                }
+                
+                window.renderLoginScreen();
             } else {
-                console.error("renderLifeDashboard function not found!");
+                console.log("Loading guest save from local storage...");
+                window.gameState = guestSave;
+                if (typeof window.renderLifeDashboard === "function") {
+                    window.renderLifeDashboard();
+                } else {
+                    console.error("renderLifeDashboard function not found!");
+                }
             }
         } else {
             // No guest save - show login screen

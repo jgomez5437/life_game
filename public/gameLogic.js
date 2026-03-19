@@ -217,8 +217,30 @@ function calculateHealthDecay(age, roll = Math.random()) {
     }
 }
 
-// Ensure it is exported or attached to your global GameLogic object
-// window.GameLogic.calculateHealthDecay = calculateHealthDecay;
+function compressLifeLog(lifeLog) {
+    // 1. Create a shallow copy and reverse it to true chronological order (Birth -> Death)
+    const chronologicalLog = [...lifeLog].reverse();
+
+    return chronologicalLog
+        .map(year => {
+            // 2. Filter out UI fluff and annual spam loops
+            const significantEvents = year.events
+                .filter(e => {
+                    const msg = e.msg;
+                    if (msg === "You didn't do much all year.") return false;
+                    if (msg.startsWith("Earned $")) return false; // Ignore annual salary
+                    if (msg.includes("basic living expenses")) return false; // Ignore annual expenses
+                    if (msg.includes("Completed year")) return false; // Ignore mid-degree updates
+                    return true;
+                })
+                .map(e => e.msg)
+                .join(" ");
+            
+            return significantEvents ? `Age ${year.age}: ${significantEvents}` : null;
+        })
+        .filter(Boolean) // Remove years that are now empty after filtering
+        .join("\n");
+};
 
 const GameLogic = {
     sanitizeName,
@@ -231,7 +253,8 @@ const GameLogic = {
     simulateVehicleMarket,
     updateOwnedVehicles,
     checkMortality,
-    calculateHealthDecay
+    calculateHealthDecay,
+    compressLifeLog
 };
 
 if (typeof module !== 'undefined' && module.exports) {

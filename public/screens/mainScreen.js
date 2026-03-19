@@ -54,8 +54,8 @@ function handleDeath(user, cause) {
     
     renderDeathScreen(user, cause);
 }
-//
-function renderDeathScreen(user, cause) {
+//renders death screen
+window.renderDeathScreen = async function(user, cause) {
     // 1. Calculate Inheritance
     const children = user.relationships.filter(r => r.type === 'Son' || r.type === 'Daughter');
     const hasChildren = children.length > 0;
@@ -95,12 +95,16 @@ function renderDeathScreen(user, cause) {
         `).join('');
     }
 
-    // 4. Render Terminal Screen
+    // 4. Render Terminal Screen with Loading State for Eulogy
     const deathHTML = `
         <div class="fade-in max-w-md mx-auto h-full flex flex-col justify-center items-center text-center px-4">
             <i class="fas fa-skull text-6xl text-slate-500 mb-6"></i>
             <h1 class="text-4xl font-bold text-red-500 mb-2">You Died</h1>
             <p class="text-slate-300 text-lg mb-6">Age ${user.age} • Cause: ${cause}</p>
+            
+            <div id="eulogy-container" class="bg-slate-800 p-6 rounded-xl border border-slate-700 w-full mb-6 shadow-2xl min-h-[100px] flex items-center justify-center">
+                <i class="fas fa-circle-notch fa-spin text-2xl text-slate-400"></i>
+            </div>
             
             <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 w-full mb-6 shadow-2xl">
                 <h3 class="text-xl font-bold text-slate-400 mb-2 uppercase tracking-wider text-sm">Final Estate Value</h3>
@@ -118,6 +122,35 @@ function renderDeathScreen(user, cause) {
     `;
     
     window.UI.renderScreen(deathHTML);
+
+    // 5. Fetch the Eulogy in the background
+    try {
+        const compressedLog = window.GameLogic.compressLifeLog(window.gameState.lifeLog);
+        
+        const response = await fetch('/api/generateEulogy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ compressedLog, username: user.username })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            const eulogyContainer = document.getElementById('eulogy-container');
+            
+            // Remove centering classes so paragraph flows naturally
+            eulogyContainer.classList.remove('items-center', 'justify-center');
+            
+            eulogyContainer.innerHTML = `
+                <h3 class="text-sm font-bold text-slate-400 mb-2 uppercase tracking-wider text-left">Life Summary</h3>
+                <p class="text-slate-300 italic text-sm text-left leading-relaxed">"${data.eulogy}"</p>
+            `;
+        } else {
+            document.getElementById('eulogy-container').style.display = 'none';
+        }
+    } catch (e) {
+        console.error("Failed to fetch eulogy", e);
+        document.getElementById('eulogy-container').style.display = 'none';
+    }
 }
 //allows user to continue as their child, implements
 window.continueAsChild = (childIndex, inheritedMoney) => {
@@ -288,7 +321,7 @@ function handleLifeEvents(user) {
     
     // Random Events
     else if (user.age < 18 && user.age > 5) {
-        if (user.age === 16) addLog("Legal working age reached.", 'neutral');
+        if (user.age === 15) addLog("Legal working age reached.", 'neutral');
         
         const roll = Math.random();
         if (roll < 0.2) {
@@ -300,7 +333,7 @@ function handleLifeEvents(user) {
         }
     } 
     // Adult Empty State
-    else if (!user.highSchoolRetained && !user.jobTitle && !user.hasBusiness && !user.universityEnrolled && user.age >= 18) {
+    else if (!user.highSchoolRetained && !user.jobTitle && !user.hasBusiness && !user.universityEnrolled && user.age >= 18 && user.age < 65) {
          addLog("Unemployed. Savings are dwindling.", 'bad');
     }
 }
