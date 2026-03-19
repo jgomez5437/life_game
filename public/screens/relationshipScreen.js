@@ -70,7 +70,7 @@ if (!user.relationships) {
         }
 
         return `
-            <div onclick="openPersonOptions('${person.id}')" class="bg-slate-800 p-3 rounded-xl border border-slate-700 mb-3 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition flex items-center justify-between group">
+            <div onclick="renderPersonInteraction('${person.id}')" class="bg-slate-800 p-3 rounded-xl border border-slate-700 mb-3 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition flex items-center justify-between group">
                 <div class="flex items-center gap-4">
                     <div class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-slate-400 group-hover:bg-slate-600 transition border border-slate-600">
                         <i class="fas ${icon}"></i>
@@ -159,22 +159,61 @@ window.renderPersonInteraction = (id) => {
         { name: 'Call to Chat', key: 'call_chat', statusChange: 10, cost: 0, icon: 'fa-phone', desc: 'Have a quick chat over the phone' }
     ];
 
-    const buttonsHtml = interactions.map((it, i) => {
+   const buttonsHtml = interactions.map((it, i) => {
+        let isTooYoung = false;
+        let blockReason = '';
+
+        // 1. Evaluate Age Blocks explicitly per action
+        if (it.key === 'spend_time' && user.age <= 1) {
+            isTooYoung = true;
+            blockReason = 'Too Young';
+        } else if ((it.key === 'insult' || it.key === 'compliment') && user.age <= 2) {
+            isTooYoung = true;
+            blockReason = 'Too Young';
+        } else if (it.key === 'call_chat' && user.age <= 5) {
+            isTooYoung = true;
+            blockReason = 'Too Young';
+        } else if (it.key === 'give_money' && user.age <= 10) {
+            isTooYoung = true;
+            blockReason = 'Too Young';
+        }
+
+        // 2. Evaluate Financial Blocks
         const canAfford = (user.money || 0) >= it.cost;
-        const disabledAttr = canAfford ? '' : 'disabled';
-        const btnClass = canAfford ? 'bg-slate-800 hover:bg-slate-750' : 'bg-slate-700 text-slate-500 cursor-not-allowed';
-        return `
-            <button ${disabledAttr} onclick="openRelationshipConfirm('${person.id}', ${i})" class="w-full p-3 rounded-xl border border-slate-700 mb-3 ${btnClass} flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center text-lg">
-                    <i class="fas ${it.icon} text-slate-400"></i>
-                </div>
-                <div class="text-left flex-1">
-                    <div class="font-bold text-white">${it.name}</div>
-                    <div class="text-xs text-slate-400">${it.desc}${it.cost ? ' — ' + window.Utils.formatMoney(it.cost) : ''}</div>
-                </div>
-                <div class="text-sm font-semibold text-white">${it.statusChange > 0 ? '+'+it.statusChange : it.statusChange}</div>
-            </button>
-        `;
+        if (!canAfford && !isTooYoung) {
+            blockReason = 'Insufficient Funds';
+        }
+
+        const isDisabled = isTooYoung || !canAfford;
+
+        // 3. Render Hard-Branched HTML
+        if (isDisabled) {
+            return `
+                <button disabled class="w-full p-3 rounded-xl border border-slate-700 mb-3 bg-slate-700 opacity-50 cursor-not-allowed flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-lg">
+                        <i class="fas ${it.icon} text-slate-500"></i>
+                    </div>
+                    <div class="text-left flex-1">
+                        <div class="font-bold text-slate-400">${it.name}</div>
+                        <div class="text-xs text-slate-500">${it.desc}${it.cost ? ' — ' + window.Utils.formatMoney(it.cost) : ''}</div>
+                    </div>
+                    <div class="text-xs font-bold text-red-400 uppercase tracking-wide">${blockReason}</div>
+                </button>
+            `;
+        } else {
+            return `
+                <button onclick="openRelationshipConfirm('${person.id}', ${i})" class="w-full p-3 rounded-xl border border-slate-700 mb-3 bg-slate-800 hover:bg-slate-750 hover:border-slate-500 transition flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center text-lg shadow-inner">
+                        <i class="fas ${it.icon} text-slate-400"></i>
+                    </div>
+                    <div class="text-left flex-1">
+                        <div class="font-bold text-white">${it.name}</div>
+                        <div class="text-xs text-slate-400">${it.desc}${it.cost ? ' — ' + window.Utils.formatMoney(it.cost) : ''}</div>
+                    </div>
+                    <div class="text-sm font-semibold text-white">${it.statusChange > 0 ? '+'+it.statusChange : it.statusChange}</div>
+                </button>
+            `;
+        }
     }).join('');
 
     let badgeStyle = "bg-slate-600 text-slate-100 border-slate-500";
@@ -196,23 +235,23 @@ window.renderPersonInteraction = (id) => {
             </div>
 
             <div class="text-center mb-6">
-                <div class="w-16 h-16 rounded-full bg-slate-700 flex items-center justify-center text-white mx-auto mb-3 text-2xl border border-slate-600">
+                <div class="w-16 h-16 rounded-full bg-slate-700 flex items-center justify-center text-white mx-auto mb-3 text-2xl border border-slate-600 shadow-lg">
                     <i class="fas fa-user"></i>
                 </div>
                 <h2 class="text-2xl font-bold text-white">${person.name}</h2>
-                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider ${badgeStyle} inline-block mt-2">${person.type}</span>
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider ${badgeStyle} inline-block mt-2 shadow-sm">${person.type}</span>
                 <p class="text-slate-400 text-sm mt-2">Age: ${person.age}</p>
             </div>
 
-            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-6">
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-6 shadow-md">
                 <div class="text-xs text-slate-400 font-bold mb-2 uppercase tracking-widest">Relationship Status</div>
                 <div class="w-full bg-slate-900 h-2 rounded-full overflow-hidden border border-slate-700/50 mb-2">
-                    <div class="h-full ${barColor} transition-all duration-500" style="width: ${person.status}%"></div>
+                    <div class="h-full ${barColor} transition-all duration-500 shadow-[0_0_8px_rgba(0,0,0,0.5)]" style="width: ${person.status}%"></div>
                 </div>
                 <div class="text-sm font-bold text-white">${person.status}%</div>
             </div>
 
-            <div class="text-xs text-slate-400 font-bold mb-3 uppercase tracking-widest">Choose an Action</div>
+            <div class="text-xs text-slate-400 font-bold mb-3 uppercase tracking-widest px-1">Choose an Action</div>
             <div class="flex-1 overflow-y-auto pb-4 custom-scrollbar">
                 ${buttonsHtml}
             </div>
@@ -227,15 +266,28 @@ window.openRelationshipConfirm = (personId, actionIndex) => {
     if (!person) return;
 
     const actions = [
-        { name: 'Spend Time', statusChange: 15, cost: 0 },
-        { name: 'Give Money', statusChange: 10, cost: 500 },
-        { name: 'Insult', statusChange: -20, cost: 0 },
-        { name: 'Compliment', statusChange: 15, cost: 0 },
-        { name: 'Call to Chat', statusChange: 10, cost: 0 }
+        { name: 'Spend Time', statusChange: 15, cost: 0, key: 'spend_time' },
+        { name: 'Give Money', statusChange: 10, cost: 500, key: 'give_money' },
+        { name: 'Insult', statusChange: -20, cost: 0, key: 'insult' },
+        { name: 'Compliment', statusChange: 15, cost: 0, key: 'compliment' },
+        { name: 'Call to Chat', statusChange: 10, cost: 0, key: 'call_chat' }
     ];
 
     const action = actions[actionIndex];
     if (!action) return;
+
+    // Safety Gate
+    // Safety Gate
+    let isTooYoung = false;
+    if (action.key === 'spend_time' && user.age <= 1) isTooYoung = true;
+    else if ((action.key === 'insult' || action.key === 'compliment') && user.age <= 2) isTooYoung = true;
+    else if (action.key === 'call_chat' && user.age <= 5) isTooYoung = true;
+    else if (action.key === 'give_money' && user.age <= 10) isTooYoung = true;
+
+    if (isTooYoung) {
+        window.UI.showModal('Action Blocked', "You are too young to do this.");
+        return;
+    }
 
     const message = `<div class="text-sm text-slate-300 mb-4">Are you sure you want to <strong>${action.name}</strong> ${person.name}?` +
         (action.cost ? `<div class="mt-2 text-xs text-slate-400">This will cost ${window.Utils.formatMoney(action.cost)}</div>` : '') + `</div>`;
@@ -245,11 +297,6 @@ window.openRelationshipConfirm = (personId, actionIndex) => {
     });
 };
 
-// --- CLICK HANDLER ---
-window.openPersonOptions = (id) => {
-    window.renderPersonInteraction(id);
-};
-
 // --- PERFORM ACTION & SHIFT CATEGORY ---
 window.performRelationshipAction = (personId, actionIndex) => {
     const user = window.gameState.user;
@@ -257,15 +304,27 @@ window.performRelationshipAction = (personId, actionIndex) => {
     if (!person) return;
 
     const actions = [
-        { name: 'Spend Time', statusChange: 15, cost: 0 },
-        { name: 'Give Money', statusChange: 10, cost: 500 },
-        { name: 'Insult', statusChange: -20, cost: 0 },
-        { name: 'Compliment', statusChange: 15, cost: 0 },
-        { name: 'Call to Chat', statusChange: 10, cost: 0 }
+        { name: 'Spend Time', statusChange: 15, cost: 0, key: 'spend_time' },
+        { name: 'Give Money', statusChange: 10, cost: 500, key: 'give_money' },
+        { name: 'Insult', statusChange: -20, cost: 0, key: 'insult' },
+        { name: 'Compliment', statusChange: 15, cost: 0, key: 'compliment' },
+        { name: 'Call to Chat', statusChange: 10, cost: 0, key: 'call_chat' }
     ];
 
     const action = actions[actionIndex];
     if (!action) return;
+
+// Safety Gate
+    let isTooYoung = false;
+    if (action.key === 'spend_time' && user.age <= 1) isTooYoung = true;
+    else if ((action.key === 'insult' || action.key === 'compliment') && user.age <= 2) isTooYoung = true;
+    else if (action.key === 'call_chat' && user.age <= 5) isTooYoung = true;
+    else if (action.key === 'give_money' && user.age <= 10) isTooYoung = true;
+
+    if (isTooYoung) {
+        window.UI.showModal('Action Blocked', "You are too young to do this.");
+        return;
+    }
 
     // Check funds
     if ((user.money || 0) < action.cost) {
