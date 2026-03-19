@@ -55,7 +55,7 @@ function handleDeath(user, cause) {
     renderDeathScreen(user, cause);
 }
 //renders death screen
-async function renderDeathScreen(user, cause) {
+window.renderDeathScreen = async function(user, cause) {
     // 1. Calculate Inheritance
     const children = user.relationships.filter(r => r.type === 'Son' || r.type === 'Daughter');
     const hasChildren = children.length > 0;
