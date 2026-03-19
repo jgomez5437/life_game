@@ -33,10 +33,11 @@ window.addNewRelationship = (name, age, type, status, category = 'friend') => {
 };
 
 // --- RENDER SCREEN ---
+// --- RENDER SCREEN ---
 window.renderRelationships = () => {
     const user = window.gameState.user;
 
-if (!user.relationships) {
+    if (!user.relationships) {
         user.relationships = [];
     }
 
@@ -131,11 +132,8 @@ if (!user.relationships) {
                 </button>
             </div>
             
-            <div class="flex items-center justify-between mb-6 px-1">
+            <div class="mb-6 px-1">
                 <h2 class="text-2xl font-bold text-white">Relationships</h2>
-                <button class="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 text-slate-400 hover:text-white flex items-center justify-center">
-                    <i class="fas fa-plus"></i>
-                </button>
             </div>
 
             <div class="flex-1 overflow-y-auto pb-4 custom-scrollbar">
