@@ -6,6 +6,7 @@ node_modules/
 dev/
 out/
 .next
+.next\dev\server\chunks
 # Vercel
 .vercel
 
