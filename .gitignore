@@ -5,7 +5,7 @@ node_modules/
 .next/
 dev/
 out/
-
+.next
 # Vercel
 .vercel
 
