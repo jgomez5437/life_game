@@ -370,3 +370,49 @@ async function initGame() {
         }
     }
 };
+// script.js
+
+// --- RESET GAME PIPELINE ---
+window.resetGame = async function() {
+    console.log("Resetting game state...");
+
+    // 1. Destroy local state
+    window.gameState = null;
+
+    // 2. Handle Guest Reset
+    if (!window.userAuthId) {
+        if (window.Utils && window.Utils.guestStorage && typeof window.Utils.guestStorage.saveGame === 'function') {
+            // Saving while gameState is null effectively clears the local storage
+            window.Utils.guestStorage.saveGame(); 
+        }
+        console.log("Guest save wiped.");
+        
+        // Route guests back to login so they can choose to authenticate or play as guest again
+        if (typeof window.renderLoginScreen === "function") {
+            window.renderLoginScreen();
+            return;
+        }
+    } 
+    // 3. Handle Authenticated User Reset
+    else {
+        console.log("Wiping Cloud Save...");
+        try {
+            await fetch('/api/saveGame', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    auth0_id: window.userAuthId,
+                    email: window.userEmail,
+                    game_data: {} // Overwrites the DB with empty data, clearing the "Deceased" lock
+                })
+            });
+        } catch (e) {
+            console.error("Failed to reset cloud save:", e);
+        }
+    }
+
+    // 4. Route authenticated users to Character Creation
+    if (typeof window.renderCharCreation === "function") {
+        window.renderCharCreation();
+    }
+};
