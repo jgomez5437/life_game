@@ -3,6 +3,7 @@ node_modules/
 
 # Next.js Build Output (CRITICAL)
 .next/
+dev/
 out/
 
 # Vercel
