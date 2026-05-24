@@ -16,13 +16,15 @@
 //   5. Error display: was window.UI.showModal() → inline <ErrorMessage />
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 
 import ErrorMessage from '@/components/ui/ErrorMessage';
 import { createCharacter } from '@/features/player/actions/createCharacter';
+import { useUser } from '@auth0/nextjs-auth0/client';
+import { usePlayerStore } from '@/features/player/usePlayerStore';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 // Migrated verbatim from charCreationScreen.js line 3
@@ -55,6 +57,32 @@ export default function CharacterCreationPage() {
   // ─── UI State ───────────────────────────────────────────────────────────
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const { user, isLoading: authLoading } = useUser();
+
+  // ─── Check for Existing Save ─────────────────────────────────────────────
+  // If the user just logged in via Auth0, check if they already have a save.
+  // If so, load it and redirect them straight to the game!
+  useEffect(() => {
+    if (user && user.sub) {
+      setIsLoading(true);
+      fetch(`/api/load?auth0_id=${user.sub}`)
+        .then(res => {
+          if (res.ok) return res.json();
+          throw new Error('No save found');
+        })
+        .then(data => {
+          if (data && data.game_data) {
+            usePlayerStore.getState().setPlayer(data.game_data);
+            router.push('/game');
+          } else {
+            setIsLoading(false);
+          }
+        })
+        .catch(() => {
+          setIsLoading(false);
+        });
+    }
+  }, [user, router]);
 
   // ─── Submit Handler ──────────────────────────────────────────────────────
   // Replaces: async function submitCharacter() in charCreationScreen.js
@@ -68,7 +96,8 @@ export default function CharacterCreationPage() {
       name,
       gender,
       city,
-      isGuest: true,       // Auth0 integration comes in a future task
+      isGuest: !user,
+      authUser: user && user.sub && user.email ? { sub: user.sub, email: user.email } : undefined,
     });
 
     if (!result.success) {

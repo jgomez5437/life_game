@@ -16,6 +16,7 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { PlayerState, LifeEvent, defaultPlayerState } from '@/types/player';
 import { clamp } from '@/lib/utils';
+import { checkLifeStatus } from '@/lib/gameLogic';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STORE INTERFACE
@@ -160,10 +161,9 @@ export const usePlayerStore = create<PlayerStore>()(
 
       setJobInfo: (title, salary) =>
         set(
-          {
-            jobTitle: title,
-            jobSalary: salary,
-            hasSeenJobSalary: false, // Reset flag on new job — mirrors the vanilla TODO fix
+          (state) => {
+            const nextState = { ...state, jobTitle: title, jobSalary: salary, jobPerformance: 50, hasJobWarning: false, hasSeenJobSalary: false };
+            return { ...nextState, lifeStatus: checkLifeStatus(nextState) };
           },
           false,
           'player/setJobInfo'
@@ -171,16 +171,23 @@ export const usePlayerStore = create<PlayerStore>()(
 
       quitJob: () =>
         set(
-          {
-            jobTitle: '',
-            jobSalary: 0,
-            hasSeenJobSalary: false,
+          (state) => {
+            const nextState = { ...state, jobTitle: '', jobSalary: 0, hasSeenJobSalary: false, jobPerformance: 50, hasJobWarning: false };
+            return { ...nextState, lifeStatus: checkLifeStatus(nextState) };
           },
           false,
           'player/quitJob'
         ),
 
-      setEducation: (updates) => set(updates, false, 'player/setEducation'),
+      setEducation: (updates) => 
+        set(
+          (state) => {
+            const nextState = { ...state, ...updates };
+            return { ...nextState, lifeStatus: checkLifeStatus(nextState) };
+          },
+          false,
+          'player/setEducation'
+        ),
     }),
     { name: 'PlayerStore' } // Label shown in Redux DevTools
   )

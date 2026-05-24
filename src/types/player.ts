@@ -16,6 +16,7 @@ export interface Asset {
   id: string;
   name: string;
   category: 'vehicle' | 'property' | 'investment';
+  type?: string; // e.g. sedan, suv, etc.
   value: number;
   condition: number; // 0–100 percent
   purchasePrice?: number;
@@ -32,7 +33,8 @@ export interface Asset {
 export interface Relationship {
   id: string;
   name: string;
-  type: 'spouse' | 'child' | 'parent' | 'friend' | 'sibling';
+  category: 'family' | 'spouse' | 'child' | 'friend' | 'enemy';
+  type: string; // e.g., 'Mother', 'Father', 'Enemy', 'Friend'
   bond: number; // 0–100
   age?: number;
 }
@@ -51,6 +53,21 @@ export interface LifeEvent {
 export interface LifeLogEntry {
   age: number;
   events: LifeEvent[];
+}
+
+/**
+ * SHAPE: A business owned by the player.
+ */
+export interface BusinessState {
+  industry: string;
+  supplier: string;
+  productPrice: number;
+  marketingBudget: number;
+  employeePay: number;
+  revenue: number;
+  expenses: number;
+  cash: number;
+  customers: number;
 }
 
 /**
@@ -103,22 +120,25 @@ export interface PlayerState {
   gradSchoolYear: number;
   gradSchoolDegree: string | null;
   parentsTried: boolean;
+  scholarshipTried: boolean;
 
   // ─── CAREER & FINANCE ────────────────────────────────────────────────────
-  jobTitle: string;
-  jobSalary: number;
+  jobTitle?: string;
+  jobSalary?: number;
   jobPerformance: number;
-  careerActionTaken: number;
+  jobActions: number;
+  hasJobWarning: boolean;
+  hasSeenJobSalary?: boolean;
   monthlyOutflow: number;
   studentLoans: number;
   monthlyLivingExpense: number;
   hasSeenExpenseMsg: boolean;
-  hasSeenJobSalary: boolean;
 
   // ─── BUSINESS ────────────────────────────────────────────────────────────
   hasBusiness: boolean;
   companyName: string | null;
   ceoSalary: number;
+  business: BusinessState | null;
 
   // ─── COLLECTIONS ─────────────────────────────────────────────────────────
   assets: Asset[];
@@ -157,11 +177,13 @@ export const defaultPlayerState: PlayerState = {
   gradSchoolYear: 0,
   gradSchoolDegree: null,
   parentsTried: false,
+  scholarshipTried: false,
 
   jobTitle: '',
   jobSalary: 0,
   jobPerformance: 50,
-  careerActionTaken: 0,
+  jobActions: 0,
+  hasJobWarning: false,
   monthlyOutflow: 0,
   studentLoans: 0,
   monthlyLivingExpense: 0,
@@ -171,6 +193,7 @@ export const defaultPlayerState: PlayerState = {
   hasBusiness: false,
   companyName: null,
   ceoSalary: 0,
+  business: null,
 
   assets: [],
   relationships: [],

@@ -43,18 +43,16 @@ export default function LoginPage() {
         {/* Action Buttons */}
         <div className="w-full space-y-3">
           {/*
-            Cloud Save button — in a future task this will trigger Auth0 login.
-            For now it links to character creation (same as guest) to keep the
-            routing wired up and testable.
+            Cloud Save button triggers Auth0 login.
           */}
-          <Link
-            href="/character-creation"
+          <a
+            href="/auth/login?returnTo=/character-creation"
             id="btn-cloud-login"
             className="flex w-full items-center justify-center gap-3 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-900/50 transition-all duration-200"
           >
             <span>☁️</span>
             <span>Cloud Save / Login</span>
-          </Link>
+          </a>
 
           <Link
             href="/character-creation"

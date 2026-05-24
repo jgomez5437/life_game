@@ -40,7 +40,8 @@ function familyToRelationships(members: FamilyMember[]): Relationship[] {
     id:   m.id,
     name: m.name,
     age:  m.age,
-    type: FAMILY_TYPE_MAP[m.type],
+    type: m.type, // 'Mother', 'Father', etc.
+    category: 'family',
     bond: m.bond,
   }));
 }
