@@ -1,6 +1,6 @@
 import { GameLogic } from '../../core/gameLogic.js';
 import { state } from '../../core/state.js';
-import { renderActivities } from '../career/occupationScreen.js';
+import { renderActivities, GRAD_SCHOOLS } from '../career/occupationScreen.js';
 import { renderRelationships } from '../relationships/relationshipScreen.js';
 import { Utils } from '../../ui/utils.js';
 import { UI } from '../../ui/ui.js';
@@ -282,28 +282,36 @@ function handleEducation(user) {
 
     // 2. University Logic
     if (user.universityEnrolled) {
-        user.universitySchoolYear++;
-        if (GameLogic.checkSchoolGraduated(user.universitySchoolYear, 4)) {
-            user.universityEnrolled = false;
-            user.isStudent = false;
-            user.universityGraduated = true;
-            addLog(`You finished University with a degree in ${user.major}.`, 'good');
+        if (user.schoolPerformance < 25) {
+            addLog(`You failed your University classes this year. You must retake the year.`, 'bad');
         } else {
-            addLog(`Completed year ${user.universitySchoolYear} of University.`, 'neutral');
+            user.universitySchoolYear++;
+            if (GameLogic.checkSchoolGraduated(user.universitySchoolYear, 4)) {
+                user.universityEnrolled = false;
+                user.isStudent = false;
+                user.universityGraduated = true;
+                addLog(`You finished University with a degree in ${user.major}.`, 'good');
+            } else {
+                addLog(`Completed year ${user.universitySchoolYear} of University.`, 'neutral');
+            }
         }
     }
 
     // 3. Grad School Logic
     if (user.gradSchoolEnrolled) {
-        user.gradSchoolYear++;
-        const school = GRAD_SCHOOLS.find(s => s.name === user.gradSchoolType);
-        if (GameLogic.checkSchoolGraduated(user.gradSchoolYear, school.years)) {
-            user.gradSchoolEnrolled = false;
-            user.isStudent = false;
-            user.gradSchoolDegree = user.gradSchoolType;
-            addLog(`Graduated from ${user.gradSchoolType}!`, 'good');
+        if (user.schoolPerformance < 25) {
+            addLog(`You failed your Grad School classes this year. You must retake the year.`, 'bad');
         } else {
-            addLog(`Completed year ${user.gradSchoolYear} of ${user.gradSchoolType}.`, 'neutral');
+            user.gradSchoolYear++;
+            const school = GRAD_SCHOOLS.find(s => s.name === user.gradSchoolType);
+            if (GameLogic.checkSchoolGraduated(user.gradSchoolYear, school.years)) {
+                user.gradSchoolEnrolled = false;
+                user.isStudent = false;
+                user.gradSchoolDegree = user.gradSchoolType;
+                addLog(`Graduated from ${user.gradSchoolType}!`, 'good');
+            } else {
+                addLog(`Completed year ${user.gradSchoolYear} of ${user.gradSchoolType}.`, 'neutral');
+            }
         }
     }
 
@@ -441,7 +449,7 @@ export const renderLifeDashboard = (maybeGameState) => {
                     <span class="text-[10px] uppercase tracking-wider">Social</span>
                 </button>
 
-                <button onclick="UI.showModal('Coming Soon', 'This section is under construction.')" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700">
+                <button data-action="showComingSoon" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700">
                     <i class="fas fa-ellipsis-h mb-1 text-xl text-slate-400"></i>
                     <span class="text-[10px] uppercase tracking-wider">More</span>
                 </button>

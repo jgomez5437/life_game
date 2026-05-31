@@ -1,6 +1,7 @@
 import { state } from '../../core/state.js';
 import { renderActivities } from './occupationScreen.js';
 import { Utils } from '../../ui/utils.js';
+import { PART_TIME_JOBS } from '../../core/main.js';
 
 const get = id => document.getElementById(id);
 
@@ -29,7 +30,7 @@ export function renderJobMarket() {
                         <div class="text-xs text-green-400">$${job.hourly}/hr <span class="text-slate-500">(${Utils.formatMoney(job.salary)}/yr)</span></div>
                     </div>
                 </div>
-                <button onclick="${!isCurrent ? `applyForJob('${job.title}', ${job.salary}, false, false)` : ''}" class="${btnClass} text-xs font-bold py-2 px-4 rounded-lg transition">
+                <button ${!isCurrent ? `data-action="applyForJob" data-args="&apos;${job.title}&apos;, ${job.salary}, false, false"` : ''} class="${btnClass} text-xs font-bold py-2 px-4 rounded-lg transition">
                     ${btnText}
                 </button>
             </div>

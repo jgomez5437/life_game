@@ -2,6 +2,7 @@ import { state } from '../../core/state.js';
 import { renderActivities } from '../career/occupationScreen.js';
 import { renderLifeDashboard, addLog } from '../player/mainScreen.js';
 import { UI } from '../../ui/ui.js';
+import { INDUSTRIES, SUPPLIERS } from '../../core/main.js';
 
 //BUSINESS DASHBOARD
 

@@ -68,7 +68,7 @@ export function renderEducation() {
 
             <div class="grid grid-cols-1 gap-3">
                 
-                <button onclick="${actionDisabled ? '' : 'skipSchool()'}" class="${skipClass}">
+                <button ${actionDisabled ? 'disabled' : `data-action="skipSchool"`} class="${skipClass}">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-full bg-red-900/30 flex items-center justify-center text-red-400 group-hover:text-red-300">
                             <i class="fas fa-running"></i>
@@ -81,7 +81,7 @@ export function renderEducation() {
                     <i class="fas fa-chevron-right text-slate-600"></i>
                 </button>
 
-                <button onclick="${actionDisabled ? '' : 'workHarder()'}" class="${workClass}">
+                <button ${actionDisabled ? 'disabled' : `data-action="workHarder"`} class="${workClass}">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white">
                             <i class="fas fa-book-open"></i>
@@ -103,7 +103,7 @@ export function checkSchoolActionTaken(user) {
     }
 }
 
-function workHarder() {
+export function workHarder() {
     const user = state.gameState.user;
     if(user.schoolActions >= 2) return;
     user.schoolActions++;
@@ -111,7 +111,7 @@ function workHarder() {
     addLog("Studied hard and improved your grades.", 'good');
     renderLifeDashboard(state.gameState);
 }
-function skipSchool() {
+export function skipSchool() {
     const user = state.gameState.user;
     if(user.schoolActions >= 2) return;
     user.schoolActions++;

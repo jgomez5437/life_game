@@ -2,18 +2,18 @@ import { GameLogic } from '../../core/gameLogic.js';
 import { state } from '../../core/state.js';
 import { renderLifeDashboard, addLog } from '../player/mainScreen.js';
 import { Utils } from '../../ui/utils.js';
+import { MAJORS, CAREERS, PART_TIME_JOBS } from '../../core/main.js';
 
 const get = id => document.getElementById(id);
 
 //OCCUPATION/EDUCATION/ENTREPRENUER MANAGER SCREEN
 
-const GRAD_SCHOOLS = [
+export const GRAD_SCHOOLS = [
     { name: "Law School", years: 3, icon: "fa-balance-scale" },
     { name: "Medical School", years: 4, icon: "fa-user-md" },
     { name: "Business School", years: 2, icon: "fa-chart-line" },
     { name: "Psychiatry School", years: 4, icon: "fa-brain" }
-]
-window.GRAD_SCHOOLS = GRAD_SCHOOLS;
+];
 //University Pop up
 export function openUniversityModal() {
     // Reset flags
@@ -64,7 +64,7 @@ function renderUniversityModalContent(selectedMajor = null) {
             ${loanBtn}
             ${scholarBtn}
             ${parentBtn}
-            <button onclick="document.getElementById('modal-overlay').classList.add('hidden'); document.getElementById('modal-overlay').classList.remove('flex');" class="w-full mt-4 text-slate-400 hover:text-white text-sm">Cancel</button>
+            <button data-action="closeModal" class="w-full mt-4 text-slate-400 hover:text-white text-sm">Cancel</button>
         </div>
     `;
     m.classList.remove('hidden');
@@ -193,7 +193,7 @@ function renderGradModalContent(schoolType) {
             ${loanBtn}
             ${scholarBtn}
             ${parentBtn}
-            <button onclick="document.getElementById('modal-overlay').classList.add('hidden'); document.getElementById('modal-overlay').classList.remove('flex');" class="w-full mt-4 text-slate-400 hover:text-white text-sm">Cancel</button>
+            <button data-action="closeModal" class="w-full mt-4 text-slate-400 hover:text-white text-sm">Cancel</button>
         </div>
     `;
     m.classList.remove('hidden');
@@ -614,7 +614,7 @@ if (user.age < 15) {
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">
-                <button data-action="renderLifeDashboard" data-args="state.gameState" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+                <button data-action="renderLifeDashboard" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
                     <i class="fas fa-arrow-left"></i> Back to Dashboard
                 </button>
             </div>

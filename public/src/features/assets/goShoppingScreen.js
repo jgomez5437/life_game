@@ -57,7 +57,7 @@ export const renderShoppingHub = () => {
                     <i class="fas fa-chevron-right text-slate-600 group-hover:text-white"></i>
                 </button>
 
-                <button onclick="UI.showModal('Coming Soon', 'Real Estate is under construction.')" class="bg-slate-800 p-6 rounded-xl border border-slate-700 flex items-center justify-between hover:bg-slate-750 hover:border-green-500 transition group">
+                <button data-action="showComingSoon" class="bg-slate-800 p-6 rounded-xl border border-slate-700 flex items-center justify-between hover:bg-slate-750 hover:border-green-500 transition group">
                     <div class="flex items-center gap-4">
                         <div class="w-12 h-12 rounded-full bg-green-900/30 flex items-center justify-center text-green-400 text-xl group-hover:scale-110 transition">
                             <i class="fas fa-home"></i>
@@ -70,7 +70,7 @@ export const renderShoppingHub = () => {
                     <i class="fas fa-chevron-right text-slate-600 group-hover:text-white"></i>
                 </button>
 
-                <button onclick="UI.showModal('Coming Soon', 'Luxury items are under construction.')" class="bg-slate-800 p-6 rounded-xl border border-slate-700 flex items-center justify-between hover:bg-slate-750 hover:border-yellow-500 transition group">
+                <button data-action="showComingSoon" class="bg-slate-800 p-6 rounded-xl border border-slate-700 flex items-center justify-between hover:bg-slate-750 hover:border-yellow-500 transition group">
                     <div class="flex items-center gap-4">
                         <div class="w-12 h-12 rounded-full bg-yellow-900/30 flex items-center justify-center text-yellow-400 text-xl group-hover:scale-110 transition">
                             <i class="fas fa-gem"></i>

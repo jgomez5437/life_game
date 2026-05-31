@@ -3,6 +3,8 @@ import { renderActivities } from './occupationScreen.js';
 import { addLog } from '../player/mainScreen.js';
 import { Utils } from '../../ui/utils.js';
 import { UI } from '../../ui/ui.js';
+import { CAREERS } from '../../core/main.js';
+import { renderJobMarket } from './partTimeJobsScreen.js';
 
 const get = id => document.getElementById(id);
 
@@ -37,7 +39,7 @@ export function renderCareerMarket() {
                         ${warningHtml}
                     </div>
                 </div>
-                <button onclick="${!isCurrent ? `applyForJob('${job.title}', ${job.salary}, ${job.reqDegree}, '${job.reqGrad}')` : ''}" class="${btnClass} text-xs font-bold py-2 px-4 rounded-lg transition">
+                <button ${!isCurrent ? `data-action="applyForJob" data-args="&apos;${job.title}&apos;, ${job.salary}, ${job.reqDegree}, &apos;${job.reqGrad}&apos;"` : ''} class="${btnClass} text-xs font-bold py-2 px-4 rounded-lg transition">
                     ${btnText}
                 </button>
             </div>
@@ -59,10 +61,10 @@ export function renderCareerMarket() {
         </div>
     `;
 };
-function applyForJob(title, salary, reqDegree, reqGrad) {
+export function applyForJob(title, salary, reqDegree, reqGrad) {
     const user = state.gameState.user;
     if (reqDegree && !user.universityGraduated) {
-        return showModal("Qualifications Missing", "This job requires a University Degree.");
+        return UI.showModal("Qualifications Missing", "This job requires a University Degree.");
     }
     if (reqGrad && reqGrad !== 'undefined' && reqGrad !== 'null' && user.gradSchoolDegree !== reqGrad) {
         return UI.showModal("Qualifications Missing", `This job requires a degree from ${reqGrad}.`);

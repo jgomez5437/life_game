@@ -3,6 +3,7 @@ import { renderActivities } from '../career/occupationScreen.js';
 import { addLog } from '../player/mainScreen.js';
 import { Utils } from '../../ui/utils.js';
 import { UI } from '../../ui/ui.js';
+import { INDUSTRIES } from '../../core/main.js';
 
 const get = id => document.getElementById(id);
 
@@ -36,7 +37,7 @@ export function renderBusinessSetup() {
                 <div class="bg-blue-900/20 border border-blue-500/30 p-3 rounded mb-6 text-sm text-blue-200">
                     <i class="fas fa-info-circle"></i> Requires <strong>personal capital</strong> to start.
                 </div>
-                <button onclick="UI.showModal('Coming Soon', 'Currently being developed.')" class="w-full btn-primary text-white font-bold py-4 rounded-lg text-lg shadow-lg">Launch Company</button>
+                <button data-action="showComingSoon" class="w-full btn-primary text-white font-bold py-4 rounded-lg text-lg shadow-lg">Launch Company</button>
             </div>
         </div>
     `;

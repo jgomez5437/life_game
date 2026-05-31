@@ -50,7 +50,7 @@ export function renderCareerManager() {
             </div>
             <!-- Actions Grid -->
             <div class="grid grid-cols-1 gap-3">
-                <button onclick="${actionTaken ? '' : 'workHarderJob()'}" class="${actionClass}">
+                <button ${actionTaken ? 'disabled' : `data-action="workHarderJob"`} class="${actionClass}">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white">
                             <i class="fas fa-briefcase"></i>
@@ -62,7 +62,7 @@ export function renderCareerManager() {
                     </div>
                     <i class="fas fa-arrow-right text-white"></i>
                 </button>
-                <button onclick="${actionTaken ? '' : 'slackOffJob()'}" class="${slackClass}">
+                <button ${actionTaken ? 'disabled' : `data-action="slackOffJob"`} class="${slackClass}">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-full bg-red-900/30 flex items-center justify-center text-red-400 group-hover:text-red-300">
                             <i class="fas fa-couch"></i>
@@ -91,7 +91,7 @@ export function renderCareerManager() {
     `;
 }
 
-function workHarderJob() {
+export function workHarderJob() {
     const user = state.gameState.user;
     if (user.careerActionTaken) return;
     
@@ -100,7 +100,7 @@ function workHarderJob() {
     addLog("Worked hard at your job. Boss is impressed.", 'good');
     renderCareerManager();
 }
-function slackOffJob() {
+export function slackOffJob() {
     const user = state.gameState.user;
     if (user.careerActionTaken) return;
     user.jobPerformance = Math.max(0, user.jobPerformance - 15);
@@ -117,7 +117,7 @@ export function confirmQuitCareer() {
     get('modal-actions').innerHTML = `
         <div class="grid grid-cols-2 gap-3">
             <button data-action="quitCareer" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-lg">Yes, Quit</button>
-            <button onclick="document.getElementById('modal-overlay').classList.add('hidden'); document.getElementById('modal-overlay').classList.remove('flex');" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-lg">Cancel</button>
+            <button data-action="closeModal" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-lg">Cancel</button>
         </div>
     `;
     m.classList.remove('hidden');

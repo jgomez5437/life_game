@@ -2,10 +2,10 @@ import { login, configureAuth } from '../auth/auth.js';
 import { startGuestMode, renderLoginScreen } from '../auth/loginScreen.js';
 import { processQuarter, enterBusinessMode } from '../features/business/businessDashboard.js';
 import { selectIndustry, renderBusinessSetup } from '../features/business/createBusinessScreen.js';
-import { renderCareerMarket } from '../features/career/careerJobsScreen.js';
-import { confirmQuitCareer, quitCareer, renderCareerManager } from '../features/career/jobCareerManagerScreen.js';
+import { renderCareerMarket, applyForJob } from '../features/career/careerJobsScreen.js';
+import { confirmQuitCareer, quitCareer, renderCareerManager, workHarderJob, slackOffJob } from '../features/career/jobCareerManagerScreen.js';
 import { renderJobMarket } from '../features/career/partTimeJobsScreen.js';
-import { renderEducation } from '../features/education/manageEducationScreen.js';
+import { renderEducation, workHarder, skipSchool } from '../features/education/manageEducationScreen.js';
 import { attemptEnrollment, openGradEnrollmentModal, attemptGradEnrollment, renderGradSchoolMarket, openUniversityModal } from '../features/career/occupationScreen.js';
 import { selectGender, submitCharacter, renderCharCreation } from '../features/player/charCreationScreen.js';
 import { ageUp, continueAsChild, renderLifeDashboard, addLog } from '../features/player/mainScreen.js';
@@ -15,17 +15,18 @@ import { renderShoppingHub, renderVehicleDealer, buyVehicle } from '../features/
 import { renderActivities } from '../features/career/occupationScreen.js';
 import { renderRelationships, renderPersonInteraction, openRelationshipConfirm } from '../features/relationships/relationshipScreen.js';
 import { Utils } from '../ui/utils.js';
+import { UI } from '../ui/ui.js';
 
 const get = id => document.getElementById(id);
 // --- CONSTANTS ---
 
-        const MAJORS = [
+        export const MAJORS = [
             "Psychology", "Computer Science", "English", "Education", "Marketing", 
             "Business", "Nursing", "Religious Studies", "Biology", "Graphic Design", "Chemistry",
             "Political Science", "Criminal Justice"
         ];
 
-        const CAREERS = [
+        export const CAREERS = [
             { title: "Jr. Associate", salary: 70000, icon: "fa-briefcase", reqDegree: true, reqGrad: "Law School" },
             { title: "Firefighter", salary: 57000, icon: "fa-fire-extinguisher", reqDegree: false, reqLaw: false },
             { title: "Graphic Designer", salary: 55000, icon: "fa-pen-nib", reqDegree: true, reqLaw: false }, 
@@ -39,7 +40,7 @@ const get = id => document.getElementById(id);
             { title: "Baker", salary: 35000, icon: "fa-bread-slice", reqDegree: false, reqLaw: false }
         ];
 
-        const PART_TIME_JOBS = [
+        export const PART_TIME_JOBS = [
             { title: "Babysitter", hourly: 15, salary: 15600, icon: "fa-baby-carriage" },
             { title: "Amusement Park Crew", hourly: 12, salary: 12480, icon: "fa-ticket-alt" },
             { title: "Movie Theater Crew", hourly: 11, salary: 11440, icon: "fa-film" },
@@ -47,7 +48,7 @@ const get = id => document.getElementById(id);
             { title: "Fast Food Crew", hourly: 10, salary: 10400, icon: "fa-hamburger" }
         ];
 
-        const INDUSTRIES = {
+        export const INDUSTRIES = {
             tech: { 
                 name: "Software Startup", 
                 icon: "fa-laptop-code", 
@@ -83,7 +84,7 @@ const get = id => document.getElementById(id);
             }
         };
 
-        const SUPPLIERS = [
+        export const SUPPLIERS = [
             { id: 'cheap', name: 'Budget', costMod: 0.8, quality: 30, risk: 0.2 },
             { id: 'standard', name: 'Standard', costMod: 1.0, quality: 60, risk: 0.05 },
             { id: 'premium', name: 'Premium', costMod: 1.4, quality: 95, risk: 0.01 }
@@ -432,7 +433,24 @@ export async function resetGame() {
         renderCharCreation();
     }
 };
+
+const closeModal = () => {
+    document.getElementById('modal-overlay').classList.add('hidden');
+    document.getElementById('modal-overlay').classList.remove('flex');
+};
+
+const showComingSoon = () => {
+    UI.showModal('Coming Soon', 'This section is under construction.');
+};
+
 const routeHandlers = {
+  applyForJob,
+  closeModal,
+  showComingSoon,
+  workHarder,
+  skipSchool,
+  workHarderJob,
+  slackOffJob,
   login,
   startGuestMode,
   renderVehicleManager,
@@ -480,7 +498,13 @@ document.addEventListener('click', (e) => {
                 // strip quotes
                 if (t.startsWith("'") && t.endsWith("'")) t = t.slice(1, -1);
                 else if (t.startsWith('"') && t.endsWith('"')) t = t.slice(1, -1);
-                return isNaN(t) ? t : Number(t);
+                
+                if (t === 'true') return true;
+                if (t === 'false') return false;
+                if (t === 'null') return null;
+                if (t === 'undefined') return undefined;
+                
+                return isNaN(t) || t === '' ? t : Number(t);
             });
         }
         if (routeHandlers[action]) {
