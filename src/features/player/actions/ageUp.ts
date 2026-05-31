@@ -29,7 +29,7 @@ export function ageUpAction(bypassPipCheck = false) {
             },
             () => {
                 usePlayerStore.setState({ hasJobWarning: true });
-                usePlayerStore.getState().addLog("You refused your boss's Performance Improvement Plan. Your job is on thin ice.", 'major');
+                usePlayerStore.getState().addLog("You refused your boss's Performance Improvement Plan. Your job is on thin ice.", 'bad');
                 ageUpAction(true);
             },
             "Performance Warning"

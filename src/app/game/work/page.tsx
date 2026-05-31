@@ -203,7 +203,7 @@ export default function WorkHubPage() {
             <div className="bg-[#0a0f1c] p-3 rounded-lg border border-[#1e2944] flex justify-between items-center">
               <div>
                 <div className="text-sm text-white font-bold">{player.jobTitle}</div>
-                <div className="text-xs text-emerald-400 font-medium mt-0.5">{formatMoney(player.jobSalary)}/yr</div>
+                <div className="text-xs text-emerald-400 font-medium mt-0.5">{formatMoney(player.jobSalary || 0)}/yr</div>
               </div>
               <i className="fas fa-chevron-right text-slate-600 group-hover:text-amber-400 transition-colors"></i>
             </div>
@@ -248,7 +248,7 @@ export default function WorkHubPage() {
             <div className="bg-[#0a0f1c] p-3 rounded-lg border border-[#1e2944] flex justify-between items-center">
               <div>
                 <div className="text-sm text-white font-bold">{player.jobTitle}</div>
-                <div className="text-xs text-emerald-400 font-medium mt-0.5">{formatMoney(player.jobSalary)}/yr</div>
+                <div className="text-xs text-emerald-400 font-medium mt-0.5">{formatMoney(player.jobSalary || 0)}/yr</div>
               </div>
               <i className="fas fa-chevron-right text-slate-600 group-hover:text-cyan-400 transition-colors"></i>
             </div>

@@ -41,7 +41,7 @@ export default function ManageJobPage() {
             <i className="fas fa-briefcase text-4xl drop-shadow-md"></i>
           </div>
           <h2 className="text-2xl font-bold text-white">{player.jobTitle}</h2>
-          <div className="text-emerald-400 font-black text-2xl mt-1 tracking-tight">{formatMoney(player.jobSalary)}/yr</div>
+          <div className="text-emerald-400 font-black text-2xl mt-1 tracking-tight">{formatMoney(player.jobSalary || 0)}/yr</div>
         </div>
 
         <div className="bg-[#111727] p-6 rounded-2xl border border-[#212b45] mb-6 shadow-lg">

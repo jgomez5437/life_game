@@ -2,6 +2,7 @@ import { usePlayerStore } from '@/features/player/usePlayerStore';
 import { INDUSTRIES, SUPPLIERS } from '@/lib/constants';
 import { BusinessState } from '@/types/player';
 import { checkLifeStatus } from '@/lib/gameLogic';
+import { formatMoney } from '@/lib/utils';
 
 export const incorporateBusinessAction = (
   companyName: string, 
@@ -116,7 +117,7 @@ export const startBusinessAction = (
   const sup = SUPPLIERS.find(s => s.id === supplierId);
   if (!sup) return { success: false, message: "Invalid supplier." };
 
-  const initialInventoryCost = ind.unitCost * sup.costMultiplier * 1000;
+  const initialInventoryCost = ind.unitCost * sup.costMod * 1000;
   const initialMarketing = marketing;
   const initialPayroll = employeePay * 2; 
   const totalCost = initialInventoryCost + initialMarketing + initialPayroll;

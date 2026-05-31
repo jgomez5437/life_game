@@ -17,7 +17,7 @@ export default function AssetsPage() {
   // --- CALCULATE STATS ---
   let monthlyIncome = 0;
   if (player.hasBusiness) monthlyIncome += player.ceoSalary;
-  if (player.jobTitle) monthlyIncome += Math.floor(player.jobSalary / 12);
+  if (player.jobTitle) monthlyIncome += Math.floor((player.jobSalary || 0) / 12);
 
   let monthlyOutflow = 0;
   if (player.studentLoans > 0 && player.age >= 23 && !player.gradSchoolEnrolled) {
