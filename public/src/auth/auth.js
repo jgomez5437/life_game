@@ -11,6 +11,7 @@ export async function configureAuth() {
     state.auth0Client = await auth0.createAuth0Client({
         domain: config.domain,
         clientId: config.clientId,
+        cacheLocation: 'localstorage',
         authorizationParams: {
             redirect_uri: window.location.origin
         }

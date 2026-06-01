@@ -77,6 +77,5 @@ export function applyForJob(title, salary, reqDegree, reqGrad) {
     addLog(`Hired as a ${title}! Annual Salary: ${Utils.formatMoney(salary)}`, 'good');
     
     // Return to appropriate page
-    if (reqDegree === false && !reqGrad) renderJobMarket(); // Simplistic check for part time
-    else renderCareerMarket();
+    renderActivities();
 };

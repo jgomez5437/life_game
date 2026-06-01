@@ -109,7 +109,7 @@ export async function renderDeathScreen(user, cause) {
 
     // 4. Render Terminal Screen with Loading State for Eulogy
     const deathHTML = `
-        <div class="fade-in max-w-md mx-auto h-full flex flex-col justify-center items-center text-center px-4">
+        <div class="fade-in max-w-md mx-auto min-h-full py-8 flex flex-col justify-center items-center text-center px-4">
             <i class="fas fa-skull text-6xl text-slate-500 mb-6"></i>
             <h1 class="text-4xl font-bold text-red-500 mb-2">You Died</h1>
             <p class="text-slate-300 text-lg mb-6">Age ${user.age} • Cause: ${cause}</p>
@@ -149,18 +149,38 @@ export async function renderDeathScreen(user, cause) {
             const eulogyContainer = document.getElementById('eulogy-container');
             
             // Remove centering classes so paragraph flows naturally
-            eulogyContainer.classList.remove('items-center', 'justify-center');
+            eulogyContainer.classList.remove('flex', 'items-center', 'justify-center');
             
             eulogyContainer.innerHTML = `
                 <h3 class="text-sm font-bold text-slate-400 mb-2 uppercase tracking-wider text-left">Life Summary</h3>
-                <p class="text-slate-300 italic text-sm text-left leading-relaxed">"${data.eulogy}"</p>
+                <div class="relative w-full">
+                    <p id="eulogy-text" class="text-slate-300 italic text-sm text-left leading-relaxed line-clamp-5 overflow-hidden">"${data.eulogy}"</p>
+                    <button id="eulogy-view-more" data-action="showFullEulogy" class="hidden mt-3 text-blue-400 hover:text-blue-300 text-xs font-bold uppercase tracking-wider text-left w-full">View More &rarr;</button>
+                </div>
             `;
+            
+            state.gameState.currentEulogy = data.eulogy;
+            
+            setTimeout(() => {
+                const p = document.getElementById('eulogy-text');
+                const btn = document.getElementById('eulogy-view-more');
+                if (p && btn && p.scrollHeight > p.clientHeight) {
+                    btn.classList.remove('hidden');
+                }
+            }, 50);
+
         } else {
             document.getElementById('eulogy-container').style.display = 'none';
         }
     } catch (e) {
         console.error("Failed to fetch eulogy", e);
         document.getElementById('eulogy-container').style.display = 'none';
+    }
+}
+
+export function showFullEulogy() {
+    if (state.gameState.currentEulogy) {
+        UI.showModal("Life Summary", `<p class="text-slate-300 italic text-sm leading-relaxed">"${state.gameState.currentEulogy}"</p>`);
     }
 }
 //allows user to continue as their child, implements

@@ -8,7 +8,7 @@ import { renderJobMarket } from '../features/career/partTimeJobsScreen.js';
 import { renderEducation, workHarder, skipSchool } from '../features/education/manageEducationScreen.js';
 import { attemptEnrollment, openGradEnrollmentModal, attemptGradEnrollment, renderGradSchoolMarket, openUniversityModal } from '../features/career/occupationScreen.js';
 import { selectGender, submitCharacter, renderCharCreation } from '../features/player/charCreationScreen.js';
-import { ageUp, continueAsChild, renderLifeDashboard, addLog } from '../features/player/mainScreen.js';
+import { ageUp, continueAsChild, renderLifeDashboard, addLog, renderDeathScreen, showFullEulogy } from '../features/player/mainScreen.js';
 import { state } from './state.js';
 import { renderAssets, renderVehicleManager, repairVehicle, sellVehicle } from '../features/assets/assetsScreen.js';
 import { renderShoppingHub, renderVehicleDealer, buyVehicle } from '../features/assets/goShoppingScreen.js';
@@ -178,8 +178,8 @@ export function updateGameInfo(dbUser) {
    if (state.gameState.user.lifeStatus === "Deceased") {
         console.log("Dead character detected. Locking to death screen.");
         const cause = state.gameState.user.deathCause || "natural causes";
-        if (typeof window.renderDeathScreen === "function") {
-            window.renderDeathScreen(state.gameState.user, cause);
+        if (typeof renderDeathScreen === "function") {
+            renderDeathScreen(state.gameState.user, cause);
         }
     } else if (typeof renderLifeDashboard === "function") {
         renderLifeDashboard(); 
@@ -345,7 +345,12 @@ async function initGame() {
 
             if (response.ok) {
                 const dbUser = await response.json();
-                updateGameInfo(dbUser);
+                if (!dbUser.game_data || Object.keys(dbUser.game_data).length === 0) {
+                    console.log("Save file empty (player wiped). Starting Character Creation.");
+                    renderCharCreation();
+                } else {
+                    updateGameInfo(dbUser);
+                }
             } else {
                 console.log("No save file found. Starting Character Creation.");
                 renderCharCreation();
@@ -392,6 +397,14 @@ async function initGame() {
 // --- RESET GAME PIPELINE ---
 export async function resetGame() {
     console.log("Resetting game state...");
+
+    UI.renderScreen(`
+        <div class="fade-in max-w-md mx-auto h-full flex flex-col justify-center items-center text-center px-4">
+            <i class="fas fa-circle-notch fa-spin text-6xl text-slate-500 mb-6"></i>
+            <h1 class="text-2xl font-bold text-white mb-2">Obliterating the Past...</h1>
+            <p class="text-slate-400">Preparing your next life.</p>
+        </div>
+    `);
 
     // 1. Destroy local state
     state.gameState = null;
@@ -444,7 +457,9 @@ const showComingSoon = () => {
 };
 
 const routeHandlers = {
+  resetGame,
   applyForJob,
+  showFullEulogy,
   closeModal,
   showComingSoon,
   workHarder,
