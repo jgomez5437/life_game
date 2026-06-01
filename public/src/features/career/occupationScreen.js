@@ -1,22 +1,29 @@
+import { GameLogic } from '../../core/gameLogic.js';
+import { state } from '../../core/state.js';
+import { renderLifeDashboard, addLog } from '../player/mainScreen.js';
+import { Utils } from '../../ui/utils.js';
+import { MAJORS, CAREERS, PART_TIME_JOBS } from '../../core/main.js';
+
+const get = id => document.getElementById(id);
+
 //OCCUPATION/EDUCATION/ENTREPRENUER MANAGER SCREEN
 
-const GRAD_SCHOOLS = [
+export const GRAD_SCHOOLS = [
     { name: "Law School", years: 3, icon: "fa-balance-scale" },
     { name: "Medical School", years: 4, icon: "fa-user-md" },
     { name: "Business School", years: 2, icon: "fa-chart-line" },
     { name: "Psychiatry School", years: 4, icon: "fa-brain" }
-]
-window.GRAD_SCHOOLS = GRAD_SCHOOLS;
+];
 //University Pop up
-function openUniversityModal() {
+export function openUniversityModal() {
     // Reset flags
-    const user = window.gameState.user;
+    const user = state.gameState.user;
     user.scholarshipTried = false;
     user.parentsTried = false;
     renderUniversityModalContent();
 }
 function renderUniversityModalContent(selectedMajor = null) {
-    const user = window.gameState.user;
+    const user = state.gameState.user;
     const m = get('modal-overlay');
     get('modal-title').innerText = "University Enrollment";
     get('modal-content').innerHTML = `
@@ -33,23 +40,23 @@ function renderUniversityModalContent(selectedMajor = null) {
     
     // Render Actions
     const cashDisabled = user.money < 40000;
-    const cashBtn = `<button onclick="attemptEnrollment('cash')" ${cashDisabled ? 'disabled' : ''} class="w-full bg-green-600 hover:bg-green-500 disabled:bg-slate-700 disabled:opacity-50 text-white font-bold py-2 rounded mb-2">Pay Cash ($40k)</button>`;
+    const cashBtn = `<button data-action="attemptEnrollment" data-args="&apos;cash&apos;" ${cashDisabled ? 'disabled' : ''} class="w-full bg-green-600 hover:bg-green-500 disabled:bg-slate-700 disabled:opacity-50 text-white font-bold py-2 rounded mb-2">Pay Cash ($40k)</button>`;
     
-    const loanBtn = `<button onclick="attemptEnrollment('loan')" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded mb-2">Student Loans</button>`;
+    const loanBtn = `<button data-action="attemptEnrollment" data-args="&apos;loan&apos;" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded mb-2">Student Loans</button>`;
     
     // Scholarship Button
     let scholarBtn = "";
     if (user.scholarshipTried) {
         scholarBtn = `<button disabled class="w-full bg-slate-700 opacity-50 text-slate-400 font-bold py-2 rounded mb-2 cursor-not-allowed">Ineligible</button>`;
     } else {
-        scholarBtn = `<button onclick="attemptEnrollment('scholarship')" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded mb-2">Apply for Scholarship</button>`;
+        scholarBtn = `<button data-action="attemptEnrollment" data-args="&apos;scholarship&apos;" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded mb-2">Apply for Scholarship</button>`;
     }
     // Parents Button
     let parentBtn = "";
     if (user.parentsTried) {
          parentBtn = `<button disabled class="w-full bg-slate-700 opacity-50 text-slate-400 font-bold py-2 rounded mb-2 cursor-not-allowed">They Refused</button>`;
     } else {
-        parentBtn = `<button onclick="attemptEnrollment('parents')" class="w-full bg-pink-600 hover:bg-pink-500 text-white font-bold py-2 rounded mb-2">Ask Parents to Pay</button>`;
+        parentBtn = `<button data-action="attemptEnrollment" data-args="&apos;parents&apos;" class="w-full bg-pink-600 hover:bg-pink-500 text-white font-bold py-2 rounded mb-2">Ask Parents to Pay</button>`;
     }
     get('modal-actions').innerHTML = `
         <div class="space-y-1">
@@ -57,14 +64,14 @@ function renderUniversityModalContent(selectedMajor = null) {
             ${loanBtn}
             ${scholarBtn}
             ${parentBtn}
-            <button onclick="document.getElementById('modal-overlay').classList.add('hidden'); document.getElementById('modal-overlay').classList.remove('flex');" class="w-full mt-4 text-slate-400 hover:text-white text-sm">Cancel</button>
+            <button data-action="closeModal" class="w-full mt-4 text-slate-400 hover:text-white text-sm">Cancel</button>
         </div>
     `;
     m.classList.remove('hidden');
     m.classList.add('flex');
 }
-function attemptEnrollment(method) {
-    const user = window.gameState.user;
+export function attemptEnrollment(method) {
+    const user = state.gameState.user;
     const major = get('major-select').value;
     
     if (method === 'cash') {
@@ -95,7 +102,7 @@ function attemptEnrollment(method) {
     }
 }
 function enrollSuccess(major, methodMsg) {
-    const user = window.gameState.user;
+    const user = state.gameState.user;
     user.universityEnrolled = true;
     user.isStudent = true;
     user.major = major;
@@ -111,9 +118,9 @@ function enrollSuccess(major, methodMsg) {
 }
 
 //Grad school pop up
-function renderGradSchoolMarket() {
+export function renderGradSchoolMarket() {
     const listHtml = GRAD_SCHOOLS.map(school => `
-        <div onclick="openGradEnrollmentModal('${school.name}')" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-3 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
+        <div data-action="openGradEnrollmentModal" data-args="&apos;${school.name}&apos;" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-3 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-full bg-purple-900/30 flex items-center justify-center text-purple-400">
@@ -131,7 +138,7 @@ function renderGradSchoolMarket() {
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">
-                <button onclick="renderActivities()" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+                <button data-action="renderActivities" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
                     <i class="fas fa-arrow-left"></i> Back to Occupation
                 </button>
             </div>
@@ -144,15 +151,15 @@ function renderGradSchoolMarket() {
         </div>
     `;
 }
-function openGradEnrollmentModal(schoolType) {
-    const user = window.gameState.user;
+export function openGradEnrollmentModal(schoolType) {
+    const user = state.gameState.user;
     // Reset flags
     user.scholarshipTried = false;
     user.parentsTried = false;
     renderGradModalContent(schoolType);
 }
 function renderGradModalContent(schoolType) {
-    const user = window.gameState.user;
+    const user = state.gameState.user;
     const m = get('modal-overlay');
     get('modal-title').innerText = "Enroll in " + schoolType;
     get('modal-content').innerHTML = `
@@ -162,23 +169,23 @@ function renderGradModalContent(schoolType) {
     
     // Render Actions
     const cashDisabled = user.money < 100000;
-    const cashBtn = `<button onclick="attemptGradEnrollment('${schoolType}', 'cash')" ${cashDisabled ? 'disabled' : ''} class="w-full bg-green-600 hover:bg-green-500 disabled:bg-slate-700 disabled:opacity-50 text-white font-bold py-2 rounded mb-2">Pay Cash ($100k)</button>`;
+    const cashBtn = `<button data-action="attemptGradEnrollment" data-args="&apos;${schoolType}&apos;, &apos;cash&apos;" ${cashDisabled ? 'disabled' : ''} class="w-full bg-green-600 hover:bg-green-500 disabled:bg-slate-700 disabled:opacity-50 text-white font-bold py-2 rounded mb-2">Pay Cash ($100k)</button>`;
     
-    const loanBtn = `<button onclick="attemptGradEnrollment('${schoolType}', 'loan')" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded mb-2">Student Loans</button>`;
+    const loanBtn = `<button data-action="attemptGradEnrollment" data-args="&apos;${schoolType}&apos;, &apos;loan&apos;" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded mb-2">Student Loans</button>`;
     
     // Scholarship Button
     let scholarBtn = "";
     if (user.scholarshipTried) {
         scholarBtn = `<button disabled class="w-full bg-slate-700 opacity-50 text-slate-400 font-bold py-2 rounded mb-2 cursor-not-allowed">Ineligible</button>`;
     } else {
-        scholarBtn = `<button onclick="attemptGradEnrollment('${schoolType}', 'scholarship')" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded mb-2">Apply for Scholarship</button>`;
+        scholarBtn = `<button data-action="attemptGradEnrollment" data-args="&apos;${schoolType}&apos;, &apos;scholarship&apos;" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded mb-2">Apply for Scholarship</button>`;
     }
     // Parents Button
     let parentBtn = "";
     if (user.parentsTried) {
          parentBtn = `<button disabled class="w-full bg-slate-700 opacity-50 text-slate-400 font-bold py-2 rounded mb-2 cursor-not-allowed">They Refused</button>`;
     } else {
-        parentBtn = `<button onclick="attemptGradEnrollment('${schoolType}', 'parents')" class="w-full bg-pink-600 hover:bg-pink-500 text-white font-bold py-2 rounded mb-2">Ask Parents to Pay</button>`;
+        parentBtn = `<button data-action="attemptGradEnrollment" data-args="&apos;${schoolType}&apos;, &apos;parents&apos;" class="w-full bg-pink-600 hover:bg-pink-500 text-white font-bold py-2 rounded mb-2">Ask Parents to Pay</button>`;
     }
     get('modal-actions').innerHTML = `
         <div class="space-y-1">
@@ -186,14 +193,14 @@ function renderGradModalContent(schoolType) {
             ${loanBtn}
             ${scholarBtn}
             ${parentBtn}
-            <button onclick="document.getElementById('modal-overlay').classList.add('hidden'); document.getElementById('modal-overlay').classList.remove('flex');" class="w-full mt-4 text-slate-400 hover:text-white text-sm">Cancel</button>
+            <button data-action="closeModal" class="w-full mt-4 text-slate-400 hover:text-white text-sm">Cancel</button>
         </div>
     `;
     m.classList.remove('hidden');
     m.classList.add('flex');
 }
-function attemptGradEnrollment(schoolType, method) {
-    const user = window.gameState.user;
+export function attemptGradEnrollment(schoolType, method) {
+    const user = state.gameState.user;
     if (method === 'cash') {
         user.money -= 100000;
         gradEnrollSuccess(schoolType, "paid with cash");
@@ -222,7 +229,7 @@ function attemptGradEnrollment(schoolType, method) {
     }
 }
 function gradEnrollSuccess(schoolType, methodMsg) {
-    const user = window.gameState.user;
+    const user = state.gameState.user;
     user.gradSchoolEnrolled = true;
     user.isStudent = true;
     user.gradSchoolType = schoolType;
@@ -238,15 +245,15 @@ function gradEnrollSuccess(schoolType, methodMsg) {
 };
 
 function updateLifeStatus() {
-    const user = window.gameState.user;
+    const user = state.gameState.user;
     let status; // Default fallback
-    status = window.GameLogic.checkLifeStatus(user)
+    status = GameLogic.checkLifeStatus(user)
     // SAVE the status to the user object
     user.lifeStatus = status;
     return status;
 };
 function getSchoolName() {
-    const user = window.gameState.user;
+    const user = state.gameState.user;
     if (user.gradSchoolEnrolled) {
         const school = GRAD_SCHOOLS.find(s => s.name === user.gradSchoolType);
         return `${user.gradSchoolType} (Year ${user.gradSchoolYear + 1}/${school.years})`;
@@ -258,19 +265,19 @@ function getSchoolName() {
 };
 
 function isStudent() {
-    const user = window.gameState.user;
+    const user = state.gameState.user;
     return user.universityEnrolled || user.gradSchoolEnrolled || user.highSchoolRetained || (user.age < 18);
 };
 
 function getStatus() {
     updateLifeStatus();
-    const user = window.gameState.user;
+    const user = state.gameState.user;
     let status = get("status-text");
     status.innerText = user.lifeStatus;
 };
 
-window.renderActivities = () => {
-    const user = window.gameState.user;
+export const renderActivities = () => {
+    const user = state.gameState.user;
     const isAdult = user.age >= 18;
     let content = '';
     const currentStatusText = updateLifeStatus();
@@ -298,7 +305,7 @@ window.renderActivities = () => {
         content += `
             <div class="mb-6">
                  <h3 class="font-bold text-white mb-2">My Company</h3>
-                <button onclick="enterBusinessMode()" class="w-full btn-primary text-white font-bold py-4 rounded-xl mb-2 flex items-center justify-between px-6 shadow-lg">
+                <button data-action="enterBusinessMode" class="w-full btn-primary text-white font-bold py-4 rounded-xl mb-2 flex items-center justify-between px-6 shadow-lg">
                     <span class="flex items-center gap-3"><i class="fas fa-building"></i> Manage ${user.companyName}</span>
                     <i class="fas fa-chevron-right"></i>
                 </button>
@@ -325,7 +332,7 @@ window.renderActivities = () => {
         `;
     } else if (user.gradSchoolEnrolled) {
          content += `
-            <div onclick="renderEducation()" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
+            <div data-action="renderEducation" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
                 <div class="flex items-center justify-between mb-2">
                     <div class="flex items-center gap-3">
                         <div class="w-8 h-8 rounded-full bg-purple-900/50 flex items-center justify-center text-purple-400">
@@ -348,7 +355,7 @@ window.renderActivities = () => {
         `;
     } else if (user.universityGraduated) {
          content += `
-            <div onclick="renderGradSchoolMarket()" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
+            <div data-action="renderGradSchoolMarket" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
                 <div class="flex items-center gap-3 mb-2">
                     <div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-slate-500">
                         <i class="fas fa-graduation-cap"></i>
@@ -378,7 +385,7 @@ window.renderActivities = () => {
         `;
     } else if (user.age < 18 || user.highSchoolRetained) {
          content += `
-            <div onclick="renderEducation()" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
+            <div data-action="renderEducation" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
                 <div class="flex items-center justify-between mb-2">
                     <div class="flex items-center gap-3">
                         <div class="w-8 h-8 rounded-full bg-green-900/50 flex items-center justify-center text-green-400">
@@ -402,7 +409,7 @@ window.renderActivities = () => {
     } else if (user.age >= 18 && !user.highSchoolRetained) {
         if (user.universityEnrolled) {
              content += `
-                <div onclick="renderEducation()" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
+                <div data-action="renderEducation" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
                     <div class="flex items-center justify-between mb-2">
                         <div class="flex items-center gap-3">
                             <div class="w-8 h-8 rounded-full bg-blue-900/50 flex items-center justify-center text-blue-400">
@@ -425,7 +432,7 @@ window.renderActivities = () => {
             `;
         } else {
              content += `
-                <div onclick="openUniversityModal()" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
+                <div data-action="openUniversityModal" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
                     <div class="flex items-center gap-3 mb-2">
                         <div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-slate-400">
                             <i class="fas fa-graduation-cap"></i>
@@ -459,7 +466,7 @@ if (user.age < 15) {
     } else if (hasPartTime) {
         // SCENARIO: User HAS a part-time job -> Show Manage Card
         content += `
-            <div onclick="renderCareerManager()" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
+            <div data-action="renderCareerManager" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
                 <div class="flex items-center gap-3 mb-2">
                      <div class="w-8 h-8 rounded-full bg-orange-900/50 flex items-center justify-center text-orange-400">
                         <i class="fas fa-clock"></i>
@@ -469,7 +476,7 @@ if (user.age < 15) {
                 <div class="bg-slate-900 p-3 rounded border border-slate-700 flex justify-between items-center">
                      <div>
                         <div class="text-sm text-white font-bold">${user.jobTitle}</div>
-                        <div class="text-xs text-green-400">${window.Utils.formatMoney(user.jobSalary)}/yr</div>
+                        <div class="text-xs text-green-400">${Utils.formatMoney(user.jobSalary)}/yr</div>
                      </div>
                      <i class="fas fa-chevron-right text-slate-600"></i>
                 </div>
@@ -478,7 +485,7 @@ if (user.age < 15) {
     } else {
         // SCENARIO: User has NO part-time job -> Show "Find Job" Market
         content += `
-            <div onclick="renderJobMarket()" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
+            <div data-action="renderJobMarket" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
                 <div class="flex items-center gap-3 mb-2">
                      <div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-slate-400">
                         <i class="fas fa-clock"></i>
@@ -513,7 +520,7 @@ if (user.age < 15) {
     } else if (hasCareer) {
         // SCENARIO: User HAS a career -> Show Manage Card
         content += `
-            <div onclick="renderCareerManager()" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
+            <div data-action="renderCareerManager" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
                 <div class="flex items-center gap-3 mb-2">
                      <div class="w-8 h-8 rounded-full bg-blue-900/50 flex items-center justify-center text-blue-400">
                         <i class="fas fa-briefcase"></i>
@@ -523,7 +530,7 @@ if (user.age < 15) {
                 <div class="bg-slate-900 p-3 rounded border border-slate-700 flex justify-between items-center">
                      <div>
                         <div class="text-sm text-white font-bold">${user.jobTitle}</div>
-                        <div class="text-xs text-green-400">${window.Utils.formatMoney(user.jobSalary)}/yr</div>
+                        <div class="text-xs text-green-400">${Utils.formatMoney(user.jobSalary)}/yr</div>
                      </div>
                      <i class="fas fa-chevron-right text-slate-600"></i>
                 </div>
@@ -532,7 +539,7 @@ if (user.age < 15) {
     }  else if (!user.hasBusiness) {
         // No Job, No Business -> Career Market
         content += `
-            <div onclick="renderCareerMarket()" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
+            <div data-action="renderCareerMarket" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
                 <div class="flex items-center gap-3 mb-2">
                      <div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-slate-400">
                         <i class="fas fa-briefcase"></i>
@@ -551,7 +558,7 @@ if (user.age < 15) {
     } else {
         // SCENARIO: User has NO career -> Show Market
         content += `
-            <div onclick="renderCareerMarket()" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
+            <div data-action="renderCareerMarket" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
                 <div class="flex items-center gap-3 mb-2">
                      <div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-slate-400">
                         <i class="fas fa-briefcase"></i>
@@ -597,7 +604,7 @@ if (user.age < 15) {
                             <i class="fas fa-rocket"></i>
                         </div>
                     </div>
-                    <button onclick="renderBusinessSetup()" class="w-full py-3 bg-blue-600 hover:bg-blue-500 rounded-lg font-bold text-white transition">
+                    <button data-action="renderBusinessSetup" class="w-full py-3 bg-blue-600 hover:bg-blue-500 rounded-lg font-bold text-white transition">
                         Incorporate Business
                     </button>
                 </div>
@@ -607,7 +614,7 @@ if (user.age < 15) {
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">
-                <button onclick="renderLifeDashboard(window.gameState)" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+                <button data-action="renderLifeDashboard" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
                     <i class="fas fa-arrow-left"></i> Back to Dashboard
                 </button>
             </div>

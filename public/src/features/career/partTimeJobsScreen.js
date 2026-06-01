@@ -1,7 +1,14 @@
+import { state } from '../../core/state.js';
+import { renderActivities } from './occupationScreen.js';
+import { Utils } from '../../ui/utils.js';
+import { PART_TIME_JOBS } from '../../core/main.js';
+
+const get = id => document.getElementById(id);
+
 //PART TIME JOBS JOB MARKET PAGE
 
-function renderJobMarket() {
-    const user = window.gameState.user;
+export function renderJobMarket() {
+    const user = state.gameState.user;
     
     // Sort jobs by hourly pay
     const sortedJobs = [...PART_TIME_JOBS].sort((a, b) => b.hourly - a.hourly);
@@ -20,10 +27,10 @@ function renderJobMarket() {
                     </div>
                     <div>
                         <h3 class="font-bold text-white">${job.title}</h3>
-                        <div class="text-xs text-green-400">$${job.hourly}/hr <span class="text-slate-500">(${window.Utils.formatMoney(job.salary)}/yr)</span></div>
+                        <div class="text-xs text-green-400">$${job.hourly}/hr <span class="text-slate-500">(${Utils.formatMoney(job.salary)}/yr)</span></div>
                     </div>
                 </div>
-                <button onclick="${!isCurrent ? `applyForJob('${job.title}', ${job.salary}, false, false)` : ''}" class="${btnClass} text-xs font-bold py-2 px-4 rounded-lg transition">
+                <button ${!isCurrent ? `data-action="applyForJob" data-args="&apos;${job.title}&apos;, ${job.salary}, false, false"` : ''} class="${btnClass} text-xs font-bold py-2 px-4 rounded-lg transition">
                     ${btnText}
                 </button>
             </div>
@@ -32,7 +39,7 @@ function renderJobMarket() {
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">
-                <button onclick="renderActivities()" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+                <button data-action="renderActivities" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
                     <i class="fas fa-arrow-left"></i> Back to Occupation
                 </button>
             </div>

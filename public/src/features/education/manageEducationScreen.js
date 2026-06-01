@@ -1,5 +1,11 @@
-function renderEducation() {
-    const user = window.gameState.user;
+import { state } from '../../core/state.js';
+import { renderActivities } from '../career/occupationScreen.js';
+import { renderLifeDashboard, addLog } from '../player/mainScreen.js';
+
+const get = id => document.getElementById(id);
+
+export function renderEducation() {
+    const user = state.gameState.user;
     const p = user.schoolPerformance;
     
     // 1. DEFINE THE LIMIT
@@ -36,7 +42,7 @@ function renderEducation() {
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">
-                <button onclick="renderActivities()" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+                <button data-action="renderActivities" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
                     <i class="fas fa-arrow-left"></i> Back to Occupation
                 </button>
             </div>
@@ -62,7 +68,7 @@ function renderEducation() {
 
             <div class="grid grid-cols-1 gap-3">
                 
-                <button onclick="${actionDisabled ? '' : 'skipSchool()'}" class="${skipClass}">
+                <button ${actionDisabled ? 'disabled' : `data-action="skipSchool"`} class="${skipClass}">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-full bg-red-900/30 flex items-center justify-center text-red-400 group-hover:text-red-300">
                             <i class="fas fa-running"></i>
@@ -75,7 +81,7 @@ function renderEducation() {
                     <i class="fas fa-chevron-right text-slate-600"></i>
                 </button>
 
-                <button onclick="${actionDisabled ? '' : 'workHarder()'}" class="${workClass}">
+                <button ${actionDisabled ? 'disabled' : `data-action="workHarder"`} class="${workClass}">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white">
                             <i class="fas fa-book-open"></i>
@@ -91,25 +97,25 @@ function renderEducation() {
         </div>
     `;
 }
-function checkSchoolActionTaken(user) {
+export function checkSchoolActionTaken(user) {
     if(user.schoolActions > 0) {
         user.schoolActions = 0
     }
 }
 
-function workHarder() {
-    const user = window.gameState.user;
+export function workHarder() {
+    const user = state.gameState.user;
     if(user.schoolActions >= 2) return;
     user.schoolActions++;
     user.schoolPerformance = Math.min(100, user.schoolPerformance + 20);
     addLog("Studied hard and improved your grades.", 'good');
-    renderLifeDashboard(window.gameState);
+    renderLifeDashboard(state.gameState);
 }
-function skipSchool() {
-    const user = window.gameState.user;
+export function skipSchool() {
+    const user = state.gameState.user;
     if(user.schoolActions >= 2) return;
     user.schoolActions++;
     user.schoolPerformance = Math.max(0, user.schoolPerformance - 10);
     addLog("Skipped school to hang out. Grades suffered.", 'bad');
-    renderLifeDashboard(window.gameState); 
+    renderLifeDashboard(state.gameState); 
 }

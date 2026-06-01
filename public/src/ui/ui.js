@@ -1,3 +1,5 @@
+import { Utils } from './utils.js';
+
 const _elements = {
     name: document.getElementById('header-name'),
     age: document.getElementById('header-age'),
@@ -15,13 +17,13 @@ const _elements = {
 }
 
 //Global UI object
-window.UI = {
+export const UI = {
     /** * @param {Object} stats - { username, age, money, city, health }
      */
     updateHeader: (stats) => {
         // 1. NAME & FLAG UPDATE
         const displayName = stats.username || stats.name || "Player";
-        const countryCode = window.Utils.getCountryCode(stats.city);
+        const countryCode = Utils.getCountryCode(stats.city);
         
         let flagHtml = "";
         
@@ -55,7 +57,7 @@ window.UI = {
 
         // 4. BANK UPDATE
         if (stats.money !== undefined) {
-            _elements.bank.innerText = window.Utils.formatMoney(stats.money);
+            _elements.bank.innerText = Utils.formatMoney(stats.money);
             
             _elements.bank.classList.remove('text-green-400', 'text-red-400');
             if (stats.money < 0) {

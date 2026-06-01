@@ -1,14 +1,26 @@
+import { GameLogic } from '../../core/gameLogic.js';
+import { state } from '../../core/state.js';
+import { renderActivities, GRAD_SCHOOLS } from '../career/occupationScreen.js';
+import { renderRelationships } from '../relationships/relationshipScreen.js';
+import { Utils } from '../../ui/utils.js';
+import { UI } from '../../ui/ui.js';
+import { renderAssets } from '../assets/assetsScreen.js';
+import { saveGame, resetGame } from '../../core/main.js';
+import { checkSchoolActionTaken } from '../education/manageEducationScreen.js';
+import { checkActionTaken } from '../career/jobCareerManagerScreen.js';
+const get = id => document.getElementById(id);
+
 // public/screens/mainScreen.js
 //age up function
 // mainScreen.js
 
-function ageUp() {
-    const state = window.gameState;
-    const user = state.user;
+export function ageUp() {
+    const currentState = state.gameState;
+    const user = currentState.user;
     
     // 1. Mortality Check
     const currentHealth = user.stats?.health ?? user.health ?? 100; 
-    const deathCheck = window.GameLogic.checkMortality(user.age, currentHealth);
+    const deathCheck = GameLogic.checkMortality(user.age, currentHealth);
     
     if (deathCheck.isDead) {
         handleDeath(user, deathCheck.cause);
@@ -27,35 +39,35 @@ function ageUp() {
     handleRelationships(user); 
 
     // 4. Empty Year Validation (The Fix)
-    const currentAgeLog = state.lifeLog.find(l => l.age === user.age);
+    const currentAgeLog = currentState.lifeLog.find(l => l.age === user.age);
     if (!currentAgeLog || currentAgeLog.events.length === 0) {
-        window.addLog("You didn't do much all year.", 'neutral');
+        addLog("You didn't do much all year.", 'neutral');
     }
 
     // 5. Cleanup & Render
     checkSchoolActionTaken(user);
     checkActionTaken();          
     
-    window.renderLifeDashboard(state);
+    renderLifeDashboard(currentState);
     
-    if (typeof window.saveGame === "function") {
-        window.saveGame();
+    if (typeof saveGame === "function") {
+        saveGame();
     }
 }
 
 function handleDeath(user, cause) {
     user.lifeStatus = "Deceased";
-    window.addLog(`You died at age ${user.age} from ${cause}`, 'bad');
+    addLog(`You died at age ${user.age} from ${cause}`, 'bad');
     
     // Auto-save the death state before transitioning
-    if (typeof window.saveGame === "function") {
-        window.saveGame();
+    if (typeof saveGame === "function") {
+        saveGame();
     }
     
     renderDeathScreen(user, cause);
 }
 //renders death screen
-window.renderDeathScreen = async function(user, cause) {
+export async function renderDeathScreen(user, cause) {
     // 1. Calculate Inheritance
     const children = user.relationships.filter(r => r.type === 'Son' || r.type === 'Daughter');
     const hasChildren = children.length > 0;
@@ -89,7 +101,7 @@ window.renderDeathScreen = async function(user, cause) {
     let childrenOptionsHtml = '';
     if (hasChildren) {
         childrenOptionsHtml = children.map((child, index) => `
-            <button onclick="continueAsChild(${index}, ${inheritancePerChild})" class="w-full btn-nav text-white font-bold py-3 rounded-xl mb-2 shadow hover:bg-slate-700 transition">
+            <button data-action="continueAsChild" data-args="${index}, ${inheritancePerChild}" class="w-full btn-nav text-white font-bold py-3 rounded-xl mb-2 shadow hover:bg-slate-700 transition">
                 Play as ${child.name} (Age ${child.age})
             </button>
         `).join('');
@@ -97,7 +109,7 @@ window.renderDeathScreen = async function(user, cause) {
 
     // 4. Render Terminal Screen with Loading State for Eulogy
     const deathHTML = `
-        <div class="fade-in max-w-md mx-auto h-full flex flex-col justify-center items-center text-center px-4">
+        <div class="fade-in max-w-md mx-auto min-h-full py-8 flex flex-col justify-center items-center text-center px-4">
             <i class="fas fa-skull text-6xl text-slate-500 mb-6"></i>
             <h1 class="text-4xl font-bold text-red-500 mb-2">You Died</h1>
             <p class="text-slate-300 text-lg mb-6">Age ${user.age} • Cause: ${cause}</p>
@@ -108,23 +120,23 @@ window.renderDeathScreen = async function(user, cause) {
             
             <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 w-full mb-6 shadow-2xl">
                 <h3 class="text-xl font-bold text-slate-400 mb-2 uppercase tracking-wider text-sm">Final Estate Value</h3>
-                <p class="${moneyColorClass} text-3xl font-bold mb-4">${window.Utils ? window.Utils.formatMoney(totalEstate) : '$' + totalEstate.toLocaleString()}</p>
+                <p class="${moneyColorClass} text-3xl font-bold mb-4">${Utils ? Utils.formatMoney(totalEstate) : '$' + totalEstate.toLocaleString()}</p>
                 ${estateMessage}
             </div>
             <div class="w-full space-y-3">
                 ${childrenOptionsHtml}
-                <button onclick="window.resetGame()" class="w-full btn-primary text-white font-bold py-4 rounded-xl text-lg mt-4 shadow-lg">
+                <button data-action="resetGame" class="w-full btn-primary text-white font-bold py-4 rounded-xl text-lg mt-4 shadow-lg">
                     Start New Life
                 </button>
             </div>
         </div>
     `;
     
-    window.UI.renderScreen(deathHTML);
+    UI.renderScreen(deathHTML);
 
     // 5. Fetch the Eulogy in the background
     try {
-        const compressedLog = window.GameLogic.compressLifeLog(window.gameState.lifeLog);
+        const compressedLog = GameLogic.compressLifeLog(state.gameState.lifeLog);
         
         const response = await fetch('/api/generateEulogy', {
             method: 'POST',
@@ -137,12 +149,26 @@ window.renderDeathScreen = async function(user, cause) {
             const eulogyContainer = document.getElementById('eulogy-container');
             
             // Remove centering classes so paragraph flows naturally
-            eulogyContainer.classList.remove('items-center', 'justify-center');
+            eulogyContainer.classList.remove('flex', 'items-center', 'justify-center');
             
             eulogyContainer.innerHTML = `
                 <h3 class="text-sm font-bold text-slate-400 mb-2 uppercase tracking-wider text-left">Life Summary</h3>
-                <p class="text-slate-300 italic text-sm text-left leading-relaxed">"${data.eulogy}"</p>
+                <div class="relative w-full">
+                    <p id="eulogy-text" class="text-slate-300 italic text-sm text-left leading-relaxed line-clamp-5 overflow-hidden">"${data.eulogy}"</p>
+                    <button id="eulogy-view-more" data-action="showFullEulogy" class="hidden mt-3 text-blue-400 hover:text-blue-300 text-xs font-bold uppercase tracking-wider text-left w-full">View More &rarr;</button>
+                </div>
             `;
+            
+            state.gameState.currentEulogy = data.eulogy;
+            
+            setTimeout(() => {
+                const p = document.getElementById('eulogy-text');
+                const btn = document.getElementById('eulogy-view-more');
+                if (p && btn && p.scrollHeight > p.clientHeight) {
+                    btn.classList.remove('hidden');
+                }
+            }, 50);
+
         } else {
             document.getElementById('eulogy-container').style.display = 'none';
         }
@@ -151,9 +177,15 @@ window.renderDeathScreen = async function(user, cause) {
         document.getElementById('eulogy-container').style.display = 'none';
     }
 }
+
+export function showFullEulogy() {
+    if (state.gameState.currentEulogy) {
+        UI.showModal("Life Summary", `<p class="text-slate-300 italic text-sm leading-relaxed">"${state.gameState.currentEulogy}"</p>`);
+    }
+}
 //allows user to continue as their child, implements
-window.continueAsChild = (childIndex, inheritedMoney) => {
-    const parentState = window.gameState.user;
+export const continueAsChild = (childIndex, inheritedMoney) => {
+    const parentState = state.gameState.user;
     const children = parentState.relationships.filter(r => r.type === 'Son' || r.type === 'Daughter');
     const selectedChild = children[childIndex];
 
@@ -181,13 +213,13 @@ window.continueAsChild = (childIndex, inheritedMoney) => {
     };
 
     // Calculate initial life status
-    newUserState.lifeStatus = window.GameLogic.checkLifeStatus(newUserState);
+    newUserState.lifeStatus = GameLogic.checkLifeStatus(newUserState);
 
     // 2. Overwrite Single Source of Truth
-    window.gameState.user = newUserState;
+    state.gameState.user = newUserState;
     
     // 3. Purge and restart Life Log at child's chronological age
-    window.gameState.lifeLog = [{
+    state.gameState.lifeLog = [{
         age: newUserState.age,
         events: [
             { msg: `You took over the life of ${newUserState.username} following your parent's death.`, color: "text-blue-400 font-bold" },
@@ -196,22 +228,22 @@ window.continueAsChild = (childIndex, inheritedMoney) => {
     }];
 
     // 4. Force cloud sync of the new character state, then mount UI
-    if (typeof window.saveGame === "function") window.saveGame();
-    window.renderLifeDashboard(window.gameState);
+    if (typeof saveGame === "function") saveGame();
+    renderLifeDashboard(state.gameState);
 };
 
 function handleHealth(user) {
     if (typeof user.health !== 'number') user.health = 100;
     
     // Call the pure function
-    const decay = window.GameLogic.calculateHealthDecay(user.age);
+    const decay = GameLogic.calculateHealthDecay(user.age);
 
     // Mutate state with a hard floor of 0
     user.health = Math.max(0, user.health - decay);
 
     // Execute UI side-effects
     if (user.health < 30 && (user.health + decay) >= 30) {
-        window.addLog("Your health has reached a critical low. Your risk of death is severely elevated.", "major");
+        addLog("Your health has reached a critical low. Your risk of death is severely elevated.", "major");
     }
 }
 
@@ -219,21 +251,21 @@ function handleHealth(user) {
 function handleFinances(user) {
     // 1. Birthday Money (Kids only)
     if (user.age >= 5 && user.age <= 18) {
-        const bdayMoney = window.GameLogic.calculateBirthdayMoney();
+        const bdayMoney = GameLogic.calculateBirthdayMoney();
         user.money += bdayMoney;
-        window.addLog(`You received ${window.Utils.formatMoney(bdayMoney)} for your birthday!`, 'good');
+        addLog(`You received ${Utils.formatMoney(bdayMoney)} for your birthday!`, 'good');
     }
 
     // 2. Job Salary
     if (user.jobTitle) {
         user.money += user.jobSalary;
         if (user.hasSeenJobSalary){
-            addLog(`Earned ${window.Utils.formatMoney(user.jobSalary)} as a ${user.jobTitle}.`, 'good');
+            addLog(`Earned ${Utils.formatMoney(user.jobSalary)} as a ${user.jobTitle}.`, 'good');
         }
     }
 
     // 3. Living Expenses
-    const annualLivingExpense = window.GameLogic.addLivingExpenses(user.age, user.isStudent);
+    const annualLivingExpense = GameLogic.addLivingExpenses(user.age, user.isStudent);
     if (annualLivingExpense > 0) {
         user.monthlyLivingExpense = annualLivingExpense;
         user.money -= annualLivingExpense; // Deduct immediately
@@ -245,7 +277,7 @@ function handleFinances(user) {
     }
 
     // 4. Student Loans
-    const yearlyStudentLoanPayment = window.GameLogic.addStudentLoanPayment(user.age, user.studentLoans, user.isStudent); 
+    const yearlyStudentLoanPayment = GameLogic.addStudentLoanPayment(user.age, user.studentLoans, user.isStudent); 
     user.monthlyOutflow += yearlyStudentLoanPayment;
     user.studentLoans -= yearlyStudentLoanPayment;
 }
@@ -270,28 +302,36 @@ function handleEducation(user) {
 
     // 2. University Logic
     if (user.universityEnrolled) {
-        user.universitySchoolYear++;
-        if (window.GameLogic.checkSchoolGraduated(user.universitySchoolYear, 4)) {
-            user.universityEnrolled = false;
-            user.isStudent = false;
-            user.universityGraduated = true;
-            addLog(`You finished University with a degree in ${user.major}.`, 'good');
+        if (user.schoolPerformance < 25) {
+            addLog(`You failed your University classes this year. You must retake the year.`, 'bad');
         } else {
-            addLog(`Completed year ${user.universitySchoolYear} of University.`, 'neutral');
+            user.universitySchoolYear++;
+            if (GameLogic.checkSchoolGraduated(user.universitySchoolYear, 4)) {
+                user.universityEnrolled = false;
+                user.isStudent = false;
+                user.universityGraduated = true;
+                addLog(`You finished University with a degree in ${user.major}.`, 'good');
+            } else {
+                addLog(`Completed year ${user.universitySchoolYear} of University.`, 'neutral');
+            }
         }
     }
 
     // 3. Grad School Logic
     if (user.gradSchoolEnrolled) {
-        user.gradSchoolYear++;
-        const school = window.GRAD_SCHOOLS.find(s => s.name === user.gradSchoolType);
-        if (window.GameLogic.checkSchoolGraduated(user.gradSchoolYear, school.years)) {
-            user.gradSchoolEnrolled = false;
-            user.isStudent = false;
-            user.gradSchoolDegree = user.gradSchoolType;
-            addLog(`Graduated from ${user.gradSchoolType}!`, 'good');
+        if (user.schoolPerformance < 25) {
+            addLog(`You failed your Grad School classes this year. You must retake the year.`, 'bad');
         } else {
-            addLog(`Completed year ${user.gradSchoolYear} of ${user.gradSchoolType}.`, 'neutral');
+            user.gradSchoolYear++;
+            const school = GRAD_SCHOOLS.find(s => s.name === user.gradSchoolType);
+            if (GameLogic.checkSchoolGraduated(user.gradSchoolYear, school.years)) {
+                user.gradSchoolEnrolled = false;
+                user.isStudent = false;
+                user.gradSchoolDegree = user.gradSchoolType;
+                addLog(`Graduated from ${user.gradSchoolType}!`, 'good');
+            } else {
+                addLog(`Completed year ${user.gradSchoolYear} of ${user.gradSchoolType}.`, 'neutral');
+            }
         }
     }
 
@@ -301,13 +341,13 @@ function handleEducation(user) {
 }
 
 function handleMarket(user) {
-    const marketForce = window.GameLogic.simulateVehicleMarket();
-    window.GameLogic.updateOwnedVehicles(user, marketForce);
+    const marketForce = GameLogic.simulateVehicleMarket();
+    GameLogic.updateOwnedVehicles(user, marketForce);
     
     if (marketForce > 0.06 && user.age > 15) {
-        window.addLog("Inflation hits the auto market! Car prices are up.", "bad");
+        addLog("Inflation hits the auto market! Car prices are up.", "bad");
     } else if (marketForce < -0.06 && user.age > 15) {
-        window.addLog("Auto market crash! Vehicle prices are down.", "good");
+        addLog("Auto market crash! Vehicle prices are down.", "good");
     }
 }
 
@@ -349,13 +389,13 @@ function handleRelationships(user) {
 }
 
 //Define the rendering function globally so script.js can call it.
-window.renderLifeDashboard = (maybeGameState) => {
+export const renderLifeDashboard = (maybeGameState) => {
     // --- Data Preparation ---
-    const state = maybeGameState || window.gameState;
-    if (!state || !state.user) {
+    const currentState = maybeGameState || state.gameState;
+    if (!state || !currentState.user) {
         console.warn("renderLifeDashboard called before game state existed.");
         return;}
-    const user = state.user;
+    const user = currentState.user;
     //Update the Header Bar using the UI Manager
     //    We assume 'game' holds the key stats needed for the header.
     UI.updateHeader(user);
@@ -374,7 +414,7 @@ window.renderLifeDashboard = (maybeGameState) => {
     const avatarHtml = `<i class="${iconClass} text-2xl"></i>`;
     if(user.username) get('avatar-container').innerHTML = avatarHtml;
 // Generate the Life Log HTML 
-    const logHtml = state.lifeLog.map(l => `
+    const logHtml = currentState.lifeLog.map(l => `
         <div class="mb-5 group">
             <div class="flex items-center mb-2">
                 <div class="bg-slate-800 text-blue-100 text-[10px] uppercase font-bold px-3 py-1 rounded-full border border-slate-600 shadow-sm z-10">
@@ -409,27 +449,27 @@ window.renderLifeDashboard = (maybeGameState) => {
             
             <div class="grid grid-cols-5 gap-2 pt-2 h-20">
                 
-                <button onclick="renderAssets()" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700">
+                <button data-action="renderAssets" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700">
                     <i class="fas fa-home mb-1 text-xl text-yellow-400"></i>
                     <span class="text-[10px] uppercase tracking-wider">Assets</span>
                 </button>
                 
-                <button onclick="renderActivities()" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700">
+                <button data-action="renderActivities" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700">
                     <i class="fas fa-user-graduate mb-1 text-xl text-blue-400"></i>
                     <span class="text-[10px] uppercase tracking-wider">Work</span>
                 </button>
                 
-                <button onclick="ageUp()" class="btn-primary text-white font-bold rounded-xl shadow-lg flex flex-col items-center justify-center">
+                <button data-action="ageUp" class="btn-primary text-white font-bold rounded-xl shadow-lg flex flex-col items-center justify-center">
                     <i class="fas fa-arrow-up mb-1 text-xl"></i>
                     <span class="text-[10px] uppercase tracking-wider">${ageUpText}</span>
                 </button>
 
-                <button onclick="renderRelationships()" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700">
+                <button data-action="renderRelationships" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700">
                     <i class="fas fa-users mb-1 text-xl text-pink-400"></i>
                     <span class="text-[10px] uppercase tracking-wider">Social</span>
                 </button>
 
-                <button onclick="window.UI.showModal('Coming Soon', 'This section is under construction.')" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700">
+                <button data-action="showComingSoon" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700">
                     <i class="fas fa-ellipsis-h mb-1 text-xl text-slate-400"></i>
                     <span class="text-[10px] uppercase tracking-wider">More</span>
                 </button>
@@ -442,9 +482,9 @@ window.renderLifeDashboard = (maybeGameState) => {
     UI.renderScreen(dashboardHTML);
 }
 
-window.addLog = (msg, type = 'neutral') => {
+export const addLog = (msg, type = 'neutral') => {
     // 1. Get current age from the centralized state
-    const currentAge = window.gameState.user.age;
+    const currentAge = state.gameState.user.age;
     //color for the log
     let color = 'text-slate-400';
     if (type === 'good') color = 'text-green-400';
@@ -452,11 +492,11 @@ window.addLog = (msg, type = 'neutral') => {
     else if (type === 'major') color = 'text-yellow-400 font-bold';
     else if (type === 'green') color = 'text-green-400';
     //is there a log for this age?
-    let ageLog = window.gameState.lifeLog.find(l => l.age === currentAge);
+    let ageLog = state.gameState.lifeLog.find(l => l.age === currentAge);
     if (ageLog) {
         ageLog.events.push({ msg, color });
     } else {
-        window.gameState.lifeLog.unshift({ 
+        state.gameState.lifeLog.unshift({ 
             age: currentAge, 
             events: [{ msg, color }] 
         });

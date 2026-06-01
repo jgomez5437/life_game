@@ -18,7 +18,8 @@
   },
   "devDependencies": {
     "jest": "^30.2.0",
-    "nodemon": "^3.1.11"
+    "nodemon": "^3.1.11",
+    "vercel": "^54.6.1"
   },
   "repository": {
     "type": "git",

@@ -1,5 +1,15 @@
-function renderCareerMarket() {
-    const user = window.gameState.user;
+import { state } from '../../core/state.js';
+import { renderActivities } from './occupationScreen.js';
+import { addLog } from '../player/mainScreen.js';
+import { Utils } from '../../ui/utils.js';
+import { UI } from '../../ui/ui.js';
+import { CAREERS } from '../../core/main.js';
+import { renderJobMarket } from './partTimeJobsScreen.js';
+
+const get = id => document.getElementById(id);
+
+export function renderCareerMarket() {
+    const user = state.gameState.user;
     // Sort careers by salary descending
     const sortedCareers = [...CAREERS].sort((a, b) => b.salary - a.salary);
     const listHtml = sortedCareers.map(job => {
@@ -25,11 +35,11 @@ function renderCareerMarket() {
                     </div>
                     <div>
                         <h3 class="font-bold text-white">${job.title}</h3>
-                        <div class="text-xs text-green-400">${window.Utils.formatMoney(job.salary)}/yr</div>
+                        <div class="text-xs text-green-400">${Utils.formatMoney(job.salary)}/yr</div>
                         ${warningHtml}
                     </div>
                 </div>
-                <button onclick="${!isCurrent ? `applyForJob('${job.title}', ${job.salary}, ${job.reqDegree}, '${job.reqGrad}')` : ''}" class="${btnClass} text-xs font-bold py-2 px-4 rounded-lg transition">
+                <button ${!isCurrent ? `data-action="applyForJob" data-args="&apos;${job.title}&apos;, ${job.salary}, ${job.reqDegree}, &apos;${job.reqGrad}&apos;"` : ''} class="${btnClass} text-xs font-bold py-2 px-4 rounded-lg transition">
                     ${btnText}
                 </button>
             </div>
@@ -38,7 +48,7 @@ function renderCareerMarket() {
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">
-                <button onclick="renderActivities()" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+                <button data-action="renderActivities" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
                     <i class="fas fa-arrow-left"></i> Back to Occupation
                 </button>
             </div>
@@ -51,10 +61,10 @@ function renderCareerMarket() {
         </div>
     `;
 };
-function applyForJob(title, salary, reqDegree, reqGrad) {
-    const user = window.gameState.user;
+export function applyForJob(title, salary, reqDegree, reqGrad) {
+    const user = state.gameState.user;
     if (reqDegree && !user.universityGraduated) {
-        return showModal("Qualifications Missing", "This job requires a University Degree.");
+        return UI.showModal("Qualifications Missing", "This job requires a University Degree.");
     }
     if (reqGrad && reqGrad !== 'undefined' && reqGrad !== 'null' && user.gradSchoolDegree !== reqGrad) {
         return UI.showModal("Qualifications Missing", `This job requires a degree from ${reqGrad}.`);
@@ -64,9 +74,8 @@ function applyForJob(title, salary, reqDegree, reqGrad) {
     // Reset job-specific stats
     user.jobPerformance = 50;
     user.careerActionTaken = false;
-    addLog(`Hired as a ${title}! Annual Salary: ${window.Utils.formatMoney(salary)}`, 'good');
+    addLog(`Hired as a ${title}! Annual Salary: ${Utils.formatMoney(salary)}`, 'good');
     
     // Return to appropriate page
-    if (reqDegree === false && !reqGrad) renderJobMarket(); // Simplistic check for part time
-    else renderCareerMarket();
+    renderActivities();
 };

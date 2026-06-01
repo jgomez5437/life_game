@@ -1,13 +1,32 @@
+import { login, configureAuth } from '../auth/auth.js';
+import { startGuestMode, renderLoginScreen } from '../auth/loginScreen.js';
+import { processQuarter, enterBusinessMode } from '../features/business/businessDashboard.js';
+import { selectIndustry, renderBusinessSetup } from '../features/business/createBusinessScreen.js';
+import { renderCareerMarket, applyForJob } from '../features/career/careerJobsScreen.js';
+import { confirmQuitCareer, quitCareer, renderCareerManager, workHarderJob, slackOffJob } from '../features/career/jobCareerManagerScreen.js';
+import { renderJobMarket } from '../features/career/partTimeJobsScreen.js';
+import { renderEducation, workHarder, skipSchool } from '../features/education/manageEducationScreen.js';
+import { attemptEnrollment, openGradEnrollmentModal, attemptGradEnrollment, renderGradSchoolMarket, openUniversityModal } from '../features/career/occupationScreen.js';
+import { selectGender, submitCharacter, renderCharCreation } from '../features/player/charCreationScreen.js';
+import { ageUp, continueAsChild, renderLifeDashboard, addLog, renderDeathScreen, showFullEulogy } from '../features/player/mainScreen.js';
+import { state } from './state.js';
+import { renderAssets, renderVehicleManager, repairVehicle, sellVehicle } from '../features/assets/assetsScreen.js';
+import { renderShoppingHub, renderVehicleDealer, buyVehicle } from '../features/assets/goShoppingScreen.js';
+import { renderActivities } from '../features/career/occupationScreen.js';
+import { renderRelationships, renderPersonInteraction, openRelationshipConfirm } from '../features/relationships/relationshipScreen.js';
+import { Utils } from '../ui/utils.js';
+import { UI } from '../ui/ui.js';
+
 const get = id => document.getElementById(id);
 // --- CONSTANTS ---
 
-        const MAJORS = [
+        export const MAJORS = [
             "Psychology", "Computer Science", "English", "Education", "Marketing", 
             "Business", "Nursing", "Religious Studies", "Biology", "Graphic Design", "Chemistry",
             "Political Science", "Criminal Justice"
         ];
 
-        const CAREERS = [
+        export const CAREERS = [
             { title: "Jr. Associate", salary: 70000, icon: "fa-briefcase", reqDegree: true, reqGrad: "Law School" },
             { title: "Firefighter", salary: 57000, icon: "fa-fire-extinguisher", reqDegree: false, reqLaw: false },
             { title: "Graphic Designer", salary: 55000, icon: "fa-pen-nib", reqDegree: true, reqLaw: false }, 
@@ -21,7 +40,7 @@ const get = id => document.getElementById(id);
             { title: "Baker", salary: 35000, icon: "fa-bread-slice", reqDegree: false, reqLaw: false }
         ];
 
-        const PART_TIME_JOBS = [
+        export const PART_TIME_JOBS = [
             { title: "Babysitter", hourly: 15, salary: 15600, icon: "fa-baby-carriage" },
             { title: "Amusement Park Crew", hourly: 12, salary: 12480, icon: "fa-ticket-alt" },
             { title: "Movie Theater Crew", hourly: 11, salary: 11440, icon: "fa-film" },
@@ -29,7 +48,7 @@ const get = id => document.getElementById(id);
             { title: "Fast Food Crew", hourly: 10, salary: 10400, icon: "fa-hamburger" }
         ];
 
-        const INDUSTRIES = {
+        export const INDUSTRIES = {
             tech: { 
                 name: "Software Startup", 
                 icon: "fa-laptop-code", 
@@ -65,23 +84,23 @@ const get = id => document.getElementById(id);
             }
         };
 
-        const SUPPLIERS = [
+        export const SUPPLIERS = [
             { id: 'cheap', name: 'Budget', costMod: 0.8, quality: 30, risk: 0.2 },
             { id: 'standard', name: 'Standard', costMod: 1.0, quality: 60, risk: 0.05 },
             { id: 'premium', name: 'Premium', costMod: 1.4, quality: 95, risk: 0.01 }
         ];
 
 // public/script.js
-window.gameState = null;
+state.gameState = null;
 const API_URL = '/api'
 //updates game info
-function updateGameInfo(dbUser) {
+export function updateGameInfo(dbUser) {
     console.log("Updating game state from DB...");
     const data = dbUser.game_data;
     const savedUser = data.user || data; 
     //Set Global Auth Variables
-    window.userAuthId = dbUser.auth0_id;
-    window.userEmail = dbUser.email;
+    state.userAuthId = dbUser.auth0_id;
+    state.userEmail = dbUser.email;
 
     const rawHistory = data.history || [];
     
@@ -94,8 +113,8 @@ function updateGameInfo(dbUser) {
             events: [{ msg: entry, color: "text-gray-400" }]
         };
     });
-    //CONSTRUCT window.gameState
-    window.gameState = {
+    //CONSTRUCT state.gameState
+    state.gameState = {
         user: {
             // --- IDENTITY ---
             username: savedUser.username || savedUser.name || "Player",
@@ -156,14 +175,14 @@ function updateGameInfo(dbUser) {
         lifeLog: cleanHistory
     };
     // 5. Render
-   if (window.gameState.user.lifeStatus === "Deceased") {
+   if (state.gameState.user.lifeStatus === "Deceased") {
         console.log("Dead character detected. Locking to death screen.");
-        const cause = window.gameState.user.deathCause || "natural causes";
-        if (typeof window.renderDeathScreen === "function") {
-            window.renderDeathScreen(window.gameState.user, cause);
+        const cause = state.gameState.user.deathCause || "natural causes";
+        if (typeof renderDeathScreen === "function") {
+            renderDeathScreen(state.gameState.user, cause);
         }
-    } else if (typeof window.renderLifeDashboard === "function") {
-        window.renderLifeDashboard(); 
+    } else if (typeof renderLifeDashboard === "function") {
+        renderLifeDashboard(); 
     } else {
         console.error("❌ renderLifeDashboard function not found!");
     }
@@ -171,11 +190,11 @@ function updateGameInfo(dbUser) {
     console.log("✅ Game Loaded & Ready");
 };
 //Loads and renders the game
-window.loadAndRenderGame = (userData) => {
+export const loadAndRenderGame = (userData) => {
     console.log("Loading game for:", userData.username);
 
     // Initialize the Single Source of Truth
-    window.gameState = {
+    state.gameState = {
         user: {
             ...userData,
             money: userData.money || 0,
@@ -222,20 +241,20 @@ window.loadAndRenderGame = (userData) => {
         lifeLog: [{ age: 0, events: [{ msg: "Game Loaded.", color: "text-white" }] }]    
     };
     //.addLog function contains the renderLifeDashboard call
-    window.addLog(`Born in ${userData.city}. Welcome to the world!`, 'good');
+    addLog(`Born in ${userData.city}. Welcome to the world!`, 'good');
 };
 //save game function
 // Attach to window so it is globally accessible
-window.saveGame = async function() {
+export async function saveGame() {
     
     // 1. Safety Checks
     // Don't save if we are a guest (no ID) or if the game hasn't loaded yet (no state)
-    if (!window.userAuthId) {
-        window.Utils.guestStorage.saveGame()
+    if (!state.userAuthId) {
+        Utils.guestStorage.saveGame()
         console.log("⚠️ Guest mode. Saved locally.");
         return;
     }
-    if (!window.gameState || !window.gameState.user) {
+    if (!state.gameState || !state.gameState.user) {
         console.error("⚠️ Game state not ready. Save skipped.");
         return;
     }
@@ -245,26 +264,26 @@ window.saveGame = async function() {
     // 2. The Payload
     // This captures EVERYTHING: isStudent, loans, history, assets, etc.
     const payload = {
-        auth0_id: window.userAuthId,
-        email: window.userEmail, // optional helper
+        auth0_id: state.userAuthId,
+        email: state.userEmail, // optional helper
         
         game_data: {
             // The "Suitcase" - Contains all flags (isStudent, hasBusiness, etc.)
-            user: window.gameState.user, 
+            user: state.gameState.user, 
             
             // The Lists
-            history: window.gameState.lifeLog,
-            assets: window.gameState.assets,
+            history: state.gameState.lifeLog,
+            assets: state.gameState.assets,
             
             // Redundant top-level helpers for easier DB queries later
-            bank: window.gameState.user.money,
+            bank: state.gameState.user.money,
             job: { 
-                title: window.gameState.user.jobTitle, 
-                salary: window.gameState.user.jobSalary 
+                title: state.gameState.user.jobTitle, 
+                salary: state.gameState.user.jobSalary 
             },
             stats: {
-                age: window.gameState.user.age,
-                health: window.gameState.user.health
+                age: state.gameState.user.age,
+                health: state.gameState.user.health
             }
         }
     };
@@ -290,15 +309,13 @@ window.saveGame = async function() {
     }
 };
 // --- Unified Entry Point ---
-window.onload = async () => {
+export const onload = async () => {
     try {
         // Wrap this in a robust try/catch to silence SDK errors
-        if (window.configureAuth) {
-            await window.configureAuth().catch(err => {
-                console.warn("Auth0 check skipped or blocked (Guest Mode active)."), err;
-            }); 
-            console.log("Auth0 Configured.");
-        }
+        await configureAuth().catch(err => {
+            console.warn("Auth0 check skipped or blocked (Guest Mode active).", err);
+        }); 
+        console.log("Auth0 Configured.");
     } catch (e) {
         console.warn("Auth Initialization warning:", e);
     }
@@ -312,36 +329,41 @@ async function initGame() {
     console.log("Initializing Game Logic...");
 
     // 1. Check Auth0 Status
-    const isAuthenticated = await window.auth0Client.isAuthenticated();
+    const isAuthenticated = state.auth0Client ? await state.auth0Client.isAuthenticated() : false;
 
     if (isAuthenticated) {
         // User is logged in! 
-        const user = await window.auth0Client.getUser();
+        const user = await state.auth0Client.getUser();
         console.log(`Welcome back, ${user.nickname} (${user.sub})`);
         
         // Save ID immediately so we can use it
-        window.userAuthId = user.sub;
-        window.userEmail = user.email;
+        state.userAuthId = user.sub;
+        state.userEmail = user.email;
 
         try {
             const response = await fetch(`/api/load?auth0_id=${user.sub}`);
 
             if (response.ok) {
                 const dbUser = await response.json();
-                updateGameInfo(dbUser);
+                if (!dbUser.game_data || Object.keys(dbUser.game_data).length === 0) {
+                    console.log("Save file empty (player wiped). Starting Character Creation.");
+                    renderCharCreation();
+                } else {
+                    updateGameInfo(dbUser);
+                }
             } else {
                 console.log("No save file found. Starting Character Creation.");
-                window.renderCharCreation();
+                renderCharCreation();
             }
         } catch (e) {
             console.error("Error loading save:", e);
-            window.renderCharCreation();
+            renderCharCreation();
         }
 
     } else {
         // Guest Mode - Check for local storage save
         console.log("Guest mode detected.");
-        const guestSave = window.Utils.guestStorage.loadGame();
+        const guestSave = Utils.guestStorage.loadGame();
         
     if (guestSave) {
             // THE FIX: Intercept and destroy dead guest saves
@@ -349,47 +371,55 @@ async function initGame() {
                 console.log("Guest character is dead. Wiping local save.");
                 
                 // Clear state and overwrite local storage with empty data
-                window.gameState = null;
-                if (window.Utils.guestStorage.saveGame) {
-                    window.Utils.guestStorage.saveGame(); 
+                state.gameState = null;
+                if (Utils.guestStorage.saveGame) {
+                    Utils.guestStorage.saveGame(); 
                 }
                 
-                window.renderLoginScreen();
+                renderLoginScreen();
             } else {
                 console.log("Loading guest save from local storage...");
-                window.gameState = guestSave;
-                if (typeof window.renderLifeDashboard === "function") {
-                    window.renderLifeDashboard();
+                state.gameState = guestSave;
+                if (typeof renderLifeDashboard === "function") {
+                    renderLifeDashboard();
                 } else {
                     console.error("renderLifeDashboard function not found!");
                 }
             }
         } else {
             // No guest save - show login screen
-            window.renderLoginScreen();
+            renderLoginScreen();
         }
     }
 };
 // script.js
 
 // --- RESET GAME PIPELINE ---
-window.resetGame = async function() {
+export async function resetGame() {
     console.log("Resetting game state...");
 
+    UI.renderScreen(`
+        <div class="fade-in max-w-md mx-auto h-full flex flex-col justify-center items-center text-center px-4">
+            <i class="fas fa-circle-notch fa-spin text-6xl text-slate-500 mb-6"></i>
+            <h1 class="text-2xl font-bold text-white mb-2">Obliterating the Past...</h1>
+            <p class="text-slate-400">Preparing your next life.</p>
+        </div>
+    `);
+
     // 1. Destroy local state
-    window.gameState = null;
+    state.gameState = null;
 
     // 2. Handle Guest Reset
-    if (!window.userAuthId) {
-        if (window.Utils && window.Utils.guestStorage && typeof window.Utils.guestStorage.saveGame === 'function') {
+    if (!state.userAuthId) {
+        if (Utils && Utils.guestStorage && typeof Utils.guestStorage.saveGame === 'function') {
             // Saving while gameState is null effectively clears the local storage
-            window.Utils.guestStorage.saveGame(); 
+            Utils.guestStorage.saveGame(); 
         }
         console.log("Guest save wiped.");
         
         // Route guests back to login so they can choose to authenticate or play as guest again
-        if (typeof window.renderLoginScreen === "function") {
-            window.renderLoginScreen();
+        if (typeof renderLoginScreen === "function") {
+            renderLoginScreen();
             return;
         }
     } 
@@ -401,8 +431,8 @@ window.resetGame = async function() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    auth0_id: window.userAuthId,
-                    email: window.userEmail,
+                    auth0_id: state.userAuthId,
+                    email: state.userEmail,
                     game_data: {} // Overwrites the DB with empty data, clearing the "Deceased" lock
                 })
             });
@@ -412,7 +442,92 @@ window.resetGame = async function() {
     }
 
     // 4. Route authenticated users to Character Creation
-    if (typeof window.renderCharCreation === "function") {
-        window.renderCharCreation();
+    if (typeof renderCharCreation === "function") {
+        renderCharCreation();
     }
 };
+
+const closeModal = () => {
+    document.getElementById('modal-overlay').classList.add('hidden');
+    document.getElementById('modal-overlay').classList.remove('flex');
+};
+
+const showComingSoon = () => {
+    UI.showModal('Coming Soon', 'This section is under construction.');
+};
+
+const routeHandlers = {
+  resetGame,
+  applyForJob,
+  showFullEulogy,
+  closeModal,
+  showComingSoon,
+  workHarder,
+  skipSchool,
+  workHarderJob,
+  slackOffJob,
+  login,
+  startGuestMode,
+  renderVehicleManager,
+  renderLifeDashboard,
+  renderShoppingHub,
+  renderAssets,
+  repairVehicle,
+  sellVehicle,
+  renderVehicleDealer,
+  buyVehicle,
+  renderActivities,
+  processQuarter,
+  selectIndustry,
+  confirmQuitCareer,
+  quitCareer,
+  attemptEnrollment,
+  openGradEnrollmentModal,
+  attemptGradEnrollment,
+  enterBusinessMode,
+  renderEducation,
+  renderGradSchoolMarket,
+  openUniversityModal,
+  renderCareerManager,
+  renderJobMarket,
+  renderCareerMarket,
+  renderBusinessSetup,
+  selectGender,
+  submitCharacter,
+  continueAsChild,
+  ageUp,
+  renderRelationships,
+  renderPersonInteraction,
+  openRelationshipConfirm
+};
+
+document.addEventListener('click', (e) => {
+    const actionElement = e.target.closest('[data-action]');
+    if (actionElement) {
+        const action = actionElement.dataset.action;
+        const argsStr = actionElement.dataset.args;
+        let args = [];
+        if (argsStr !== undefined && argsStr !== null && argsStr.trim() !== '') {
+            args = argsStr.split(',').map(s => {
+                let t = s.trim();
+                // strip quotes
+                if (t.startsWith("'") && t.endsWith("'")) t = t.slice(1, -1);
+                else if (t.startsWith('"') && t.endsWith('"')) t = t.slice(1, -1);
+                
+                if (t === 'true') return true;
+                if (t === 'false') return false;
+                if (t === 'null') return null;
+                if (t === 'undefined') return undefined;
+                
+                return isNaN(t) || t === '' ? t : Number(t);
+            });
+        }
+        if (routeHandlers[action]) {
+            routeHandlers[action](...args);
+        } else {
+            console.warn('Unhandled action:', action);
+        }
+    }
+});
+
+onload();

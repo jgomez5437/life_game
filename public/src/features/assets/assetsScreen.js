@@ -1,3 +1,12 @@
+import { GameLogic } from '../../core/gameLogic.js';
+import { state } from '../../core/state.js';
+import { renderShoppingHub } from './goShoppingScreen.js';
+import { renderLifeDashboard, addLog } from '../player/mainScreen.js';
+import { Utils } from '../../ui/utils.js';
+import { UI } from '../../ui/ui.js';
+
+const get = id => document.getElementById(id);
+
 //ASSETS PAGE
 
 // --- HELPER: Generates the HTML for the list of cars ---
@@ -17,10 +26,10 @@ function getVehicleListHtml(assets) {
         if (v.condition < 40) condColor = 'text-red-500'; 
         else if (v.condition < 75) condColor = 'text-yellow-500'; 
         // Get icon
-        const style = window.GameLogic.getVehicleIcon(v.type);
+        const style = GameLogic.getVehicleIcon(v.type);
         
         return `
-            <div onclick="renderVehicleManager(${v.id})" class="cursor-pointer hover:bg-slate-700 transition bg-slate-800 p-4 rounded-xl border border-slate-700 flex items-center justify-between mb-3 group">
+            <div data-action="renderVehicleManager" data-args="${v.id}" class="cursor-pointer hover:bg-slate-700 transition bg-slate-800 p-4 rounded-xl border border-slate-700 flex items-center justify-between mb-3 group">
                 <div class="flex items-center gap-4">
                     <div class="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center border border-slate-600 group-hover:border-slate-500">
                         <i class="fas ${style.icon} ${style.color} text-xl"></i>
@@ -33,7 +42,7 @@ function getVehicleListHtml(assets) {
                     </div>
                 </div>
                 <div class="text-right">
-                    <div class="text-green-400 font-bold text-sm">Value: ${window.Utils.formatMoney(v.value)}</div>
+                    <div class="text-green-400 font-bold text-sm">Value: ${Utils.formatMoney(v.value)}</div>
                     <i class="fas fa-chevron-right text-slate-600 text-xs mt-1"></i>
                 </div>
             </div>
@@ -42,8 +51,8 @@ function getVehicleListHtml(assets) {
 }
 
 // --- MAIN FUNCTION ---
-function renderAssets() {
-    const user = window.gameState.user;
+export function renderAssets() {
+    const user = state.gameState.user;
 
     // --- CALCULATE STATS ---
     let monthlyIncome = 0;
@@ -67,7 +76,7 @@ function renderAssets() {
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">
-                <button onclick="renderLifeDashboard(window.gameState)" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+                <button data-action="renderLifeDashboard" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
                     <i class="fas fa-arrow-left"></i> Back to Dashboard
                 </button>
             </div>
@@ -77,21 +86,21 @@ function renderAssets() {
             <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-6 grid grid-cols-3 gap-2 text-center">
                 <div>
                     <div class="text-[10px] text-slate-400 uppercase font-bold">Income</div>
-                    <div class="text-green-400 font-bold text-sm">${window.Utils.formatMoney(monthlyIncome)}/mo</div>
+                    <div class="text-green-400 font-bold text-sm">${Utils.formatMoney(monthlyIncome)}/mo</div>
                 </div>
                 <div class="border-x border-slate-700 px-2">
                     <div class="text-[10px] text-slate-400 uppercase font-bold">Student Loans</div>
-                    <div class="text-red-400 font-bold text-sm">${window.Utils.formatMoney(user.studentLoans)}</div>
+                    <div class="text-red-400 font-bold text-sm">${Utils.formatMoney(user.studentLoans)}</div>
                 </div>
                 <div>
                     <div class="text-[10px] text-slate-400 uppercase font-bold">Monthly Outflow</div>
-                    <div class="text-red-400 font-bold text-sm">${window.Utils.formatMoney(monthlyOutflow)}/mo</div>
+                    <div class="text-red-400 font-bold text-sm">${Utils.formatMoney(monthlyOutflow)}/mo</div>
                 </div>
             </div>
             
             <div class="flex-1 overflow-y-auto pb-4">
                 
-                <div onclick="renderShoppingHub()" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-6 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
+                <div data-action="renderShoppingHub" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-6 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
                     <div class="flex items-center gap-3 mb-2">
                          <div class="w-8 h-8 rounded-full bg-yellow-600/30 flex items-center justify-center text-yellow-500">
                             <i class="fas fa-shopping-cart"></i>
@@ -131,8 +140,8 @@ function renderAssets() {
     `;
 }
 
-window.renderVehicleManager = (id) => {
-    const user = window.gameState.user;
+export const renderVehicleManager = (id) => {
+    const user = state.gameState.user;
     
     // Find the specific car by ID
     const vehicle = user.assets.find(a => a.id === id);
@@ -142,7 +151,7 @@ window.renderVehicleManager = (id) => {
         return;
     }
 
-    const style = window.GameLogic.getVehicleIcon(vehicle.type);
+    const style = GameLogic.getVehicleIcon(vehicle.type);
     
     // Repair Cost Logic: 
     // Example: $100 for every 1% of damage. 
@@ -158,7 +167,7 @@ window.renderVehicleManager = (id) => {
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">
-                <button onclick="renderAssets()" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+                <button data-action="renderAssets" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
                     <i class="fas fa-arrow-left"></i> Back to Assets
                 </button>
             </div>
@@ -168,7 +177,7 @@ window.renderVehicleManager = (id) => {
                     <i class="fas ${style.icon} ${style.color} text-4xl"></i>
                 </div>
                 <h2 class="text-2xl font-bold text-white">${vehicle.name}</h2>
-                <div class="text-green-400 font-bold text-xl mt-1">${window.Utils.formatMoney(vehicle.value)}</div>
+                <div class="text-green-400 font-bold text-xl mt-1">${Utils.formatMoney(vehicle.value)}</div>
                 <p class="text-slate-500 text-sm capitalize">${vehicle.type}</p>
             </div>
 
@@ -187,7 +196,7 @@ window.renderVehicleManager = (id) => {
 
             <div class="grid grid-cols-1 gap-2">
                 
-                <button onclick="repairVehicle(${vehicle.id}, ${repairCost})" 
+                <button data-action="repairVehicle" data-args="${vehicle.id}, ${repairCost}" 
                     ${canRepair ? '' : 'disabled'}
                     class="${canRepair ? 'bg-blue-600 hover:bg-blue-500' : 'bg-slate-700 opacity-50 cursor-not-allowed'} p-4 rounded-xl border border-blue-500/50 flex items-center justify-between transition group">
                     <div class="flex items-center gap-3">
@@ -196,12 +205,12 @@ window.renderVehicleManager = (id) => {
                         </div>
                         <div class="text-left">
                             <h3 class="font-bold text-white">Repair Vehicle</h3>
-                            <div class="text-xs text-blue-200">Cost: ${window.Utils.formatMoney(repairCost)}</div>
+                            <div class="text-xs text-blue-200">Cost: ${Utils.formatMoney(repairCost)}</div>
                         </div>
                     </div>
                 </button>
 
-                <button onclick="sellVehicle(${vehicle.id})" class="bg-red-900/40 p-4 rounded-xl border border-red-800/50 flex items-center justify-between hover:bg-red-900/60 transition group mt-4 mb-8">
+                <button data-action="sellVehicle" data-args="${vehicle.id}" class="bg-red-900/40 p-4 rounded-xl border border-red-800/50 flex items-center justify-between hover:bg-red-900/60 transition group mt-4 mb-8">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-full bg-red-900/30 flex items-center justify-center text-red-400">
                             <i class="fas fa-dollar-sign"></i>
@@ -218,8 +227,8 @@ window.renderVehicleManager = (id) => {
     `;
 };
 
-window.repairVehicle = (id, cost) => {
-    const user = window.gameState.user;
+export const repairVehicle = (id, cost) => {
+    const user = state.gameState.user;
     const vehicle = user.assets.find(a => a.id === id);
     
     if (user.money >= cost) {
@@ -229,14 +238,14 @@ window.repairVehicle = (id, cost) => {
         // Slight value bump for fixing it?
         vehicle.value = Math.floor(vehicle.value * 1.05); 
         
-        window.addLog(`Repaired ${vehicle.name} for ${window.Utils.formatMoney(cost)}.`, 'neutral');
-        window.UI.updateHeader(user);
+        addLog(`Repaired ${vehicle.name} for ${Utils.formatMoney(cost)}.`, 'neutral');
+        UI.updateHeader(user);
         renderVehicleManager(id); // Refresh screen
     }
 };
 
-window.sellVehicle = (id) => {
-    const user = window.gameState.user;
+export const sellVehicle = (id) => {
+    const user = state.gameState.user;
     // Find index to remove
     const index = user.assets.findIndex(a => a.id === id);
     if (index === -1) return;
@@ -250,8 +259,8 @@ window.sellVehicle = (id) => {
     user.money += salePrice;
     user.assets.splice(index, 1); // Remove from array
     
-    window.addLog(`Sold ${vehicle.name} for ${window.Utils.formatMoney(salePrice)}.`, 'good');
-    window.UI.updateHeader(user);
+    addLog(`Sold ${vehicle.name} for ${Utils.formatMoney(salePrice)}.`, 'good');
+    UI.updateHeader(user);
     
     // Go back to the main list since this car is gone
     renderAssets();

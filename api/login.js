@@ -13,18 +13,7 @@ export default async function handler(request, response) {
     }
 
     try {
-        // 1. Check if user exists
-        const checkResult = await sql`
-            SELECT * FROM users WHERE auth0_id = ${auth0_id}
-        `;
-
-        if (checkResult.rows.length > 0) {
-            console.log('Returning player found:', auth0_id);
-            return response.status(200).json(checkResult.rows[0]);
-        } 
-        
-        // 2. If new, create them with the JSONB structure
-      const initialGameData = {
+        const initialGameData = {
             name: username,
             gender: gender,
             city: city,
@@ -41,6 +30,31 @@ export default async function handler(request, response) {
             ]
         };
 
+        // 1. Check if user exists
+        const checkResult = await sql`
+            SELECT * FROM users WHERE auth0_id = ${auth0_id}
+        `;
+
+        if (checkResult.rows.length > 0) {
+            const existingUser = checkResult.rows[0];
+            
+            // If game_data is empty (e.g. wiped after death), initialize it
+            if (!existingUser.game_data || Object.keys(existingUser.game_data).length === 0) {
+                console.log('Re-initializing player data for:', auth0_id);
+                const updateResult = await sql`
+                    UPDATE users 
+                    SET game_data = ${initialGameData}, last_played_at = NOW()
+                    WHERE auth0_id = ${auth0_id}
+                    RETURNING *;
+                `;
+                return response.status(200).json(updateResult.rows[0]);
+            }
+
+            console.log('Returning player found:', auth0_id);
+            return response.status(200).json(existingUser);
+        } 
+        
+        // 2. If new, create them with the JSONB structure
         const insertResult = await sql`
             INSERT INTO users (auth0_id, email, game_data, last_played_at)
             VALUES (${auth0_id}, ${email}, ${initialGameData}, NOW())

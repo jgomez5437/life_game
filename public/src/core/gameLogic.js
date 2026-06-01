@@ -1,3 +1,6 @@
+import { addLog } from '../features/player/mainScreen.js';
+import { UI } from '../ui/ui.js';
+
 function sanitizeName(rawInput) {
     if (!rawInput || typeof rawInput !== 'string') {
         return { isValid: false, error: "Name cannot be empty." };
@@ -156,9 +159,9 @@ function updateOwnedVehicles(user, marketForce) {
             // CRITICAL WARNINGS
             // If the car just hit 0% or low condition, warn the user
             if (asset.condition === 0) {
-                 window.addLog(`URGENT: Your ${asset.name} has broken down completely!`, 'bad');
+                 addLog(`URGENT: Your ${asset.name} has broken down completely!`, 'bad');
             } else if (asset.condition < 20 && asset.condition + decay >= 20) {
-                 window.addLog(`Your ${asset.name} is falling apart. Repair it soon!`, 'bad');
+                 addLog(`Your ${asset.name} is falling apart. Repair it soon!`, 'bad');
             }
         }
     });
@@ -242,7 +245,7 @@ function compressLifeLog(lifeLog) {
         .join("\n");
 };
 
-const GameLogic = {
+export const GameLogic = {
     sanitizeName,
     addLivingExpenses,
     calculateBirthdayMoney,
@@ -257,8 +260,3 @@ const GameLogic = {
     compressLifeLog
 };
 
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = GameLogic; // Node/Jest
-} else if (typeof window !== 'undefined') {
-    window.GameLogic = GameLogic; // Browser
-}

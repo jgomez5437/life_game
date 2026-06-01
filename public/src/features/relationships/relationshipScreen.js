@@ -1,7 +1,12 @@
+import { state } from '../../core/state.js';
+import { renderLifeDashboard, addLog } from '../player/mainScreen.js';
+import { Utils } from '../../ui/utils.js';
+import { UI } from '../../ui/ui.js';
+
 // --- ADD NEW RELATIONSHIP GLOBAL METHOD ---
 // Call this function when befriending someone at school, work, etc.
-window.addNewRelationship = (name, age, type, status, category = 'friend') => {
-    const user = window.gameState.user;
+export const addNewRelationship = (name, age, type, status, category = 'friend') => {
+    const user = state.gameState.user;
     if (!user.relationships) user.relationships = [];
 
     // Auto-categorize non-relatives immediately upon creation
@@ -34,8 +39,8 @@ window.addNewRelationship = (name, age, type, status, category = 'friend') => {
 
 // --- RENDER SCREEN ---
 // --- RENDER SCREEN ---
-window.renderRelationships = () => {
-    const user = window.gameState.user;
+export const renderRelationships = () => {
+    const user = state.gameState.user;
 
     if (!user.relationships) {
         user.relationships = [];
@@ -71,7 +76,7 @@ window.renderRelationships = () => {
         }
 
         return `
-            <div onclick="renderPersonInteraction('${person.id}')" class="bg-slate-800 p-3 rounded-xl border border-slate-700 mb-3 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition flex items-center justify-between group">
+            <div data-action="renderPersonInteraction" data-args="&apos;${person.id}&apos;" class="bg-slate-800 p-3 rounded-xl border border-slate-700 mb-3 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition flex items-center justify-between group">
                 <div class="flex items-center gap-4">
                     <div class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-slate-400 group-hover:bg-slate-600 transition border border-slate-600">
                         <i class="fas ${icon}"></i>
@@ -127,7 +132,7 @@ window.renderRelationships = () => {
     container.innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">
-                <button onclick="renderLifeDashboard(window.gameState)" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+                <button data-action="renderLifeDashboard" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
                     <i class="fas fa-arrow-left"></i> Back to Dashboard
                 </button>
             </div>
@@ -144,8 +149,8 @@ window.renderRelationships = () => {
 };
 
 // --- INTERACTION SCREEN ---
-window.renderPersonInteraction = (id) => {
-    const user = window.gameState.user;
+export const renderPersonInteraction = (id) => {
+    const user = state.gameState.user;
     const person = user.relationships.find(r => r.id === id);
     if (!person) return;
 
@@ -193,20 +198,20 @@ window.renderPersonInteraction = (id) => {
                     </div>
                     <div class="text-left flex-1">
                         <div class="font-bold text-slate-400">${it.name}</div>
-                        <div class="text-xs text-slate-500">${it.desc}${it.cost ? ' — ' + window.Utils.formatMoney(it.cost) : ''}</div>
+                        <div class="text-xs text-slate-500">${it.desc}${it.cost ? ' — ' + Utils.formatMoney(it.cost) : ''}</div>
                     </div>
                     <div class="text-xs font-bold text-red-400 uppercase tracking-wide">${blockReason}</div>
                 </button>
             `;
         } else {
             return `
-                <button onclick="openRelationshipConfirm('${person.id}', ${i})" class="w-full p-3 rounded-xl border border-slate-700 mb-3 bg-slate-800 hover:bg-slate-750 hover:border-slate-500 transition flex items-center gap-3">
+                <button data-action="openRelationshipConfirm" data-args="&apos;${person.id}&apos;, ${i}" class="w-full p-3 rounded-xl border border-slate-700 mb-3 bg-slate-800 hover:bg-slate-750 hover:border-slate-500 transition flex items-center gap-3">
                     <div class="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center text-lg shadow-inner">
                         <i class="fas ${it.icon} text-slate-400"></i>
                     </div>
                     <div class="text-left flex-1">
                         <div class="font-bold text-white">${it.name}</div>
-                        <div class="text-xs text-slate-400">${it.desc}${it.cost ? ' — ' + window.Utils.formatMoney(it.cost) : ''}</div>
+                        <div class="text-xs text-slate-400">${it.desc}${it.cost ? ' — ' + Utils.formatMoney(it.cost) : ''}</div>
                     </div>
                     <div class="text-sm font-semibold text-white">${it.statusChange > 0 ? '+'+it.statusChange : it.statusChange}</div>
                 </button>
@@ -227,7 +232,7 @@ window.renderPersonInteraction = (id) => {
     container.innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">
-                <button onclick="renderRelationships()" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+                <button data-action="renderRelationships" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
                     <i class="fas fa-arrow-left"></i> Back to Relationships
                 </button>
             </div>
@@ -258,8 +263,8 @@ window.renderPersonInteraction = (id) => {
 };
 
 // --- CONFIRM DIALOG LAUNCHER ---
-window.openRelationshipConfirm = (personId, actionIndex) => {
-    const user = window.gameState.user;
+export const openRelationshipConfirm = (personId, actionIndex) => {
+    const user = state.gameState.user;
     const person = user.relationships.find(r => r.id === personId);
     if (!person) return;
 
@@ -283,21 +288,21 @@ window.openRelationshipConfirm = (personId, actionIndex) => {
     else if (action.key === 'give_money' && user.age <= 10) isTooYoung = true;
 
     if (isTooYoung) {
-        window.UI.showModal('Action Blocked', "You are too young to do this.");
+        UI.showModal('Action Blocked', "You are too young to do this.");
         return;
     }
 
     const message = `<div class="text-sm text-slate-300 mb-4">Are you sure you want to <strong>${action.name}</strong> ${person.name}?` +
-        (action.cost ? `<div class="mt-2 text-xs text-slate-400">This will cost ${window.Utils.formatMoney(action.cost)}</div>` : '') + `</div>`;
+        (action.cost ? `<div class="mt-2 text-xs text-slate-400">This will cost ${Utils.formatMoney(action.cost)}</div>` : '') + `</div>`;
 
-    window.UI.showConfirm(action.name, message, action.name, () => {
+    UI.showConfirm(action.name, message, action.name, () => {
         performRelationshipAction(personId, actionIndex);
     });
 };
 
 // --- PERFORM ACTION & SHIFT CATEGORY ---
-window.performRelationshipAction = (personId, actionIndex) => {
-    const user = window.gameState.user;
+export const performRelationshipAction = (personId, actionIndex) => {
+    const user = state.gameState.user;
     const person = user.relationships.find(r => r.id === personId);
     if (!person) return;
 
@@ -320,13 +325,13 @@ window.performRelationshipAction = (personId, actionIndex) => {
     else if (action.key === 'give_money' && user.age <= 10) isTooYoung = true;
 
     if (isTooYoung) {
-        window.UI.showModal('Action Blocked', "You are too young to do this.");
+        UI.showModal('Action Blocked', "You are too young to do this.");
         return;
     }
 
     // Check funds
     if ((user.money || 0) < action.cost) {
-        window.UI.showModal('Insufficient Funds', `You need ${window.Utils.formatMoney(action.cost)} to ${action.name.toLowerCase()}.`);
+        UI.showModal('Insufficient Funds', `You need ${Utils.formatMoney(action.cost)} to ${action.name.toLowerCase()}.`);
         return;
     }
 
@@ -343,26 +348,26 @@ window.performRelationshipAction = (personId, actionIndex) => {
         if (person.status < 30 && person.category !== 'enemy') {
             person.category = 'enemy';
             person.type = 'Enemy';
-            window.addLog(`${person.name} is now your Enemy!`, 'bad');
+            addLog(`${person.name} is now your Enemy!`, 'bad');
         } else if (person.status >= 30 && person.category === 'enemy') {
             person.category = 'friend';
             person.type = 'Friend';
-            window.addLog(`You made amends with ${person.name}. They are now a Friend.`, 'good');
+            addLog(`You made amends with ${person.name}. They are now a Friend.`, 'good');
         }
     }
 
     // Log
     const color = delta > 0 ? 'good' : delta < 0 ? 'bad' : 'neutral';
     const sign = delta > 0 ? `+${delta}` : delta;
-    window.addLog(`${action.name}: ${person.name} (${sign} relationship)`, color);
+    addLog(`${action.name}: ${person.name} (${sign} relationship)`, color);
 
     // Update header (money might have changed)
-    window.UI.updateHeader(user);
+    UI.updateHeader(user);
 
     // Feedback modal
     const title = delta > 0 ? 'Success' : delta < 0 ? 'Oops' : 'Done';
-    window.UI.showModal(title, `${person.name}'s relationship status is now ${person.status}%.`);
+    UI.showModal(title, `${person.name}'s relationship status is now ${person.status}%.`);
 
     // Refresh interaction screen
-    setTimeout(() => window.renderPersonInteraction(personId), 300);
+    setTimeout(() => renderPersonInteraction(personId), 300);
 };

@@ -1,8 +1,16 @@
+import { GameLogic } from '../../core/gameLogic.js';
+import { loadAndRenderGame, updateGameInfo } from '../../core/main.js';
+import { state } from '../../core/state.js';
+import { renderLifeDashboard, addLog } from './mainScreen.js';
+import { FamilyFactory } from '../relationships/familyFactory.js';
+import { UI } from '../../ui/ui.js';
+
 //Character creation screen
+const get = id => document.getElementById(id);
 let selectedGender = 'male';
 const CITIES = ["New York", "Los Angeles", "San Francisco", "Houston", "Miami", "Tucson", "London", "Osaka", "Tokyo", "Berlin", "Madrid","Bandar Seri Begawan", "Paris", "Beijing", "Toronto", "Mexico City", "Cairo"];
 
-window.renderCharCreation = () => {
+export const renderCharCreation = () => {
     const creationHTML = `
             <div class="fade-in max-w-md mx-auto h-full flex flex-col justify-center">
                 <div class="text-center mb-8">
@@ -18,8 +26,8 @@ window.renderCharCreation = () => {
                     <div>
                         <label class="block text-sm text-slate-400 mb-1">Gender</label>
                         <div class="grid grid-cols-2 gap-2">
-                            <button onclick="selectGender('male')" id="btn-male" class="p-3 rounded border border-blue-500 bg-blue-900/30 text-blue-200">Male</button>
-                            <button onclick="selectGender('female')" id="btn-female" class="p-3 rounded border border-slate-600 bg-slate-900 text-slate-400">Female</button>
+                            <button data-action="selectGender" data-args="&apos;male&apos;" id="btn-male" class="p-3 rounded border border-blue-500 bg-blue-900/30 text-blue-200">Male</button>
+                            <button data-action="selectGender" data-args="&apos;female&apos;" id="btn-female" class="p-3 rounded border border-slate-600 bg-slate-900 text-slate-400">Female</button>
                         </div>
                     </div>
                     <div>
@@ -28,7 +36,7 @@ window.renderCharCreation = () => {
                             ${CITIES.map(c => `<option value="${c}">${c}</option>`).join('')}
                         </select>
                     </div>
-                    <button onclick="submitCharacter()" class="w-full btn-life text-white font-bold py-4 rounded-xl text-lg mt-4">
+                    <button data-action="submitCharacter" class="w-full btn-life text-white font-bold py-4 rounded-xl text-lg mt-4">
                         Start Life
                     </button>
                 </div>
@@ -37,7 +45,7 @@ window.renderCharCreation = () => {
         UI.renderScreen(creationHTML);
     }
 
-function selectGender(g) {
+export function selectGender(g) {
     selectedGender = g;
     console.log(selectedGender);
     if(g === 'male') {
@@ -49,18 +57,18 @@ function selectGender(g) {
     } 
 }
 
-async function submitCharacter() {
+export async function submitCharacter() {
     // 1. Safely check for user
     let user = null;
-    if (window.auth0Client) {
-        try { user = await window.auth0Client.getUser(); } catch (e) {}
+    if (state.auth0Client) {
+        try { user = await state.auth0Client.getUser(); } catch (e) {}
     }
 
     const inputName = get('inp-name').value;
-    const validation = window.GameLogic.sanitizeName(inputName);
+    const validation = GameLogic.sanitizeName(inputName);
 
     if (!validation.isValid) {
-        window.UI.showModal("Wait", validation.error);
+        UI.showModal("Wait", validation.error);
         return;
     }
     
@@ -76,8 +84,8 @@ async function submitCharacter() {
 
     // === 1. GENERATE LOCAL ARRAY (DO NOT MUTATE STATE YET) ===
     let startingFamily = [];
-    if (window.FamilyFactory) {
-        startingFamily = window.FamilyFactory.generateFamily(lastName);
+    if (FamilyFactory) {
+        startingFamily = FamilyFactory.generateFamily(lastName);
     } else {
         console.error("FamilyFactory is not loaded. Relationships array will be empty.");
     }
@@ -103,7 +111,7 @@ async function submitCharacter() {
             
             userData = await response.json(); 
             userData.relationships = startingFamily; // Inject before update
-            window.updateGameInfo(userData);
+            updateGameInfo(userData);
         } 
         // === IF GUEST ===
         else {
@@ -118,36 +126,36 @@ async function submitCharacter() {
                 is_guest: true,
                 relationships: startingFamily // Inject before load
             };
-            window.loadAndRenderGame(userData);
+            loadAndRenderGame(userData);
         }
 
         // --- PARENTAGE LOGIC ---
-    const rels = window.gameState.user.relationships;
+    const rels = state.gameState.user.relationships;
     const mother = rels.find(r => r.type === 'Mother');
     const father = rels.find(r => r.type === 'Father');
     const siblings = rels.filter(r => r.type === 'Brother' || r.type === 'Sister').length;
 
     if (mother && father) {
-        window.addLog(`You were born to ${mother.name} (Age ${mother.age}) and ${father.name} (Age ${father.age}).`, 'neutral');
+        addLog(`You were born to ${mother.name} (Age ${mother.age}) and ${father.name} (Age ${father.age}).`, 'neutral');
     } else if (mother) {
-        window.addLog(`You were born to a single mother, ${mother.name} (Age ${mother.age}).`, 'neutral');
+        addLog(`You were born to a single mother, ${mother.name} (Age ${mother.age}).`, 'neutral');
     } else if (father) {
-        window.addLog(`You were born to a single father, ${father.name} (Age ${father.age}).`, 'neutral');
+        addLog(`You were born to a single father, ${father.name} (Age ${father.age}).`, 'neutral');
     } else {
-        window.addLog(`You were born an orphan with no known parents.`, 'bad');
+        addLog(`You were born an orphan with no known parents.`, 'bad');
     }
 
     if (siblings > 0) {
-        window.addLog(`You have ${siblings} older sibling${siblings > 1 ? 's' : ''}.`, 'neutral');
+        addLog(`You have ${siblings} older sibling${siblings > 1 ? 's' : ''}.`, 'neutral');
     }
 
         // Render the UI only after all state has been initialized
         // Note: updateGameInfo/loadAndRenderGame should be responsible for calling this, 
         // but if left here, it will execute after gameState exists.
-        window.renderLifeDashboard(window.gameState);
+        renderLifeDashboard(state.gameState);
 
     } catch (error) {
         console.error("Creation failed", error);
-        window.UI.showModal("Error", "Failed to create character.");
+        UI.showModal("Error", "Failed to create character.");
     }
 }

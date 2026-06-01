@@ -1,3 +1,11 @@
+import { GameLogic } from '../../core/gameLogic.js';
+import { state } from '../../core/state.js';
+import { renderLifeDashboard, addLog } from '../player/mainScreen.js';
+import { Utils } from '../../ui/utils.js';
+import { UI } from '../../ui/ui.js';
+
+const get = id => document.getElementById(id);
+
 // screens/shoppingScreen.js
 
 // Vehicle list
@@ -18,13 +26,13 @@ window.VEHICLES_FOR_SALE = [
 
 
 // Main shopping hub
-window.renderShoppingHub = () => {
-    const user = window.gameState.user;
+export const renderShoppingHub = () => {
+    const user = state.gameState.user;
 
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">
-                <button onclick="renderLifeDashboard()" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+                <button data-action="renderLifeDashboard" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
                     <i class="fas fa-arrow-left"></i> Back to Life
                 </button>
             </div>
@@ -36,7 +44,7 @@ window.renderShoppingHub = () => {
 
             <div class="grid grid-cols-1 gap-4">
                 
-                <button onclick="renderVehicleDealer()" class="bg-slate-800 p-6 rounded-xl border border-slate-700 flex items-center justify-between hover:bg-slate-750 hover:border-blue-500 transition group">
+                <button data-action="renderVehicleDealer" class="bg-slate-800 p-6 rounded-xl border border-slate-700 flex items-center justify-between hover:bg-slate-750 hover:border-blue-500 transition group">
                     <div class="flex items-center gap-4">
                         <div class="w-12 h-12 rounded-full bg-blue-900/30 flex items-center justify-center text-blue-400 text-xl group-hover:scale-110 transition">
                             <i class="fas fa-car"></i>
@@ -49,7 +57,7 @@ window.renderShoppingHub = () => {
                     <i class="fas fa-chevron-right text-slate-600 group-hover:text-white"></i>
                 </button>
 
-                <button onclick="window.UI.showModal('Coming Soon', 'Real Estate is under construction.')" class="bg-slate-800 p-6 rounded-xl border border-slate-700 flex items-center justify-between hover:bg-slate-750 hover:border-green-500 transition group">
+                <button data-action="showComingSoon" class="bg-slate-800 p-6 rounded-xl border border-slate-700 flex items-center justify-between hover:bg-slate-750 hover:border-green-500 transition group">
                     <div class="flex items-center gap-4">
                         <div class="w-12 h-12 rounded-full bg-green-900/30 flex items-center justify-center text-green-400 text-xl group-hover:scale-110 transition">
                             <i class="fas fa-home"></i>
@@ -62,7 +70,7 @@ window.renderShoppingHub = () => {
                     <i class="fas fa-chevron-right text-slate-600 group-hover:text-white"></i>
                 </button>
 
-                <button onclick="window.UI.showModal('Coming Soon', 'Luxury items are under construction.')" class="bg-slate-800 p-6 rounded-xl border border-slate-700 flex items-center justify-between hover:bg-slate-750 hover:border-yellow-500 transition group">
+                <button data-action="showComingSoon" class="bg-slate-800 p-6 rounded-xl border border-slate-700 flex items-center justify-between hover:bg-slate-750 hover:border-yellow-500 transition group">
                     <div class="flex items-center gap-4">
                         <div class="w-12 h-12 rounded-full bg-yellow-900/30 flex items-center justify-center text-yellow-400 text-xl group-hover:scale-110 transition">
                             <i class="fas fa-gem"></i>
@@ -81,12 +89,12 @@ window.renderShoppingHub = () => {
 };
 
 // Vehicle Dealership Screen
-window.renderVehicleDealer = () => {
-    const user = window.gameState.user;
+export const renderVehicleDealer = () => {
+    const user = state.gameState.user;
     
     const carListHtml = window.VEHICLES_FOR_SALE.map(car => {
         const canAfford = user.money >= car.price;
-        const style = window.GameLogic.getVehicleIcon(car.type);
+        const style = GameLogic.getVehicleIcon(car.type);
         
         let buyButtonText = canAfford ? "Buy" : "Can't Afford"; 
         
@@ -103,12 +111,12 @@ window.renderVehicleDealer = () => {
                         
                         <div class="flex items-center gap-2">
                             <div class="text-xs text-slate-400 capitalize border-r border-slate-600 pr-2">${car.type}</div>
-                            <div class="text-green-400 font-bold text-xs">${window.Utils.formatMoney(car.price)}</div>
+                            <div class="text-green-400 font-bold text-xs">${Utils.formatMoney(car.price)}</div>
                         </div>
                     </div>
                 </div>
                 
-                <button onclick="buyVehicle(${car.id})" 
+                <button data-action="buyVehicle" data-args="${car.id}" 
                     ${canAfford ? '' : 'disabled'}
                     class="${canAfford ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-slate-700 text-slate-500 cursor-not-allowed'} px-3 py-1.5 rounded-lg font-bold text-xs transition whitespace-nowrap ml-2">
                     ${buyButtonText}
@@ -120,7 +128,7 @@ window.renderVehicleDealer = () => {
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">
-                <button onclick="renderShoppingHub()" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+                <button data-action="renderShoppingHub" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
                     <i class="fas fa-arrow-left"></i> Back to Market
                 </button>
             </div>
@@ -142,14 +150,14 @@ window.renderVehicleDealer = () => {
 
 // --- LOGIC FUNCTIONS (The "Controller") ---
 
-window.buyVehicle = (carId) => {
-    const user = window.gameState.user;
+export const buyVehicle = (carId) => {
+    const user = state.gameState.user;
     const car = window.VEHICLES_FOR_SALE.find(c => c.id === carId);
 
     if (!car) return;
 
     if (user.money < car.price) {
-        window.UI.showModal("Insufficient Funds", "You cannot afford this vehicle.");
+        UI.showModal("Insufficient Funds", "You cannot afford this vehicle.");
         return;
     }
 
@@ -172,12 +180,12 @@ window.buyVehicle = (carId) => {
     user.assets.push(newAsset);
 
     // 3. Feedback
-    window.addLog(`Purchased a ${car.name} for ${window.Utils.formatMoney(car.price)}.`, 'good');
+    addLog(`Purchased a ${car.name} for ${Utils.formatMoney(car.price)}.`, 'good');
     
     // 4. Refresh Screen
-    window.UI.updateHeader(user); // Update bank balance in header
+    UI.updateHeader(user); // Update bank balance in header
     renderVehicleDealer(); // Re-render list to update button states (affordability)
     
     // Optional: Show success modal
-    window.UI.showModal("Purchase Successful", `You are now the owner of a ${car.name}!`);
+    UI.showModal("Purchase Successful", `You are now the owner of a ${car.name}!`);
 };

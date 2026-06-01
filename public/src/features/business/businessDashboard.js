@@ -1,6 +1,12 @@
+import { state } from '../../core/state.js';
+import { renderActivities } from '../career/occupationScreen.js';
+import { renderLifeDashboard, addLog } from '../player/mainScreen.js';
+import { UI } from '../../ui/ui.js';
+import { INDUSTRIES, SUPPLIERS } from '../../core/main.js';
+
 //BUSINESS DASHBOARD
 
-function enterBusinessMode() {
+export function enterBusinessMode() {
     renderBusinessDashboard();
 }
 function renderBusinessDashboard() {
@@ -15,7 +21,7 @@ function renderBusinessDashboard() {
             
             <!-- Top Bar for Business Mode -->
             <div class="flex justify-between items-center mb-4">
-                <button onclick="renderActivities()" class="text-slate-400 hover:text-white text-sm flex items-center gap-2">
+                <button data-action="renderActivities" class="text-slate-400 hover:text-white text-sm flex items-center gap-2">
                     <i class="fas fa-arrow-left"></i> Occupation
                 </button>
                 <div class="text-right">
@@ -96,7 +102,7 @@ function renderBusinessDashboard() {
                     <div class="text-xs text-slate-500 mt-2">Goes to your personal bank account.</div>
                 </div>
             </div>
-            <button onclick="processQuarter()" class="w-full btn-primary text-white font-bold py-4 rounded-xl text-lg shadow-lg mt-6 mb-4">
+            <button data-action="processQuarter" class="w-full btn-primary text-white font-bold py-4 rounded-xl text-lg shadow-lg mt-6 mb-4">
                 End Quarter <i class="fas fa-arrow-right ml-2"></i>
             </button>
         </div>
@@ -151,7 +157,7 @@ function updateCalculations() {
     else impactEl.innerHTML = `<span class="text-slate-400">Fair Price</span>`;
 }
 // --- BUSINESS TURN LOGIC ---
-function processQuarter() {
+export function processQuarter() {
     const ind = INDUSTRIES[game.industry];
     const supplier = SUPPLIERS.find(s => s.id === game.supplierId);
     // 1. Pay Expenses
@@ -218,7 +224,7 @@ function processQuarter() {
             <strong>Your Bank:</strong> ${formatMoney(game.bank)}<br><br>
             You are now Age ${game.age}.`,
             "Return to Life View",
-            () => renderLifeDashboard(window.gameState)
+            () => renderLifeDashboard(state.gameState)
         );
     } else {
         renderBusinessDashboard(); // Next quarter

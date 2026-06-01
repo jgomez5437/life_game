@@ -1,7 +1,14 @@
+import { state } from '../../core/state.js';
+import { renderActivities } from './occupationScreen.js';
+import { addLog } from '../player/mainScreen.js';
+import { Utils } from '../../ui/utils.js';
+
+const get = id => document.getElementById(id);
+
 //MANAGE CAREER/PART TIME JOB PAGE
 
-function renderCareerManager() {
-    const user = window.gameState.user;
+export function renderCareerManager() {
+    const user = state.gameState.user;
     const p = user.jobPerformance;
     const actionTaken = user.careerActionTaken;
     
@@ -19,7 +26,7 @@ function renderCareerManager() {
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">
-                <button onclick="renderActivities()" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+                <button data-action="renderActivities" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
                     <i class="fas fa-arrow-left"></i> Back to Occupation
                 </button>
             </div>
@@ -28,7 +35,7 @@ function renderCareerManager() {
                     <i class="fas fa-briefcase"></i>
                 </div>
                 <h2 class="text-2xl font-bold text-white">${user.jobTitle}</h2>
-                <p class="text-green-400 text-sm font-bold">${window.Utils.formatMoney(user.jobSalary)} / year</p>
+                <p class="text-green-400 text-sm font-bold">${Utils.formatMoney(user.jobSalary)} / year</p>
                 <p class="text-slate-500 text-xs mt-1">${actionTaken ? "Action Taken This Year" : "Actions Available"}</p>
             </div>
             <!-- Performance -->
@@ -43,7 +50,7 @@ function renderCareerManager() {
             </div>
             <!-- Actions Grid -->
             <div class="grid grid-cols-1 gap-3">
-                <button onclick="${actionTaken ? '' : 'workHarderJob()'}" class="${actionClass}">
+                <button ${actionTaken ? 'disabled' : `data-action="workHarderJob"`} class="${actionClass}">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white">
                             <i class="fas fa-briefcase"></i>
@@ -55,7 +62,7 @@ function renderCareerManager() {
                     </div>
                     <i class="fas fa-arrow-right text-white"></i>
                 </button>
-                <button onclick="${actionTaken ? '' : 'slackOffJob()'}" class="${slackClass}">
+                <button ${actionTaken ? 'disabled' : `data-action="slackOffJob"`} class="${slackClass}">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-full bg-red-900/30 flex items-center justify-center text-red-400 group-hover:text-red-300">
                             <i class="fas fa-couch"></i>
@@ -67,7 +74,7 @@ function renderCareerManager() {
                     </div>
                     <i class="fas fa-chevron-right text-slate-600"></i>
                 </button>
-                <button onclick="confirmQuitCareer()" class="bg-red-900/50 p-4 rounded-xl border border-red-700 flex items-center justify-between hover:bg-red-900 transition group mt-4 mb-8">
+                <button data-action="confirmQuitCareer" class="bg-red-900/50 p-4 rounded-xl border border-red-700 flex items-center justify-between hover:bg-red-900 transition group mt-4 mb-8">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-full bg-red-900/30 flex items-center justify-center text-red-400">
                             <i class="fas fa-door-open"></i>
@@ -84,8 +91,8 @@ function renderCareerManager() {
     `;
 }
 
-function workHarderJob() {
-    const user = window.gameState.user;
+export function workHarderJob() {
+    const user = state.gameState.user;
     if (user.careerActionTaken) return;
     
     user.jobPerformance = Math.min(100, user.jobPerformance + 15);
@@ -93,32 +100,32 @@ function workHarderJob() {
     addLog("Worked hard at your job. Boss is impressed.", 'good');
     renderCareerManager();
 }
-function slackOffJob() {
-    const user = window.gameState.user;
+export function slackOffJob() {
+    const user = state.gameState.user;
     if (user.careerActionTaken) return;
     user.jobPerformance = Math.max(0, user.jobPerformance - 15);
     user.careerActionTaken = true;
     addLog("Slacked off at work. Performance suffered.", 'bad');
     renderCareerManager();
 }
-function confirmQuitCareer() {
-    const user = window.gameState.user;
+export function confirmQuitCareer() {
+    const user = state.gameState.user;
     const m = get('modal-overlay');
     get('modal-title').innerText = "Quit Career?";
     get('modal-content').innerHTML = `Are you sure you want to resign from your position as <strong>${user.jobTitle}</strong>? You will lose your steady income.`;
     
     get('modal-actions').innerHTML = `
         <div class="grid grid-cols-2 gap-3">
-            <button onclick="quitCareer()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-lg">Yes, Quit</button>
-            <button onclick="document.getElementById('modal-overlay').classList.add('hidden'); document.getElementById('modal-overlay').classList.remove('flex');" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-lg">Cancel</button>
+            <button data-action="quitCareer" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-lg">Yes, Quit</button>
+            <button data-action="closeModal" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-lg">Cancel</button>
         </div>
     `;
     m.classList.remove('hidden');
     m.classList.add('flex');
 }
 
-function quitCareer() {
-    const user = window.gameState.user;
+export function quitCareer() {
+    const user = state.gameState.user;
     const oldJob = user.jobTitle;
     user.jobTitle = null;
     user.jobSalary = 0;
@@ -134,8 +141,8 @@ function quitCareer() {
     renderActivities();
 }
 
-function checkActionTaken() {
-    const user = window.gameState.user;
+export function checkActionTaken() {
+    const user = state.gameState.user;
     if (user.careerActionTaken) {
         user.careerActionTaken = false
     };

@@ -1,4 +1,7 @@
-window.renderLoginScreen = () => {
+import { renderCharCreation } from '../features/player/charCreationScreen.js';
+import { UI } from '../ui/ui.js';
+
+export const renderLoginScreen = () => {
     const container = document.getElementById('game-container');
     
     const html = `
@@ -16,12 +19,12 @@ window.renderLoginScreen = () => {
 
         <div class="w-full max-w-xs space-y-3">
             
-            <button onclick="login()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-900/50 transition-all flex items-center justify-center gap-3">
+            <button data-action="login" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-900/50 transition-all flex items-center justify-center gap-3">
                 <i class="fas fa-cloud"></i>
                 <span>Cloud Save / Login</span>
             </button>
 
-            <button onclick="startGuestMode()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-4 rounded-xl border border-slate-700 transition-all">
+            <button data-action="startGuestMode" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-4 rounded-xl border border-slate-700 transition-all">
                 Play as Guest
             </button>
             
@@ -37,7 +40,7 @@ window.renderLoginScreen = () => {
 }
 
 // Add this small helper for guests
-function startGuestMode() {
+export function startGuestMode() {
     console.log("Starting as guest...");
-    window.renderCharCreation();
+    renderCharCreation();
 }

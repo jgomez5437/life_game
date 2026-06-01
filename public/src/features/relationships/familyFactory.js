@@ -1,4 +1,4 @@
-window.FamilyFactory = (() => {
+export const FamilyFactory = (() => {
     // 1. Static Name Dictionaries
     // Future Architecture Note: Move these to a separate JSON config file when implementing regional variants.
     const NAMES = {

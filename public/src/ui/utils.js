@@ -1,4 +1,6 @@
-const Utils = {
+import { state } from '../core/state.js';
+
+export const Utils = {
     //format money
     formatMoney: (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(num),
     
@@ -53,10 +55,10 @@ const Utils = {
          * Saves the current gameState to browser storage
          */
         saveGame: () => {
-            const state = window.gameState;
+            const currentState = state.gameState;
             try {
                 // Convert the huge object into a single string
-                const serializedState = JSON.stringify(state);
+                const serializedState = JSON.stringify(currentState);
                 // Access the key via the parent object structure
                 localStorage.setItem(Utils.guestStorage.SAVE_KEY, serializedState);
                 console.log("Game saved successfully.");
@@ -94,8 +96,3 @@ const Utils = {
 };
 
 //export for Jest testing
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = Utils; // Node/Jest
-} else {
-    window.Utils = Utils;   // Browser
-}
