@@ -1,5 +1,5 @@
 ## TODO
-[ ] Build active health improvement mechanics (e.g., gym memberships, better diets, medical visits).
+[x] Build active health improvement mechanics (e.g., gym memberships, better diets, medical visits).
 
 [ ] Build dynamic health penalty events (e.g., random diseases, lifestyle penalties, accidents).
 
@@ -7,7 +7,7 @@
 
 [ ] Add passive relationship decay logic for neglected family members.
 
-[ ] Architect the "More" dashboard section (currently mapped to the 'Coming Soon' placeholder modal).
+[x] Architect the "More" dashboard section (currently mapped to the 'Coming Soon' placeholder modal).
 
 [ ] Implement Generational Wealth mechanic (starting assets/trust funds for children born to wealthy parents).
 

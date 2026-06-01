@@ -1,4 +1,23 @@
-const GameLogic = require('../public/gameLogic')
+import { jest } from '@jest/globals';
+
+jest.unstable_mockModule('../public/src/features/player/mainScreen.js', () => ({
+    addLog: jest.fn(),
+    renderLifeDashboard: jest.fn(),
+    renderDeathScreen: jest.fn(),
+    showFullEulogy: jest.fn(),
+    continueAsChild: jest.fn(),
+    ageUp: jest.fn()
+}));
+
+jest.unstable_mockModule('../public/src/ui/ui.js', () => ({
+    UI: {
+        renderScreen: jest.fn(),
+        updateHeader: jest.fn(),
+        showModal: jest.fn()
+    }
+}));
+
+const { GameLogic } = await import('../public/src/core/gameLogic.js');
 
 test("sanitizeName validates name and returns", () => {
     expect(GameLogic.sanitizeName("1234 1234")).toEqual({
@@ -66,5 +85,47 @@ describe('calculateHealthDecay', () => {
         expect(GameLogic.calculateHealthDecay(80, 0.10)).toBe(2); // (0.1 * 3) + 2 = 2.3 -> 2
         expect(GameLogic.calculateHealthDecay(80, 0.50)).toBe(3); // (0.5 * 3) + 2 = 3.5 -> 3
         expect(GameLogic.calculateHealthDecay(80, 0.90)).toBe(4); // (0.9 * 3) + 2 = 4.7 -> 4
+    });
+});
+
+describe('calculateHealthBenefits', () => {
+    test('Returns 0 if no active habits', () => {
+        expect(GameLogic.calculateHealthBenefits(false, false)).toBe(0);
+    });
+    test('Returns 1 if only gym', () => {
+        expect(GameLogic.calculateHealthBenefits(true, false)).toBe(1);
+    });
+    test('Returns 1 if only diet', () => {
+        expect(GameLogic.calculateHealthBenefits(false, true)).toBe(1);
+    });
+    test('Returns 2 if both gym and diet', () => {
+        expect(GameLogic.calculateHealthBenefits(true, true)).toBe(2);
+    });
+});
+
+describe('calculateActiveHealthCosts', () => {
+    test('Returns 0 if no active habits', () => {
+        expect(GameLogic.calculateActiveHealthCosts(false, false)).toBe(0);
+    });
+    test('Returns 600 if only gym', () => {
+        expect(GameLogic.calculateActiveHealthCosts(true, false)).toBe(600);
+    });
+    test('Returns 2400 if only diet', () => {
+        expect(GameLogic.calculateActiveHealthCosts(false, true)).toBe(2400);
+    });
+    test('Returns 3000 if both gym and diet', () => {
+        expect(GameLogic.calculateActiveHealthCosts(true, true)).toBe(3000);
+    });
+});
+
+describe('calculateMedicalVisit', () => {
+    test('Returns fixed boost and cost', () => {
+        expect(GameLogic.calculateMedicalVisit()).toEqual({ boost: 10, cost: 1000 });
+    });
+});
+
+describe('calculateOneTimeGymVisit', () => {
+    test('Returns fixed boost and cost', () => {
+        expect(GameLogic.calculateOneTimeGymVisit()).toEqual({ boost: 1, cost: 20 });
     });
 });

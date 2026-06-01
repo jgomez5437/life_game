@@ -69,6 +69,10 @@ export function renderAssets() {
         monthlyOutflow += 2000;
     }
     
+    if (user.gymMembership) {
+        monthlyOutflow += 50;
+    }
+    
     // Ensure assets array exists
     const assets = user.assets || [];
     const vehicleHtml = getVehicleListHtml(assets);

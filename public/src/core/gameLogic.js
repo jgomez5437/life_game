@@ -245,6 +245,48 @@ function compressLifeLog(lifeLog) {
         .join("\n");
 };
 
+/**
+ * Calculates active health improvements from gym and diet.
+ * @param {boolean} hasGym - Whether user has active gym membership.
+ * @param {boolean} hasDiet - Whether user has better diet.
+ * @returns {number} Health points to offset decay.
+ */
+function calculateHealthBenefits(hasGym, hasDiet) {
+    let benefit = 0;
+    if (hasGym) benefit += 1;
+    if (hasDiet) benefit += 1;
+    return benefit;
+}
+
+/**
+ * Calculates the cost of active health mechanics per year.
+ * @param {boolean} hasGym - Whether user has active monthly gym membership.
+ * @param {boolean} hasDiet - Whether user has better diet.
+ * @returns {number} Yearly cost to deduct.
+ */
+function calculateActiveHealthCosts(hasGym, hasDiet) {
+    let cost = 0;
+    if (hasGym) cost += 600; // $50/mo * 12
+    if (hasDiet) cost += 2400; // $200/mo * 12
+    return cost;
+}
+
+/**
+ * Returns the immediate health boost and cost for a medical checkup.
+ * @returns {object} { boost, cost }
+ */
+function calculateMedicalVisit() {
+    return { boost: 10, cost: 1000 };
+}
+
+/**
+ * Returns the immediate health boost and cost for a one-time gym visit.
+ * @returns {object} { boost, cost }
+ */
+function calculateOneTimeGymVisit() {
+    return { boost: 1, cost: 20 };
+}
+
 export const GameLogic = {
     sanitizeName,
     addLivingExpenses,
@@ -257,6 +299,10 @@ export const GameLogic = {
     updateOwnedVehicles,
     checkMortality,
     calculateHealthDecay,
-    compressLifeLog
+    compressLifeLog,
+    calculateHealthBenefits,
+    calculateActiveHealthCosts,
+    calculateMedicalVisit,
+    calculateOneTimeGymVisit
 };
 
