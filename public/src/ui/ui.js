@@ -133,5 +133,23 @@ export const UI = {
 
         _elements.modalOverlay.classList.remove('hidden');
         _elements.modalOverlay.classList.add('flex');
+    },
+
+    /**
+     * @param {string} title
+     * @param {string} htmlContent 
+     */
+    showCustomModal: (title, htmlContent) => {
+        _elements.modalTitle.innerText = title;
+        _elements.modalContent.innerHTML = htmlContent;
+        _elements.modalActions.innerHTML = ''; // Actions handled inside htmlContent
+        
+        _elements.modalOverlay.classList.remove('hidden');
+        _elements.modalOverlay.classList.add('flex');
+    },
+
+    hideModal: () => {
+        _elements.modalOverlay.classList.add('hidden');
+        _elements.modalOverlay.classList.remove('flex');
     }
 }

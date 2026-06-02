@@ -14,6 +14,7 @@ import { renderAssets, renderVehicleManager, repairVehicle, sellVehicle } from '
 import { renderShoppingHub, renderVehicleDealer, buyVehicle } from '../features/assets/goShoppingScreen.js';
 import { renderActivities } from '../features/career/occupationScreen.js';
 import { renderRelationships, renderPersonInteraction, openRelationshipConfirm } from '../features/relationships/relationshipScreen.js';
+import { renderMoreDashboard, buyGymMembership, cancelGymMembership, visitGymOneTime, startBetterDiet, cancelBetterDiet, visitDoctor, openBlackjackBetting, startBlackjackGame, blackjackHit, blackjackStand, openTravelModal, bookTrip } from '../features/more/moreScreen.js';
 import { Utils } from '../ui/utils.js';
 import { UI } from '../ui/ui.js';
 
@@ -163,6 +164,8 @@ export function updateGameInfo(dbUser) {
             // --- FLAGS ---
             hasSeenExpenseMsg: savedUser.hasSeenExpenseMsg || false,
             hasSeenJobSalary: savedUser.hasSeenJobSalary || false,
+            gymMembership: savedUser.gymMembership || false,
+            hasBetterDiet: savedUser.hasBetterDiet || false,
 
             // --- ASSETS ---
             assets: savedUser.assets || [],
@@ -225,6 +228,8 @@ export const loadAndRenderGame = (userData) => {
             jobSalary: userData.job_salary || 0,
             jobPerformance: userData.jobPerformance || 50,
             hasSeenJobSalary: userData.has_seen_job_salary || false,
+            gymMembership: userData.gymMembership || false,
+            hasBetterDiet: userData.hasBetterDiet || false,
             schoolPerformance: userData.school_performance || 50,
             schoolActions: userData.schoolActions || 0,
             highSchoolRetained: userData.high_school_retained || false,
@@ -498,7 +503,21 @@ const routeHandlers = {
   ageUp,
   renderRelationships,
   renderPersonInteraction,
-  openRelationshipConfirm
+  openRelationshipConfirm,
+  renderMoreDashboard,
+  buyGymMembership,
+  cancelGymMembership,
+  visitGymOneTime,
+  startBetterDiet,
+  cancelBetterDiet,
+  visitDoctor,
+  openBlackjackBetting,
+  startBlackjackGame,
+  blackjackHit,
+  blackjackStand,
+  hideModal: UI.hideModal,
+  openTravelModal,
+  bookTrip
 };
 
 document.addEventListener('click', (e) => {

@@ -237,12 +237,13 @@ function handleHealth(user) {
     
     // Call the pure function
     const decay = GameLogic.calculateHealthDecay(user.age);
+    const benefits = GameLogic.calculateHealthBenefits(user.gymMembership, user.hasBetterDiet);
 
-    // Mutate state with a hard floor of 0
-    user.health = Math.max(0, user.health - decay);
+    // Mutate state with a hard floor of 0 and cap of 100
+    user.health = Math.min(100, Math.max(0, user.health - decay + benefits));
 
     // Execute UI side-effects
-    if (user.health < 30 && (user.health + decay) >= 30) {
+    if (user.health < 30 && (user.health + decay - benefits) >= 30) {
         addLog("Your health has reached a critical low. Your risk of death is severely elevated.", "major");
     }
 }
@@ -280,6 +281,12 @@ function handleFinances(user) {
     const yearlyStudentLoanPayment = GameLogic.addStudentLoanPayment(user.age, user.studentLoans, user.isStudent); 
     user.monthlyOutflow += yearlyStudentLoanPayment;
     user.studentLoans -= yearlyStudentLoanPayment;
+
+    // 5. Active Health Costs
+    const healthCosts = GameLogic.calculateActiveHealthCosts(user.gymMembership, user.hasBetterDiet);
+    if (healthCosts > 0) {
+        user.money -= healthCosts;
+    }
 }
 
 function handleEducation(user) {
@@ -389,7 +396,7 @@ function handleRelationships(user) {
 }
 
 //Define the rendering function globally so script.js can call it.
-export const renderLifeDashboard = (maybeGameState) => {
+export function renderLifeDashboard(maybeGameState) {
     // --- Data Preparation ---
     const currentState = maybeGameState || state.gameState;
     if (!state || !currentState.user) {
@@ -469,7 +476,7 @@ export const renderLifeDashboard = (maybeGameState) => {
                     <span class="text-[10px] uppercase tracking-wider">Social</span>
                 </button>
 
-                <button data-action="showComingSoon" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700">
+                <button data-action="renderMoreDashboard" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700">
                     <i class="fas fa-ellipsis-h mb-1 text-xl text-slate-400"></i>
                     <span class="text-[10px] uppercase tracking-wider">More</span>
                 </button>
@@ -482,7 +489,7 @@ export const renderLifeDashboard = (maybeGameState) => {
     UI.renderScreen(dashboardHTML);
 }
 
-export const addLog = (msg, type = 'neutral') => {
+export function addLog(msg, type = 'neutral') {
     // 1. Get current age from the centralized state
     const currentAge = state.gameState.user.age;
     //color for the log
