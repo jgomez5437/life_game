@@ -14,7 +14,7 @@ import { renderAssets, renderVehicleManager, repairVehicle, sellVehicle } from '
 import { renderShoppingHub, renderVehicleDealer, buyVehicle } from '../features/assets/goShoppingScreen.js';
 import { renderActivities } from '../features/career/occupationScreen.js';
 import { renderRelationships, renderPersonInteraction, openRelationshipConfirm } from '../features/relationships/relationshipScreen.js';
-import { renderMoreDashboard, buyGymMembership, cancelGymMembership, visitGymOneTime, startBetterDiet, cancelBetterDiet, visitDoctor } from '../features/more/moreScreen.js';
+import { renderMoreDashboard, buyGymMembership, cancelGymMembership, visitGymOneTime, startBetterDiet, cancelBetterDiet, visitDoctor, openBlackjackBetting, startBlackjackGame, blackjackHit, blackjackStand, openTravelModal, bookTrip } from '../features/more/moreScreen.js';
 import { Utils } from '../ui/utils.js';
 import { UI } from '../ui/ui.js';
 
@@ -510,7 +510,14 @@ const routeHandlers = {
   visitGymOneTime,
   startBetterDiet,
   cancelBetterDiet,
-  visitDoctor
+  visitDoctor,
+  openBlackjackBetting,
+  startBlackjackGame,
+  blackjackHit,
+  blackjackStand,
+  hideModal: UI.hideModal,
+  openTravelModal,
+  bookTrip
 };
 
 document.addEventListener('click', (e) => {

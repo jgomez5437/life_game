@@ -287,6 +287,115 @@ function calculateOneTimeGymVisit() {
     return { boost: 1, cost: 20 };
 }
 
+/**
+ * @returns {Array} A shuffled 52-card deck
+ */
+function getDeck() {
+    const suits = ['hearts', 'diamonds', 'clubs', 'spades'];
+    const values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+    let deck = [];
+    for (let suit of suits) {
+        for (let value of values) {
+            deck.push({ suit, value });
+        }
+    }
+    // shuffle
+    for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+    return deck;
+}
+
+/**
+ * @param {Array} hand - Array of card objects
+ * @returns {number} The best value of the blackjack hand
+ */
+function calculateBlackjackHand(hand) {
+    let value = 0;
+    let aces = 0;
+    for (let card of hand) {
+        if (['J', 'Q', 'K'].includes(card.value)) {
+            value += 10;
+        } else if (card.value === 'A') {
+            aces += 1;
+            value += 11;
+        } else {
+            value += parseInt(card.value);
+        }
+    }
+    while (value > 21 && aces > 0) {
+        value -= 10;
+        aces -= 1;
+    }
+    return value;
+}
+
+/**
+ * @param {Array} playerHand 
+ * @param {Array} dealerHand 
+ * @returns {string} 'win', 'lose', 'push', or 'bust'
+ */
+function determineBlackjackOutcome(playerHand, dealerHand) {
+    const playerTotal = calculateBlackjackHand(playerHand);
+    const dealerTotal = calculateBlackjackHand(dealerHand);
+    
+    if (playerTotal > 21) return 'bust';
+    if (dealerTotal > 21) return 'win'; // dealer busts
+    if (playerTotal === dealerTotal) return 'push';
+    if (playerTotal > dealerTotal) return 'win';
+    return 'lose';
+}
+
+/**
+ * Calculates outcome of a vacation
+ * @param {number} tier - 1 (Local), 2 (Cross-Country), 3 (Luxury)
+ * @param {number} [roll=Math.random()] - Injectable random roll
+ */
+function calculateTripOutcome(tier, roll = Math.random()) {
+    let baseHealthBoost = 0;
+    let baseCost = 0;
+    let tripName = "";
+
+    if (tier === 1) {
+        baseCost = 500;
+        baseHealthBoost = 5;
+        tripName = "Local Getaway";
+    } else if (tier === 2) {
+        baseCost = 2000;
+        baseHealthBoost = 10;
+        tripName = "Cross-Country Trip";
+    } else if (tier === 3) {
+        baseCost = 10000;
+        baseHealthBoost = 15;
+        tripName = "Luxury International Tour";
+    }
+
+    const events = [
+        { msg: "You had a perfectly relaxing trip.", healthMod: 0, moneyMod: 0 },
+        { msg: "You found a hidden gem and felt completely revitalized!", healthMod: 5, moneyMod: 0 },
+        { msg: "You were attacked on vacation.", healthMod: -20, moneyMod: 0 },
+        { msg: "You got food poisoning from a shady restaurant.", healthMod: -5, moneyMod: 0 },
+        { msg: "You lost your wallet at the beach.", healthMod: 0, moneyMod: -200 },
+        { msg: "You won a local contest and got some cash!", healthMod: 0, moneyMod: 300 },
+        { msg: "Your luggage was lost, ruining your mood.", healthMod: -2, moneyMod: 0 },
+        { msg: "You met a fantastic new friend who showed you around.", healthMod: 3, moneyMod: 0 }
+    ];
+
+    const eventIndex = Math.floor(roll * events.length);
+    const selectedEvent = events[eventIndex];
+
+    const finalHealthBoost = baseHealthBoost + selectedEvent.healthMod;
+
+    return {
+        tripName,
+        cost: baseCost,
+        moneyChange: selectedEvent.moneyMod,
+        healthChange: finalHealthBoost,
+        eventMessage: selectedEvent.msg
+    };
+}
+
 export const GameLogic = {
     sanitizeName,
     addLivingExpenses,
@@ -303,6 +412,9 @@ export const GameLogic = {
     calculateHealthBenefits,
     calculateActiveHealthCosts,
     calculateMedicalVisit,
-    calculateOneTimeGymVisit
+    calculateOneTimeGymVisit,
+    getDeck,
+    calculateBlackjackHand,
+    determineBlackjackOutcome,
+    calculateTripOutcome
 };
-

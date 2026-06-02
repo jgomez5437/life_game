@@ -129,3 +129,46 @@ describe('calculateOneTimeGymVisit', () => {
         expect(GameLogic.calculateOneTimeGymVisit()).toEqual({ boost: 1, cost: 20 });
     });
 });
+
+describe('Blackjack Logic', () => {
+    test('calculateBlackjackHand handles aces correctly', () => {
+        expect(GameLogic.calculateBlackjackHand([{value: 'A'}, {value: 'K'}])).toBe(21);
+        expect(GameLogic.calculateBlackjackHand([{value: 'A'}, {value: 'A'}, {value: '9'}])).toBe(21);
+        expect(GameLogic.calculateBlackjackHand([{value: 'A'}, {value: 'A'}, {value: 'K'}])).toBe(12);
+        expect(GameLogic.calculateBlackjackHand([{value: '10'}, {value: '5'}, {value: 'A'}])).toBe(16);
+    });
+
+    test('calculateBlackjackHand handles numbers and face cards', () => {
+        expect(GameLogic.calculateBlackjackHand([{value: '2'}, {value: '3'}])).toBe(5);
+        expect(GameLogic.calculateBlackjackHand([{value: 'J'}, {value: 'Q'}, {value: 'K'}])).toBe(30);
+    });
+
+    test('determineBlackjackOutcome works correctly', () => {
+        // Player bust
+        expect(GameLogic.determineBlackjackOutcome([{value: '10'}, {value: '10'}, {value: '5'}], [{value: '10'}])).toBe('bust');
+        // Dealer bust
+        expect(GameLogic.determineBlackjackOutcome([{value: '10'}, {value: '10'}], [{value: '10'}, {value: '10'}, {value: '5'}])).toBe('win');
+        // Push
+        expect(GameLogic.determineBlackjackOutcome([{value: '10'}, {value: '10'}], [{value: '10'}, {value: '10'}])).toBe('push');
+        // Player win
+        expect(GameLogic.determineBlackjackOutcome([{value: '10'}, {value: '10'}], [{value: '10'}, {value: '9'}])).toBe('win');
+        // Player lose
+        expect(GameLogic.determineBlackjackOutcome([{value: '10'}, {value: '9'}], [{value: '10'}, {value: '10'}])).toBe('lose');
+    });
+});
+
+describe('calculateTripOutcome', () => {
+    test('returns correct base values and modifies based on roll', () => {
+        // Roll 0 -> first event (0 health, 0 money)
+        const local = GameLogic.calculateTripOutcome(1, 0.0);
+        expect(local.cost).toBe(500);
+        expect(local.healthChange).toBe(5);
+        expect(local.moneyChange).toBe(0);
+        
+        // Roll to hit the attack event (index 2 -> requires roll around 0.3)
+        const attack = GameLogic.calculateTripOutcome(3, 0.3); // 0.3 * 8 = 2.4 => index 2
+        expect(attack.cost).toBe(10000);
+        expect(attack.healthChange).toBe(15 - 20); // base 15, event -20 => -5
+        expect(attack.moneyChange).toBe(0);
+    });
+});
