@@ -1,6 +1,6 @@
 import { state } from '../../core/state.js';
 import { renderActivities, getSchoolName } from '../career/occupationScreen.js';
-import { renderLifeDashboard, addLog } from '../player/mainScreen.js';
+import { renderLifeDashboard, addLog, refreshClassmates } from '../player/mainScreen.js';
 
 const get = id => document.getElementById(id);
 
@@ -68,6 +68,19 @@ export function renderEducation() {
 
             <div class="grid grid-cols-1 gap-3">
                 
+                <button data-action="renderClassmates" class="bg-indigo-600 p-4 rounded-xl border border-indigo-500 flex items-center justify-between hover:bg-indigo-500 transition shadow-lg shadow-indigo-900/50 cursor-pointer">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="text-left">
+                            <h3 class="font-bold text-white">Classmates</h3>
+                            <div class="text-xs text-indigo-200">Socialize at school</div>
+                        </div>
+                    </div>
+                    <i class="fas fa-arrow-right text-white"></i>
+                </button>
+                
                 <button ${actionDisabled ? 'disabled' : `data-action="skipSchool"`} class="${skipClass}">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-full bg-red-900/30 flex items-center justify-center text-red-400 group-hover:text-red-300">
@@ -118,4 +131,71 @@ export function skipSchool() {
     user.schoolPerformance = Math.max(0, user.schoolPerformance - 10);
     addLog("Skipped school to hang out. Grades suffered.", 'bad');
     renderLifeDashboard(state.gameState); 
+}
+
+export function renderClassmates() {
+    const user = state.gameState.user;
+    if (!user.relationships) user.relationships = [];
+    
+    let classmates = user.relationships.filter(r => r.isCurrentClassmate);
+    
+    // Lazy-load if they just opened the game
+    if (classmates.length === 0) {
+        refreshClassmates(user);
+        classmates = user.relationships.filter(r => r.isCurrentClassmate);
+    }
+    
+    let content = '';
+    if (classmates.length > 0) {
+        content = classmates.map(person => {
+            let barColor = 'bg-green-500';
+            if (person.status < 30) barColor = 'bg-red-500';
+            else if (person.status < 60) barColor = 'bg-yellow-500';
+
+            let icon = person.type === 'Teacher' ? 'fa-chalkboard-teacher text-indigo-400' : 'fa-user-graduate text-slate-300';
+
+            return `
+                <div data-action="renderPersonInteraction" data-args="&apos;${person.id}&apos;" class="bg-slate-800 p-3 rounded-xl border border-slate-700 mb-3 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition flex items-center justify-between group">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-slate-400 group-hover:bg-slate-600 transition border border-slate-600">
+                            <i class="fas ${icon}"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2 mb-0.5">
+                                <h4 class="font-bold text-white text-sm tracking-wide">${person.name}</h4>
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider bg-slate-600 text-slate-100 border-slate-500">
+                                    ${person.type}
+                                </span>
+                            </div>
+                            <div class="text-xs text-slate-400 font-medium">Age: ${person.age}</div>
+                        </div>
+                    </div>
+                    <div class="text-right w-24">
+                        <div class="text-[9px] text-slate-500 font-bold mb-1 uppercase tracking-widest">Status</div>
+                        <div class="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden border border-slate-700/50">
+                            <div class="h-full ${barColor} shadow-[0_0_8px_rgba(0,0,0,0.5)] transition-all duration-500" style="width: ${person.status}%"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } else {
+        content = `<div class="text-slate-600 italic text-sm text-center py-4 border border-dashed border-slate-800 rounded-xl mb-4">No classmates found. Are you enrolled in school?</div>`;
+    }
+
+    get('game-container').innerHTML = `
+        <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
+            <div class="mb-4">
+                <button data-action="renderEducation" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+                    <i class="fas fa-arrow-left"></i> Back to Education
+                </button>
+            </div>
+            <div class="mb-6 px-1 flex justify-between items-center">
+                <h2 class="text-2xl font-bold text-white">Classmates</h2>
+            </div>
+            <div class="flex-1 overflow-y-auto pb-4 custom-scrollbar">
+                ${content}
+            </div>
+        </div>
+    `;
 }

@@ -5,7 +5,7 @@ import { selectIndustry, renderBusinessSetup } from '../features/business/create
 import { renderCareerMarket, applyForJob } from '../features/career/careerJobsScreen.js';
 import { confirmQuitCareer, quitCareer, renderCareerManager, workHarderJob, slackOffJob } from '../features/career/jobCareerManagerScreen.js';
 import { renderJobMarket } from '../features/career/partTimeJobsScreen.js';
-import { renderEducation, workHarder, skipSchool } from '../features/education/manageEducationScreen.js';
+import { renderEducation, workHarder, skipSchool, renderClassmates } from '../features/education/manageEducationScreen.js';
 import { attemptEnrollment, openGradEnrollmentModal, attemptGradEnrollment, renderGradSchoolMarket, openUniversityModal } from '../features/career/occupationScreen.js';
 import { selectGender, submitCharacter, renderCharCreation } from '../features/player/charCreationScreen.js';
 import { ageUp, continueAsChild, renderLifeDashboard, addLog, renderDeathScreen, showFullEulogy } from '../features/player/mainScreen.js';
@@ -492,6 +492,7 @@ const routeHandlers = {
   attemptGradEnrollment,
   enterBusinessMode,
   renderEducation,
+  renderClassmates,
   renderGradSchoolMarket,
   openUniversityModal,
   renderCareerManager,
