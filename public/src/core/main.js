@@ -13,7 +13,8 @@ import { state } from './state.js';
 import { renderAssets, renderVehicleManager, repairVehicle, sellVehicle } from '../features/assets/assetsScreen.js';
 import { renderShoppingHub, renderVehicleDealer, buyVehicle } from '../features/assets/goShoppingScreen.js';
 import { renderActivities } from '../features/career/occupationScreen.js';
-import { renderRelationships, renderPersonInteraction, openRelationshipConfirm } from '../features/relationships/relationshipScreen.js';
+import { renderRelationships, renderPersonInteraction, openRelationshipConfirm, spendTimeWithAll } from '../features/relationships/relationshipScreen.js';
+import { chooseFuneralType, cancelFuneralPlan, confirmFuneralPlan, donateBody, lookTheOtherWay, goToFuneral, skipFuneral } from '../features/relationships/funeralScreen.js';
 import { renderMoreDashboard, buyGymMembership, cancelGymMembership, visitGymOneTime, startBetterDiet, cancelBetterDiet, visitDoctor, openBlackjackBetting, startBlackjackGame, blackjackHit, blackjackStand, openTravelModal, bookTrip } from '../features/more/moreScreen.js';
 import { Utils } from '../ui/utils.js';
 import { UI } from '../ui/ui.js';
@@ -504,6 +505,14 @@ const routeHandlers = {
   renderRelationships,
   renderPersonInteraction,
   openRelationshipConfirm,
+  spendTimeWithAll,
+  chooseFuneralType,
+  cancelFuneralPlan,
+  confirmFuneralPlan,
+  donateBody,
+  lookTheOtherWay,
+  goToFuneral,
+  skipFuneral,
   renderMoreDashboard,
   buyGymMembership,
   cancelGymMembership,

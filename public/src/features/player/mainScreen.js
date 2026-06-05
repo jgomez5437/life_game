@@ -2,6 +2,7 @@ import { GameLogic } from '../../core/gameLogic.js';
 import { state } from '../../core/state.js';
 import { renderActivities, GRAD_SCHOOLS } from '../career/occupationScreen.js';
 import { renderRelationships } from '../relationships/relationshipScreen.js';
+import { processNextFuneral } from '../relationships/funeralScreen.js';
 import { Utils } from '../../ui/utils.js';
 import { UI } from '../../ui/ui.js';
 import { renderAssets } from '../assets/assetsScreen.js';
@@ -48,7 +49,8 @@ export function ageUp() {
     checkSchoolActionTaken(user);
     checkActionTaken();          
     
-    renderLifeDashboard(currentState);
+    // Instead of rendering dashboard directly, process funerals first
+    processNextFuneral();
     
     if (typeof saveGame === "function") {
         saveGame();
@@ -388,11 +390,46 @@ function handleRelationships(user) {
     // Guard clause prevents crashes if the array is missing or malformed
     if (!user.relationships || !Array.isArray(user.relationships)) return;
     
-    user.relationships.forEach(rel => {
+    if (!state.gameState.pendingFunerals) {
+        state.gameState.pendingFunerals = [];
+    }
+    
+    // Iterate backwards so we can splice safely
+    for (let i = user.relationships.length - 1; i >= 0; i--) {
+        const rel = user.relationships[i];
         rel.age++;
-        // Note: Future relationship logic (e.g., passive relationship decay, 
-        // relatives passing away from old age) should be added inside this loop.
-    });
+        
+        // Check Mortality
+        const deathCheck = GameLogic.checkMortality(rel.age, 100);
+        if (deathCheck.isDead) {
+            rel.deathCause = deathCheck.cause;
+            state.gameState.pendingFunerals.push(rel);
+            
+            // Remove them from active relationships immediately
+            user.relationships.splice(i, 1);
+            continue; // Skip the rest of the updates for this person
+        }
+        
+        // Passive relationship decay
+        const previousStatus = rel.status || 0;
+        rel.status = GameLogic.calculateRelationshipDecay(previousStatus, rel.interactedThisYear);
+        
+        // Category shift logic
+        const newCategory = GameLogic.checkRelationshipCategoryShift(rel.category, rel.status);
+        if (newCategory) {
+            if (newCategory === 'enemy') {
+                addLog(`${rel.name} is now your Enemy due to neglect!`, 'bad');
+                rel.type = 'Enemy';
+            } else if (newCategory === 'friend') {
+                addLog(`You made amends with ${rel.name}. They are now a Friend.`, 'good');
+                rel.type = 'Friend';
+            }
+            rel.category = newCategory;
+        }
+        
+        // Reset interaction flag for next year
+        rel.interactedThisYear = false;
+    }
 }
 
 //Define the rendering function globally so script.js can call it.
