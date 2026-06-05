@@ -137,8 +137,11 @@ export const renderRelationships = () => {
                 </button>
             </div>
             
-            <div class="mb-6 px-1">
+            <div class="mb-6 px-1 flex justify-between items-center">
                 <h2 class="text-2xl font-bold text-white">Relationships</h2>
+                <button data-action="spendTimeWithAll" class="btn-primary text-xs px-3 py-2 rounded-lg shadow hover:bg-blue-600 transition">
+                    <i class="fas fa-users mr-1"></i> Spend Time With All
+                </button>
             </div>
 
             <div class="flex-1 overflow-y-auto pb-4 custom-scrollbar">
@@ -182,12 +185,26 @@ export const renderPersonInteraction = (id) => {
         }
 
         // 2. Evaluate Financial Blocks
-        const canAfford = (user.money || 0) >= it.cost;
+        const canAfford = it.cost === 0 || (user.money || 0) >= it.cost;
         if (!canAfford && !isTooYoung) {
             blockReason = 'Insufficient Funds';
         }
 
-        const isDisabled = isTooYoung || !canAfford;
+        // 3. Evaluate Hostility Block
+        let isHostile = false;
+        if (['family', 'spouse', 'child'].includes(person.category) && person.status < 15) {
+            isHostile = true;
+        } else if (!['family', 'spouse', 'child'].includes(person.category) && person.status < 30) {
+            isHostile = true;
+        }
+
+        let isBlockedByHostility = false;
+        if (isHostile && !['give_money', 'insult'].includes(it.key)) {
+            isBlockedByHostility = true;
+            blockReason = 'Refuses Contact';
+        }
+
+        const isDisabled = isTooYoung || !canAfford || isBlockedByHostility;
 
         // 3. Render Hard-Branched HTML
         if (isDisabled) {
@@ -292,6 +309,15 @@ export const openRelationshipConfirm = (personId, actionIndex) => {
         return;
     }
 
+    let isHostile = false;
+    if (['family', 'spouse', 'child'].includes(person.category) && person.status < 15) isHostile = true;
+    else if (!['family', 'spouse', 'child'].includes(person.category) && person.status < 30) isHostile = true;
+
+    if (isHostile && !['give_money', 'insult'].includes(action.key)) {
+        UI.showModal('Refused', `${person.name} is too hostile towards you and refuses to do this.`);
+        return;
+    }
+
     const message = `<div class="text-sm text-slate-300 mb-4">Are you sure you want to <strong>${action.name}</strong> ${person.name}?` +
         (action.cost ? `<div class="mt-2 text-xs text-slate-400">This will cost ${Utils.formatMoney(action.cost)}</div>` : '') + `</div>`;
 
@@ -329,8 +355,17 @@ export const performRelationshipAction = (personId, actionIndex) => {
         return;
     }
 
+    let isHostile = false;
+    if (['family', 'spouse', 'child'].includes(person.category) && person.status < 15) isHostile = true;
+    else if (!['family', 'spouse', 'child'].includes(person.category) && person.status < 30) isHostile = true;
+
+    if (isHostile && !['give_money', 'insult'].includes(action.key)) {
+        UI.showModal('Refused', `${person.name} is too hostile towards you and refuses to do this.`);
+        return;
+    }
+
     // Check funds
-    if ((user.money || 0) < action.cost) {
+    if (action.cost > 0 && (user.money || 0) < action.cost) {
         UI.showModal('Insufficient Funds', `You need ${Utils.formatMoney(action.cost)} to ${action.name.toLowerCase()}.`);
         return;
     }
@@ -342,6 +377,9 @@ export const performRelationshipAction = (personId, actionIndex) => {
     const prev = person.status || 0;
     person.status = Math.max(0, Math.min(100, prev + action.statusChange));
     const delta = person.status - prev;
+    
+    // Mark interaction for this year
+    person.interactedThisYear = true;
 
     // --- NON-RELATIVE CATEGORY SHIFT LOGIC ---
     if (!['family', 'spouse', 'child'].includes(person.category)) {
@@ -370,4 +408,50 @@ export const performRelationshipAction = (personId, actionIndex) => {
 
     // Refresh interaction screen
     setTimeout(() => renderPersonInteraction(personId), 300);
+};
+
+// --- SPEND TIME WITH ALL ---
+export const spendTimeWithAll = () => {
+    const user = state.gameState.user;
+    if (!user.relationships || user.relationships.length === 0) return;
+    
+    // Safety Gate
+    if (user.age <= 1) {
+        UI.showModal('Action Blocked', "You are too young to do this.");
+        return;
+    }
+
+    let interactionsCount = 0;
+    user.relationships.forEach(person => {
+        // Evaluate if they refuse
+        let isHostile = false;
+        if (['family', 'spouse', 'child'].includes(person.category) && person.status < 15) {
+            isHostile = true;
+        } else if (!['family', 'spouse', 'child'].includes(person.category) && person.status < 30) {
+            isHostile = true;
+        }
+
+        if (!isHostile) {
+            const prev = person.status || 0;
+            // Spend Time gives +15 status change
+            person.status = Math.max(0, Math.min(100, prev + 15));
+            person.interactedThisYear = true;
+            interactionsCount++;
+            
+            // Check for category shift to Friend if they were enemy but not hostile anymore
+            if (!['family', 'spouse', 'child'].includes(person.category) && person.status >= 30 && person.category === 'enemy') {
+                person.category = 'friend';
+                person.type = 'Friend';
+                addLog(`You made amends with ${person.name}. They are now a Friend.`, 'good');
+            }
+        }
+    });
+
+    if (interactionsCount > 0) {
+        addLog(`You spent time with ${interactionsCount} people.`, 'good');
+        UI.showModal('Success', `You spent time with ${interactionsCount} people.`);
+        renderRelationships(); // re-render the list to update progress bars
+    } else {
+        UI.showModal('Notice', "Nobody wanted to spend time with you.");
+    }
 };

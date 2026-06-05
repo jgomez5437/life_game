@@ -1,5 +1,5 @@
 import { state } from '../../core/state.js';
-import { renderActivities } from '../career/occupationScreen.js';
+import { renderActivities, getSchoolName } from '../career/occupationScreen.js';
 import { renderLifeDashboard, addLog } from '../player/mainScreen.js';
 
 const get = id => document.getElementById(id);

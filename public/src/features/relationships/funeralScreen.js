@@ -1,0 +1,271 @@
+import { state } from '../../core/state.js';
+import { renderLifeDashboard, addLog } from '../player/mainScreen.js';
+import { Utils } from '../../ui/utils.js';
+import { UI } from '../../ui/ui.js';
+import { saveGame } from '../../core/main.js';
+import { GameLogic } from '../../core/gameLogic.js';
+
+export const processNextFuneral = () => {
+    if (!state.gameState.pendingFunerals || state.gameState.pendingFunerals.length === 0) {
+        // Queue is empty, proceed to dashboard
+        renderLifeDashboard(state.gameState);
+        if (typeof saveGame === "function") saveGame();
+        return;
+    }
+
+    // Get the first pending funeral
+    const deceased = state.gameState.pendingFunerals[0];
+    renderFuneralScreen(deceased);
+};
+
+const renderFuneralScreen = (deceased) => {
+    const user = state.gameState.user;
+    
+    // Evaluate if they are family
+    const isFamily = ['family', 'spouse', 'child'].includes(deceased.category);
+    
+    // Check Inheritance if parents
+    let inheritanceMsg = '';
+    let inheritanceAmt = 0;
+    if (deceased.type === 'Mother' || deceased.type === 'Father') {
+        // Roll for inheritance
+        inheritanceAmt = GameLogic.calculateInheritance(deceased.age);
+        if (inheritanceAmt > 0) {
+            inheritanceMsg = `<div class="bg-green-900/30 p-3 rounded-xl border border-green-700/50 mb-6 text-center shadow-lg">
+                <i class="fas fa-file-invoice-dollar text-green-400 text-2xl mb-2"></i>
+                <h3 class="text-green-400 font-bold text-lg">Inheritance</h3>
+                <p class="text-slate-300 text-sm">They left you <span class="font-bold text-white">${Utils.formatMoney(inheritanceAmt)}</span>.</p>
+            </div>`;
+        } else {
+            inheritanceMsg = `<div class="bg-slate-800 p-3 rounded-xl border border-slate-700 mb-6 text-center">
+                <i class="fas fa-file-invoice-dollar text-slate-500 text-2xl mb-2"></i>
+                <h3 class="text-slate-400 font-bold text-lg">Inheritance</h3>
+                <p class="text-slate-500 text-sm italic">They didn't leave anything behind.</p>
+            </div>`;
+        }
+    }
+    
+    // Cache the inheritance so we can give it when processing
+    deceased.inheritanceAmt = inheritanceAmt;
+
+    let optionsHtml = '';
+    if (isFamily) {
+        optionsHtml = `
+            <button data-action="chooseFuneralType" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-500 text-white font-bold py-3 px-4 rounded-xl mb-3 flex items-center justify-between transition group">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-blue-900/50 flex items-center justify-center text-blue-400">
+                        <i class="fas fa-church"></i>
+                    </div>
+                    <div class="text-left">
+                        <div class="text-white font-bold">Plan Their Funeral</div>
+                        <div class="text-xs text-slate-400">Costs money</div>
+                    </div>
+                </div>
+                <i class="fas fa-chevron-right text-slate-600 group-hover:text-white transition"></i>
+            </button>
+            <button data-action="donateBody" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-500 text-white font-bold py-3 px-4 rounded-xl mb-3 flex items-center justify-between transition group">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-green-900/50 flex items-center justify-center text-green-400">
+                        <i class="fas fa-microscope"></i>
+                    </div>
+                    <div class="text-left">
+                        <div class="text-white font-bold">Donate Body to Science</div>
+                        <div class="text-xs text-slate-400">Free</div>
+                    </div>
+                </div>
+                <i class="fas fa-chevron-right text-slate-600 group-hover:text-white transition"></i>
+            </button>
+            <button data-action="lookTheOtherWay" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-500 text-white font-bold py-3 px-4 rounded-xl mb-3 flex items-center justify-between transition group">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-red-900/50 flex items-center justify-center text-red-400">
+                        <i class="fas fa-eye-slash"></i>
+                    </div>
+                    <div class="text-left">
+                        <div class="text-white font-bold">Look the Other Way</div>
+                        <div class="text-xs text-slate-400">Let the city handle it</div>
+                    </div>
+                </div>
+                <i class="fas fa-chevron-right text-slate-600 group-hover:text-white transition"></i>
+            </button>
+        `;
+    } else {
+        optionsHtml = `
+            <button data-action="goToFuneral" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-500 text-white font-bold py-3 px-4 rounded-xl mb-3 flex items-center justify-between transition group">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center text-slate-400">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="text-left">
+                        <div class="text-white font-bold">Attend Funeral</div>
+                        <div class="text-xs text-slate-400">Pay your respects</div>
+                    </div>
+                </div>
+                <i class="fas fa-chevron-right text-slate-600 group-hover:text-white transition"></i>
+            </button>
+            <button data-action="skipFuneral" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-500 text-white font-bold py-3 px-4 rounded-xl mb-3 flex items-center justify-between transition group">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center text-slate-400">
+                        <i class="fas fa-home"></i>
+                    </div>
+                    <div class="text-left">
+                        <div class="text-white font-bold">Skip Funeral</div>
+                        <div class="text-xs text-slate-400">Stay home</div>
+                    </div>
+                </div>
+                <i class="fas fa-chevron-right text-slate-600 group-hover:text-white transition"></i>
+            </button>
+        `;
+    }
+
+    const html = `
+        <div class="fade-in max-w-md mx-auto min-h-full py-8 flex flex-col justify-center items-center text-center px-4">
+            <i class="fas fa-tombstone text-6xl text-slate-600 mb-6"></i>
+            <h1 class="text-3xl font-bold text-white mb-2">Tragedy Strikes</h1>
+            <p class="text-slate-300 text-sm mb-6">Your ${deceased.type}, ${deceased.name}, died at age ${deceased.age} from ${deceased.deathCause}</p>
+            
+            <div class="w-full">
+                ${inheritanceMsg}
+                <h3 class="text-slate-400 font-bold text-xs uppercase mb-3 text-left pl-1">How will you respond?</h3>
+                ${optionsHtml}
+            </div>
+        </div>
+    `;
+
+    UI.renderScreen(html);
+};
+
+// --- FUNERAL ROUTING & ACTIONS ---
+
+export const chooseFuneralType = () => {
+    const deceased = state.gameState.pendingFunerals[0];
+    const user = state.gameState.user;
+
+    const options = [
+        { name: "Bury", cost: 5000, desc: "A traditional burial plot" },
+        { name: "Cremate", cost: 1500, desc: "A standard cremation service" },
+        { name: "Scatter Ashes", cost: 3000, desc: "A service at their favorite spot" },
+        { name: "Send to Space", cost: 15000, desc: "A memorial spaceflight" }
+    ];
+
+    const html = options.map((opt, i) => {
+        const canAfford = user.money >= opt.cost;
+        if (canAfford) {
+            return `
+                <button data-action="confirmFuneralPlan" data-args="${i}" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-blue-500 text-white font-bold py-3 px-4 rounded-xl mb-3 flex items-center justify-between transition group">
+                    <div class="text-left">
+                        <div class="text-white font-bold">${opt.name}</div>
+                        <div class="text-xs text-slate-400">${opt.desc}</div>
+                    </div>
+                    <div class="font-bold text-red-400">-${Utils.formatMoney(opt.cost)}</div>
+                </button>
+            `;
+        } else {
+            return `
+                <button disabled class="w-full bg-slate-900 border border-slate-800 text-slate-500 font-bold py-3 px-4 rounded-xl mb-3 flex items-center justify-between opacity-50 cursor-not-allowed">
+                    <div class="text-left">
+                        <div class="font-bold">${opt.name}</div>
+                        <div class="text-xs">${opt.desc}</div>
+                    </div>
+                    <div class="font-bold">INSUFFICIENT FUNDS</div>
+                </button>
+            `;
+        }
+    }).join('');
+
+    const screenHtml = `
+        <div class="fade-in max-w-md mx-auto min-h-full py-8 flex flex-col justify-center items-center text-center px-4">
+            <i class="fas fa-church text-6xl text-slate-600 mb-6"></i>
+            <h1 class="text-3xl font-bold text-white mb-2">Plan Funeral</h1>
+            <p class="text-slate-300 text-sm mb-6">Choose how to lay ${deceased.name} to rest.</p>
+            <div class="w-full mb-6 text-right">
+                <span class="text-slate-400 text-xs font-bold uppercase tracking-widest">Bank Balance</span><br>
+                <span class="text-green-400 font-bold text-xl">${Utils.formatMoney(user.money)}</span>
+            </div>
+            <div class="w-full">
+                ${html}
+                <button data-action="cancelFuneralPlan" class="w-full mt-4 text-slate-400 hover:text-white text-sm">Go Back</button>
+            </div>
+        </div>
+    `;
+
+    UI.renderScreen(screenHtml);
+};
+
+export const cancelFuneralPlan = () => {
+    // Go back to the main funeral screen
+    const deceased = state.gameState.pendingFunerals[0];
+    renderFuneralScreen(deceased);
+};
+
+export const confirmFuneralPlan = (index) => {
+    const deceased = state.gameState.pendingFunerals[0];
+    const user = state.gameState.user;
+    
+    const options = [
+        { name: "Bury", cost: 5000 },
+        { name: "Cremate", cost: 1500 },
+        { name: "Scatter Ashes", cost: 3000 },
+        { name: "Send to Space", cost: 15000 }
+    ];
+    
+    const opt = options[index];
+    user.money -= opt.cost;
+    
+    addLog(`You chose to ${opt.name.toLowerCase()} ${deceased.name} for ${Utils.formatMoney(opt.cost)}.`, 'neutral');
+    
+    finishFuneralAndNext(deceased);
+};
+
+export const donateBody = () => {
+    const deceased = state.gameState.pendingFunerals[0];
+    addLog(`You donated ${deceased.name}'s body to science.`, 'neutral');
+    finishFuneralAndNext(deceased);
+};
+
+export const lookTheOtherWay = () => {
+    const deceased = state.gameState.pendingFunerals[0];
+    addLog(`You ignored the responsibility of ${deceased.name}'s remains. The state handled it.`, 'bad');
+    UI.showModal("Shameful", `You turned a blind eye to your own ${deceased.type}'s remains. The city handled a pauper's grave for them.`);
+    finishFuneralAndNext(deceased);
+};
+
+export const goToFuneral = () => {
+    const deceased = state.gameState.pendingFunerals[0];
+    addLog(`You attended ${deceased.name}'s funeral and paid your respects.`, 'neutral');
+    finishFuneralAndNext(deceased);
+};
+
+export const skipFuneral = () => {
+    const deceased = state.gameState.pendingFunerals[0];
+    addLog(`You skipped ${deceased.name}'s funeral.`, 'neutral');
+    finishFuneralAndNext(deceased);
+};
+
+const finishFuneralAndNext = (deceased) => {
+    const user = state.gameState.user;
+    
+    // Process inheritance
+    if (deceased.inheritanceAmt > 0) {
+        user.money += deceased.inheritanceAmt;
+        addLog(`Inherited ${Utils.formatMoney(deceased.inheritanceAmt)} from ${deceased.name}.`, 'good');
+    }
+
+    // Archive if family
+    if (['family', 'spouse', 'child'].includes(deceased.category)) {
+        if (!user.deceasedFamily) user.deceasedFamily = [];
+        user.deceasedFamily.push({
+            id: deceased.id,
+            name: deceased.name,
+            type: deceased.type,
+            deathAge: deceased.age,
+            deathCause: deceased.deathCause,
+            yearDied: user.age
+        });
+    }
+
+    // Remove from queue
+    state.gameState.pendingFunerals.shift();
+    
+    // Process next
+    processNextFuneral();
+};

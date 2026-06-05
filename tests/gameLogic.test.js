@@ -172,3 +172,43 @@ describe('calculateTripOutcome', () => {
         expect(attack.moneyChange).toBe(0);
     });
 });
+
+describe('Relationship Logic', () => {
+    test('calculateRelationshipDecay applies -5 decay if no interaction', () => {
+        expect(GameLogic.calculateRelationshipDecay(50, false)).toBe(45);
+        expect(GameLogic.calculateRelationshipDecay(2, false)).toBe(0);
+    });
+
+    test('calculateRelationshipDecay applies 0 decay if interaction occurred', () => {
+        expect(GameLogic.calculateRelationshipDecay(50, true)).toBe(50);
+    });
+
+    test('checkRelationshipCategoryShift shifts non-family appropriately', () => {
+        expect(GameLogic.checkRelationshipCategoryShift('friend', 20)).toBe('enemy');
+        expect(GameLogic.checkRelationshipCategoryShift('friend', 40)).toBe(null);
+        expect(GameLogic.checkRelationshipCategoryShift('enemy', 40)).toBe('friend');
+        expect(GameLogic.checkRelationshipCategoryShift('enemy', 20)).toBe(null);
+    });
+
+    test('checkRelationshipCategoryShift ignores family', () => {
+        expect(GameLogic.checkRelationshipCategoryShift('family', 20)).toBe(null);
+        expect(GameLogic.checkRelationshipCategoryShift('spouse', 10)).toBe(null);
+        expect(GameLogic.checkRelationshipCategoryShift('child', 0)).toBe(null);
+    });
+
+    test('calculateInheritance returns 0 on bottom 15% roll', () => {
+        expect(GameLogic.calculateInheritance(80, 0.10)).toBe(0);
+    });
+
+    test('calculateInheritance scales properly based on age and roll', () => {
+        const amt25 = GameLogic.calculateInheritance(25, 0.5); // base 5000 * multiplier
+        const amt40 = GameLogic.calculateInheritance(40, 0.5); // base 25000 * multiplier
+        const amt60 = GameLogic.calculateInheritance(60, 0.5); // base 100000 * multiplier
+        
+        expect(amt40).toBeGreaterThan(amt25);
+        expect(amt60).toBeGreaterThan(amt40);
+        
+        // Verify rounded to 100
+        expect(amt60 % 100).toBe(0);
+    });
+});

@@ -252,7 +252,7 @@ function updateLifeStatus() {
     user.lifeStatus = status;
     return status;
 };
-function getSchoolName() {
+export function getSchoolName() {
     const user = state.gameState.user;
     if (user.gradSchoolEnrolled) {
         const school = GRAD_SCHOOLS.find(s => s.name === user.gradSchoolType);

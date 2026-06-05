@@ -396,6 +396,60 @@ function calculateTripOutcome(tier, roll = Math.random()) {
     };
 }
 
+/**
+ * Calculates new relationship status after yearly decay.
+ * @param {number} currentStatus 
+ * @param {boolean} interactedThisYear 
+ * @returns {number} New status
+ */
+function calculateRelationshipDecay(currentStatus, interactedThisYear) {
+    if (interactedThisYear) return currentStatus;
+    return Math.max(0, currentStatus - 5);
+}
+
+/**
+ * Checks if a relationship should shift category based on status.
+ * @param {string} category 
+ * @param {number} status 
+ * @returns {string|null} The new category if shifted, otherwise null
+ */
+function checkRelationshipCategoryShift(category, status) {
+    if (['family', 'spouse', 'child'].includes(category)) return null;
+    
+    if (status < 30 && category !== 'enemy') return 'enemy';
+    if (status >= 30 && category === 'enemy') return 'friend';
+    return null;
+}
+
+/**
+ * Calculates inheritance from a deceased parent based on age and a random roll.
+ * @param {number} age - The age of the deceased parent.
+ * @param {number} [roll=Math.random()] - Random roll between 0 and 0.999.
+ * @returns {number} The inheritance amount in dollars.
+ */
+function calculateInheritance(age, roll = Math.random()) {
+    // 15% chance of dying in debt or having nothing, regardless of age
+    if (roll < 0.15) {
+        return 0;
+    }
+    
+    // Scale potential savings by age
+    let baseSavings = 0;
+    if (age < 30) baseSavings = 5000;
+    else if (age < 50) baseSavings = 25000;
+    else if (age < 70) baseSavings = 100000;
+    else baseSavings = 250000;
+    
+    // The roll determines how much of their "potential" savings they actually had
+    // Normalizing the remaining roll from 0.15 to 1.0 down to a multiplier 0.1 to 1.5
+    const multiplier = ((roll - 0.15) / 0.85) * 1.4 + 0.1; 
+    
+    let inheritance = Math.floor(baseSavings * multiplier);
+    
+    // Round to nearest 100
+    return Math.round(inheritance / 100) * 100;
+}
+
 export const GameLogic = {
     sanitizeName,
     addLivingExpenses,
@@ -416,5 +470,8 @@ export const GameLogic = {
     getDeck,
     calculateBlackjackHand,
     determineBlackjackOutcome,
-    calculateTripOutcome
+    calculateTripOutcome,
+    calculateRelationshipDecay,
+    checkRelationshipCategoryShift,
+    calculateInheritance
 };
