@@ -128,7 +128,9 @@ export const renderRelationships = () => {
         content += enemies.map(p => getPersonCard(p)).join('');
     }
 
-    // --- RENDER TO DOM ---
+    const btnClass = user.hasSpentTimeWithAll ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600 transition';
+    const btnAttr = user.hasSpentTimeWithAll ? 'disabled' : '';
+
     const container = document.getElementById('game-container');
     container.innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
@@ -140,7 +142,7 @@ export const renderRelationships = () => {
             
             <div class="mb-6 px-1 flex justify-between items-center">
                 <h2 class="text-2xl font-bold text-white">Relationships</h2>
-                <button data-action="spendTimeWithAll" class="btn-primary text-xs px-3 py-2 rounded-lg shadow hover:bg-blue-600 transition">
+                <button data-action="spendTimeWithAll" ${btnAttr} class="btn-primary text-xs px-3 py-2 rounded-lg shadow ${btnClass}">
                     <i class="fas fa-users mr-1"></i> Spend Time With All
                 </button>
             </div>
@@ -458,6 +460,11 @@ export const spendTimeWithAll = () => {
         return;
     }
 
+    if (user.hasSpentTimeWithAll) {
+        UI.showModal('Action Blocked', "You have already spent time with everyone this year.");
+        return;
+    }
+
     let interactionsCount = 0;
     user.relationships.forEach(person => {
         // Exclude classmates from the global Spend Time With All
@@ -488,10 +495,10 @@ export const spendTimeWithAll = () => {
     });
 
     if (interactionsCount > 0) {
-        addLog(`You spent time with ${interactionsCount} people.`, 'good');
+        user.hasSpentTimeWithAll = true;
         UI.showModal('Success', `You spent time with ${interactionsCount} people.`);
-        renderRelationships(); // re-render the list to update progress bars
+        renderRelationships();
     } else {
-        UI.showModal('Notice', "Nobody wanted to spend time with you.");
+        UI.showModal('Notice', "Nobody was available to spend time with.");
     }
 };

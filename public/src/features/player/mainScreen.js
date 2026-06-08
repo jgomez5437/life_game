@@ -462,6 +462,9 @@ function handleRelationships(user) {
         // Reset interaction flag for next year
         rel.interactedThisYear = false;
     }
+    
+    // Reset global interaction flags
+    user.hasSpentTimeWithAll = false;
 }
 
 //Define the rendering function globally so script.js can call it.
