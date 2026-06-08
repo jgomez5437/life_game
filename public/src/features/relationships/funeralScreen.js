@@ -26,10 +26,13 @@ const renderFuneralScreen = (deceased) => {
     
     // Check Inheritance if parents
     let inheritanceMsg = '';
-    let inheritanceAmt = 0;
     if (deceased.type === 'Mother' || deceased.type === 'Father') {
-        // Roll for inheritance
-        inheritanceAmt = GameLogic.calculateInheritance(deceased.age);
+        // Roll for inheritance only if we haven't already
+        if (deceased.inheritanceAmt === undefined) {
+            deceased.inheritanceAmt = GameLogic.calculateInheritance(deceased.age);
+        }
+        
+        const inheritanceAmt = deceased.inheritanceAmt;
         if (inheritanceAmt > 0) {
             inheritanceMsg = `<div class="bg-green-900/30 p-3 rounded-xl border border-green-700/50 mb-6 text-center shadow-lg">
                 <i class="fas fa-file-invoice-dollar text-green-400 text-2xl mb-2"></i>
@@ -43,10 +46,10 @@ const renderFuneralScreen = (deceased) => {
                 <p class="text-slate-500 text-sm italic">They didn't leave anything behind.</p>
             </div>`;
         }
+    } else {
+        // Non-parents don't leave inheritance currently
+        deceased.inheritanceAmt = 0;
     }
-    
-    // Cache the inheritance so we can give it when processing
-    deceased.inheritanceAmt = inheritanceAmt;
 
     let optionsHtml = '';
     if (isFamily) {

@@ -414,7 +414,7 @@ function calculateRelationshipDecay(currentStatus, interactedThisYear) {
  * @returns {string|null} The new category if shifted, otherwise null
  */
 function checkRelationshipCategoryShift(category, status) {
-    if (['family', 'spouse', 'child'].includes(category)) return null;
+    if (['family', 'spouse', 'child', 'classmate'].includes(category)) return null;
     
     if (status < 30 && category !== 'enemy') return 'enemy';
     if (status >= 30 && category === 'enemy') return 'friend';
@@ -450,6 +450,81 @@ function calculateInheritance(age, roll = Math.random()) {
     return Math.round(inheritance / 100) * 100;
 }
 
+const FIRST_NAMES = ['James', 'John', 'Robert', 'Michael', 'William', 'David', 'Mary', 'Patricia', 'Jennifer', 'Linda', 'Elizabeth', 'Barbara', 'Susan', 'Jessica', 'Sarah', 'Karen', 'Nancy', 'Lisa', 'Betty', 'Margaret', 'Sandra', 'Ashley', 'Kimberly', 'Emily', 'Donna', 'Michelle', 'Daniel', 'Matthew', 'Anthony', 'Mark', 'Donald', 'Steven', 'Paul', 'Andrew', 'Joshua', 'Kenneth'];
+const LAST_NAMES = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin', 'Lee', 'Perez', 'Thompson', 'White', 'Harris', 'Sanchez', 'Clark', 'Ramirez', 'Lewis', 'Robinson', 'Walker', 'Young', 'Allen', 'King', 'Wright', 'Scott', 'Torres', 'Nguyen', 'Hill', 'Flores', 'Green', 'Adams', 'Nelson', 'Baker', 'Hall', 'Rivera', 'Campbell', 'Mitchell', 'Carter', 'Roberts'];
+
+/**
+ * Generates a cohort of classmates and one teacher based on the user's age.
+ * @param {number} userAge 
+ * @returns {Array} Array of relationship objects
+ */
+function generateSchoolCohort(userAge) {
+    const cohort = [];
+    
+    // Determine bounds
+    let classmateAgeMin = Math.max(5, userAge - 1);
+    let classmateAgeMax = userAge + 1;
+    
+    if (userAge >= 18) {
+        classmateAgeMin = 18;
+        classmateAgeMax = 25;
+    }
+
+    const numClassmates = Math.floor(Math.random() * 5) + 12; // 12 to 16 classmates
+
+    for (let i = 0; i < numClassmates; i++) {
+        const first = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)];
+        const last = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
+        cohort.push({
+            id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'rel_' + Date.now() + Math.random().toString(36).substring(2, 9),
+            name: `${first} ${last}`,
+            age: Math.floor(Math.random() * (classmateAgeMax - classmateAgeMin + 1)) + classmateAgeMin,
+            type: 'Classmate',
+            status: Math.floor(Math.random() * 31) + 20, // 20 to 50 starting status
+            category: 'classmate',
+            isCurrentClassmate: true,
+            interactedThisYear: false
+        });
+    }
+
+    // Generate one teacher
+    const firstTeacher = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)];
+    const lastTeacher = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
+    const title = Math.random() > 0.5 ? 'Mr.' : (Math.random() > 0.5 ? 'Ms.' : 'Mrs.');
+
+    cohort.push({
+        id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'rel_' + Date.now() + Math.random().toString(36).substring(2, 9),
+        name: `${title} ${lastTeacher}`,
+        age: Math.floor(Math.random() * 37) + 24, // 24 to 60
+        type: 'Teacher',
+        status: Math.floor(Math.random() * 31) + 20, // 20 to 50
+        category: 'classmate', // Keep as 'classmate' category so they show up together
+        isCurrentClassmate: true,
+        interactedThisYear: false
+    });
+
+    return cohort;
+}
+
+/**
+ * Determines if a classmate or teacher accepts a friend request.
+ * @param {number} status 
+ * @param {boolean} isTeacher 
+ * @param {number} roll - random roll between 0 and 1
+ * @returns {boolean} true if accepted, false if rejected
+ */
+function attemptBefriend(status, isTeacher, roll = Math.random()) {
+    // Base chance depends on status. e.g. status 50 = 50% chance.
+    let chance = status / 100;
+    
+    // It's harder for teachers
+    if (isTeacher) {
+        chance *= 0.5; // Half as likely
+    }
+    
+    return roll < chance;
+}
+
 export const GameLogic = {
     sanitizeName,
     addLivingExpenses,
@@ -473,5 +548,7 @@ export const GameLogic = {
     calculateTripOutcome,
     calculateRelationshipDecay,
     checkRelationshipCategoryShift,
-    calculateInheritance
+    calculateInheritance,
+    generateSchoolCohort,
+    attemptBefriend
 };

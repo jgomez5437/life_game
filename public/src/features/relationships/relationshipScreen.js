@@ -1,5 +1,6 @@
 import { state } from '../../core/state.js';
 import { renderLifeDashboard, addLog } from '../player/mainScreen.js';
+import { GameLogic } from '../../core/gameLogic.js';
 import { Utils } from '../../ui/utils.js';
 import { UI } from '../../ui/ui.js';
 
@@ -127,7 +128,9 @@ export const renderRelationships = () => {
         content += enemies.map(p => getPersonCard(p)).join('');
     }
 
-    // --- RENDER TO DOM ---
+    const btnClass = user.hasSpentTimeWithAll ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600 transition';
+    const btnAttr = user.hasSpentTimeWithAll ? 'disabled' : '';
+
     const container = document.getElementById('game-container');
     container.innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
@@ -139,7 +142,7 @@ export const renderRelationships = () => {
             
             <div class="mb-6 px-1 flex justify-between items-center">
                 <h2 class="text-2xl font-bold text-white">Relationships</h2>
-                <button data-action="spendTimeWithAll" class="btn-primary text-xs px-3 py-2 rounded-lg shadow hover:bg-blue-600 transition">
+                <button data-action="spendTimeWithAll" ${btnAttr} class="btn-primary text-xs px-3 py-2 rounded-lg shadow ${btnClass}">
                     <i class="fas fa-users mr-1"></i> Spend Time With All
                 </button>
             </div>
@@ -164,6 +167,10 @@ export const renderPersonInteraction = (id) => {
         { name: 'Compliment', key: 'compliment', statusChange: 15, cost: 0, icon: 'fa-heart', desc: 'Say something nice' },
         { name: 'Call to Chat', key: 'call_chat', statusChange: 10, cost: 0, icon: 'fa-phone', desc: 'Have a quick chat over the phone' }
     ];
+
+    if (person.category === 'classmate') {
+        interactions.push({ name: 'Ask to be Friends', key: 'ask_friend', statusChange: 0, cost: 0, icon: 'fa-user-plus', desc: 'See if they want to hang out outside of school' });
+    }
 
    const buttonsHtml = interactions.map((it, i) => {
         let isTooYoung = false;
@@ -221,6 +228,10 @@ export const renderPersonInteraction = (id) => {
                 </button>
             `;
         } else {
+            let statusChangeDisplay = `<div class="text-sm font-semibold text-white">${it.statusChange > 0 ? '+'+it.statusChange : it.statusChange}</div>`;
+            if (it.key === 'ask_friend') {
+                statusChangeDisplay = `<div class="text-sm font-semibold text-indigo-400"><i class="fas fa-question-circle"></i></div>`;
+            }
             return `
                 <button data-action="openRelationshipConfirm" data-args="&apos;${person.id}&apos;, ${i}" class="w-full p-3 rounded-xl border border-slate-700 mb-3 bg-slate-800 hover:bg-slate-750 hover:border-slate-500 transition flex items-center gap-3">
                     <div class="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center text-lg shadow-inner">
@@ -230,7 +241,7 @@ export const renderPersonInteraction = (id) => {
                         <div class="font-bold text-white">${it.name}</div>
                         <div class="text-xs text-slate-400">${it.desc}${it.cost ? ' — ' + Utils.formatMoney(it.cost) : ''}</div>
                     </div>
-                    <div class="text-sm font-semibold text-white">${it.statusChange > 0 ? '+'+it.statusChange : it.statusChange}</div>
+                    ${statusChangeDisplay}
                 </button>
             `;
         }
@@ -292,6 +303,9 @@ export const openRelationshipConfirm = (personId, actionIndex) => {
         { name: 'Compliment', statusChange: 15, cost: 0, key: 'compliment' },
         { name: 'Call to Chat', statusChange: 10, cost: 0, key: 'call_chat' }
     ];
+    if (person.category === 'classmate') {
+        actions.push({ name: 'Ask to be Friends', statusChange: 0, cost: 0, key: 'ask_friend' });
+    }
 
     const action = actions[actionIndex];
     if (!action) return;
@@ -339,6 +353,9 @@ export const performRelationshipAction = (personId, actionIndex) => {
         { name: 'Compliment', statusChange: 15, cost: 0, key: 'compliment' },
         { name: 'Call to Chat', statusChange: 10, cost: 0, key: 'call_chat' }
     ];
+    if (person.category === 'classmate') {
+        actions.push({ name: 'Ask to be Friends', statusChange: 0, cost: 0, key: 'ask_friend' });
+    }
 
     const action = actions[actionIndex];
     if (!action) return;
@@ -373,6 +390,28 @@ export const performRelationshipAction = (personId, actionIndex) => {
     // Deduct cost
     if (action.cost > 0) user.money -= action.cost;
 
+    if (action.key === 'ask_friend') {
+        const isTeacher = person.type === 'Teacher';
+        const success = GameLogic.attemptBefriend(person.status, isTeacher);
+        person.interactedThisYear = true;
+
+        if (success) {
+            person.category = 'friend';
+            person.type = isTeacher ? 'Friend (Teacher)' : 'Friend';
+            addLog(`${person.name} accepted your friend request!`, 'good');
+            UI.showModal('Success', `${person.name} is now your friend!`);
+            // Refresh screen to show the new category
+            setTimeout(() => renderPersonInteraction(personId), 300);
+        } else {
+            // Rejection penalty of 10 points
+            person.status = Math.max(0, person.status - 10);
+            addLog(`${person.name} rejected your friend request.`, 'bad');
+            UI.showModal('Rejected', `${person.name} didn't want to be friends. (-10 Status)`);
+            setTimeout(() => renderPersonInteraction(personId), 300);
+        }
+        return; // Skip normal status update and logging
+    }
+
     // Update status
     const prev = person.status || 0;
     person.status = Math.max(0, Math.min(100, prev + action.statusChange));
@@ -382,7 +421,7 @@ export const performRelationshipAction = (personId, actionIndex) => {
     person.interactedThisYear = true;
 
     // --- NON-RELATIVE CATEGORY SHIFT LOGIC ---
-    if (!['family', 'spouse', 'child'].includes(person.category)) {
+    if (!['family', 'spouse', 'child', 'classmate'].includes(person.category)) {
         if (person.status < 30 && person.category !== 'enemy') {
             person.category = 'enemy';
             person.type = 'Enemy';
@@ -421,8 +460,16 @@ export const spendTimeWithAll = () => {
         return;
     }
 
+    if (user.hasSpentTimeWithAll) {
+        UI.showModal('Action Blocked', "You have already spent time with everyone this year.");
+        return;
+    }
+
     let interactionsCount = 0;
     user.relationships.forEach(person => {
+        // Exclude classmates from the global Spend Time With All
+        if (person.category === 'classmate') return;
+
         // Evaluate if they refuse
         let isHostile = false;
         if (['family', 'spouse', 'child'].includes(person.category) && person.status < 15) {
@@ -439,7 +486,7 @@ export const spendTimeWithAll = () => {
             interactionsCount++;
             
             // Check for category shift to Friend if they were enemy but not hostile anymore
-            if (!['family', 'spouse', 'child'].includes(person.category) && person.status >= 30 && person.category === 'enemy') {
+            if (!['family', 'spouse', 'child', 'classmate'].includes(person.category) && person.status >= 30 && person.category === 'enemy') {
                 person.category = 'friend';
                 person.type = 'Friend';
                 addLog(`You made amends with ${person.name}. They are now a Friend.`, 'good');
@@ -448,10 +495,10 @@ export const spendTimeWithAll = () => {
     });
 
     if (interactionsCount > 0) {
-        addLog(`You spent time with ${interactionsCount} people.`, 'good');
+        user.hasSpentTimeWithAll = true;
         UI.showModal('Success', `You spent time with ${interactionsCount} people.`);
-        renderRelationships(); // re-render the list to update progress bars
+        renderRelationships();
     } else {
-        UI.showModal('Notice', "Nobody wanted to spend time with you.");
+        UI.showModal('Notice', "Nobody was available to spend time with.");
     }
 };

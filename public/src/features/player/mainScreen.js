@@ -291,6 +291,20 @@ function handleFinances(user) {
     }
 }
 
+export function refreshClassmates(user) {
+    if (!user.relationships) user.relationships = [];
+    
+    user.relationships.forEach(r => {
+        if (r.isCurrentClassmate) r.isCurrentClassmate = false;
+    });
+
+    // Clear old classmates/teachers (non-friends)
+    user.relationships = user.relationships.filter(r => r.category !== 'classmate');
+    // Generate new cohort
+    const cohort = GameLogic.generateSchoolCohort(user.age);
+    user.relationships.push(...cohort);
+}
+
 function handleEducation(user) {
     // 1. High School Logic
     if (user.age === 18 || (user.age === 19 && user.highSchoolRetained)) {
@@ -298,6 +312,9 @@ function handleEducation(user) {
             addLog("You graduated High School! Enroll in University or find a job.", 'good');
             user.highSchoolRetained = false;
             user.isStudent = false;
+            // Clear classmates on graduation
+            user.relationships.forEach(r => { if (r.isCurrentClassmate) r.isCurrentClassmate = false; });
+            user.relationships = user.relationships.filter(r => r.category !== 'classmate');
         } else {
             addLog("You failed. You must stay another year in High School.", 'bad');
             user.highSchoolRetained = true;
@@ -319,6 +336,9 @@ function handleEducation(user) {
                 user.universityEnrolled = false;
                 user.isStudent = false;
                 user.universityGraduated = true;
+                // Clear classmates on graduation
+                user.relationships.forEach(r => { if (r.isCurrentClassmate) r.isCurrentClassmate = false; });
+                user.relationships = user.relationships.filter(r => r.category !== 'classmate');
                 addLog(`You finished University with a degree in ${user.major}.`, 'good');
             } else {
                 addLog(`Completed year ${user.universitySchoolYear} of University.`, 'neutral');
@@ -337,6 +357,9 @@ function handleEducation(user) {
                 user.gradSchoolEnrolled = false;
                 user.isStudent = false;
                 user.gradSchoolDegree = user.gradSchoolType;
+                // Clear classmates on graduation
+                user.relationships.forEach(r => { if (r.isCurrentClassmate) r.isCurrentClassmate = false; });
+                user.relationships = user.relationships.filter(r => r.category !== 'classmate');
                 addLog(`Graduated from ${user.gradSchoolType}!`, 'good');
             } else {
                 addLog(`Completed year ${user.gradSchoolYear} of ${user.gradSchoolType}.`, 'neutral');
@@ -345,8 +368,14 @@ function handleEducation(user) {
     }
 
     // 4. Transitions
-    if (user.age === 12) addLog("Started Middle School.", 'good');
-    if (user.age === 14) addLog("Started High School.", 'good');
+    if (user.age === 12) {
+        addLog("Started Middle School.", 'good');
+        refreshClassmates(user);
+    }
+    if (user.age === 14) {
+        addLog("Started High School.", 'good');
+        refreshClassmates(user);
+    }
 }
 
 function handleMarket(user) {
@@ -365,7 +394,10 @@ function handleLifeEvents(user) {
     if (user.age === 1) addLog("You've discovered building blocks.", 'good');
     else if (user.age === 2) addLog("You learned to walk.", 'good');
     else if (user.age === 3) addLog("You drew on the walls.", 'good');
-    else if (user.age === 5) addLog("Started Elementary School!", 'good');
+    else if (user.age === 5) {
+        addLog("Started Elementary School!", 'good');
+        refreshClassmates(user);
+    }
     
     // Random Events
     else if (user.age < 18 && user.age > 5) {
@@ -430,6 +462,9 @@ function handleRelationships(user) {
         // Reset interaction flag for next year
         rel.interactedThisYear = false;
     }
+    
+    // Reset global interaction flags
+    user.hasSpentTimeWithAll = false;
 }
 
 //Define the rendering function globally so script.js can call it.

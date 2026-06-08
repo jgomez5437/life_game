@@ -211,4 +211,34 @@ describe('Relationship Logic', () => {
         // Verify rounded to 100
         expect(amt60 % 100).toBe(0);
     });
+
+    test('generateSchoolCohort returns classmates with correct ages and one teacher', () => {
+        const cohort = GameLogic.generateSchoolCohort(10);
+        expect(cohort.length).toBeGreaterThanOrEqual(13); // 12-16 classmates + 1 teacher
+        
+        const teacher = cohort.find(p => p.type === 'Teacher');
+        expect(teacher).toBeDefined();
+        expect(teacher.age).toBeGreaterThanOrEqual(24);
+        expect(teacher.age).toBeLessThanOrEqual(60);
+
+        const classmates = cohort.filter(p => p.type === 'Classmate');
+        classmates.forEach(c => {
+            expect(c.age).toBeGreaterThanOrEqual(9);
+            expect(c.age).toBeLessThanOrEqual(11);
+            expect(c.status).toBeGreaterThanOrEqual(20);
+            expect(c.status).toBeLessThanOrEqual(50);
+        });
+    });
+
+    test('attemptBefriend handles status chance correctly', () => {
+        // Roll = 0.4. Status 50 => chance 0.50 => 0.4 < 0.50 => true
+        expect(GameLogic.attemptBefriend(50, false, 0.4)).toBe(true);
+        // Roll = 0.6. Status 50 => chance 0.50 => 0.6 < 0.50 => false
+        expect(GameLogic.attemptBefriend(50, false, 0.6)).toBe(false);
+
+        // Teacher: status 50 => chance 0.25 => 0.2 < 0.25 => true
+        expect(GameLogic.attemptBefriend(50, true, 0.2)).toBe(true);
+        // Teacher: status 50 => chance 0.25 => 0.3 < 0.25 => false
+        expect(GameLogic.attemptBefriend(50, true, 0.3)).toBe(false);
+    });
 });

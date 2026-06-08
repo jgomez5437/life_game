@@ -1,6 +1,6 @@
 import { GameLogic } from '../../core/gameLogic.js';
 import { state } from '../../core/state.js';
-import { renderLifeDashboard, addLog } from '../player/mainScreen.js';
+import { renderLifeDashboard, addLog, refreshClassmates } from '../player/mainScreen.js';
 import { Utils } from '../../ui/utils.js';
 import { MAJORS, CAREERS, PART_TIME_JOBS } from '../../core/main.js';
 
@@ -114,6 +114,7 @@ function enrollSuccess(major, methodMsg) {
     m.classList.add('hidden');
     m.classList.remove('flex');
     addLog(`Enrolled in University of ${user.city} for ${major}. You ${methodMsg}.`, 'good');
+    refreshClassmates(user);
     renderActivities();
 }
 
@@ -241,6 +242,7 @@ function gradEnrollSuccess(schoolType, methodMsg) {
     m.classList.add('hidden');
     m.classList.remove('flex');
     addLog(`Enrolled in ${schoolType}. You ${methodMsg}.`, 'good');
+    refreshClassmates(user);
     renderActivities();
 };
 
