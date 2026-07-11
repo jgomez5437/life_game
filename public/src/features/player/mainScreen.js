@@ -6,9 +6,10 @@ import { processNextFuneral } from '../relationships/funeralScreen.js';
 import { Utils } from '../../ui/utils.js';
 import { UI } from '../../ui/ui.js';
 import { renderAssets } from '../assets/assetsScreen.js';
-import { saveGame, resetGame } from '../../core/main.js';
+import { saveGame, resetGame, CAREER_TRACKS } from '../../core/main.js';
 import { checkSchoolActionTaken } from '../education/manageEducationScreen.js';
 import { checkActionTaken } from '../career/jobCareerManagerScreen.js';
+import { autoProcessBusinessQuarter } from '../business/businessDashboard.js';
 const get = id => document.getElementById(id);
 
 // public/screens/mainScreen.js
@@ -74,9 +75,10 @@ export async function renderDeathScreen(user, cause) {
     const children = user.relationships.filter(r => r.type === 'Son' || r.type === 'Daughter');
     const hasChildren = children.length > 0;
     
-    // Liquidate assets into net worth before splitting
-    const assetValue = user.assets ? user.assets.reduce((sum, a) => sum + (a.value || 0), 0) : 0;
-    const totalEstate = user.money + assetValue;
+    // Liquidate assets into net worth before splitting (include company cash if applicable)
+    const assetValue  = user.assets ? user.assets.reduce((sum, a) => sum + (a.value || 0), 0) : 0;
+    const companyCash = (user.hasBusiness && user.compCash > 0) ? user.compCash : 0;
+    const totalEstate = user.money + assetValue + companyCash;
     
     // Prevent debt from being inherited
     const inheritancePerChild = (hasChildren && totalEstate > 0) ? Math.floor(totalEstate / children.length) : 0;
@@ -259,22 +261,93 @@ function handleFinances(user) {
         addLog(`You received ${Utils.formatMoney(bdayMoney)} for your birthday!`, 'good');
     }
 
-    // 2. Job Salary
+    // 2. Job Salary + annual adjustments
     if (user.jobTitle) {
         user.money += user.jobSalary;
-        if (user.hasSeenJobSalary){
+        if (user.hasSeenJobSalary) {
             addLog(`Earned ${Utils.formatMoney(user.jobSalary)} as a ${user.jobTitle}.`, 'good');
+        }
+
+        // Annual cost-of-living raise (~2%, silent)
+        user.jobSalary += Math.max(500, Math.floor(user.jobSalary * 0.02));
+
+        if (user.careerTrack) {
+            // ── Career-track: promotion / demotion system ──────────────────
+            user.yearsInRole = (user.yearsInRole || 0) + 1;
+            const track = CAREER_TRACKS.find(t => t.key === user.careerTrack);
+            const lvlIdx   = user.careerLevel || 0;
+            const level    = track?.levels[lvlIdx];
+            const nextLevel = track?.levels[lvlIdx + 1];
+
+            if (track && level) {
+                if (user.jobPerformance <= 20) {
+                    // Poor performance
+                    user.consecutivePoorYears = (user.consecutivePoorYears || 0) + 1;
+                    if (user.consecutivePoorYears >= 2) {
+                        if (lvlIdx > 0) {
+                            user.careerLevel--;
+                            const demoted = track.levels[user.careerLevel];
+                            user.jobTitle  = demoted.title;
+                            user.jobSalary = demoted.salary;
+                            user.consecutivePoorYears = 0;
+                            user.yearsInRole = 0;
+                            addLog(`Demoted to ${demoted.title} due to sustained poor performance. New salary: ${Utils.formatMoney(user.jobSalary)}/yr.`, 'bad');
+                        } else {
+                            addLog(`Terminated from ${user.jobTitle} due to sustained poor performance.`, 'bad');
+                            user.jobTitle = null; user.jobSalary = 0; user.jobPerformance = 50;
+                            user.careerTrack = null; user.careerLevel = 0; user.yearsInRole = 0;
+                            user.consecutivePoorYears = 0; user.careerActionTaken = false; user.hasSeenJobSalary = false;
+                        }
+                    } else {
+                        addLog('Your employer issued a formal warning about your performance.', 'bad');
+                    }
+                } else {
+                    user.consecutivePoorYears = 0;
+                    let promoted = false;
+
+                    // Promotion check
+                    if (nextLevel && level.minYears !== null && user.yearsInRole >= level.minYears && user.jobPerformance >= 75) {
+                        const promoChance = user.jobPerformance >= 95 ? 0.80 : user.jobPerformance >= 85 ? 0.50 : 0.25;
+                        if (Math.random() < promoChance) {
+                            user.careerLevel++;
+                            user.jobTitle  = nextLevel.title;
+                            user.jobSalary = Math.max(user.jobSalary, nextLevel.salary);
+                            user.yearsInRole = 0;
+                            addLog(`Promoted to ${nextLevel.title}! New salary: ${Utils.formatMoney(user.jobSalary)}/yr.`, 'major');
+                            promoted = true;
+                        }
+                    }
+
+                    // Performance raise if not promoted
+                    if (!promoted && user.jobPerformance >= 80) {
+                        const perfBonus = Math.floor(user.jobSalary * 0.05);
+                        user.jobSalary += perfBonus;
+                        addLog(`Outstanding performance! Your salary increased to ${Utils.formatMoney(user.jobSalary)}/yr.`, 'good');
+                    }
+                }
+            }
+        } else {
+            // ── Part-time / legacy flat job ────────────────────────────────
+            if (user.jobPerformance >= 80) {
+                const perfBonus = Math.floor(user.jobSalary * 0.05);
+                user.jobSalary += perfBonus;
+                addLog(`Outstanding performance! Your salary increased to ${Utils.formatMoney(user.jobSalary)}/yr.`, 'good');
+            } else if (user.jobPerformance <= 20 && Math.random() < 0.4) {
+                addLog(`Your employer let you go from ${user.jobTitle} due to poor performance.`, 'bad');
+                user.jobTitle = null; user.jobSalary = 0; user.jobPerformance = 50;
+                user.careerActionTaken = false; user.hasSeenJobSalary = false;
+            }
         }
     }
 
     // 3. Living Expenses
-    const annualLivingExpense = GameLogic.addLivingExpenses(user.age, user.isStudent);
+    const annualLivingExpense = GameLogic.addLivingExpenses(user.age, user.isStudent, user.city);
     if (annualLivingExpense > 0) {
         user.monthlyLivingExpense = annualLivingExpense;
-        user.money -= annualLivingExpense; // Deduct immediately
-        
+        user.money -= annualLivingExpense;
+
         if (!user.hasSeenExpenseMsg) {
-            addLog("Your basic living expenses are $2,000 per month.", 'neutral');
+            addLog(`Your basic living expenses in ${user.city} are ${Utils.formatMoney(Math.round(annualLivingExpense / 12))}/month.`, 'neutral');
             user.hasSeenExpenseMsg = true;
         }
     }
@@ -288,6 +361,11 @@ function handleFinances(user) {
     const healthCosts = GameLogic.calculateActiveHealthCosts(user.gymMembership, user.hasBetterDiet);
     if (healthCosts > 0) {
         user.money -= healthCosts;
+    }
+
+    // 6. Business auto-quarter (runs silently each age-up)
+    if (user.hasBusiness) {
+        autoProcessBusinessQuarter(user);
     }
 }
 
@@ -432,7 +510,7 @@ function handleRelationships(user) {
         rel.age++;
         
         // Check Mortality
-        const deathCheck = GameLogic.checkMortality(rel.age, 100);
+        const deathCheck = GameLogic.checkMortality(rel.age, rel.health ?? 100);
         if (deathCheck.isDead) {
             rel.deathCause = deathCheck.cause;
             state.gameState.pendingFunerals.push(rel);

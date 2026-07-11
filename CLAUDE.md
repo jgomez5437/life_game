@@ -14,16 +14,14 @@ This is where the vast majority of the game logic and UI lives.
 
 #### `core/` (State and Main Game Loop)
 - `state.js`: Defines the global `state` object (which holds `gameState`, `userAuthId`, etc.) and basic getter/setters.
-- `gameLogic.js`: Pure functions for game mechanics (e.g., mortality checks, asset depreciation, blackjack outcomes, relationship decay, health calculations). Keeps math and rules separate from the UI.
-- `main.js`: The entry point for the game mechanics, handles the core "aging" loop, orchestrates events when a year passes, and ties state changes to UI updates.
-- `router.js`: Handles navigation and screen switching.
+- `gameLogic.js`: Pure functions for game mechanics (e.g., mortality checks, asset depreciation, blackjack outcomes, relationship decay, health calculations, `calculatePromotionChance`). Exports the `GameLogic` object and `CITY_COST_OF_LIVING`. Keeps math and rules separate from the UI.
+- `main.js`: The entry point for the game mechanics, handles the core "aging" loop, orchestrates events when a year passes, and ties state changes to UI updates. Exports `CAREER_TRACKS`, `PART_TIME_JOBS`, `INDUSTRIES`, `SUPPLIERS`. `routeHandlers` is the flat dispatch map for all `data-action` clicks.
 
 #### `features/` (Game Domains)
 Contains UI screens and specific logic broken down by game mechanics.
-- **`activities/`**: Minor or miscellaneous activities (e.g., `moreToDoScreen.js`).
 - **`assets/`**: Managing owned items and vehicles (`assetsScreen.js`, `goShoppingScreen.js`).
 - **`business/`**: Entrepreneurship logic, business dashboards, and creation (`businessDashboard.js`, `createBusinessScreen.js`).
-- **`career/`**: Finding and managing jobs (`careerJobsScreen.js`, `jobCareerManagerScreen.js`, `occupationScreen.js`, `partTimeJobsScreen.js`).
+- **`career/`**: Career system with multi-level `CAREER_TRACKS` (15 tracks, 5 levels each). `careerJobsScreen.js` renders the market and handles `applyForCareerTrack`/`applyForJob`. `jobCareerManagerScreen.js` shows promotion progress and handles work harder/slack off/quit. `occupationScreen.js` is the occupation hub. `partTimeJobsScreen.js` shows the 11 part-time jobs.
 - **`education/`**: Schooling and university logic (`manageEducationScreen.js`).
 - **`more/`**: Options and extra settings (`moreScreen.js`).
 - **`player/`**: Core player screens (`mainScreen.js` for the main dashboard and log, `charCreationScreen.js` for new games).
