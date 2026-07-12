@@ -432,11 +432,120 @@ function calculateRelationshipDecay(currentStatus, interactedThisYear) {
  * @returns {string|null} The new category if shifted, otherwise null
  */
 function checkRelationshipCategoryShift(category, status) {
-    if (['family', 'spouse', 'child', 'classmate'].includes(category)) return null;
-    
+    if (['family', 'spouse', 'child', 'classmate', 'partner', 'ex'].includes(category)) return null;
+
     if (status < 30 && category !== 'enemy') return 'enemy';
     if (status >= 30 && category === 'enemy') return 'friend';
     return null;
+}
+
+/**
+ * Single source of truth for every per-person relationship interaction:
+ * name/icon/desc for rendering, cost/statusChange for effect, and the
+ * conditions that decide whether it's shown at all (category/gender/type
+ * filters) vs. shown-but-disabled (age/funds/status/hostility gates).
+ */
+const RELATIONSHIP_INTERACTIONS = [
+    { key: 'spend_time', name: 'Spend Time', icon: 'fa-clock', desc: 'Spend quality time together', cost: 0, statusChange: 15, blockedIfAgeLte: 1 },
+    { key: 'give_money', name: 'Give Money', icon: 'fa-money-bill', desc: 'Give a monetary gift', cost: 500, statusChange: 10, blockedIfAgeLte: 10, allowedWhileHostile: true },
+    { key: 'insult', name: 'Insult', icon: 'fa-angry', desc: 'Say something mean', cost: 0, statusChange: -20, blockedIfAgeLte: 2, allowedWhileHostile: true },
+    { key: 'compliment', name: 'Compliment', icon: 'fa-heart', desc: 'Say something nice', cost: 0, statusChange: 15, blockedIfAgeLte: 2 },
+    { key: 'call_chat', name: 'Call to Chat', icon: 'fa-phone', desc: 'Have a quick chat over the phone', cost: 0, statusChange: 10, blockedIfAgeLte: 5 },
+    { key: 'ask_friend', name: 'Ask to be Friends', icon: 'fa-user-plus', desc: 'See if they want to hang out outside of school', cost: 0, statusChange: 0, categories: ['classmate'] },
+
+    // --- Romance (Chunk 1) ---
+    { key: 'ask_out', name: 'Ask Out', icon: 'fa-heart', desc: 'Ask them to be your boyfriend/girlfriend', cost: 0, statusChange: 0, categories: ['friend'], requiresOppositeGender: true, monogamyGate: true, minStatusToUnlock: 40, blockedIfAgeLte: 15, blockedIfTargetAgeLte: 15 },
+    { key: 'flirt', name: 'Flirt', icon: 'fa-kiss-wink-heart', desc: 'Say something flirty', cost: 0, statusChange: 10, categories: ['partner'], blockedIfAgeLte: 15, blockedIfTargetAgeLte: 15 },
+    { key: 'go_on_date', name: 'Go on a Date', icon: 'fa-utensils', desc: 'Take them out for a night together', cost: 100, statusChange: 15, categories: ['partner'], blockedIfAgeLte: 15, blockedIfTargetAgeLte: 15 },
+    { key: 'make_love', name: 'Make Love', icon: 'fa-heart-circle-check', desc: 'Spend an intimate night together', cost: 0, statusChange: 10, categories: ['partner', 'spouse'], blockedIfAgeLte: 17, blockedIfTargetAgeLte: 17 },
+    { key: 'break_up', name: 'Break Up', icon: 'fa-heart-crack', desc: 'End the relationship', cost: 0, statusChange: 0, categories: ['partner'] },
+
+    // --- Marriage & Divorce (Chunk 2) ---
+    { key: 'propose', name: 'Propose', icon: 'fa-gem', desc: 'Pop the question with a ring', cost: 3000, statusChange: 0, categories: ['partner'], requiredTypes: ['Boyfriend', 'Girlfriend'], minStatusToUnlock: 75, blockedIfAgeLte: 17, blockedIfTargetAgeLte: 17 },
+    { key: 'get_married', name: 'Plan Wedding', icon: 'fa-ring', desc: 'Take the next step and get married', cost: 0, statusChange: 0, categories: ['partner'], requiredTypes: ['Fiancé', 'Fiancée'], blockedIfAgeLte: 17, blockedIfTargetAgeLte: 17, directAction: 'openWeddingPlanner' },
+    { key: 'file_divorce', name: 'File for Divorce', icon: 'fa-file-signature', desc: 'End the marriage (legal fee + asset split)', cost: 5000, statusChange: 0, categories: ['spouse'] },
+
+    // --- Pregnancy & Birth (Chunk 3) ---
+    { key: 'try_for_baby', name: 'Try for a Baby', icon: 'fa-baby', desc: 'Try to start a family together', cost: 0, statusChange: 0, categories: ['spouse'], blockedIfAgeLte: 17, blockedIfTargetAgeLte: 17, blockedIfUserExpecting: true },
+];
+
+/**
+ * A relationship "refuses contact" (blocks most interactions) below a status
+ * floor. Family/spouse/child get a lower floor (15) than everyone else (30).
+ * @param {object} person
+ * @returns {boolean}
+ */
+function isHostile(person) {
+    const isFamilyLike = ['family', 'spouse', 'child'].includes(person.category);
+    return isFamilyLike ? person.status < 15 : person.status < 30;
+}
+
+/**
+ * Returns the interactions applicable to this person/user pair at all
+ * (category/type/gender/relationship-status filters). Does not evaluate
+ * age/funds/hostility gates — see isInteractionBlocked for those.
+ * @param {object} person
+ * @param {object} user
+ * @returns {Array}
+ */
+function getAvailableInteractions(person, user) {
+    const hasPartnerOrSpouse = (user.relationships || []).some(r => r.category === 'partner' || r.category === 'spouse');
+    return RELATIONSHIP_INTERACTIONS.filter(it => {
+        if (it.categories && !it.categories.includes(person.category)) return false;
+        if (it.requiredTypes && !it.requiredTypes.includes(person.type)) return false;
+        if (it.requiresOppositeGender && (!person.gender || !user.gender || person.gender === user.gender)) return false;
+        if (it.monogamyGate && hasPartnerOrSpouse) return false;
+        return true;
+    });
+}
+
+/**
+ * Evaluates whether a specific interaction is currently blocked for this
+ * person/user pair, and why (for UI display). Mirrors the previously
+ * duplicated age/affordability/hostility gate logic in relationshipScreen.js.
+ * @param {string} interactionKey
+ * @param {object} person
+ * @param {object} user
+ * @returns {{blocked: boolean, reason: string}}
+ */
+function isInteractionBlocked(interactionKey, person, user) {
+    const it = RELATIONSHIP_INTERACTIONS.find(i => i.key === interactionKey);
+    if (!it) return { blocked: true, reason: 'Unknown Action' };
+
+    let blocked = false;
+    let reason = '';
+
+    if (it.blockedIfAgeLte !== undefined && user.age <= it.blockedIfAgeLte) {
+        blocked = true;
+        reason = 'Too Young';
+    }
+    if (it.blockedIfTargetAgeLte !== undefined && person.age <= it.blockedIfTargetAgeLte) {
+        blocked = true;
+        if (!reason) reason = 'Too Young';
+    }
+
+    const canAfford = !it.cost || (user.money || 0) >= it.cost;
+    if (!canAfford) {
+        blocked = true;
+        if (!reason) reason = 'Insufficient Funds';
+    }
+
+    if (it.minStatusToUnlock !== undefined && person.status < it.minStatusToUnlock) {
+        blocked = true;
+        if (!reason) reason = 'Not Close Enough Yet';
+    }
+
+    if (it.blockedIfUserExpecting && user.isExpecting) {
+        blocked = true;
+        if (!reason) reason = 'Already Expecting';
+    }
+
+    if (isHostile(person) && !it.allowedWhileHostile) {
+        blocked = true;
+        reason = 'Refuses Contact';
+    }
+
+    return { blocked, reason };
 }
 
 /**
@@ -468,8 +577,30 @@ function calculateInheritance(age, roll = Math.random()) {
     return Math.round(inheritance / 100) * 100;
 }
 
-const FIRST_NAMES = ['James', 'John', 'Robert', 'Michael', 'William', 'David', 'Mary', 'Patricia', 'Jennifer', 'Linda', 'Elizabeth', 'Barbara', 'Susan', 'Jessica', 'Sarah', 'Karen', 'Nancy', 'Lisa', 'Betty', 'Margaret', 'Sandra', 'Ashley', 'Kimberly', 'Emily', 'Donna', 'Michelle', 'Daniel', 'Matthew', 'Anthony', 'Mark', 'Donald', 'Steven', 'Paul', 'Andrew', 'Joshua', 'Kenneth'];
+const FIRST_NAMES_MALE = ['James', 'John', 'Robert', 'Michael', 'William', 'David', 'Richard', 'Joseph', 'Thomas', 'Charles', 'Daniel', 'Matthew', 'Anthony', 'Mark', 'Donald', 'Steven', 'Paul', 'Andrew', 'Joshua', 'Kenneth'];
+const FIRST_NAMES_FEMALE = ['Mary', 'Patricia', 'Jennifer', 'Linda', 'Elizabeth', 'Barbara', 'Susan', 'Jessica', 'Sarah', 'Karen', 'Nancy', 'Lisa', 'Betty', 'Margaret', 'Sandra', 'Ashley', 'Kimberly', 'Emily', 'Donna', 'Michelle'];
 const LAST_NAMES = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin', 'Lee', 'Perez', 'Thompson', 'White', 'Harris', 'Sanchez', 'Clark', 'Ramirez', 'Lewis', 'Robinson', 'Walker', 'Young', 'Allen', 'King', 'Wright', 'Scott', 'Torres', 'Nguyen', 'Hill', 'Flores', 'Green', 'Adams', 'Nelson', 'Baker', 'Hall', 'Rivera', 'Campbell', 'Mitchell', 'Carter', 'Roberts'];
+
+/**
+ * Returns a random first name for the given gender.
+ * @param {string} gender - 'male' or 'female'
+ * @param {number} [roll=Math.random()] - Injected randomness for pure unit testing.
+ * @returns {string}
+ */
+function getRandomFirstName(gender, roll = Math.random()) {
+    const pool = gender === 'male' ? FIRST_NAMES_MALE : FIRST_NAMES_FEMALE;
+    return pool[Math.floor(roll * pool.length)];
+}
+
+/**
+ * Extracts the last word of a full name, treated as the surname.
+ * @param {string} fullName
+ * @returns {string}
+ */
+function getLastName(fullName) {
+    const parts = (fullName || '').trim().split(' ');
+    return parts[parts.length - 1];
+}
 
 /**
  * Generates a cohort of classmates and one teacher based on the user's age.
@@ -491,13 +622,15 @@ function generateSchoolCohort(userAge) {
     const numClassmates = Math.floor(Math.random() * 5) + 12; // 12 to 16 classmates
 
     for (let i = 0; i < numClassmates; i++) {
-        const first = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)];
+        const gender = Math.random() < 0.5 ? 'male' : 'female';
+        const first = getRandomFirstName(gender);
         const last = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
         cohort.push({
             id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'rel_' + Date.now() + Math.random().toString(36).substring(2, 9),
             name: `${first} ${last}`,
             age: Math.floor(Math.random() * (classmateAgeMax - classmateAgeMin + 1)) + classmateAgeMin,
             type: 'Classmate',
+            gender,
             status: Math.floor(Math.random() * 31) + 20, // 20 to 50 starting status
             category: 'classmate',
             isCurrentClassmate: true,
@@ -506,15 +639,16 @@ function generateSchoolCohort(userAge) {
     }
 
     // Generate one teacher
-    const firstTeacher = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)];
+    const teacherGender = Math.random() < 0.5 ? 'male' : 'female';
     const lastTeacher = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
-    const title = Math.random() > 0.5 ? 'Mr.' : (Math.random() > 0.5 ? 'Ms.' : 'Mrs.');
+    const title = teacherGender === 'male' ? 'Mr.' : (Math.random() > 0.5 ? 'Ms.' : 'Mrs.');
 
     cohort.push({
         id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'rel_' + Date.now() + Math.random().toString(36).substring(2, 9),
         name: `${title} ${lastTeacher}`,
         age: Math.floor(Math.random() * 37) + 24, // 24 to 60
         type: 'Teacher',
+        gender: teacherGender,
         status: Math.floor(Math.random() * 31) + 20, // 20 to 50
         category: 'classmate', // Keep as 'classmate' category so they show up together
         isCurrentClassmate: true,
@@ -522,6 +656,36 @@ function generateSchoolCohort(userAge) {
     });
 
     return cohort;
+}
+
+/**
+ * Generates a single opposite-gender stranger the player meets while out
+ * (e.g. a "Go Out / Meet Someone" action). Starts as a regular friend —
+ * romance only begins once the player uses "Ask Out" on them.
+ * @param {number} userAge
+ * @param {string} userGender - 'male' or 'female'
+ * @param {number} [roll=Math.random()] - Injected randomness for the age roll, for pure unit testing.
+ * @returns {object} A relationship object
+ */
+function generateStranger(userAge, userGender, roll = Math.random()) {
+    const gender = userGender === 'male' ? 'female' : 'male';
+    const minAge = Math.max(18, userAge - 3);
+    const maxAge = Math.max(minAge, userAge + 5);
+    const age = minAge + Math.floor(roll * (maxAge - minAge + 1));
+
+    const first = getRandomFirstName(gender);
+    const last = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
+
+    return {
+        id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'rel_' + Date.now() + Math.random().toString(36).substring(2, 9),
+        name: `${first} ${last}`,
+        age,
+        type: 'Friend',
+        gender,
+        status: Math.floor(Math.random() * 21) + 20, // 20 to 40 starting status
+        category: 'friend',
+        interactedThisYear: false
+    };
 }
 
 /**
@@ -539,6 +703,34 @@ function attemptBefriend(status, isTeacher, roll = Math.random()) {
     if (isTeacher) {
         chance *= 0.5; // Half as likely
     }
+
+    return roll < chance;
+}
+
+/**
+ * Determines if a partner accepts a marriage proposal. Chance scales with
+ * relationship status, mirroring attemptBefriend's status-derived chance.
+ * @param {number} status
+ * @param {number} [roll=Math.random()]
+ * @returns {boolean} true if accepted, false if rejected
+ */
+function calculateProposalAcceptance(status, roll = Math.random()) {
+    return roll < (status / 100);
+}
+
+/**
+ * Determines if trying for a baby succeeds this year, based on the
+ * biologically carrying parent's age (mirrors real-world fertility decline).
+ * @param {number} carryingParentAge
+ * @param {number} [roll=Math.random()]
+ * @returns {boolean} true if a pregnancy begins
+ */
+function calculatePregnancyChance(carryingParentAge, roll = Math.random()) {
+    let chance;
+    if (carryingParentAge < 35) chance = 0.5;
+    else if (carryingParentAge < 40) chance = 0.3;
+    else if (carryingParentAge < 45) chance = 0.1;
+    else chance = 0.02;
 
     return roll < chance;
 }
@@ -578,9 +770,17 @@ export const GameLogic = {
     calculateTripOutcome,
     calculateRelationshipDecay,
     checkRelationshipCategoryShift,
+    isHostile,
+    getAvailableInteractions,
+    isInteractionBlocked,
     calculateInheritance,
     generateSchoolCohort,
+    generateStranger,
     attemptBefriend,
+    calculateProposalAcceptance,
+    calculatePregnancyChance,
     calculatePromotionChance,
+    getRandomFirstName,
+    getLastName,
     CITY_COST_OF_LIVING,
 };

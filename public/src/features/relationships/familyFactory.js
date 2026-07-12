@@ -1,14 +1,10 @@
-export const FamilyFactory = (() => {
-    // 1. Static Name Dictionaries
-    // Future Architecture Note: Move these to a separate JSON config file when implementing regional variants.
-    const NAMES = {
-        MALE: ['James', 'John', 'Robert', 'Michael', 'William', 'David', 'Richard', 'Joseph', 'Thomas', 'Charles', 'Daniel', 'Matthew', 'Anthony', 'Mark', 'Donald', 'Steven', 'Paul', 'Andrew', 'Joshua', 'Kenneth'],
-        FEMALE: ['Mary', 'Patricia', 'Jennifer', 'Linda', 'Elizabeth', 'Barbara', 'Susan', 'Jessica', 'Sarah', 'Karen', 'Nancy', 'Lisa', 'Betty', 'Margaret', 'Sandra', 'Ashley', 'Kimberly', 'Emily', 'Donna', 'Michelle']
-    };
+import { GameLogic } from '../../core/gameLogic.js';
 
-    // 2. Pure Helper Functions (Isolated to this factory)
+export const FamilyFactory = (() => {
+    // 1. Pure Helper Functions (Isolated to this factory)
+    // Name pools live in gameLogic.js's GameLogic.getRandomFirstName to avoid duplicating the lists here.
     const getInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-    const getName = (gender) => NAMES[gender][Math.floor(Math.random() * NAMES[gender].length)];
+    const getName = (gender) => GameLogic.getRandomFirstName(gender);
     const getUUID = () => typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'rel_' + Date.now() + Math.random().toString(36).substring(2, 9);
 
     // 3. Public API
@@ -34,9 +30,10 @@ export const FamilyFactory = (() => {
             if (hasMother) {
                 family.push({
                     id: getUUID(),
-                    name: `${getName('FEMALE')} ${lastName}`,
+                    name: `${getName('female')} ${lastName}`,
                     age: getInt(18, 45), // Age at player birth
                     type: 'Mother',
+                    gender: 'female',
                     status: getInt(70, 100),
                     category: 'family'
                 });
@@ -45,9 +42,10 @@ export const FamilyFactory = (() => {
             if (hasFather) {
                 family.push({
                     id: getUUID(),
-                    name: `${getName('MALE')} ${lastName}`,
+                    name: `${getName('male')} ${lastName}`,
                     age: getInt(18, 50), // Age at player birth
                     type: 'Father',
+                    gender: 'male',
                     status: getInt(70, 100),
                     category: 'family'
                 });
@@ -68,9 +66,10 @@ export const FamilyFactory = (() => {
                     const isMale = Math.random() > 0.5;
                     family.push({
                         id: getUUID(),
-                        name: `${getName(isMale ? 'MALE' : 'FEMALE')} ${lastName}`,
+                        name: `${getName(isMale ? 'male' : 'female')} ${lastName}`,
                         age: getInt(1, 15), // Siblings are strictly older than the Age 0 player
                         type: isMale ? 'Brother' : 'Sister',
+                        gender: isMale ? 'male' : 'female',
                         status: getInt(50, 100),
                         category: 'family'
                     });

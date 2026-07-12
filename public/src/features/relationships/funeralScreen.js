@@ -24,9 +24,9 @@ const renderFuneralScreen = (deceased) => {
     // Evaluate if they are family
     const isFamily = ['family', 'spouse', 'child'].includes(deceased.category);
     
-    // Check Inheritance if parents
+    // Check Inheritance if parents or spouse
     let inheritanceMsg = '';
-    if (deceased.type === 'Mother' || deceased.type === 'Father') {
+    if (['Mother', 'Father', 'Husband', 'Wife'].includes(deceased.type)) {
         // Roll for inheritance only if we haven't already
         if (deceased.inheritanceAmt === undefined) {
             deceased.inheritanceAmt = GameLogic.calculateInheritance(deceased.age);
@@ -47,7 +47,7 @@ const renderFuneralScreen = (deceased) => {
             </div>`;
         }
     } else {
-        // Non-parents don't leave inheritance currently
+        // Only parents and spouses leave inheritance currently
         deceased.inheritanceAmt = 0;
     }
 

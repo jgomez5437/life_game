@@ -38,7 +38,8 @@ export function ageUp() {
     handleEducation(user);
     handleMarket(user);
     handleLifeEvents(user);
-    handleRelationships(user); 
+    handleRelationships(user);
+    handlePregnancy(user);
 
     // 4. Empty Year Validation (The Fix)
     const currentAgeLog = currentState.lifeLog.find(l => l.age === user.age);
@@ -73,15 +74,25 @@ function handleDeath(user, cause) {
 export async function renderDeathScreen(user, cause) {
     // 1. Calculate Inheritance
     const children = user.relationships.filter(r => r.type === 'Son' || r.type === 'Daughter');
+    const spouse = user.relationships.find(r => r.category === 'spouse');
     const hasChildren = children.length > 0;
-    
+    const hasSpouse = !!spouse;
+
     // Liquidate assets into net worth before splitting (include company cash if applicable)
     const assetValue  = user.assets ? user.assets.reduce((sum, a) => sum + (a.value || 0), 0) : 0;
     const companyCash = (user.hasBusiness && user.compCash > 0) ? user.compCash : 0;
     const totalEstate = user.money + assetValue + companyCash;
-    
+
+    // A surviving spouse takes half the estate (or all of it, with no children); children split the remainder
+    let spouseShare = 0;
+    let remainingEstate = totalEstate;
+    if (hasSpouse && totalEstate > 0) {
+        spouseShare = hasChildren ? Math.floor(totalEstate * 0.5) : totalEstate;
+        remainingEstate = totalEstate - spouseShare;
+    }
+
     // Prevent debt from being inherited
-    const inheritancePerChild = (hasChildren && totalEstate > 0) ? Math.floor(totalEstate / children.length) : 0;
+    const inheritancePerChild = (hasChildren && remainingEstate > 0) ? Math.floor(remainingEstate / children.length) : 0;
 
     // 2. Build Estate Messaging
     let estateMessage = '';
@@ -94,8 +105,12 @@ export async function renderDeathScreen(user, cause) {
             estateMessage = `<p class="text-slate-400 text-sm mb-4 italic">You died in debt. Your creditors absorbed the loss.</p>`;
         }
     } else {
-        if (hasChildren) {
-            estateMessage = `<p class="text-slate-300 text-sm mb-4">Wealth split evenly among ${children.length} children<br><span class="text-green-400 font-bold">+$${inheritancePerChild.toLocaleString()} each</span></p>`;
+        const shares = [];
+        if (spouseShare > 0) shares.push(`<span class="text-green-400 font-bold">+$${spouseShare.toLocaleString()}</span> to your spouse, ${spouse.name}`);
+        if (inheritancePerChild > 0) shares.push(`<span class="text-green-400 font-bold">+$${inheritancePerChild.toLocaleString()} each</span> to your ${children.length} children`);
+
+        if (shares.length > 0) {
+            estateMessage = `<p class="text-slate-300 text-sm mb-4">Your estate went ${shares.join(' and ')}.</p>`;
         } else {
             estateMessage = `<p class="text-slate-400 text-sm mb-4 italic">Having no heirs, your estate was surrendered to the government.</p>`;
         }
@@ -543,6 +558,33 @@ function handleRelationships(user) {
     
     // Reset global interaction flags
     user.hasSpentTimeWithAll = false;
+    user.hasMetSomeoneThisYear = false;
+}
+
+function handlePregnancy(user) {
+    if (!user.isExpecting) return;
+
+    const isMale = Math.random() < 0.5;
+    const lastName = GameLogic.getLastName(user.username);
+    const firstName = GameLogic.getRandomFirstName(isMale ? 'male' : 'female');
+
+    const child = {
+        id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'rel_' + Date.now() + Math.random().toString(36).substring(2, 9),
+        name: `${firstName} ${lastName}`,
+        age: 0,
+        type: isMale ? 'Son' : 'Daughter',
+        gender: isMale ? 'male' : 'female',
+        status: 100,
+        category: 'child',
+        interactedThisYear: false
+    };
+
+    if (!user.relationships) user.relationships = [];
+    user.relationships.push(child);
+    addLog(`You had a baby ${isMale ? 'boy' : 'girl'}! Welcome, ${child.name}.`, 'good');
+
+    user.isExpecting = false;
+    user.expectingWithId = null;
 }
 
 //Define the rendering function globally so script.js can call it.

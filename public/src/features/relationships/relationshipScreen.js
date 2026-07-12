@@ -49,6 +49,7 @@ export const renderRelationships = () => {
 
     // Filter by category directly from state
     const family = user.relationships.filter(r => r.category === 'family' || r.category === 'spouse' || r.category === 'child');
+    const romance = user.relationships.filter(r => r.category === 'partner');
     const friends = user.relationships.filter(r => r.category === 'friend');
     const enemies = user.relationships.filter(r => r.category === 'enemy');
 
@@ -61,15 +62,17 @@ export const renderRelationships = () => {
 
         // B. Determine Icon based on role
         let icon = 'fa-user';
-        if (person.category === 'spouse') icon = 'fa-heart text-pink-400';
+        if (person.category === 'spouse' || person.category === 'partner') icon = 'fa-heart text-pink-400';
         else if (person.category === 'enemy') icon = 'fa-angry text-red-400';
         else if (person.category === 'child') icon = 'fa-baby text-blue-300';
 
         // C. Determine Badge Style
-        let badgeStyle = "bg-slate-600 text-slate-100 border-slate-500"; 
-        
+        let badgeStyle = "bg-slate-600 text-slate-100 border-slate-500";
+
         if (['family', 'spouse', 'child'].includes(person.category)) {
-            badgeStyle = "bg-blue-600 text-white border-blue-400 shadow-sm shadow-blue-900/20"; 
+            badgeStyle = "bg-blue-600 text-white border-blue-400 shadow-sm shadow-blue-900/20";
+        } else if (person.category === 'partner') {
+            badgeStyle = "bg-pink-600 text-white border-pink-400 shadow-sm shadow-pink-900/20";
         } else if (person.category === 'friend') {
             badgeStyle = "bg-emerald-600 text-white border-emerald-400 shadow-sm shadow-emerald-900/20";
         } else if (person.category === 'enemy') {
@@ -116,13 +119,19 @@ export const renderRelationships = () => {
         content += `<div class="text-slate-600 italic text-sm text-center py-4 border border-dashed border-slate-800 rounded-xl mb-4">You have no family contacts.</div>`;
     }
 
-    // B. Friends Section
+    // B. Romance Section
+    if (romance.length > 0) {
+        content += `<h3 class="text-slate-400 font-bold text-xs uppercase mb-3 mt-6 pl-1 flex items-center gap-2"><i class="fas fa-heart text-pink-400"></i> Romance</h3>`;
+        content += romance.map(p => getPersonCard(p)).join('');
+    }
+
+    // C. Friends Section
     if (friends.length > 0) {
         content += `<h3 class="text-slate-400 font-bold text-xs uppercase mb-3 mt-6 pl-1 flex items-center gap-2"><i class="fas fa-user-friends text-green-400"></i> Friends</h3>`;
         content += friends.map(p => getPersonCard(p)).join('');
     }
 
-    // C. Enemies Section
+    // D. Enemies Section
     if (enemies.length > 0) {
         content += `<h3 class="text-slate-400 font-bold text-xs uppercase mb-3 mt-6 pl-1 flex items-center gap-2"><i class="fas fa-skull-crossbones text-red-400"></i> Enemies</h3>`;
         content += enemies.map(p => getPersonCard(p)).join('');
@@ -130,6 +139,9 @@ export const renderRelationships = () => {
 
     const btnClass = user.hasSpentTimeWithAll ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600 transition';
     const btnAttr = user.hasSpentTimeWithAll ? 'disabled' : '';
+
+    const goOutClass = user.hasMetSomeoneThisYear ? 'opacity-50 cursor-not-allowed' : 'hover:bg-pink-600 transition';
+    const goOutAttr = user.hasMetSomeoneThisYear ? 'disabled' : '';
 
     const container = document.getElementById('game-container');
     container.innerHTML = `
@@ -139,12 +151,17 @@ export const renderRelationships = () => {
                     <i class="fas fa-arrow-left"></i> Back to Dashboard
                 </button>
             </div>
-            
-            <div class="mb-6 px-1 flex justify-between items-center">
+
+            <div class="mb-6 px-1 flex justify-between items-center flex-wrap gap-2">
                 <h2 class="text-2xl font-bold text-white">Relationships</h2>
-                <button data-action="spendTimeWithAll" ${btnAttr} class="btn-primary text-xs px-3 py-2 rounded-lg shadow ${btnClass}">
-                    <i class="fas fa-users mr-1"></i> Spend Time With All
-                </button>
+                <div class="flex gap-2">
+                    <button data-action="goOutMeetSomeone" ${goOutAttr} class="btn-primary text-xs px-3 py-2 rounded-lg shadow ${goOutClass}">
+                        <i class="fas fa-glass-cheers mr-1"></i> Go Out
+                    </button>
+                    <button data-action="spendTimeWithAll" ${btnAttr} class="btn-primary text-xs px-3 py-2 rounded-lg shadow ${btnClass}">
+                        <i class="fas fa-users mr-1"></i> Spend Time With All
+                    </button>
+                </div>
             </div>
 
             <div class="flex-1 overflow-y-auto pb-4 custom-scrollbar">
@@ -154,67 +171,50 @@ export const renderRelationships = () => {
     `;
 };
 
+// --- GO OUT / MEET SOMEONE ---
+export const goOutMeetSomeone = () => {
+    const user = state.gameState.user;
+    if (!user.relationships) user.relationships = [];
+
+    if (user.age < 16) {
+        UI.showModal('Action Blocked', "You are too young to go out.");
+        return;
+    }
+
+    if (user.hasMetSomeoneThisYear) {
+        UI.showModal('Action Blocked', "You already went out this year.");
+        return;
+    }
+
+    if ((user.money || 0) < 50) {
+        UI.showModal('Insufficient Funds', "You need $50 for a night out.");
+        return;
+    }
+
+    user.money -= 50;
+    user.hasMetSomeoneThisYear = true;
+
+    const stranger = GameLogic.generateStranger(user.age, user.gender);
+    user.relationships.push(stranger);
+
+    addLog(`You went out and met ${stranger.name}.`, 'good');
+    UI.updateHeader(user);
+    UI.showModal('New Face', `You met ${stranger.name} (Age ${stranger.age})!`);
+    renderRelationships();
+};
+
 // --- INTERACTION SCREEN ---
 export const renderPersonInteraction = (id) => {
     const user = state.gameState.user;
     const person = user.relationships.find(r => r.id === id);
     if (!person) return;
 
-    const interactions = [
-        { name: 'Spend Time', key: 'spend_time', statusChange: 15, cost: 0, icon: 'fa-clock', desc: 'Spend quality time together' },
-        { name: 'Give Money', key: 'give_money', statusChange: 10, cost: 500, icon: 'fa-money-bill', desc: 'Give a monetary gift' },
-        { name: 'Insult', key: 'insult', statusChange: -20, cost: 0, icon: 'fa-angry', desc: 'Say something mean' },
-        { name: 'Compliment', key: 'compliment', statusChange: 15, cost: 0, icon: 'fa-heart', desc: 'Say something nice' },
-        { name: 'Call to Chat', key: 'call_chat', statusChange: 10, cost: 0, icon: 'fa-phone', desc: 'Have a quick chat over the phone' }
-    ];
+    const interactions = GameLogic.getAvailableInteractions(person, user);
 
-    if (person.category === 'classmate') {
-        interactions.push({ name: 'Ask to be Friends', key: 'ask_friend', statusChange: 0, cost: 0, icon: 'fa-user-plus', desc: 'See if they want to hang out outside of school' });
-    }
+    const buttonsHtml = interactions.map((it) => {
+        const { blocked, reason } = GameLogic.isInteractionBlocked(it.key, person, user);
 
-   const buttonsHtml = interactions.map((it, i) => {
-        let isTooYoung = false;
-        let blockReason = '';
-
-        // 1. Evaluate Age Blocks explicitly per action
-        if (it.key === 'spend_time' && user.age <= 1) {
-            isTooYoung = true;
-            blockReason = 'Too Young';
-        } else if ((it.key === 'insult' || it.key === 'compliment') && user.age <= 2) {
-            isTooYoung = true;
-            blockReason = 'Too Young';
-        } else if (it.key === 'call_chat' && user.age <= 5) {
-            isTooYoung = true;
-            blockReason = 'Too Young';
-        } else if (it.key === 'give_money' && user.age <= 10) {
-            isTooYoung = true;
-            blockReason = 'Too Young';
-        }
-
-        // 2. Evaluate Financial Blocks
-        const canAfford = it.cost === 0 || (user.money || 0) >= it.cost;
-        if (!canAfford && !isTooYoung) {
-            blockReason = 'Insufficient Funds';
-        }
-
-        // 3. Evaluate Hostility Block
-        let isHostile = false;
-        if (['family', 'spouse', 'child'].includes(person.category) && person.status < 15) {
-            isHostile = true;
-        } else if (!['family', 'spouse', 'child'].includes(person.category) && person.status < 30) {
-            isHostile = true;
-        }
-
-        let isBlockedByHostility = false;
-        if (isHostile && !['give_money', 'insult'].includes(it.key)) {
-            isBlockedByHostility = true;
-            blockReason = 'Refuses Contact';
-        }
-
-        const isDisabled = isTooYoung || !canAfford || isBlockedByHostility;
-
-        // 3. Render Hard-Branched HTML
-        if (isDisabled) {
+        if (blocked) {
             return `
                 <button disabled class="w-full p-3 rounded-xl border border-slate-700 mb-3 bg-slate-700 opacity-50 cursor-not-allowed flex items-center gap-3">
                     <div class="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-lg">
@@ -224,16 +224,30 @@ export const renderPersonInteraction = (id) => {
                         <div class="font-bold text-slate-400">${it.name}</div>
                         <div class="text-xs text-slate-500">${it.desc}${it.cost ? ' — ' + Utils.formatMoney(it.cost) : ''}</div>
                     </div>
-                    <div class="text-xs font-bold text-red-400 uppercase tracking-wide">${blockReason}</div>
+                    <div class="text-xs font-bold text-red-400 uppercase tracking-wide">${reason}</div>
                 </button>
             `;
         } else {
             let statusChangeDisplay = `<div class="text-sm font-semibold text-white">${it.statusChange > 0 ? '+'+it.statusChange : it.statusChange}</div>`;
             if (it.key === 'ask_friend') {
                 statusChangeDisplay = `<div class="text-sm font-semibold text-indigo-400"><i class="fas fa-question-circle"></i></div>`;
+            } else if (it.key === 'ask_out' || it.key === 'propose') {
+                statusChangeDisplay = `<div class="text-sm font-semibold text-pink-400"><i class="fas fa-heart"></i></div>`;
+            } else if (it.key === 'break_up' || it.key === 'file_divorce') {
+                statusChangeDisplay = `<div class="text-sm font-semibold text-red-400"><i class="fas fa-heart-crack"></i></div>`;
+            } else if (it.key === 'get_married') {
+                statusChangeDisplay = `<div class="text-sm font-semibold text-pink-400"><i class="fas fa-ring"></i></div>`;
+            } else if (it.key === 'try_for_baby') {
+                statusChangeDisplay = `<div class="text-sm font-semibold text-blue-300"><i class="fas fa-baby"></i></div>`;
             }
+
+            // Interactions with a directAction (e.g. get_married) skip the generic
+            // confirm flow and route straight to their own screen.
+            const dataAction = it.directAction || 'openRelationshipConfirm';
+            const dataArgs = it.directAction ? `&apos;${person.id}&apos;` : `&apos;${person.id}&apos;, &apos;${it.key}&apos;`;
+
             return `
-                <button data-action="openRelationshipConfirm" data-args="&apos;${person.id}&apos;, ${i}" class="w-full p-3 rounded-xl border border-slate-700 mb-3 bg-slate-800 hover:bg-slate-750 hover:border-slate-500 transition flex items-center gap-3">
+                <button data-action="${dataAction}" data-args="${dataArgs}" class="w-full p-3 rounded-xl border border-slate-700 mb-3 bg-slate-800 hover:bg-slate-750 hover:border-slate-500 transition flex items-center gap-3">
                     <div class="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center text-lg shadow-inner">
                         <i class="fas ${it.icon} text-slate-400"></i>
                     </div>
@@ -251,6 +265,8 @@ export const renderPersonInteraction = (id) => {
     if (['family', 'spouse', 'child'].includes(person.category)) badgeStyle = "bg-blue-600 text-white border-blue-400";
     else if (person.category === 'friend') badgeStyle = "bg-emerald-600 text-white border-emerald-400";
     else if (person.category === 'enemy') badgeStyle = "bg-red-600 text-white border-red-400";
+    else if (person.category === 'partner') badgeStyle = "bg-pink-600 text-white border-pink-400";
+    else if (person.category === 'ex') badgeStyle = "bg-slate-700 text-slate-300 border-slate-500";
 
     let barColor = 'bg-green-500';
     if (person.status < 30) barColor = 'bg-red-500';
@@ -291,44 +307,23 @@ export const renderPersonInteraction = (id) => {
 };
 
 // --- CONFIRM DIALOG LAUNCHER ---
-export const openRelationshipConfirm = (personId, actionIndex) => {
+export const openRelationshipConfirm = (personId, actionKey) => {
     const user = state.gameState.user;
     const person = user.relationships.find(r => r.id === personId);
     if (!person) return;
 
-    const actions = [
-        { name: 'Spend Time', statusChange: 15, cost: 0, key: 'spend_time' },
-        { name: 'Give Money', statusChange: 10, cost: 500, key: 'give_money' },
-        { name: 'Insult', statusChange: -20, cost: 0, key: 'insult' },
-        { name: 'Compliment', statusChange: 15, cost: 0, key: 'compliment' },
-        { name: 'Call to Chat', statusChange: 10, cost: 0, key: 'call_chat' }
-    ];
-    if (person.category === 'classmate') {
-        actions.push({ name: 'Ask to be Friends', statusChange: 0, cost: 0, key: 'ask_friend' });
-    }
-
-    const action = actions[actionIndex];
+    const action = GameLogic.getAvailableInteractions(person, user).find(it => it.key === actionKey);
     if (!action) return;
 
-    // Safety Gate
-    // Safety Gate
-    let isTooYoung = false;
-    if (action.key === 'spend_time' && user.age <= 1) isTooYoung = true;
-    else if ((action.key === 'insult' || action.key === 'compliment') && user.age <= 2) isTooYoung = true;
-    else if (action.key === 'call_chat' && user.age <= 5) isTooYoung = true;
-    else if (action.key === 'give_money' && user.age <= 10) isTooYoung = true;
-
-    if (isTooYoung) {
-        UI.showModal('Action Blocked', "You are too young to do this.");
-        return;
-    }
-
-    let isHostile = false;
-    if (['family', 'spouse', 'child'].includes(person.category) && person.status < 15) isHostile = true;
-    else if (!['family', 'spouse', 'child'].includes(person.category) && person.status < 30) isHostile = true;
-
-    if (isHostile && !['give_money', 'insult'].includes(action.key)) {
-        UI.showModal('Refused', `${person.name} is too hostile towards you and refuses to do this.`);
+    const { blocked, reason } = GameLogic.isInteractionBlocked(action.key, person, user);
+    if (blocked) {
+        if (reason === 'Refuses Contact') {
+            UI.showModal('Refused', `${person.name} is too hostile towards you and refuses to do this.`);
+        } else if (reason === 'Insufficient Funds') {
+            UI.showModal('Insufficient Funds', `You need ${Utils.formatMoney(action.cost)} to ${action.name.toLowerCase()}.`);
+        } else {
+            UI.showModal('Action Blocked', "You are too young to do this.");
+        }
         return;
     }
 
@@ -336,54 +331,28 @@ export const openRelationshipConfirm = (personId, actionIndex) => {
         (action.cost ? `<div class="mt-2 text-xs text-slate-400">This will cost ${Utils.formatMoney(action.cost)}</div>` : '') + `</div>`;
 
     UI.showConfirm(action.name, message, action.name, () => {
-        performRelationshipAction(personId, actionIndex);
+        performRelationshipAction(personId, action.key);
     });
 };
 
 // --- PERFORM ACTION & SHIFT CATEGORY ---
-export const performRelationshipAction = (personId, actionIndex) => {
+export const performRelationshipAction = (personId, actionKey) => {
     const user = state.gameState.user;
     const person = user.relationships.find(r => r.id === personId);
     if (!person) return;
 
-    const actions = [
-        { name: 'Spend Time', statusChange: 15, cost: 0, key: 'spend_time' },
-        { name: 'Give Money', statusChange: 10, cost: 500, key: 'give_money' },
-        { name: 'Insult', statusChange: -20, cost: 0, key: 'insult' },
-        { name: 'Compliment', statusChange: 15, cost: 0, key: 'compliment' },
-        { name: 'Call to Chat', statusChange: 10, cost: 0, key: 'call_chat' }
-    ];
-    if (person.category === 'classmate') {
-        actions.push({ name: 'Ask to be Friends', statusChange: 0, cost: 0, key: 'ask_friend' });
-    }
-
-    const action = actions[actionIndex];
+    const action = GameLogic.getAvailableInteractions(person, user).find(it => it.key === actionKey);
     if (!action) return;
 
-// Safety Gate
-    let isTooYoung = false;
-    if (action.key === 'spend_time' && user.age <= 1) isTooYoung = true;
-    else if ((action.key === 'insult' || action.key === 'compliment') && user.age <= 2) isTooYoung = true;
-    else if (action.key === 'call_chat' && user.age <= 5) isTooYoung = true;
-    else if (action.key === 'give_money' && user.age <= 10) isTooYoung = true;
-
-    if (isTooYoung) {
-        UI.showModal('Action Blocked', "You are too young to do this.");
-        return;
-    }
-
-    let isHostile = false;
-    if (['family', 'spouse', 'child'].includes(person.category) && person.status < 15) isHostile = true;
-    else if (!['family', 'spouse', 'child'].includes(person.category) && person.status < 30) isHostile = true;
-
-    if (isHostile && !['give_money', 'insult'].includes(action.key)) {
-        UI.showModal('Refused', `${person.name} is too hostile towards you and refuses to do this.`);
-        return;
-    }
-
-    // Check funds
-    if (action.cost > 0 && (user.money || 0) < action.cost) {
-        UI.showModal('Insufficient Funds', `You need ${Utils.formatMoney(action.cost)} to ${action.name.toLowerCase()}.`);
+    const { blocked, reason } = GameLogic.isInteractionBlocked(action.key, person, user);
+    if (blocked) {
+        if (reason === 'Refuses Contact') {
+            UI.showModal('Refused', `${person.name} is too hostile towards you and refuses to do this.`);
+        } else if (reason === 'Insufficient Funds') {
+            UI.showModal('Insufficient Funds', `You need ${Utils.formatMoney(action.cost)} to ${action.name.toLowerCase()}.`);
+        } else {
+            UI.showModal('Action Blocked', "You are too young to do this.");
+        }
         return;
     }
 
@@ -412,6 +381,75 @@ export const performRelationshipAction = (personId, actionIndex) => {
         return; // Skip normal status update and logging
     }
 
+    if (action.key === 'ask_out') {
+        person.category = 'partner';
+        person.type = person.gender === 'male' ? 'Boyfriend' : 'Girlfriend';
+        person.interactedThisYear = true;
+        addLog(`You asked ${person.name} to be your ${person.type}, and they said yes!`, 'good');
+        UI.showModal('Success', `${person.name} is now your ${person.type}!`);
+        setTimeout(() => renderPersonInteraction(personId), 300);
+        return;
+    }
+
+    if (action.key === 'break_up') {
+        person.category = 'ex';
+        person.type = person.gender === 'male' ? 'Ex-Boyfriend' : 'Ex-Girlfriend';
+        person.interactedThisYear = true;
+        addLog(`You broke up with ${person.name}.`, 'bad');
+        UI.showModal('Break Up', `You and ${person.name} have gone your separate ways.`);
+        setTimeout(() => renderPersonInteraction(personId), 300);
+        return;
+    }
+
+    if (action.key === 'propose') {
+        person.interactedThisYear = true;
+        const accepted = GameLogic.calculateProposalAcceptance(person.status);
+
+        if (accepted) {
+            person.type = person.gender === 'male' ? 'Fiancé' : 'Fiancée';
+            addLog(`You proposed to ${person.name}, and they said yes!`, 'good');
+            UI.showModal('She/He Said Yes!', `${person.name} accepted your proposal!`);
+        } else {
+            person.status = Math.max(0, person.status - 15);
+            addLog(`You proposed to ${person.name}, but they said no.`, 'bad');
+            UI.showModal('Rejected', `${person.name} wasn't ready for that. (-15 Status)`);
+        }
+        UI.updateHeader(user);
+        setTimeout(() => renderPersonInteraction(personId), 300);
+        return;
+    }
+
+    if (action.key === 'file_divorce') {
+        const alimony = Math.floor((user.money || 0) * 0.5);
+        user.money -= alimony;
+        person.category = 'ex';
+        person.type = person.gender === 'male' ? 'Ex-Husband' : 'Ex-Wife';
+        person.interactedThisYear = true;
+        addLog(`You divorced ${person.name}, paying ${Utils.formatMoney(alimony)} in the settlement.`, 'bad');
+        UI.showModal('Divorced', `You and ${person.name} are no longer married.`);
+        UI.updateHeader(user);
+        setTimeout(() => renderPersonInteraction(personId), 300);
+        return;
+    }
+
+    if (action.key === 'try_for_baby') {
+        person.interactedThisYear = true;
+        const carryingParentAge = user.gender === 'female' ? user.age : person.age;
+        const success = GameLogic.calculatePregnancyChance(carryingParentAge);
+
+        if (success) {
+            user.isExpecting = true;
+            user.expectingWithId = person.id;
+            addLog(`You and ${person.name} are expecting a baby!`, 'good');
+            UI.showModal('Great News!', `You're expecting a baby with ${person.name}!`);
+        } else {
+            addLog(`You and ${person.name} tried for a baby, but no luck this year.`, 'neutral');
+            UI.showModal('Not This Time', "No luck this year. Keep trying!");
+        }
+        setTimeout(() => renderPersonInteraction(personId), 300);
+        return;
+    }
+
     // Update status
     const prev = person.status || 0;
     person.status = Math.max(0, Math.min(100, prev + action.statusChange));
@@ -421,16 +459,15 @@ export const performRelationshipAction = (personId, actionIndex) => {
     person.interactedThisYear = true;
 
     // --- NON-RELATIVE CATEGORY SHIFT LOGIC ---
-    if (!['family', 'spouse', 'child', 'classmate'].includes(person.category)) {
-        if (person.status < 30 && person.category !== 'enemy') {
-            person.category = 'enemy';
-            person.type = 'Enemy';
-            addLog(`${person.name} is now your Enemy!`, 'bad');
-        } else if (person.status >= 30 && person.category === 'enemy') {
-            person.category = 'friend';
-            person.type = 'Friend';
-            addLog(`You made amends with ${person.name}. They are now a Friend.`, 'good');
-        }
+    const shiftedCategory = GameLogic.checkRelationshipCategoryShift(person.category, person.status);
+    if (shiftedCategory === 'enemy') {
+        person.category = 'enemy';
+        person.type = 'Enemy';
+        addLog(`${person.name} is now your Enemy!`, 'bad');
+    } else if (shiftedCategory === 'friend') {
+        person.category = 'friend';
+        person.type = 'Friend';
+        addLog(`You made amends with ${person.name}. They are now a Friend.`, 'good');
     }
 
     // Log
@@ -470,23 +507,16 @@ export const spendTimeWithAll = () => {
         // Exclude classmates from the global Spend Time With All
         if (person.category === 'classmate') return;
 
-        // Evaluate if they refuse
-        let isHostile = false;
-        if (['family', 'spouse', 'child'].includes(person.category) && person.status < 15) {
-            isHostile = true;
-        } else if (!['family', 'spouse', 'child'].includes(person.category) && person.status < 30) {
-            isHostile = true;
-        }
-
-        if (!isHostile) {
+        if (!GameLogic.isHostile(person)) {
             const prev = person.status || 0;
             // Spend Time gives +15 status change
             person.status = Math.max(0, Math.min(100, prev + 15));
             person.interactedThisYear = true;
             interactionsCount++;
-            
+
             // Check for category shift to Friend if they were enemy but not hostile anymore
-            if (!['family', 'spouse', 'child', 'classmate'].includes(person.category) && person.status >= 30 && person.category === 'enemy') {
+            const shiftedCategory = GameLogic.checkRelationshipCategoryShift(person.category, person.status);
+            if (shiftedCategory === 'friend') {
                 person.category = 'friend';
                 person.type = 'Friend';
                 addLog(`You made amends with ${person.name}. They are now a Friend.`, 'good');
