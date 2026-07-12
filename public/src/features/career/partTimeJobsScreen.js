@@ -14,12 +14,24 @@ export function renderJobMarket() {
     const sortedJobs = [...PART_TIME_JOBS].sort((a, b) => b.hourly - a.hourly);
     const listHtml = sortedJobs.map(job => {
         const isCurrent = user.jobTitle === job.title;
-        const btnText = isCurrent ? "Current" : "Apply";
-        const btnClass = isCurrent 
-            ? "bg-green-600/20 text-green-400 border border-green-600/50 cursor-default" 
-            : "bg-blue-600 hover:bg-blue-500 text-white";
+        const meetsReq = !job.reqUniversity || user.universityEnrolled || user.universityGraduated;
+        const locked = !isCurrent && !meetsReq;
+
+        let btn;
+        if (isCurrent) {
+            btn = `<span class="text-xs font-bold py-2 px-4 rounded-lg bg-green-600/20 text-green-400 border border-green-600/50">Current</span>`;
+        } else if (locked) {
+            btn = `<span class="text-xs font-bold py-2 px-4 rounded-lg bg-slate-700 text-slate-500 cursor-not-allowed">Locked</span>`;
+        } else {
+            btn = `<button data-action="applyForJob" data-args="&apos;${job.title}&apos;, ${job.salary}" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-2 px-4 rounded-lg transition">Apply</button>`;
+        }
+
+        const reqHtml = locked
+            ? `<div class="text-[10px] text-red-400 mt-0.5"><i class="fas fa-lock mr-1"></i>Requires university enrollment</div>`
+            : '';
+
         return `
-        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-3 ${isCurrent ? 'border-green-500/30' : ''}">
+        <div class="bg-slate-800 p-4 rounded-xl border ${isCurrent ? 'border-green-500/30' : locked ? 'border-slate-700 opacity-60' : 'border-slate-700'} mb-3">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-full bg-indigo-900/30 flex items-center justify-center text-indigo-400">
@@ -28,11 +40,10 @@ export function renderJobMarket() {
                     <div>
                         <h3 class="font-bold text-white">${job.title}</h3>
                         <div class="text-xs text-green-400">$${job.hourly}/hr <span class="text-slate-500">(${Utils.formatMoney(job.salary)}/yr)</span></div>
+                        ${reqHtml}
                     </div>
                 </div>
-                <button ${!isCurrent ? `data-action="applyForJob" data-args="&apos;${job.title}&apos;, ${job.salary}, false, false"` : ''} class="${btnClass} text-xs font-bold py-2 px-4 rounded-lg transition">
-                    ${btnText}
-                </button>
+                ${btn}
             </div>
         </div>
     `}).join('');

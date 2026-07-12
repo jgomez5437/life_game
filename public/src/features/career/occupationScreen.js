@@ -2,7 +2,7 @@ import { GameLogic } from '../../core/gameLogic.js';
 import { state } from '../../core/state.js';
 import { renderLifeDashboard, addLog, refreshClassmates } from '../player/mainScreen.js';
 import { Utils } from '../../ui/utils.js';
-import { MAJORS, CAREERS, PART_TIME_JOBS } from '../../core/main.js';
+import { MAJORS, CAREER_TRACKS, PART_TIME_JOBS } from '../../core/main.js';
 
 const get = id => document.getElementById(id);
 
@@ -45,11 +45,13 @@ function renderUniversityModalContent(selectedMajor = null) {
     const loanBtn = `<button data-action="attemptEnrollment" data-args="&apos;loan&apos;" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded mb-2">Student Loans</button>`;
     
     // Scholarship Button
+    const scholarChance = Math.max(0, Math.min(0.70, ((user.schoolPerformance || 50) - 30) / 100));
+    const scholarOdds = Math.round(scholarChance * 100);
     let scholarBtn = "";
     if (user.scholarshipTried) {
         scholarBtn = `<button disabled class="w-full bg-slate-700 opacity-50 text-slate-400 font-bold py-2 rounded mb-2 cursor-not-allowed">Ineligible</button>`;
     } else {
-        scholarBtn = `<button data-action="attemptEnrollment" data-args="&apos;scholarship&apos;" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded mb-2">Apply for Scholarship</button>`;
+        scholarBtn = `<button data-action="attemptEnrollment" data-args="&apos;scholarship&apos;" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded mb-2">Apply for Scholarship (${scholarOdds}% chance)</button>`;
     }
     // Parents Button
     let parentBtn = "";
@@ -83,8 +85,10 @@ export function attemptEnrollment(method) {
         enrollSuccess(major, "took out student loans");
     }
     else if (method === 'scholarship') {
+        const perfScore = user.schoolPerformance || 50;
+        const chance = Math.max(0, Math.min(0.70, (perfScore - 30) / 100));
         const roll = Math.random();
-        if (roll < 0.3) {
+        if (roll < chance) {
             enrollSuccess(major, "received a full scholarship");
         } else {
             user.scholarshipTried = true;

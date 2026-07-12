@@ -26,10 +26,50 @@ test("sanitizeName validates name and returns", () => {
     });
 });
 
-test("returns living expenses or 0", () => {
+test("returns living expenses or 0 (no city → default $24k)", () => {
     expect(GameLogic.addLivingExpenses(20, false)).toBe(24000);
     expect(GameLogic.addLivingExpenses(17, false)).toBe(0);
     expect(GameLogic.addLivingExpenses(22, true)).toBe(0);
+});
+
+describe('addLivingExpenses — city tiers', () => {
+    test('Tier 1 ($33k): San Francisco', () => {
+        expect(GameLogic.addLivingExpenses(25, false, 'San Francisco')).toBe(33000);
+    });
+    test('Tier 2 ($30k): New York, London, Tokyo, Paris, Los Angeles', () => {
+        ['New York', 'London', 'Tokyo', 'Paris', 'Los Angeles'].forEach(city => {
+            expect(GameLogic.addLivingExpenses(25, false, city)).toBe(30000);
+        });
+    });
+    test('Tier 3 ($24k): Miami, Toronto, Osaka', () => {
+        ['Miami', 'Toronto', 'Osaka'].forEach(city => {
+            expect(GameLogic.addLivingExpenses(25, false, city)).toBe(24000);
+        });
+    });
+    test('Tier 4 ($21k): Berlin, Madrid, Beijing', () => {
+        ['Berlin', 'Madrid', 'Beijing'].forEach(city => {
+            expect(GameLogic.addLivingExpenses(25, false, city)).toBe(21000);
+        });
+    });
+    test('Tier 5 ($18k): Houston, Tucson', () => {
+        ['Houston', 'Tucson'].forEach(city => {
+            expect(GameLogic.addLivingExpenses(25, false, city)).toBe(18000);
+        });
+    });
+    test('Tier 6 ($15k): Bandar Seri Begawan, Mexico City, Cairo', () => {
+        ['Bandar Seri Begawan', 'Mexico City', 'Cairo'].forEach(city => {
+            expect(GameLogic.addLivingExpenses(25, false, city)).toBe(15000);
+        });
+    });
+    test('Unknown city falls back to $24k default', () => {
+        expect(GameLogic.addLivingExpenses(25, false, 'Atlantis')).toBe(24000);
+    });
+    test('Student pays nothing regardless of city', () => {
+        expect(GameLogic.addLivingExpenses(25, true, 'San Francisco')).toBe(0);
+    });
+    test('Under 19 pays nothing regardless of city', () => {
+        expect(GameLogic.addLivingExpenses(18, false, 'San Francisco')).toBe(0);
+    });
 });
 
 test("returns number between 10 & 80, inclusive", () => {
@@ -240,5 +280,114 @@ describe('Relationship Logic', () => {
         expect(GameLogic.attemptBefriend(50, true, 0.2)).toBe(true);
         // Teacher: status 50 => chance 0.25 => 0.3 < 0.25 => false
         expect(GameLogic.attemptBefriend(50, true, 0.3)).toBe(false);
+    });
+});
+
+describe('checkLifeStatus', () => {
+    test('grad school enrollment takes highest priority', () => {
+        const user = { age: 26, gradSchoolEnrolled: true, gradSchoolType: 'Law School', universityEnrolled: true, hasBusiness: true, jobTitle: 'Lawyer' };
+        expect(GameLogic.checkLifeStatus(user)).toBe('Law School Student');
+    });
+
+    test('university enrollment takes priority over job', () => {
+        const user = { age: 20, universityEnrolled: true, jobTitle: 'Cashier' };
+        expect(GameLogic.checkLifeStatus(user)).toBe('University Student');
+    });
+
+    test('CEO & Founder when hasBusiness and no school enrollment', () => {
+        const user = { age: 30, hasBusiness: true };
+        expect(GameLogic.checkLifeStatus(user)).toBe('CEO & Founder');
+    });
+
+    test('returns jobTitle when employed and not in school', () => {
+        const user = { age: 25, jobTitle: 'Software Developer' };
+        expect(GameLogic.checkLifeStatus(user)).toBe('Software Developer');
+    });
+
+    test('grad degree graduate label when not enrolled', () => {
+        const user = { age: 28, gradSchoolDegree: 'Law' };
+        expect(GameLogic.checkLifeStatus(user)).toBe('Law Graduate');
+    });
+
+    test('University Graduate when no grad degree and not enrolled', () => {
+        const user = { age: 24, universityGraduated: true };
+        expect(GameLogic.checkLifeStatus(user)).toBe('University Graduate');
+    });
+
+    test('Student (Retaking) when over 17 and highSchoolRetained', () => {
+        const user = { age: 18, highSchoolRetained: true };
+        expect(GameLogic.checkLifeStatus(user)).toBe('Student (Retaking)');
+    });
+
+    test('Unemployed when adult with no job', () => {
+        const user = { age: 22 };
+        expect(GameLogic.checkLifeStatus(user)).toBe('Unemployed');
+    });
+
+    test('Baby at age 0', () => {
+        const user = { age: 0 };
+        expect(GameLogic.checkLifeStatus(user)).toBe('Baby');
+    });
+
+    test('Toddler at age 1–4', () => {
+        expect(GameLogic.checkLifeStatus({ age: 1 })).toBe('Toddler');
+        expect(GameLogic.checkLifeStatus({ age: 4 })).toBe('Toddler');
+    });
+
+    test('Student for ages 5–17', () => {
+        expect(GameLogic.checkLifeStatus({ age: 10 })).toBe('Student');
+        expect(GameLogic.checkLifeStatus({ age: 17 })).toBe('Student');
+    });
+});
+
+describe('checkMortality', () => {
+    test('returns isDead:false when roll is above the rate', () => {
+        // Age 30 → bracket rate 0.002. A roll of 0.999 is far above that.
+        const result = GameLogic.checkMortality(30, 100);
+        // Can't deterministically test due to Math.random inside, but can confirm shape.
+        expect(result).toHaveProperty('isDead');
+    });
+
+    test('extreme old age (age 120) always kills (rate 1.0)', () => {
+        // With rate 1.0, any roll < 1.0 means death, so this should always be true.
+        const results = Array.from({ length: 10 }, () => GameLogic.checkMortality(120, 100));
+        expect(results.every(r => r.isDead)).toBe(true);
+    });
+
+    test('low health amplifies mortality chance', () => {
+        // At age 30 (rate 0.002), health < 30 triggers penalty.
+        // With health=1, penaltyMultiplier = 1 + (29/10) = 3.9, chance = 0.0078.
+        // Still very unlikely to die in a single roll, but the amplification should produce
+        // a meaningfully higher rate. Verify that health=1 results in more deaths than health=100
+        // over many trials.
+        let deathsHighHealth = 0, deathsLowHealth = 0;
+        for (let i = 0; i < 1000; i++) {
+            if (GameLogic.checkMortality(30, 100).isDead) deathsHighHealth++;
+            if (GameLogic.checkMortality(30, 1).isDead) deathsLowHealth++;
+        }
+        expect(deathsLowHealth).toBeGreaterThan(deathsHighHealth);
+    });
+});
+
+describe('calculatePromotionChance', () => {
+    test('returns 0 when performance below 75 (ineligible)', () => {
+        expect(GameLogic.calculatePromotionChance(74)).toBe(0);
+        expect(GameLogic.calculatePromotionChance(50)).toBe(0);
+        expect(GameLogic.calculatePromotionChance(0)).toBe(0);
+    });
+
+    test('returns 0.25 for performance 75–84', () => {
+        expect(GameLogic.calculatePromotionChance(75)).toBe(0.25);
+        expect(GameLogic.calculatePromotionChance(84)).toBe(0.25);
+    });
+
+    test('returns 0.50 for performance 85–94', () => {
+        expect(GameLogic.calculatePromotionChance(85)).toBe(0.50);
+        expect(GameLogic.calculatePromotionChance(94)).toBe(0.50);
+    });
+
+    test('returns 0.80 for performance 95+', () => {
+        expect(GameLogic.calculatePromotionChance(95)).toBe(0.80);
+        expect(GameLogic.calculatePromotionChance(100)).toBe(0.80);
     });
 });

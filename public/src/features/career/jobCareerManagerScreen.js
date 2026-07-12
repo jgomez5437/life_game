@@ -2,6 +2,7 @@ import { state } from '../../core/state.js';
 import { renderActivities } from './occupationScreen.js';
 import { addLog } from '../player/mainScreen.js';
 import { Utils } from '../../ui/utils.js';
+import { CAREER_TRACKS } from '../../core/main.js';
 
 const get = id => document.getElementById(id);
 
@@ -11,18 +12,59 @@ export function renderCareerManager() {
     const user = state.gameState.user;
     const p = user.jobPerformance;
     const actionTaken = user.careerActionTaken;
-    
+
     let barColor = 'bg-red-500';
-    if(p > 75) barColor = 'bg-green-500';
-    else if(p > 25) barColor = 'bg-yellow-500';
-    // Action Button Styles
-    const actionClass = actionTaken 
+    if (p > 75) barColor = 'bg-green-500';
+    else if (p > 25) barColor = 'bg-yellow-500';
+
+    // Career track level info
+    const track = user.careerTrack ? CAREER_TRACKS.find(t => t.key === user.careerTrack) : null;
+    const lvlIdx = user.careerLevel || 0;
+    const level  = track?.levels[lvlIdx];
+    const totalLevels = track?.levels.length || 1;
+    const yearsInRole = user.yearsInRole || 0;
+    const minYears    = level?.minYears ?? null;
+    const hasNextLevel = track && lvlIdx < track.levels.length - 1;
+
+    let trackInfoHtml = '';
+    if (track) {
+        let promoStatus;
+        if (!hasNextLevel) {
+            promoStatus = `<span class="text-yellow-400 font-bold"><i class="fas fa-crown mr-1"></i>Top Level</span>`;
+        } else if (minYears !== null && yearsInRole < minYears) {
+            const remaining = minYears - yearsInRole;
+            promoStatus = `<span class="text-slate-400">${remaining} more year${remaining !== 1 ? 's' : ''} before eligible</span>`;
+        } else if (p >= 75) {
+            promoStatus = `<span class="text-green-400 font-bold"><i class="fas fa-arrow-up mr-1"></i>Eligible for promotion!</span>`;
+        } else {
+            promoStatus = `<span class="text-yellow-400">Eligible but performance too low (need 75+)</span>`;
+        }
+
+        // Level progress dots
+        const dots = track.levels.map((_, i) => {
+            const filled = i <= lvlIdx;
+            return `<div class="w-3 h-3 rounded-full ${filled ? 'bg-blue-400' : 'bg-slate-700'} border ${filled ? 'border-blue-300' : 'border-slate-600'}"></div>`;
+        }).join('');
+
+        trackInfoHtml = `
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">${track.label}</span>
+                    <span class="text-xs text-slate-500">Level ${lvlIdx + 1} of ${totalLevels}</span>
+                </div>
+                <div class="flex gap-2 mb-3">${dots}</div>
+                <div class="text-xs text-slate-400">${promoStatus}</div>
+                ${minYears !== null && hasNextLevel ? `<div class="text-xs text-slate-600 mt-1">${yearsInRole}/${minYears} years in role</div>` : ''}
+            </div>`;
+    }
+
+    const actionClass = actionTaken
         ? "bg-slate-700 p-4 rounded-xl border border-slate-600 flex items-center justify-between opacity-50 cursor-not-allowed"
         : "bg-blue-600 p-4 rounded-xl border border-blue-500 flex items-center justify-between hover:bg-blue-500 transition shadow-lg shadow-blue-900/50 cursor-pointer";
-    
-     const slackClass = actionTaken 
+    const slackClass = actionTaken
         ? "bg-slate-700 p-4 rounded-xl border border-slate-600 flex items-center justify-between opacity-50 cursor-not-allowed"
         : "bg-slate-800 p-4 rounded-xl border border-slate-700 flex items-center justify-between hover:bg-red-900/20 hover:border-red-500/50 transition group cursor-pointer";
+
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">
@@ -30,7 +72,7 @@ export function renderCareerManager() {
                     <i class="fas fa-arrow-left"></i> Back to Occupation
                 </button>
             </div>
-            <div class="text-center mb-6">
+            <div class="text-center mb-4">
                 <div class="w-16 h-16 rounded-full bg-blue-900/50 flex items-center justify-center text-blue-400 mx-auto mb-3 text-2xl">
                     <i class="fas fa-briefcase"></i>
                 </div>
@@ -38,8 +80,8 @@ export function renderCareerManager() {
                 <p class="text-green-400 text-sm font-bold">${Utils.formatMoney(user.jobSalary)} / year</p>
                 <p class="text-slate-500 text-xs mt-1">${actionTaken ? "Action Taken This Year" : "Actions Available"}</p>
             </div>
-            <!-- Performance -->
-            <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 mb-6">
+            ${trackInfoHtml}
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4">
                 <div class="flex justify-between text-sm mb-2">
                     <span class="text-slate-300 font-bold">Performance</span>
                     <span class="${p > 75 ? 'text-green-400' : p < 25 ? 'text-red-400' : 'text-yellow-400'} font-bold">${p}%</span>
@@ -47,10 +89,10 @@ export function renderCareerManager() {
                 <div class="w-full bg-slate-900 h-4 rounded-full overflow-hidden">
                     <div class="h-full ${barColor} transition-all duration-500" style="width: ${p}%"></div>
                 </div>
+                <div class="text-[10px] text-slate-600 mt-2">Keep above 75% to unlock promotions. Below 20% risks demotion.</div>
             </div>
-            <!-- Actions Grid -->
             <div class="grid grid-cols-1 gap-3">
-                <button ${actionTaken ? 'disabled' : `data-action="workHarderJob"`} class="${actionClass}">
+                <button ${actionTaken ? 'disabled' : 'data-action="workHarderJob"'} class="${actionClass}">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white">
                             <i class="fas fa-briefcase"></i>
@@ -62,7 +104,7 @@ export function renderCareerManager() {
                     </div>
                     <i class="fas fa-arrow-right text-white"></i>
                 </button>
-                <button ${actionTaken ? 'disabled' : `data-action="slackOffJob"`} class="${slackClass}">
+                <button ${actionTaken ? 'disabled' : 'data-action="slackOffJob"'} class="${slackClass}">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-full bg-red-900/30 flex items-center justify-center text-red-400 group-hover:text-red-300">
                             <i class="fas fa-couch"></i>
@@ -131,6 +173,11 @@ export function quitCareer() {
     user.jobSalary = 0;
     user.jobPerformance = 50;
     user.careerActionTaken = false;
+    user.careerTrack = null;
+    user.careerLevel = 0;
+    user.yearsInRole = 0;
+    user.consecutivePoorYears = 0;
+    user.hasSeenJobSalary = false;
     // Close Modal
     const m = get('modal-overlay');
     m.classList.add('hidden');

@@ -26,10 +26,30 @@ function sanitizeName(rawInput) {
     return { isValid: true, cleanedName };
 }
 
-function addLivingExpenses(age, currentlyStudent) {
+const CITY_COST_OF_LIVING = {
+    'San Francisco': 33000,
+    'New York': 30000,
+    'Los Angeles': 30000,
+    'London': 30000,
+    'Tokyo': 30000,
+    'Paris': 30000,
+    'Miami': 24000,
+    'Toronto': 24000,
+    'Osaka': 24000,
+    'Berlin': 21000,
+    'Madrid': 21000,
+    'Beijing': 21000,
+    'Houston': 18000,
+    'Tucson': 18000,
+    'Bandar Seri Begawan': 15000,
+    'Mexico City': 15000,
+    'Cairo': 15000,
+};
+
+function addLivingExpenses(age, currentlyStudent, city) {
     if (age >= 19 && !currentlyStudent) {
-    return 24000; // $2k/month * 12
-    }; 
+        return CITY_COST_OF_LIVING[city] || 24000;
+    }
     return 0;
 }
 
@@ -71,8 +91,6 @@ function checkLifeStatus(user) {
        return "Toddler";
     } else if (user.age < 18) {
        return "Student";
-    } else if (user.highSchoolRetained) {
-       return "Student (Retaking)";
     }
 }
 
@@ -516,13 +534,25 @@ function generateSchoolCohort(userAge) {
 function attemptBefriend(status, isTeacher, roll = Math.random()) {
     // Base chance depends on status. e.g. status 50 = 50% chance.
     let chance = status / 100;
-    
+
     // It's harder for teachers
     if (isTeacher) {
         chance *= 0.5; // Half as likely
     }
-    
+
     return roll < chance;
+}
+
+/**
+ * Returns the annual promotion chance for a career-track employee based on performance.
+ * @param {number} performance - Job performance (0–100)
+ * @returns {number} Probability of promotion (0.0 to 0.80); 0 means ineligible
+ */
+function calculatePromotionChance(performance) {
+    if (performance >= 95) return 0.80;
+    if (performance >= 85) return 0.50;
+    if (performance >= 75) return 0.25;
+    return 0;
 }
 
 export const GameLogic = {
@@ -550,5 +580,7 @@ export const GameLogic = {
     checkRelationshipCategoryShift,
     calculateInheritance,
     generateSchoolCohort,
-    attemptBefriend
+    attemptBefriend,
+    calculatePromotionChance,
+    CITY_COST_OF_LIVING,
 };
