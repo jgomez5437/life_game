@@ -223,6 +223,19 @@ describe('Relationship Logic', () => {
         expect(GameLogic.calculateRelationshipDecay(50, true)).toBe(50);
     });
 
+    test('calculateRelationshipDecay exempts family from passive decay while the player is a minor', () => {
+        expect(GameLogic.calculateRelationshipDecay(50, false, 'family', 18)).toBe(50);
+        expect(GameLogic.calculateRelationshipDecay(50, false, 'family', 10)).toBe(50);
+        // Adults still decay normally, as do non-family categories at any age
+        expect(GameLogic.calculateRelationshipDecay(50, false, 'family', 19)).toBe(45);
+        expect(GameLogic.calculateRelationshipDecay(50, false, 'friend', 10)).toBe(45);
+    });
+
+    test('calculateRelationshipDecay exempts classmates from passive decay at any age', () => {
+        expect(GameLogic.calculateRelationshipDecay(50, false, 'classmate', 10)).toBe(50);
+        expect(GameLogic.calculateRelationshipDecay(50, false, 'classmate', 20)).toBe(50);
+    });
+
     test('checkRelationshipCategoryShift shifts non-family appropriately', () => {
         expect(GameLogic.checkRelationshipCategoryShift('friend', 20)).toBe('enemy');
         expect(GameLogic.checkRelationshipCategoryShift('friend', 40)).toBe(null);
@@ -482,6 +495,19 @@ describe('getRandomFirstName / getLastName', () => {
         expect(GameLogic.getLastName('John Smith')).toBe('Smith');
         expect(GameLogic.getLastName('Mary Anne Johnson')).toBe('Johnson');
         expect(GameLogic.getLastName('Cher')).toBe('Cher');
+    });
+
+    test('getFirstName extracts everything but the final word of a full name', () => {
+        expect(GameLogic.getFirstName('John Smith')).toBe('John');
+        expect(GameLogic.getFirstName('Mary Anne Johnson')).toBe('Mary Anne');
+        expect(GameLogic.getFirstName('Cher')).toBe('Cher');
+    });
+});
+
+describe('calculateNameChangeAcceptance', () => {
+    test('scales with status like calculateProposalAcceptance', () => {
+        expect(GameLogic.calculateNameChangeAcceptance(75, 0.7)).toBe(true);
+        expect(GameLogic.calculateNameChangeAcceptance(75, 0.8)).toBe(false);
     });
 });
 

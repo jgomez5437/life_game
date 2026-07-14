@@ -408,7 +408,8 @@ export const performRelationshipAction = (personId, actionKey) => {
         if (accepted) {
             person.type = person.gender === 'male' ? 'Fiancé' : 'Fiancée';
             addLog(`You proposed to ${person.name}, and they said yes!`, 'good');
-            UI.showModal('She/He Said Yes!', `${person.name} accepted your proposal!`);
+            const pronoun = person.gender === 'male' ? 'He' : 'She';
+            UI.showModal(`${pronoun} Said Yes!`, `${person.name} accepted your proposal!`);
         } else {
             person.status = Math.max(0, person.status - 15);
             addLog(`You proposed to ${person.name}, but they said no.`, 'bad');
@@ -454,9 +455,23 @@ export const performRelationshipAction = (personId, actionKey) => {
     const prev = person.status || 0;
     person.status = Math.max(0, Math.min(100, prev + action.statusChange));
     const delta = person.status - prev;
-    
+
     // Mark interaction for this year
     person.interactedThisYear = true;
+
+    // --- PREGNANCY ROLL (Make Love, married couples only) ---
+    // "Try for a Baby" is the deliberate/guaranteed-chance action, but a married
+    // couple making love should also carry a chance of conceiving.
+    let pregnancyAnnouncement = '';
+    if (action.key === 'make_love' && person.category === 'spouse' && !user.isExpecting) {
+        const carryingParentAge = user.gender === 'female' ? user.age : person.age;
+        if (GameLogic.calculatePregnancyChance(carryingParentAge)) {
+            user.isExpecting = true;
+            user.expectingWithId = person.id;
+            pregnancyAnnouncement = ` You're expecting a baby with ${person.name}!`;
+            addLog(`You and ${person.name} are expecting a baby!`, 'good');
+        }
+    }
 
     // --- NON-RELATIVE CATEGORY SHIFT LOGIC ---
     const shiftedCategory = GameLogic.checkRelationshipCategoryShift(person.category, person.status);
@@ -479,8 +494,8 @@ export const performRelationshipAction = (personId, actionKey) => {
     UI.updateHeader(user);
 
     // Feedback modal
-    const title = delta > 0 ? 'Success' : delta < 0 ? 'Oops' : 'Done';
-    UI.showModal(title, `${person.name}'s relationship status is now ${person.status}%.`);
+    const title = pregnancyAnnouncement ? 'Great News!' : (delta > 0 ? 'Success' : delta < 0 ? 'Oops' : 'Done');
+    UI.showModal(title, `${person.name}'s relationship status is now ${person.status}%.${pregnancyAnnouncement}`);
 
     // Refresh interaction screen
     setTimeout(() => renderPersonInteraction(personId), 300);

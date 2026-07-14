@@ -537,7 +537,7 @@ function handleRelationships(user) {
         
         // Passive relationship decay
         const previousStatus = rel.status || 0;
-        rel.status = GameLogic.calculateRelationshipDecay(previousStatus, rel.interactedThisYear);
+        rel.status = GameLogic.calculateRelationshipDecay(previousStatus, rel.interactedThisYear, rel.category, user.age);
         
         // Category shift logic
         const newCategory = GameLogic.checkRelationshipCategoryShift(rel.category, rel.status);

@@ -26,18 +26,30 @@ const renderFuneralScreen = (deceased) => {
     
     // Check Inheritance if parents or spouse
     let inheritanceMsg = '';
-    if (['Mother', 'Father', 'Husband', 'Wife'].includes(deceased.type)) {
-        // Roll for inheritance only if we haven't already
+    const isSpouse = ['Husband', 'Wife'].includes(deceased.type);
+    if (['Mother', 'Father'].includes(deceased.type) || isSpouse) {
+        // Roll for inheritance/payout only if we haven't already
         if (deceased.inheritanceAmt === undefined) {
-            deceased.inheritanceAmt = GameLogic.calculateInheritance(deceased.age);
+            // A spouse already shares your household finances — there's no separate
+            // "savings" to inherit, only the (uncommon) chance of a life insurance payout.
+            deceased.inheritanceAmt = isSpouse
+                ? GameLogic.calculateSpousalLifeInsurance()
+                : GameLogic.calculateInheritance(deceased.age);
         }
-        
+
         const inheritanceAmt = deceased.inheritanceAmt;
+        const label = isSpouse ? 'Life Insurance' : 'Inheritance';
         if (inheritanceAmt > 0) {
             inheritanceMsg = `<div class="bg-green-900/30 p-3 rounded-xl border border-green-700/50 mb-6 text-center shadow-lg">
                 <i class="fas fa-file-invoice-dollar text-green-400 text-2xl mb-2"></i>
-                <h3 class="text-green-400 font-bold text-lg">Inheritance</h3>
+                <h3 class="text-green-400 font-bold text-lg">${label}</h3>
                 <p class="text-slate-300 text-sm">They left you <span class="font-bold text-white">${Utils.formatMoney(inheritanceAmt)}</span>.</p>
+            </div>`;
+        } else if (isSpouse) {
+            inheritanceMsg = `<div class="bg-slate-800 p-3 rounded-xl border border-slate-700 mb-6 text-center">
+                <i class="fas fa-file-invoice-dollar text-slate-500 text-2xl mb-2"></i>
+                <h3 class="text-slate-400 font-bold text-lg">Life Insurance</h3>
+                <p class="text-slate-500 text-sm italic">They didn't have a policy that paid out.</p>
             </div>`;
         } else {
             inheritanceMsg = `<div class="bg-slate-800 p-3 rounded-xl border border-slate-700 mb-6 text-center">

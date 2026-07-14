@@ -416,12 +416,20 @@ function calculateTripOutcome(tier, roll = Math.random()) {
 
 /**
  * Calculates new relationship status after yearly decay.
- * @param {number} currentStatus 
- * @param {boolean} interactedThisYear 
+ * @param {number} currentStatus
+ * @param {boolean} interactedThisYear
+ * @param {string} [category] - relationship category; 'family' is exempt while the player is a minor, 'classmate' is always exempt
+ * @param {number} [userAge] - the player's current age
  * @returns {number} New status
  */
-function calculateRelationshipDecay(currentStatus, interactedThisYear) {
+function calculateRelationshipDecay(currentStatus, interactedThisYear, category, userAge) {
     if (interactedThisYear) return currentStatus;
+    // Family bonds don't erode just from growing up — a minor's relationship with
+    // parents/siblings only worsens from an actual negative interaction (e.g. Insult).
+    if (category === 'family' && userAge !== undefined && userAge <= 18) return currentStatus;
+    // Classmates only exist as a category while you're actually in school together —
+    // seeing them daily means no passive decay, only direct negative interactions hurt it.
+    if (category === 'classmate') return currentStatus;
     return Math.max(0, currentStatus - 5);
 }
 
@@ -577,6 +585,27 @@ function calculateInheritance(age, roll = Math.random()) {
     return Math.round(inheritance / 100) * 100;
 }
 
+/**
+ * Rolls whether a deceased spouse carried a life insurance policy that pays out.
+ * Unlike a parent's independent inheritance (which usually leaves something),
+ * married couples already share one household pot, so a payout here is
+ * intentionally uncommon — but meaningful when it lands.
+ * @param {number} [roll=Math.random()] - payout-odds roll (0-1)
+ * @param {number} [amountRoll=Math.random()] - payout-size roll (0-1), for pure unit testing
+ * @returns {number} The payout amount in dollars, 0 if no policy pays out.
+ */
+function calculateSpousalLifeInsurance(roll = Math.random(), amountRoll = Math.random()) {
+    // Only ~30% of spouses turn out to have had a payable policy
+    if (roll >= 0.3) {
+        return 0;
+    }
+
+    const payout = 25000 + Math.floor(amountRoll * 175000); // $25,000 - $200,000
+
+    // Round to nearest 100
+    return Math.round(payout / 100) * 100;
+}
+
 const FIRST_NAMES_MALE = ['James', 'John', 'Robert', 'Michael', 'William', 'David', 'Richard', 'Joseph', 'Thomas', 'Charles', 'Daniel', 'Matthew', 'Anthony', 'Mark', 'Donald', 'Steven', 'Paul', 'Andrew', 'Joshua', 'Kenneth'];
 const FIRST_NAMES_FEMALE = ['Mary', 'Patricia', 'Jennifer', 'Linda', 'Elizabeth', 'Barbara', 'Susan', 'Jessica', 'Sarah', 'Karen', 'Nancy', 'Lisa', 'Betty', 'Margaret', 'Sandra', 'Ashley', 'Kimberly', 'Emily', 'Donna', 'Michelle'];
 const LAST_NAMES = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin', 'Lee', 'Perez', 'Thompson', 'White', 'Harris', 'Sanchez', 'Clark', 'Ramirez', 'Lewis', 'Robinson', 'Walker', 'Young', 'Allen', 'King', 'Wright', 'Scott', 'Torres', 'Nguyen', 'Hill', 'Flores', 'Green', 'Adams', 'Nelson', 'Baker', 'Hall', 'Rivera', 'Campbell', 'Mitchell', 'Carter', 'Roberts'];
@@ -600,6 +629,27 @@ function getRandomFirstName(gender, roll = Math.random()) {
 function getLastName(fullName) {
     const parts = (fullName || '').trim().split(' ');
     return parts[parts.length - 1];
+}
+
+/**
+ * Extracts everything but the last word of a full name, treated as the given name(s).
+ * @param {string} fullName
+ * @returns {string}
+ */
+function getFirstName(fullName) {
+    const parts = (fullName || '').trim().split(' ');
+    return parts.slice(0, -1).join(' ') || parts[0] || '';
+}
+
+/**
+ * Determines if a spouse accepts taking your last name, mirroring
+ * calculateProposalAcceptance's status-derived chance.
+ * @param {number} status
+ * @param {number} [roll=Math.random()]
+ * @returns {boolean}
+ */
+function calculateNameChangeAcceptance(status, roll = Math.random()) {
+    return roll < (status / 100);
 }
 
 /**
@@ -689,6 +739,21 @@ function generateStranger(userAge, userGender, roll = Math.random()) {
 }
 
 /**
+ * Backfills a missing `gender` on legacy relationship records (saves that
+ * predate the romance system) so they aren't permanently invisible to
+ * gender-gated interactions like Ask Out. Mutates entries in place.
+ * @param {Array} relationships
+ * @returns {Array} the same array
+ */
+function backfillRelationshipGender(relationships) {
+    if (!Array.isArray(relationships)) return relationships;
+    relationships.forEach(r => {
+        if (!r.gender) r.gender = Math.random() < 0.5 ? 'male' : 'female';
+    });
+    return relationships;
+}
+
+/**
  * Determines if a classmate or teacher accepts a friend request.
  * @param {number} status 
  * @param {boolean} isTeacher 
@@ -774,13 +839,17 @@ export const GameLogic = {
     getAvailableInteractions,
     isInteractionBlocked,
     calculateInheritance,
+    calculateSpousalLifeInsurance,
     generateSchoolCohort,
     generateStranger,
+    backfillRelationshipGender,
     attemptBefriend,
     calculateProposalAcceptance,
     calculatePregnancyChance,
     calculatePromotionChance,
     getRandomFirstName,
     getLastName,
+    getFirstName,
+    calculateNameChangeAcceptance,
     CITY_COST_OF_LIVING,
 };
