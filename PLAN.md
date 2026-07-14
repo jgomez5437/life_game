@@ -1,414 +1,127 @@
-# Plan: Fix Business Module (Items 1–4) + Complete Business Sub-Game
+# Social System Overhaul: Romance, Marriage, Pregnancy, Kids & Legacy
 
 ## Context
 
-The business/entrepreneur module in `public/src/features/business/` was built with a legacy global-variable pattern (`game`, `el`, `formatMoney`, `showModal`) that was never updated when the codebase migrated to ES modules. As a result:
-- **`businessDashboard.js` crashes at runtime** — every state read and DOM operation references undefined globals.
-- **The "Launch Company" button is wired to `showComingSoon`** — `initBusiness()` exists but is dead code.
-- **Slider event handlers are silently broken** — inline `oninput=` strings can't reach module-scope functions.
+The game's relationship system currently only supports family (generated once at birth), friends/enemies, and a rotating cast of classmates — there's no way to fall in love, marry, have kids, or pass the game on to the next generation. Digging into the code turned up something notable: the previous author already scaffolded for exactly this feature and never finished it. The `category` field is defensively checked against `'spouse'` and `'child'` in ~9 places across `relationshipScreen.js`/`funeralScreen.js`/`gameLogic.js`, and `mainScreen.js` already contains a fully-working "continue as your child after death" flow (`renderDeathScreen`/`continueAsChild`) that filters for `type === 'Son'/'Daughter'` — it just has nothing to filter, because nothing has ever created a relationship with those types. This overhaul is about filling in already-anticipated slots, not building from a blank slate.
 
-Additionally, two files (`router.js`, `moreToDoScreen.js`) are confirmed-dead scaffolding with no imports anywhere.
+Scope decisions already made with the user:
+- **Opposite-sex pairings only** — no adoption system needed.
+- **Lightweight dating** — romance reuses the existing friend/enemy status-meter interaction pattern (no browsable candidate pool, no compatibility scoring).
+- **Pregnancy is fully abstracted** — conceive this year, baby appears as a new child relationship at the next age-up. The core yearly `ageUp()` loop structure is not touched.
 
-The user wants to go beyond just fixing crashes — the business dashboard should become a **standalone sub-game** the player can spend time in: employee management, upgrades, random events, a quarterly P&L history, and a sell-company exit. It should also integrate with the main age-up loop.
-
-**Item 5 (double save on death) is a false positive.** The `ageUp`'s `saveGame` call is bypassed by an early `return` when `handleDeath` fires. `renderDeathScreen` never calls `saveGame`. The two `saveGame` calls (`handleDeath` + `continueAsChild`) are intentional and correct. No fix needed.
+The work is broken into 5 independently shippable chunks, ordered so each chunk is playable/demoable on its own before starting the next.
 
 ---
 
-## Step 1 — Delete Dead Files (Bugs 3 & 4)
+## Current State (verified against source)
 
-Delete both files outright. Neither is imported anywhere (confirmed via grep).
-
-- `public/src/core/router.js`
-- `public/src/features/activities/moreToDoScreen.js`
-
----
-
-## Step 2 — Extend `INDUSTRIES` in `main.js`
-
-Add `capacityPerEmployee` to each industry entry. This field gates production scaling by employee count and is needed before the dashboard rewrite.
-
-```js
-tech:   { ..., capacityPerEmployee: 600  }   // 5 employees × 600 = 3,000 max (> 2,500 demand)
-retail: { ..., capacityPerEmployee: 1200 }   // 5 × 1,200 = 6,000 max (> 5,000 demand)
-auto:   { ..., capacityPerEmployee: 200  }   // 5 × 200 = 1,000 max (> 800 demand)
-```
+- All NPCs (family/friends/enemies/classmates) live in one flat `user.relationships` array, disambiguated by `category` (`'family'|'friend'|'enemy'|'classmate'`, plus dead `'spouse'|'child'`) and `type` (`'Mother'|'Father'|'Brother'|'Sister'|'Friend'|'Enemy'|'Classmate'|'Teacher'`, plus dead `'Son'|'Daughter'`).
+- Relationship object: `{ id, name, age, type, status (0-100), category, interactedThisYear, isCurrentClassmate?, health? (never actually set, always defaults to 100), deathCause?, inheritanceAmt? }`. No `gender` field exists on relationships today.
+- `public/src/core/gameLogic.js` — pure logic: `checkMortality(age, health)` (`MORTALITY_RATES` bracket table, gameLogic.js:188-198), `calculateRelationshipDecay`, `checkRelationshipCategoryShift(category, status)` (gameLogic.js:434, exemption list `['family','spouse','child','classmate']`), `calculateInheritance(age, roll)` (gameLogic.js:448, only rolled for `type === 'Mother'/'Father'`), `generateSchoolCohort`, `attemptBefriend(status, isTeacher, roll)`.
+- `public/src/features/relationships/relationshipScreen.js` — `renderRelationships()`, `renderPersonInteraction(id)`, `openRelationshipConfirm`, `performRelationshipAction`, `spendTimeWithAll`. **The interaction catalog (Spend Time/Give Money/Insult/Compliment/Call to Chat/Ask to be Friends) plus its age/affordability/hostility gating is duplicated verbatim 3x** across these functions (a 4th partial duplicate lives in `spendTimeWithAll`). Adding ~9 romance interactions on top without fixing this would triple the debt.
+- `public/src/features/relationships/familyFactory.js` — `FamilyFactory.generateFamily(lastName)`, own `NAMES.MALE/FEMALE` arrays duplicated from `gameLogic.js`'s ungendered `FIRST_NAMES`/`LAST_NAMES`.
+- `public/src/features/relationships/funeralScreen.js` — `isFamily = ['family','spouse','child'].includes(deceased.category)` (funeralScreen.js:25) already correctly routes spouse/child deaths through the rich family funeral flow — **works automatically** once such relationships exist. Inheritance roll is currently gated to `type === 'Mother'/'Father'` only (funeralScreen.js:29).
+- `public/src/features/player/mainScreen.js` — `ageUp()` (mainScreen.js:19-59) calls, in order: `handleHealth`, `handleFinances`, `handleEducation`, `handleMarket`, `handleLifeEvents`, `handleRelationships(user)`, then `processNextFuneral()`. Verified directly: **`renderDeathScreen` (line 73) and `continueAsChild` (line 191) already fully implement "continue as your kid"** — filters `user.relationships` for `type === 'Son'/'Daughter'`, splits estate, offers a "Play as [child]" button, and fully reconstructs `state.gameState.user` from the chosen child. This needs zero changes — it will just start working the moment children with the correct `type` exist.
+- `public/src/core/main.js` — verified: action dispatch is a flat `routeHandlers` object (main.js:738) checked by name in the click handler (main.js:836-838). Every new player-facing action must be imported into `main.js` and added to this object.
+- Tests: `tests/gameLogic.test.js` covers the existing pure functions — new pure functions should get equivalent coverage.
 
 ---
 
-## Step 3 — Add Missing Business State Fields in `main.js`
+## Chunk 0 — Foundational Refactor (no visible feature change)
 
-Both `updateGameInfo` and `loadAndRenderGame` construct `state.gameState.user`. Add the following after the existing `hasBusiness` / `companyName` / `ceoSalary` lines (do not duplicate `ceoSalary` which already exists):
+Do this first so romance interactions don't triple the existing duplication.
 
-```js
-industry:           savedUser.industry           || null,
-compCash:           savedUser.compCash           || 0,
-companyYear:        savedUser.companyYear         || 1,
-companyQuarter:     savedUser.companyQuarter      || 1,
-employees:          savedUser.employees           || 0,
-businessReputation: savedUser.businessReputation  || 0,
-inventory:          savedUser.inventory           || 0,
-productionTarget:   savedUser.productionTarget    || 0,
-sellingPrice:       savedUser.sellingPrice        || 0,
-salaryOffer:        savedUser.salaryOffer         || 0,
-supplierId:         savedUser.supplierId          || null,
-businessHistory:    savedUser.businessHistory     || [],
-businessUpgrades:   savedUser.businessUpgrades   || [],
-```
+1. **Consolidate the interaction catalog.** In `gameLogic.js`, add:
+   - `RELATIONSHIP_INTERACTIONS` — single source-of-truth config array (key, name, icon, desc, cost, statusChange, minAgeSelf/Target, allowed categories, unlock thresholds) replacing the 3 duplicated arrays in `relationshipScreen.js`.
+   - `getAvailableInteractions(person, user)` — pure function, filters the catalog for a given person/user pair.
+   - `isInteractionBlocked(interactionKey, person, user)` — pure function returning `{blocked, reason}`, replacing the duplicated age/affordability/hostility checks.
+   - `isHostile(person)` — extracted from the repeated `['family','spouse','child'].includes(category) ? status<15 : status<30` check, used by the above and by `spendTimeWithAll`.
+   Rewire `renderPersonInteraction`, `openRelationshipConfirm`, `performRelationshipAction`, and `spendTimeWithAll` in `relationshipScreen.js` to use these instead of their local copies.
+2. **Add `gender` to every relationship-creation site**: `familyFactory.js` (infer from role: Mother/Sister = female, Father/Brother = male), `generateSchoolCohort` (random per classmate/teacher). Existing saves without `gender` should be treated as romance-ineligible, not crash.
+3. **Centralize gendered name pools**: merge `familyFactory.js`'s `NAMES.MALE/FEMALE` and `gameLogic.js`'s `FIRST_NAMES`/`LAST_NAMES` into `FIRST_NAMES_MALE`/`FIRST_NAMES_FEMALE`/`LAST_NAMES` living in `gameLogic.js`; have `familyFactory.js` import them instead of maintaining its own copy.
+4. **Add `'partner'` and `'ex'` to the exemption list** in `checkRelationshipCategoryShift` (and the inline duplicate in `mainScreen.js`'s decay pass) — harmless now, required before Chunk 1 so an un-interacted dating partner never gets force-flipped to `'enemy'` by the generic yearly decay pass.
 
-For `loadAndRenderGame`, replace `savedUser.*` with `userData.*`. Non-business characters are unaffected because all values default to null/0/[].
+**Verify:** `npm test` passes unchanged; manually click through every existing interaction (Spend Time, Give Money, Insult, Compliment, Call to Chat, Ask to be Friends) and confirm identical behavior to before the refactor.
+
+**Files:** `gameLogic.js`, `relationshipScreen.js`, `familyFactory.js`, `mainScreen.js` (exemption list only).
 
 ---
 
-## Step 4 — Rewrite `businessDashboard.js` (Bug 1)
+## Chunk 1 — Dating & Romance Progression (no marriage yet)
 
-### 4a. Fix all broken global references
+1. **New pure function** `generateStranger(userAge, userGender, roll)` in `gameLogic.js` — returns one relationship-shaped NPC, gender opposite of `userGender`, age band `userAge-3` to `userAge+5` (min 18), `category: 'friend'`, `status` 20-40.
+2. **New "Go Out / Meet Someone" button** on `renderRelationships` (mirrors the existing "Spend Time With All" button), cost $50, gated by `user.age >= 16` and once/year via a new `user.hasMetSomeoneThisYear` flag (reset in `handleRelationships`, same pattern as `hasSpentTimeWithAll`).
+3. **New catalog entries** in `RELATIONSHIP_INTERACTIONS`:
+   - `ask_out` — category `friend`, opposite gender, status ≥ 40, no existing partner/spouse (monogamy gate below), age 16+. On confirm: `category → 'partner'`, `type → 'Boyfriend'/'Girlfriend'`.
+   - `flirt` (+10 status), `go_on_date` ($100, +15 status), `make_love` (18+ both, flavor/status only — no pregnancy roll yet), `break_up` (→ `category:'ex'`, `type → 'Ex-Boyfriend'/'Ex-Girlfriend'`). All gated to `category === 'partner'`.
+4. **Monogamy gate** (hard rule, not optional): before allowing `ask_out`, check `!user.relationships.some(r => r.category === 'partner' || r.category === 'spouse')`. Block with a clear message if already attached.
+5. Add a "Romance" section to `renderRelationships` so dating partners are visible (currently the screen only groups family/friend/enemy).
 
-| Old (broken) | New (correct) |
-|---|---|
-| `game.*` | `state.gameState.user.*` (hoist `const user = state.gameState.user`) |
-| `el(id)` | `document.getElementById(id)` (define local `const get = id => document.getElementById(id)`) |
-| `formatMoney(x)` | `Utils.formatMoney(x)` (add `import { Utils }` — already imported but unused) |
-| `showModal(...)` | `UI.showModal(...)` (already imported but unused) |
-| `isStudent()` | inline: `user.isStudent \|\| user.universityEnrolled \|\| user.gradSchoolEnrolled` |
-| `game.bank` | `user.money` |
-| `game.year` / `game.quarter` | `user.companyYear` / `user.companyQuarter` |
+**Verify:** age a fresh character to 16+, raise a friend/classmate to status ≥ 40, Ask Out, confirm Flirt/Go on a Date/Break Up apply the right cost/status, confirm an un-interacted partner's yearly decay never flips them to `enemy`, confirm the monogamy gate blocks a second Ask Out attempt.
 
-Add `Utils` to the existing import of `UI`:
-```js
-import { Utils } from '../../ui/utils.js';
-```
-
-### 4b. Fix slider event handlers
-
-Remove all `oninput="syncFromSlider(...)"` and `oninput="syncFromInput(...)"` attributes from the rendered HTML. Delete the `syncFromSlider` and `syncFromInput` functions.
-
-At the end of `renderBusinessDashboard()`, after `UI.renderScreen(html)`, call `attachSliderListeners()` then `updateCalculations()`:
-
-```js
-function attachSliderListeners() {
-    ['prod', 'price', 'salary', 'ceo'].forEach(type => {
-        const rng = document.getElementById(`rng-${type}`);
-        const num = document.getElementById(`num-${type}`);
-        if (rng) rng.addEventListener('input', () => { num.value = rng.value; updateCalculations(); });
-        if (num) num.addEventListener('input', () => { rng.value = num.value; updateCalculations(); });
-    });
-}
-```
-
-### 4c. Export `renderBusinessDashboard`
-
-Change from `function renderBusinessDashboard()` to `export function renderBusinessDashboard()` so `createBusinessScreen.js` can import it.
-
-### 4d. Remove duplicate financial logic from `processQuarter`
-
-Delete the `game.age++` line and the living-expense / student-loan deduction block inside `processQuarter`'s year-end branch. These are already handled by `handleFinances` in `mainScreen.js` and would double-bill the player if left in.
-
-### 4e. Fix annual report modal signature
-
-`UI.showModal` takes 3 args: `(title, message, onClose)`. The existing 4-arg call needs the custom button label dropped. The `onClose` callback should call `renderLifeDashboard(state.gameState)`.
-
-### 4f. Add `BUSINESS_EVENTS` constant
-
-Define at module level (exported for future testability):
-
-```js
-export const BUSINESS_EVENTS = [
-    { id: 'viral_moment',       name: 'Viral Moment',        icon: 'fa-fire',                probability: 0.04, repDelta:  30, demandMult: 1.5, productionCapMult: 1.0, revenueFlat:  0, revenuePenaltyPct: 0.00 },
-    { id: 'supplier_shortage',  name: 'Supplier Shortage',   icon: 'fa-exclamation-triangle', probability: 0.04, repDelta:   0, demandMult: 1.0, productionCapMult: 0.5, revenueFlat:  0, revenuePenaltyPct: 0.00 },
-    { id: 'product_defect',     name: 'Product Defect',      icon: 'fa-bug',                  probability: 0.04, repDelta: -20, demandMult: 1.0, productionCapMult: 1.0, revenueFlat:  0, revenuePenaltyPct: 0.20 },
-    { id: 'competitor_launch',  name: 'Competitor Launch',   icon: 'fa-building',             probability: 0.04, repDelta: -15, demandMult: 0.9, productionCapMult: 1.0, revenueFlat:  0, revenuePenaltyPct: 0.00 },
-    { id: 'government_contract',name: 'Government Contract', icon: 'fa-landmark',             probability: 0.03, repDelta:  10, demandMult: 1.0, productionCapMult: 1.0, revenueFlat: 50000, revenuePenaltyPct: 0.00 },
-    { id: 'employee_strike',    name: 'Employee Strike',     icon: 'fa-people-line',          probability: 0.03, repDelta:  -5, demandMult: 0.0, productionCapMult: 0.0, revenueFlat:  0, revenuePenaltyPct: 0.00 },
-];
-```
-
-**Roll logic** (cumulative weighted draw — run once inside `processQuarter` after computing `actualDemand`):
-```js
-let activeEvent = null, cumulative = 0;
-const roll = Math.random();
-for (const ev of BUSINESS_EVENTS) {
-    cumulative += ev.probability;
-    if (roll < cumulative) { activeEvent = ev; break; }
-}
-```
-
-Apply event modifiers before resolving sales:
-```js
-const effectiveProd = Math.min(user.productionTarget, maxProduction * (activeEvent?.productionCapMult ?? 1));
-const effectiveDemand = Math.floor(actualDemand * (activeEvent?.demandMult ?? 1));
-const sold = Math.min(user.inventory + effectiveProd, effectiveDemand);
-let revenue = sold * user.sellingPrice + (activeEvent?.revenueFlat ?? 0);
-if (activeEvent?.revenuePenaltyPct > 0) revenue = Math.floor(revenue * (1 - activeEvent.revenuePenaltyPct));
-if (activeEvent?.repDelta) user.businessReputation = Math.max(0, Math.min(100, user.businessReputation + activeEvent.repDelta));
-```
-
-Store the event name on the history entry: `{ year, quarter, profit, revenue, event: activeEvent?.name ?? null }`.
-Dashboard renders a yellow banner when the most-recent history entry has a non-null `event`.
-
-### 4g. Add `BUSINESS_UPGRADES` constant + `purchaseUpgrade` function
-
-```js
-export const BUSINESS_UPGRADES = [
-    { id: 'marketing',   name: 'Marketing Campaign',   icon: 'fa-bullhorn',      description: 'Immediately +10 Reputation.',               cost: 25000 },
-    { id: 'warehouse',   name: 'Warehouse Expansion',  icon: 'fa-warehouse',     description: 'Doubles maximum inventory carry capacity.',  cost: 50000 },
-    { id: 'rd',          name: 'R&D Investment',       icon: 'fa-flask',         description: 'Increases max selling price ceiling by 50%.', cost: 75000 },
-    { id: 'hr_training', name: 'HR Training Program',  icon: 'fa-user-graduate', description: 'Reduces layoff severance cost by 50%.',      cost: 30000 },
-];
-```
-
-**Passive effect call sites:**
-- `warehouse`: after resolving `sold`, cap inventory: `const maxInventory = ind.baseDemand * (user.businessUpgrades.includes('warehouse') ? 2 : 1);`
-- `rd`: in `renderBusinessDashboard`, price slider max: `Math.floor(ind.unitPrice * (user.businessUpgrades.includes('rd') ? 4.5 : 3.0))`
-- `hr_training`: in `layoffEmployee`, severance multiplier: `user.businessUpgrades.includes('hr_training') ? 0.5 : 1.0`
-
-**`purchaseUpgrade(upgradeId)`** (exported, registered in `routeHandlers`):
-- Guard already-owned + insufficient `compCash` → `UI.showModal`
-- Deduct cost from `user.compCash`
-- Push `upgradeId` to `user.businessUpgrades`
-- If `'marketing'`: apply `+10` rep immediately
-- `addLog(...)` + `renderBusinessDashboard()`
-
-### 4h. Add `hireEmployee` and `layoffEmployee` functions (both exported)
-
-Production capacity: `const maxProduction = user.employees * ind.capacityPerEmployee` — used in both `processQuarter` and the live preview (`updateCalculations`).
-
-```js
-export function hireEmployee() {
-    const user = state.gameState.user;
-    const ind = INDUSTRIES[user.industry];
-    const cost = ind.baseSalary * 2;
-    if (user.compCash < cost) return UI.showModal('Cannot Hire', `Need ${Utils.formatMoney(cost)} in company cash.`);
-    user.compCash -= cost;
-    user.employees++;
-    addLog(`Hired a new employee at ${user.companyName}. Team size: ${user.employees}.`, 'good');
-    renderBusinessDashboard();
-}
-
-export function layoffEmployee() {
-    const user = state.gameState.user;
-    const ind = INDUSTRIES[user.industry];
-    if (user.employees <= 1) return UI.showModal('Cannot Layoff', 'You must keep at least one employee.');
-    const sevMult = user.businessUpgrades.includes('hr_training') ? 0.5 : 1.0;
-    const severance = Math.floor(ind.baseSalary * sevMult);
-    user.compCash -= severance;
-    user.employees--;
-    addLog(`Laid off an employee. Severance paid: ${Utils.formatMoney(severance)}.`, 'bad');
-    renderBusinessDashboard();
-}
-```
-
-### 4i. Add `sellBusiness` function (exported)
-
-```js
-export function sellBusiness() {
-    const user = state.gameState.user;
-    const ind = INDUSTRIES[user.industry];
-    const recent = user.businessHistory.slice(-4);
-    const avgRevenue = recent.length > 0 ? recent.reduce((sum, q) => sum + q.revenue, 0) / recent.length : 0;
-    const salePrice = Math.max(Math.floor(avgRevenue * 4), Math.floor(ind.startupCost * 0.3));
-    UI.showConfirm(
-        'Sell Company',
-        `Sell ${user.companyName} for ${Utils.formatMoney(salePrice)}?`,
-        'Sell',
-        () => {
-            user.money += salePrice;
-            addLog(`Sold ${user.companyName} for ${Utils.formatMoney(salePrice)}.`, 'major');
-            user.hasBusiness = false; user.companyName = null; user.compCash = 0;
-            user.companyYear = 1; user.companyQuarter = 1; user.employees = 0;
-            user.businessReputation = 0; user.inventory = 0; user.productionTarget = 0;
-            user.sellingPrice = 0; user.salaryOffer = 0; user.ceoSalary = 0;
-            user.supplierId = null; user.industry = null; user.businessHistory = [];
-            user.businessUpgrades = [];
-            renderActivities();
-        }
-    );
-}
-```
-
-### 4j. Add `autoProcessBusinessQuarter` function (exported)
-
-Runs silently during age-up. Same math as `processQuarter` but no DOM reads and no modals.
-
-```js
-export function autoProcessBusinessQuarter(user) {
-    const ind = INDUSTRIES[user.industry];
-    const supplier = SUPPLIERS.find(s => s.id === user.supplierId);
-    const maxProduction = user.employees * ind.capacityPerEmployee;
-    const prodCost   = Math.min(user.productionTarget, maxProduction) * (ind.unitCost * supplier.costMod);
-    const empWages   = user.employees * user.salaryOffer * 3;
-    const ceoWages   = user.ceoSalary * 3;
-    const fixedCosts = 10000;
-    const totalExp   = prodCost + empWages + ceoWages + fixedCosts;
-
-    // Soft bankruptcy — deduct what's available, log distress
-    if (totalExp > user.compCash) {
-        addLog(`${user.companyName} cannot cover Q${user.companyQuarter} expenses. Visit the office to restructure.`, 'bad');
-    }
-    user.compCash = Math.max(0, user.compCash - totalExp);
-    user.money += ceoWages;
-
-    // Event roll (same BUSINESS_EVENTS table)
-    let activeEvent = null, cumulative = 0;
-    const roll = Math.random();
-    for (const ev of BUSINESS_EVENTS) {
-        cumulative += ev.probability;
-        if (roll < cumulative) { activeEvent = ev; break; }
-    }
-    if (activeEvent) {
-        if (activeEvent.repDelta) user.businessReputation = Math.max(0, Math.min(100, user.businessReputation + activeEvent.repDelta));
-        addLog(`${user.companyName}: ${activeEvent.name} — ${activeEvent.description}`, activeEvent.repDelta < 0 ? 'bad' : 'good');
-    }
-
-    // Resolve sales
-    const priceFactor   = Math.pow((ind.unitPrice / user.sellingPrice), 1.5);
-    const repFactor     = 0.5 + (user.businessReputation / 100);
-    const volatility    = 1 + ((Math.random() - 0.5) * ind.volatility * 2);
-    const actualDemand  = Math.floor(ind.baseDemand * repFactor * priceFactor * volatility);
-    const effectiveProd = Math.min(user.productionTarget, maxProduction * (activeEvent?.productionCapMult ?? 1));
-    const effectiveDemand = Math.floor(actualDemand * (activeEvent?.demandMult ?? 1));
-    const available     = user.inventory + effectiveProd;
-    const sold          = Math.min(available, effectiveDemand);
-    const maxInventory  = ind.baseDemand * (user.businessUpgrades.includes('warehouse') ? 2 : 1);
-    user.inventory      = Math.min(available - sold, maxInventory);
-
-    let revenue = sold * user.sellingPrice + (activeEvent?.revenueFlat ?? 0);
-    if (activeEvent?.revenuePenaltyPct > 0) revenue = Math.floor(revenue * (1 - activeEvent.revenuePenaltyPct));
-    user.compCash += revenue;
-
-    const profit = revenue - totalExp;
-    if (sold < actualDemand) user.businessReputation = Math.max(0, user.businessReputation - 2);
-    else user.businessReputation = Math.min(100, user.businessReputation + 1);
-
-    user.businessHistory.push({ year: user.companyYear, quarter: user.companyQuarter, profit, revenue, event: activeEvent?.name ?? null });
-    addLog(`${user.companyName} Q${user.companyQuarter}: Revenue ${Utils.formatMoney(revenue)}, Profit ${Utils.formatMoney(profit)}.`, profit >= 0 ? 'good' : 'bad');
-
-    user.companyQuarter++;
-    if (user.companyQuarter > 4) {
-        user.companyQuarter = 1;
-        user.companyYear++;
-        const annualRevenue = user.businessHistory.slice(-4).reduce((s, q) => s + q.revenue, 0);
-        addLog(`${user.companyName} fiscal year complete. Annual Revenue: ${Utils.formatMoney(annualRevenue)}.`, 'major');
-    }
-}
-```
+**Files:** `gameLogic.js`, `relationshipScreen.js`.
 
 ---
 
-## Step 5 — Fix `createBusinessScreen.js` (Bug 2)
+## Chunk 2 — Marriage & Divorce
 
-### 5a. Export and fix `initBusiness`
+1. **New pure function** `calculateProposalAcceptance(status, roll)` in `gameLogic.js` — mirrors `attemptBefriend`'s "chance derived from status" pattern.
+2. **New file** `public/src/features/relationships/romanceScreen.js` (mirrors `funeralScreen.js`'s structure) containing:
+   - `propose(personId)` — gated to `type` Boyfriend/Girlfriend, status ≥ 75, cost $3000, 18+ both. Success → `type → 'Fiancé'/'Fiancée'`; failure → -15 status, stays dating.
+   - `openWeddingPlanner()` / `confirmWeddingPlan(index)` — reuses the tiered-paid-choice modal pattern already proven in `funeralScreen.js`'s `chooseFuneralType`/`confirmFuneralPlan`. Suggested tiers: Courthouse ($200), Small Ceremony ($5,000), Big Wedding ($20,000), Destination Wedding ($50,000). On confirm: `category → 'spouse'`, `type → 'Husband'/'Wife'`.
+   - `fileForDivorce(personId)` — simple `UI.showConfirm`, flat $5,000 legal fee + 50% split of `user.money` to the ex. On confirm: `category → 'ex'`, `type → 'Ex-Husband'/'Ex-Wife'`.
+3. **Extend inheritance eligibility**: in `funeralScreen.js`, change the inheritance-roll condition from `type === 'Mother'/'Father'` to `['Mother','Father','Husband','Wife'].includes(type)` — a one-line change; everything downstream (`finishFuneralAndNext`) is already generic and needs no edits. Widowhood already routes correctly through the existing `isFamily` gate with zero other changes.
+4. Wire `romanceScreen.js`'s new exports into `main.js`'s import list and `routeHandlers`.
 
-1. Export it: `export function initBusiness()`
-2. Fix references: `showModal` → `UI.showModal`, `formatMoney` → `Utils.formatMoney`, `user.bank` → `user.money`
-3. Import `renderBusinessDashboard` from `businessDashboard.js`
-4. Add missing field initializations:
+**Verify:** progress a partner through Ask Out → Propose → Get Married → File for Divorce, confirming money/status changes at each step. Force (or wait out) a spouse's mortality roll and confirm the funeral screen shows the rich family-tier options and correctly rolls inheritance.
+
+**Files:** new `romanceScreen.js`, `gameLogic.js`, `funeralScreen.js` (1 line), `main.js`.
+
+---
+
+## Chunk 3 — Pregnancy & Birth
+
+1. **New fields on `user`**: `isExpecting` (bool), `expectingWithId` (relationship id of the other parent). Stored on `user`, not on the partner relationship, so the flag survives even if the partner relationship is later deleted (breakup/death) mid-pregnancy.
+2. **New pure functions** in `gameLogic.js`: `calculatePregnancyChance(carryingParentAge, roll)` (age-scaled: 50% under 35, tapering to 2% by 45+), `getLastName(fullName)`, `getRandomFirstName(gender)`.
+3. **New action** `tryForBaby(partnerId)` in `romanceScreen.js` — married-only, both 18+, not already expecting. `carryingParentAge` = `user.age` if `user.gender === 'female'`, else the spouse's age. Rolls `calculatePregnancyChance`; on success sets `user.isExpecting = true`.
+4. **New subsystem** `handlePregnancy(user)` in `mainScreen.js`, added as a single new line in `ageUp()` immediately **after** `handleRelationships(user)` (so a newborn enters `user.relationships` too late to be double-aged/mortality-checked in its own birth year — it starts participating normally next `ageUp()`). This is additive only; it does not change the loop's cadence or structure.
    ```js
-   user.employees          = 5;
-   user.businessReputation = 50;
-   user.inventory          = 0;
-   user.supplierId         = user.supplierId || 'standard';
-   user.companyYear        = 1;
-   user.companyQuarter     = 1;
-   user.businessHistory    = [];
-   user.businessUpgrades   = [];
-   user.productionTarget   = Math.floor(ind.baseDemand * 0.8);
-   user.sellingPrice       = ind.unitPrice;
-   user.salaryOffer        = ind.baseSalary;
+   handleRelationships(user);
+   handlePregnancy(user);   // new
    ```
-5. Change the final call to the now-exported `renderBusinessDashboard()`
-6. Change the button: `data-action="showComingSoon"` → `data-action="initBusiness"`
+   On resolution: 50/50 gender roll, builds a `{ id, name, age: 0, type: 'Son'/'Daughter', gender, status: 100, category: 'child', interactedThisYear: false }` object, pushes to `user.relationships`, logs a birth message, clears `isExpecting`/`expectingWithId`.
 
-### 5b. Add Supplier Selection UI
+**Verify:** married couple, both 18+, Try for a Baby until success, age up once (no baby yet), age up again and confirm a new `category:'child'` relationship appears at age 0, age up a third time and confirm the child ages to 1 without being touched by the friend/enemy category-shift logic.
 
-In `renderBusinessSetup`, after the industry cards section, add a supplier selection section using the same card pattern. Import `SUPPLIERS` (already imported).
-
-Each card:
-```html
-<div id="sup-${s.id}" class="supplier-card border rounded-xl p-3 cursor-pointer ..."
-     data-action="selectSupplier" data-args="'${s.id}'">
-  <div>${s.name} — ${s.costMod}x cost, Quality ${s.quality}</div>
-</div>
-```
-
-Add `export function selectSupplier(id)` mirroring `selectIndustry`. Default-select 'standard' at the bottom of `renderBusinessSetup`:
-```js
-selectSupplier('standard');
-```
+**Files:** `gameLogic.js`, `mainScreen.js`, `romanceScreen.js`.
 
 ---
 
-## Step 6 — Update `main.js` routeHandlers
+## Chunk 4 — Continue-as-Child Verification & Legacy Polish
 
-Add imports and handlers for all new exported functions:
+No structural changes expected — `renderDeathScreen`/`continueAsChild` already work correctly once Chunk 3 produces properly-typed children. This chunk is primarily end-to-end verification, plus two optional polish items:
 
-```js
-import { ..., hireEmployee, layoffEmployee, sellBusiness, purchaseUpgrade } from '../features/business/businessDashboard.js';
-import { ..., initBusiness, selectSupplier } from '../features/business/createBusinessScreen.js';
-```
+- **Optional:** reserve a spousal share of the estate in `renderDeathScreen` before splitting the remainder among children (currently a surviving spouse gets $0 of the player's own estate — a gap, since widowhood in the *other* direction, spouse-dies-first, is already handled correctly by Chunk 2's funeral changes).
+- **Optional:** regenerate a small starting family when continuing as a child, since `continueAsChild` currently purges all relationships (existing intentional behavior per its code comment "prevent cyclical graphing" — the continuing child loses siblings and their other parent instantly).
 
-Add to `routeHandlers`:
-```js
-initBusiness, selectSupplier,
-hireEmployee, layoffEmployee, sellBusiness, purchaseUpgrade,
-```
+**Verify (full regression):** play a life — date, marry, have 2 children, die — confirm both children surface as "Play as X" options with the correct inherited-money split, select one, and confirm the game continues playably as that child (correct name/age/gender/school enrollment).
+
+**Files:** `mainScreen.js` (only if implementing the optional polish items).
 
 ---
 
-## Step 7 — Update `mainScreen.js`
+## Optional Realism Additions (pick and choose later, not required)
 
-### 7a. Age-up integration
-
-Add import at top:
-```js
-import { autoProcessBusinessQuarter } from '../business/businessDashboard.js';
-```
-
-In `handleFinances(user)`, add as the final block:
-```js
-// Business auto-quarter
-if (user.hasBusiness) {
-    autoProcessBusinessQuarter(user);
-}
-```
-
-### 7b. Include `compCash` in death estate calculation
-
-In `renderDeathScreen`, change `totalEstate` to:
-```js
-const companyCash = (user.hasBusiness && user.compCash > 0) ? user.compCash : 0;
-const totalEstate = user.money + assetValue + companyCash;
-```
+- Random "It's Complicated" argument events for dating/married couples during the yearly decay pass.
+- Miscarriage risk in `handlePregnancy`, mirroring the existing `MORTALITY_RATES` bracket style.
+- Ongoing alimony/child-support deduction after divorce instead of (or alongside) the one-time asset split.
+- Remarriage after divorce/widowhood needs no special code — the monogamy gate naturally reopens once a spouse relationship leaves `category:'spouse'`.
+- Twins/multiple births — small chance in `handlePregnancy` to produce two children.
+- "Love at first sight" — occasional high-status roll from `generateStranger` as a shortcut to `ask_out` eligibility.
+- Age-appropriate flavor text (teen dating vs. adult wedding copy), matching the existing age-aware tone of `checkLifeStatus`.
 
 ---
 
-## Dashboard UI Layout (What the Player Sees)
+## Suggested Order of Attack
 
-The completed dashboard should have these sections in order:
-
-1. **Top bar** — back button, company name, `compCash` balance
-2. **Event banner** — yellow, shows if the last quarter had a random event (hidden otherwise)
-3. **Company stats row** — Fiscal Year, Quarter, Employees, Reputation
-4. **Quarterly Projection box** — live revenue/cost/profit preview (updates on slider change)
-5. **Slider controls** — Production (capped by employees × capacity), Price, Employee Salary, CEO Salary
-6. **Action buttons row** — "Hire Employee" | "Layoff Employee" | "Sell Company" | "End Quarter"
-7. **Upgrades section** — 4 upgrade cards; purchased ones show a checkmark and are disabled
-8. **P&L Reports** — `<details>` collapsible, table of last 8 quarters from `user.businessHistory`
-
----
-
-## Verification
-
-1. **Smoke test**: Age to 18 → open occupation screen → navigate to business setup → confirm no console errors, industry + supplier cards render, default selections visible.
-2. **Launch**: Enter name, click Launch Company → no "Coming Soon" modal, dashboard renders, all 4 sliders move and update live projection.
-3. **Slider sync**: Drag each slider → paired number input updates. Type in number input → slider position updates.
-4. **End Quarter**: Click through Q1–Q4 → Q4 fires annual report modal, then routes to life dashboard.
-5. **Bankruptcy guard**: Maximize all salaries → End Quarter → modal fires, quarter does not advance.
-6. **Hire/Layoff**: Test employee count changes, cost deductions, and the 1-employee floor.
-7. **Upgrades**: Buy Marketing → rep increases. Buy R&D → price slider max changes. Purchased upgrades are disabled.
-8. **Random events**: Run 10–20 quarters; at least one event should fire and display in banner + history table.
-9. **Sell Business**: Confirm correct sale price formula, state resets, routes to Activities.
-10. **Age-up integration**: Start business, stay on main dashboard, press Age Up 4× → life log shows 4 quarterly entries and then an annual summary.
-11. **Death estate**: Force death while owning a business → death screen total includes `compCash`.
-12. **Save/load**: After progressing business, save and reload → all business fields persist correctly.
-13. **Dead code**: Grep for `router.js` and `moreToDoScreen.js` imports — zero results.
+Chunk 0 → 1 → 2 → 3 → 4, each verified end-to-end before starting the next. Chunk 0 is pure refactor (safe to do anytime, ideally first). Chunks 1-3 each add one complete, demoable capability (dating, marriage, kids). Chunk 4 is mostly confirming the dormant "continue as your kid" feature actually fires correctly now that it has real data to work with.

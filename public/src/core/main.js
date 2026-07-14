@@ -10,11 +10,13 @@ import { attemptEnrollment, openGradEnrollmentModal, attemptGradEnrollment, rend
 import { selectGender, submitCharacter, renderCharCreation } from '../features/player/charCreationScreen.js';
 import { ageUp, continueAsChild, renderLifeDashboard, addLog, renderDeathScreen, showFullEulogy } from '../features/player/mainScreen.js';
 import { state } from './state.js';
+import { GameLogic } from './gameLogic.js';
 import { renderAssets, renderVehicleManager, repairVehicle, sellVehicle } from '../features/assets/assetsScreen.js';
 import { renderShoppingHub, renderVehicleDealer, buyVehicle } from '../features/assets/goShoppingScreen.js';
 import { renderActivities } from '../features/career/occupationScreen.js';
-import { renderRelationships, renderPersonInteraction, openRelationshipConfirm, spendTimeWithAll } from '../features/relationships/relationshipScreen.js';
+import { renderRelationships, renderPersonInteraction, openRelationshipConfirm, spendTimeWithAll, goOutMeetSomeone } from '../features/relationships/relationshipScreen.js';
 import { chooseFuneralType, cancelFuneralPlan, confirmFuneralPlan, donateBody, lookTheOtherWay, goToFuneral, skipFuneral } from '../features/relationships/funeralScreen.js';
+import { openWeddingPlanner, confirmWeddingPlan, openNameChangeChoice, chooseNameChange } from '../features/relationships/romanceScreen.js';
 import { renderMoreDashboard, buyGymMembership, cancelGymMembership, visitGymOneTime, startBetterDiet, cancelBetterDiet, visitDoctor, openBlackjackBetting, startBlackjackGame, blackjackHit, blackjackStand, openTravelModal, bookTrip } from '../features/more/moreScreen.js';
 import { Utils } from '../ui/utils.js';
 import { UI } from '../ui/ui.js';
@@ -428,12 +430,15 @@ export function updateGameInfo(dbUser) {
             assets: savedUser.assets || [],
 
             // --- RELATIONSHIPS ---
-            relationships: savedUser.relationships || []
+            relationships: savedUser.relationships || [],
+            isExpecting: savedUser.isExpecting || false,
+            expectingWithId: savedUser.expectingWithId || null
         },
         
         // --- ASSETS & HISTORY ---
         lifeLog: cleanHistory
     };
+    GameLogic.backfillRelationshipGender(state.gameState.user.relationships);
     // 5. Render
    if (state.gameState.user.lifeStatus === "Deceased") {
         console.log("Dead character detected. Locking to death screen.");
@@ -659,6 +664,7 @@ async function initGame() {
             } else {
                 console.log("Loading guest save from local storage...");
                 state.gameState = guestSave;
+                GameLogic.backfillRelationshipGender(state.gameState.user?.relationships);
                 if (typeof renderLifeDashboard === "function") {
                     renderLifeDashboard();
                 } else {
@@ -789,6 +795,11 @@ const routeHandlers = {
   renderPersonInteraction,
   openRelationshipConfirm,
   spendTimeWithAll,
+  goOutMeetSomeone,
+  openWeddingPlanner,
+  confirmWeddingPlan,
+  openNameChangeChoice,
+  chooseNameChange,
   chooseFuneralType,
   cancelFuneralPlan,
   confirmFuneralPlan,

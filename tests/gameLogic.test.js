@@ -223,6 +223,19 @@ describe('Relationship Logic', () => {
         expect(GameLogic.calculateRelationshipDecay(50, true)).toBe(50);
     });
 
+    test('calculateRelationshipDecay exempts family from passive decay while the player is a minor', () => {
+        expect(GameLogic.calculateRelationshipDecay(50, false, 'family', 18)).toBe(50);
+        expect(GameLogic.calculateRelationshipDecay(50, false, 'family', 10)).toBe(50);
+        // Adults still decay normally, as do non-family categories at any age
+        expect(GameLogic.calculateRelationshipDecay(50, false, 'family', 19)).toBe(45);
+        expect(GameLogic.calculateRelationshipDecay(50, false, 'friend', 10)).toBe(45);
+    });
+
+    test('calculateRelationshipDecay exempts classmates from passive decay at any age', () => {
+        expect(GameLogic.calculateRelationshipDecay(50, false, 'classmate', 10)).toBe(50);
+        expect(GameLogic.calculateRelationshipDecay(50, false, 'classmate', 20)).toBe(50);
+    });
+
     test('checkRelationshipCategoryShift shifts non-family appropriately', () => {
         expect(GameLogic.checkRelationshipCategoryShift('friend', 20)).toBe('enemy');
         expect(GameLogic.checkRelationshipCategoryShift('friend', 40)).toBe(null);
@@ -270,6 +283,142 @@ describe('Relationship Logic', () => {
         });
     });
 
+    describe('generateStranger', () => {
+        test('always returns the opposite gender of the player', () => {
+            expect(GameLogic.generateStranger(25, 'male', 0.5).gender).toBe('female');
+            expect(GameLogic.generateStranger(25, 'female', 0.5).gender).toBe('male');
+        });
+
+        test('age is within [max(18, userAge-3), userAge+5] and category starts as friend', () => {
+            const stranger = GameLogic.generateStranger(25, 'male', 0.0);
+            expect(stranger.age).toBeGreaterThanOrEqual(22);
+            expect(stranger.age).toBeLessThanOrEqual(30);
+            expect(stranger.category).toBe('friend');
+            expect(stranger.type).toBe('Friend');
+        });
+
+        test('enforces an 18+ floor even for very young players', () => {
+            const stranger = GameLogic.generateStranger(16, 'female', 0.0);
+            expect(stranger.age).toBeGreaterThanOrEqual(18);
+        });
+    });
+
+    describe('Romance interactions (Chunk 1)', () => {
+        test('ask_out only appears for opposite-gender friends with status >= 40, and disappears once already partnered', () => {
+            const user = { gender: 'male', relationships: [] };
+            const eligibleFriend = { category: 'friend', gender: 'female', status: 50 };
+            const tooColdFriend = { category: 'friend', gender: 'female', status: 30 };
+            const sameGenderFriend = { category: 'friend', gender: 'male', status: 50 };
+
+            expect(GameLogic.getAvailableInteractions(eligibleFriend, user).map(i => i.key)).toContain('ask_out');
+            expect(GameLogic.getAvailableInteractions(tooColdFriend, user).map(i => i.key)).toContain('ask_out'); // visible, but blocked by status gate
+            expect(GameLogic.isInteractionBlocked('ask_out', tooColdFriend, { age: 25 }).blocked).toBe(true);
+            expect(GameLogic.getAvailableInteractions(sameGenderFriend, user).map(i => i.key)).not.toContain('ask_out');
+
+            // Monogamy gate: already has a partner
+            const attachedUser = { gender: 'male', relationships: [{ category: 'partner' }] };
+            expect(GameLogic.getAvailableInteractions(eligibleFriend, attachedUser).map(i => i.key)).not.toContain('ask_out');
+        });
+
+        test('flirt/go_on_date/make_love only apply to partner (and make_love also spouse) category', () => {
+            const partner = { category: 'partner', status: 50 };
+            const spouse = { category: 'spouse', status: 50 };
+            const friend = { category: 'friend', status: 50 };
+
+            const partnerKeys = GameLogic.getAvailableInteractions(partner, { relationships: [] }).map(i => i.key);
+            expect(partnerKeys).toEqual(expect.arrayContaining(['flirt', 'go_on_date', 'make_love', 'break_up']));
+
+            const spouseKeys = GameLogic.getAvailableInteractions(spouse, { relationships: [] }).map(i => i.key);
+            expect(spouseKeys).toContain('make_love');
+            expect(spouseKeys).not.toContain('flirt');
+            expect(spouseKeys).not.toContain('break_up');
+
+            const friendKeys = GameLogic.getAvailableInteractions(friend, { relationships: [] }).map(i => i.key);
+            expect(friendKeys).not.toEqual(expect.arrayContaining(['flirt', 'go_on_date', 'make_love', 'break_up']));
+        });
+
+        test('make_love is blocked under 18 for either party, flirt/go_on_date blocked under 16', () => {
+            const partner = { category: 'partner', status: 50, age: 17 };
+            expect(GameLogic.isInteractionBlocked('make_love', partner, { age: 25 }).blocked).toBe(true);
+            expect(GameLogic.isInteractionBlocked('make_love', { ...partner, age: 18 }, { age: 17 }).blocked).toBe(true);
+            expect(GameLogic.isInteractionBlocked('make_love', { ...partner, age: 18 }, { age: 18 }).blocked).toBe(false);
+
+            expect(GameLogic.isInteractionBlocked('flirt', { category: 'partner', status: 50, age: 15 }, { age: 25 }).blocked).toBe(true);
+            expect(GameLogic.isInteractionBlocked('flirt', { category: 'partner', status: 50, age: 16 }, { age: 16 }).blocked).toBe(false);
+        });
+
+        test('partner and ex categories are exempt from decay-driven category shifting', () => {
+            expect(GameLogic.checkRelationshipCategoryShift('partner', 5)).toBe(null);
+            expect(GameLogic.checkRelationshipCategoryShift('ex', 5)).toBe(null);
+        });
+    });
+
+    describe('Marriage & Divorce (Chunk 2)', () => {
+        test('calculateProposalAcceptance scales with status like attemptBefriend', () => {
+            expect(GameLogic.calculateProposalAcceptance(75, 0.7)).toBe(true);
+            expect(GameLogic.calculateProposalAcceptance(75, 0.8)).toBe(false);
+        });
+
+        test('propose only shows for Boyfriend/Girlfriend with status >= 75', () => {
+            const eligible = { category: 'partner', type: 'Boyfriend', status: 80 };
+            const tooEarly = { category: 'partner', type: 'Boyfriend', status: 60 };
+            const alreadyEngaged = { category: 'partner', type: 'Fiancé', status: 80 };
+
+            expect(GameLogic.getAvailableInteractions(eligible, {}).map(i => i.key)).toContain('propose');
+            expect(GameLogic.isInteractionBlocked('propose', tooEarly, { age: 25 }).blocked).toBe(true);
+            expect(GameLogic.getAvailableInteractions(alreadyEngaged, {}).map(i => i.key)).not.toContain('propose');
+        });
+
+        test('get_married only shows for Fiancé/Fiancée and carries a directAction', () => {
+            const fiance = { category: 'partner', type: 'Fiancé', status: 80 };
+            const boyfriend = { category: 'partner', type: 'Boyfriend', status: 80 };
+
+            const fianceInteractions = GameLogic.getAvailableInteractions(fiance, {});
+            expect(fianceInteractions.map(i => i.key)).toContain('get_married');
+            expect(fianceInteractions.find(i => i.key === 'get_married').directAction).toBe('openWeddingPlanner');
+            expect(GameLogic.getAvailableInteractions(boyfriend, {}).map(i => i.key)).not.toContain('get_married');
+        });
+
+        test('file_divorce only shows for spouse category', () => {
+            const spouse = { category: 'spouse', type: 'Wife', status: 50 };
+            const partner = { category: 'partner', type: 'Fiancée', status: 50 };
+
+            expect(GameLogic.getAvailableInteractions(spouse, {}).map(i => i.key)).toContain('file_divorce');
+            expect(GameLogic.getAvailableInteractions(partner, {}).map(i => i.key)).not.toContain('file_divorce');
+        });
+    });
+
+    describe('Pregnancy & Birth (Chunk 3)', () => {
+        test('calculatePregnancyChance declines with carrying-parent age', () => {
+            expect(GameLogic.calculatePregnancyChance(30, 0.4)).toBe(true);  // chance 0.5
+            expect(GameLogic.calculatePregnancyChance(30, 0.6)).toBe(false);
+            expect(GameLogic.calculatePregnancyChance(37, 0.25)).toBe(true); // chance 0.3
+            expect(GameLogic.calculatePregnancyChance(37, 0.35)).toBe(false);
+            expect(GameLogic.calculatePregnancyChance(42, 0.05)).toBe(true); // chance 0.1
+            expect(GameLogic.calculatePregnancyChance(42, 0.15)).toBe(false);
+            expect(GameLogic.calculatePregnancyChance(50, 0.01)).toBe(true); // chance 0.02
+            expect(GameLogic.calculatePregnancyChance(50, 0.05)).toBe(false);
+        });
+
+        test('try_for_baby only shows for spouse, and is blocked while already expecting', () => {
+            const spouse = { category: 'spouse', type: 'Wife', status: 50, age: 25 };
+            const partner = { category: 'partner', type: 'Fiancée', status: 50, age: 25 };
+
+            expect(GameLogic.getAvailableInteractions(spouse, {}).map(i => i.key)).toContain('try_for_baby');
+            expect(GameLogic.getAvailableInteractions(partner, {}).map(i => i.key)).not.toContain('try_for_baby');
+
+            expect(GameLogic.isInteractionBlocked('try_for_baby', spouse, { age: 25, isExpecting: true })).toEqual({ blocked: true, reason: 'Already Expecting' });
+            expect(GameLogic.isInteractionBlocked('try_for_baby', spouse, { age: 25, isExpecting: false })).toEqual({ blocked: false, reason: '' });
+        });
+
+        test('try_for_baby is blocked under 18 for either party', () => {
+            const youngSpouse = { category: 'spouse', type: 'Husband', status: 50, age: 17 };
+            expect(GameLogic.isInteractionBlocked('try_for_baby', youngSpouse, { age: 25 }).blocked).toBe(true);
+            expect(GameLogic.isInteractionBlocked('try_for_baby', { ...youngSpouse, age: 18 }, { age: 17 }).blocked).toBe(true);
+            expect(GameLogic.isInteractionBlocked('try_for_baby', { ...youngSpouse, age: 18 }, { age: 18 }).blocked).toBe(false);
+        });
+    });
+
     test('attemptBefriend handles status chance correctly', () => {
         // Roll = 0.4. Status 50 => chance 0.50 => 0.4 < 0.50 => true
         expect(GameLogic.attemptBefriend(50, false, 0.4)).toBe(true);
@@ -280,6 +429,85 @@ describe('Relationship Logic', () => {
         expect(GameLogic.attemptBefriend(50, true, 0.2)).toBe(true);
         // Teacher: status 50 => chance 0.25 => 0.3 < 0.25 => false
         expect(GameLogic.attemptBefriend(50, true, 0.3)).toBe(false);
+    });
+});
+
+describe('Relationship Interaction Catalog', () => {
+    test('isHostile uses a lower floor (15) for family/spouse/child, higher (30) for everyone else', () => {
+        expect(GameLogic.isHostile({ category: 'family', status: 20 })).toBe(false);
+        expect(GameLogic.isHostile({ category: 'family', status: 10 })).toBe(true);
+        expect(GameLogic.isHostile({ category: 'spouse', status: 14 })).toBe(true);
+        expect(GameLogic.isHostile({ category: 'child', status: 15 })).toBe(false);
+        expect(GameLogic.isHostile({ category: 'friend', status: 20 })).toBe(true);
+        expect(GameLogic.isHostile({ category: 'friend', status: 30 })).toBe(false);
+    });
+
+    test('getAvailableInteractions only includes ask_friend for classmates', () => {
+        const classmate = { category: 'classmate', type: 'Classmate', status: 50 };
+        const friend = { category: 'friend', type: 'Friend', status: 50 };
+
+        const classmateKeys = GameLogic.getAvailableInteractions(classmate, { relationships: [] }).map(i => i.key);
+        const friendKeys = GameLogic.getAvailableInteractions(friend, { relationships: [] }).map(i => i.key);
+
+        expect(classmateKeys).toContain('ask_friend');
+        expect(friendKeys).not.toContain('ask_friend');
+        expect(friendKeys).toEqual(expect.arrayContaining(['spend_time', 'give_money', 'insult', 'compliment', 'call_chat']));
+    });
+
+    test('isInteractionBlocked flags age, funds, and hostility with matching reasons', () => {
+        const user = { age: 25, money: 0 };
+        const person = { category: 'friend', status: 50 };
+
+        // Insufficient funds for give_money
+        expect(GameLogic.isInteractionBlocked('give_money', person, user)).toEqual({ blocked: true, reason: 'Insufficient Funds' });
+
+        // Too young for give_money (age gate takes priority over funds when both fail)
+        expect(GameLogic.isInteractionBlocked('give_money', person, { age: 5, money: 0 })).toEqual({ blocked: true, reason: 'Too Young' });
+
+        // Hostile friend refuses everything except give_money/insult
+        const hostileFriend = { category: 'friend', status: 10 };
+        expect(GameLogic.isInteractionBlocked('compliment', hostileFriend, { age: 25, money: 1000 })).toEqual({ blocked: true, reason: 'Refuses Contact' });
+        expect(GameLogic.isInteractionBlocked('insult', hostileFriend, { age: 25, money: 1000 })).toEqual({ blocked: false, reason: '' });
+
+        // Not blocked when all gates pass
+        expect(GameLogic.isInteractionBlocked('compliment', person, { age: 25, money: 1000 })).toEqual({ blocked: false, reason: '' });
+    });
+
+    test('isInteractionBlocked returns Unknown Action for an unrecognized key', () => {
+        expect(GameLogic.isInteractionBlocked('not_a_real_action', { category: 'friend', status: 50 }, { age: 25 })).toEqual({ blocked: true, reason: 'Unknown Action' });
+    });
+});
+
+describe('getRandomFirstName / getLastName', () => {
+    test('getRandomFirstName draws from the gendered pool only', () => {
+        for (let i = 0; i < 20; i++) {
+            const roll = i / 20;
+            expect(typeof GameLogic.getRandomFirstName('male', roll)).toBe('string');
+            expect(typeof GameLogic.getRandomFirstName('female', roll)).toBe('string');
+        }
+        // Deterministic rolls should differ between pools at the same index for at least one sample
+        const maleNames = new Set(Array.from({ length: 20 }, (_, i) => GameLogic.getRandomFirstName('male', i / 20)));
+        const femaleNames = new Set(Array.from({ length: 20 }, (_, i) => GameLogic.getRandomFirstName('female', i / 20)));
+        expect([...maleNames].some(n => !femaleNames.has(n))).toBe(true);
+    });
+
+    test('getLastName extracts the final word of a full name', () => {
+        expect(GameLogic.getLastName('John Smith')).toBe('Smith');
+        expect(GameLogic.getLastName('Mary Anne Johnson')).toBe('Johnson');
+        expect(GameLogic.getLastName('Cher')).toBe('Cher');
+    });
+
+    test('getFirstName extracts everything but the final word of a full name', () => {
+        expect(GameLogic.getFirstName('John Smith')).toBe('John');
+        expect(GameLogic.getFirstName('Mary Anne Johnson')).toBe('Mary Anne');
+        expect(GameLogic.getFirstName('Cher')).toBe('Cher');
+    });
+});
+
+describe('calculateNameChangeAcceptance', () => {
+    test('scales with status like calculateProposalAcceptance', () => {
+        expect(GameLogic.calculateNameChangeAcceptance(75, 0.7)).toBe(true);
+        expect(GameLogic.calculateNameChangeAcceptance(75, 0.8)).toBe(false);
     });
 });
 
