@@ -7,7 +7,7 @@ import { confirmQuitCareer, quitCareer, renderCareerManager, workHarderJob, slac
 import { renderJobMarket } from '../features/career/partTimeJobsScreen.js';
 import { renderEducation, workHarder, skipSchool, renderClassmates } from '../features/education/manageEducationScreen.js';
 import { attemptEnrollment, openGradEnrollmentModal, attemptGradEnrollment, renderGradSchoolMarket, openUniversityModal } from '../features/career/occupationScreen.js';
-import { selectGender, submitCharacter, renderCharCreation } from '../features/player/charCreationScreen.js';
+import { selectGender, submitCharacter, renderCharCreation, cycleTrait, randomizeSection, randomizeAllTraits } from '../features/player/charCreationScreen.js';
 import { ageUp, continueAsChild, renderLifeDashboard, addLog, renderDeathScreen, showFullEulogy } from '../features/player/mainScreen.js';
 import { state } from './state.js';
 import { GameLogic } from './gameLogic.js';
@@ -363,7 +363,9 @@ export function updateGameInfo(dbUser) {
             username: savedUser.username || savedUser.name || "Player",
             gender: savedUser.gender || "male",
             city: savedUser.city || "New York",
-            
+            appearance: savedUser.appearance || null,
+            avatarVersion: savedUser.avatarVersion || 0,
+
             // --- CORE STATS ---
             age: data.stats?.age || savedUser.age || 0,
             health: data.stats?.health || savedUser.health || 100,
@@ -467,6 +469,8 @@ export const loadAndRenderGame = (userData) => {
             health: userData.health || 100,
             gender: userData.gender || 'male',
             city: userData.city || "New York",
+            appearance: userData.appearance || null,
+            avatarVersion: userData.avatarVersion || 0,
             isDead: userData.is_dead || false,
             //education
             isStudent: userData.is_student || false,
@@ -743,6 +747,9 @@ const showComingSoon = () => {
 
 const routeHandlers = {
   resetGame,
+  cycleTrait,
+  randomizeSection,
+  randomizeAllTraits,
   applyForJob,
   applyForCareerTrack,
   answerInterview,

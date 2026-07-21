@@ -3,6 +3,8 @@ import { renderLifeDashboard, addLog } from '../player/mainScreen.js';
 import { GameLogic } from '../../core/gameLogic.js';
 import { Utils } from '../../ui/utils.js';
 import { UI } from '../../ui/ui.js';
+import { AvatarLogic } from '../../core/avatarLogic.js';
+import { renderAvatar } from '../../ui/avatarRenderer.js';
 
 // --- ADD NEW RELATIONSHIP GLOBAL METHOD ---
 // Call this function when befriending someone at school, work, etc.
@@ -24,14 +26,16 @@ export const addNewRelationship = (name, age, type, status, category = 'friend')
         }
     }
 
+    // Use crypto for unique IDs to prevent rendering collisions
+    const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'rel_' + Date.now() + Math.floor(Math.random() * 1000);
     const newPerson = {
-        // Use crypto for unique IDs to prevent rendering collisions
-        id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'rel_' + Date.now() + Math.floor(Math.random() * 1000),
+        id,
         name: name,
         age: age,
         type: finalType,
         status: status,
-        category: finalCategory
+        category: finalCategory,
+        appearance: AvatarLogic.generateRandomAppearance(id)
     };
 
     user.relationships.push(newPerson);
@@ -60,13 +64,7 @@ export const renderRelationships = () => {
         if (person.status < 30) barColor = 'bg-red-500';
         else if (person.status < 60) barColor = 'bg-yellow-500';
 
-        // B. Determine Icon based on role
-        let icon = 'fa-user';
-        if (person.category === 'spouse' || person.category === 'partner') icon = 'fa-heart text-pink-400';
-        else if (person.category === 'enemy') icon = 'fa-angry text-red-400';
-        else if (person.category === 'child') icon = 'fa-baby text-blue-300';
-
-        // C. Determine Badge Style
+        // B. Determine Badge Style
         let badgeStyle = "bg-slate-600 text-slate-100 border-slate-500";
 
         if (['family', 'spouse', 'child'].includes(person.category)) {
@@ -82,10 +80,10 @@ export const renderRelationships = () => {
         return `
             <div data-action="renderPersonInteraction" data-args="&apos;${person.id}&apos;" class="bg-slate-800 p-3 rounded-xl border border-slate-700 mb-3 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition flex items-center justify-between group">
                 <div class="flex items-center gap-4">
-                    <div class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-slate-400 group-hover:bg-slate-600 transition border border-slate-600">
-                        <i class="fas ${icon}"></i>
+                    <div class="w-10 h-10 rounded-full bg-slate-700 overflow-hidden flex items-center justify-center text-slate-400 group-hover:bg-slate-600 transition border border-slate-600">
+                        ${renderAvatar(person)}
                     </div>
-                    
+
                     <div>
                         <div class="flex items-center gap-2 mb-0.5">
                             <h4 class="font-bold text-white text-sm tracking-wide">${person.name}</h4>
@@ -282,8 +280,8 @@ export const renderPersonInteraction = (id) => {
             </div>
 
             <div class="text-center mb-6">
-                <div class="w-16 h-16 rounded-full bg-slate-700 flex items-center justify-center text-white mx-auto mb-3 text-2xl border border-slate-600 shadow-lg">
-                    <i class="fas fa-user"></i>
+                <div class="w-16 h-16 rounded-full bg-slate-700 overflow-hidden flex items-center justify-center text-white mx-auto mb-3 text-2xl border border-slate-600 shadow-lg">
+                    ${renderAvatar(person)}
                 </div>
                 <h2 class="text-2xl font-bold text-white">${person.name}</h2>
                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider ${badgeStyle} inline-block mt-2 shadow-sm">${person.type}</span>

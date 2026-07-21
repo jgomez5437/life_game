@@ -1,6 +1,7 @@
 import { state } from '../../core/state.js';
 import { renderActivities, getSchoolName } from '../career/occupationScreen.js';
 import { renderLifeDashboard, addLog, refreshClassmates } from '../player/mainScreen.js';
+import { renderAvatar } from '../../ui/avatarRenderer.js';
 
 const get = id => document.getElementById(id);
 
@@ -152,13 +153,11 @@ export function renderClassmates() {
             if (person.status < 30) barColor = 'bg-red-500';
             else if (person.status < 60) barColor = 'bg-yellow-500';
 
-            let icon = person.type === 'Teacher' ? 'fa-chalkboard-teacher text-indigo-400' : 'fa-user-graduate text-slate-300';
-
             return `
                 <div data-action="renderPersonInteraction" data-args="&apos;${person.id}&apos;" class="bg-slate-800 p-3 rounded-xl border border-slate-700 mb-3 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition flex items-center justify-between group">
                     <div class="flex items-center gap-4">
-                        <div class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-slate-400 group-hover:bg-slate-600 transition border border-slate-600">
-                            <i class="fas ${icon}"></i>
+                        <div class="w-10 h-10 rounded-full bg-slate-700 overflow-hidden flex items-center justify-center text-slate-400 group-hover:bg-slate-600 transition border border-slate-600">
+                            ${renderAvatar(person)}
                         </div>
                         <div>
                             <div class="flex items-center gap-2 mb-0.5">

@@ -4,6 +4,7 @@ import { Utils } from '../../ui/utils.js';
 import { UI } from '../../ui/ui.js';
 import { saveGame } from '../../core/main.js';
 import { GameLogic } from '../../core/gameLogic.js';
+import { renderAvatar } from '../../ui/avatarRenderer.js';
 
 export const processNextFuneral = () => {
     if (!state.gameState.pendingFunerals || state.gameState.pendingFunerals.length === 0) {
@@ -134,7 +135,10 @@ const renderFuneralScreen = (deceased) => {
 
     const html = `
         <div class="fade-in max-w-md mx-auto min-h-full py-8 flex flex-col justify-center items-center text-center px-4">
-            <i class="fas fa-tombstone text-6xl text-slate-600 mb-6"></i>
+            <div class="w-16 h-16 rounded-full bg-slate-700 overflow-hidden flex items-center justify-center mx-auto mb-3 border border-slate-600 opacity-75">
+                ${renderAvatar(deceased)}
+            </div>
+            <i class="fas fa-tombstone text-4xl text-slate-600 mb-6"></i>
             <h1 class="text-3xl font-bold text-white mb-2">Tragedy Strikes</h1>
             <p class="text-slate-300 text-sm mb-6">Your ${deceased.type}, ${deceased.name}, died at age ${deceased.age} from ${deceased.deathCause}</p>
             
