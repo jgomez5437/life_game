@@ -328,6 +328,7 @@ function handleFinances(user) {
                             user.jobTitle  = nextLevel.title;
                             user.jobSalary = Math.max(user.jobSalary, nextLevel.salary);
                             user.yearsInRole = 0;
+                            user.jobPerformance = 60;
                             addLog(`Promoted to ${nextLevel.title}! New salary: ${Utils.formatMoney(user.jobSalary)}/yr.`, 'major');
                             promoted = true;
                         }

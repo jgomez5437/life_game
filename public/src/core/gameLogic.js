@@ -458,7 +458,7 @@ const RELATIONSHIP_INTERACTIONS = [
     { key: 'give_money', name: 'Give Money', icon: 'fa-money-bill', desc: 'Give a monetary gift', cost: 500, statusChange: 10, blockedIfAgeLte: 10, allowedWhileHostile: true },
     { key: 'insult', name: 'Insult', icon: 'fa-angry', desc: 'Say something mean', cost: 0, statusChange: -20, blockedIfAgeLte: 2, allowedWhileHostile: true },
     { key: 'compliment', name: 'Compliment', icon: 'fa-heart', desc: 'Say something nice', cost: 0, statusChange: 15, blockedIfAgeLte: 2 },
-    { key: 'call_chat', name: 'Call to Chat', icon: 'fa-phone', desc: 'Have a quick chat over the phone', cost: 0, statusChange: 10, blockedIfAgeLte: 5 },
+    { key: 'call_chat', name: 'Call to Chat', icon: 'fa-phone', desc: 'Have a quick chat over the phone', cost: 0, statusChange: 10, blockedIfAgeLte: 5, blockedForTeacherUnlessFriend: true },
     { key: 'ask_friend', name: 'Ask to be Friends', icon: 'fa-user-plus', desc: 'See if they want to hang out outside of school', cost: 0, statusChange: 0, categories: ['classmate'] },
 
     // --- Romance (Chunk 1) ---
@@ -546,6 +546,11 @@ function isInteractionBlocked(interactionKey, person, user) {
     if (it.blockedIfUserExpecting && user.isExpecting) {
         blocked = true;
         if (!reason) reason = 'Already Expecting';
+    }
+
+    if (it.blockedForTeacherUnlessFriend && person.type === 'Teacher') {
+        blocked = true;
+        if (!reason) reason = 'Not Friends Yet';
     }
 
     if (isHostile(person) && !it.allowedWhileHostile) {

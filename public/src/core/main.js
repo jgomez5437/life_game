@@ -280,12 +280,12 @@ const get = id => document.getElementById(id);
             { title: "Landscaper",          hourly: 13, salary: 13520, icon: "fa-leaf" },
             { title: "Tutor",               hourly: 18, salary: 18720, icon: "fa-chalkboard-teacher", reqUniversity: true },
             { title: "Waiter/Waitress",     hourly: 14, salary: 14560, icon: "fa-utensils" },
-            { title: "Ride-Share Driver",   hourly: 16, salary: 16640, icon: "fa-car" },
+            { title: "Ride-Share Driver",   hourly: 16, salary: 16640, icon: "fa-car", minAge: 21 },
             { title: "Barista",             hourly: 12, salary: 12480, icon: "fa-coffee" },
             { title: "Library Assistant",   hourly: 12, salary: 12480, icon: "fa-book" },
             { title: "Pharmacy Tech",       hourly: 15, salary: 15600, icon: "fa-pills" },
             { title: "Freelancer",          hourly: 20, salary: 20800, icon: "fa-pen-fancy" },
-            { title: "Personal Trainer",    hourly: 20, salary: 20800, icon: "fa-dumbbell" }
+            { title: "Personal Trainer",    hourly: 20, salary: 20800, icon: "fa-dumbbell", minAge: 18 }
         ];
 
         export const INDUSTRIES = {

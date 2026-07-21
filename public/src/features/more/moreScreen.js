@@ -8,6 +8,8 @@ const get = id => document.getElementById(id);
 
 export function renderMoreDashboard() {
     const user = state.gameState.user;
+    const gymLocked = user.age < 12;
+    const casinoLocked = user.age < 21;
 
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
@@ -56,6 +58,11 @@ export function renderMoreDashboard() {
                             </div>
                         </div>
                     </div>
+                    ${gymLocked ? `
+                        <div class="text-xs font-bold text-red-400 uppercase tracking-wide text-center py-2 border border-dashed border-slate-700 rounded">
+                            <i class="fas fa-lock mr-1"></i>Must be 12 or older
+                        </div>
+                    ` : `
                     <div class="grid grid-cols-2 gap-2 mt-4">
                         <button data-action="visitGymOneTime" class="bg-slate-700 hover:bg-slate-600 p-2 rounded text-sm text-white font-bold transition">
                             ${user.gymMembership ? 'Visit' : 'Visit Once ($20)'}
@@ -70,6 +77,7 @@ export function renderMoreDashboard() {
                             </button>
                         `}
                     </div>
+                    `}
                 </div>
 
                 <!-- Diet Plan -->
@@ -134,9 +142,15 @@ export function renderMoreDashboard() {
                         </div>
                     </div>
                     <p class="text-xs text-slate-400 mb-2">Risk your hard-earned money at the tables. 1:1 payout.</p>
+                    ${casinoLocked ? `
+                        <div class="text-xs font-bold text-red-400 uppercase tracking-wide text-center py-2 border border-dashed border-slate-700 rounded">
+                            <i class="fas fa-lock mr-1"></i>Must be 21 or older
+                        </div>
+                    ` : `
                     <button data-action="openBlackjackBetting" class="bg-purple-600 hover:bg-purple-500 w-full py-2 rounded text-sm text-white font-bold transition">
                         Play Blackjack
                     </button>
+                    `}
                 </div>
 
             </div>
@@ -146,6 +160,10 @@ export function renderMoreDashboard() {
 
 export function visitGymOneTime() {
     const user = state.gameState.user;
+    if (user.age < 12) {
+        UI.showModal("Too Young", "You must be at least 12 to go to the gym.");
+        return;
+    }
     const { boost, cost } = GameLogic.calculateOneTimeGymVisit();
     const actualCost = user.gymMembership ? 0 : cost;
     
@@ -162,6 +180,10 @@ export function visitGymOneTime() {
 
 export function buyGymMembership() {
     const user = state.gameState.user;
+    if (user.age < 12) {
+        UI.showModal("Too Young", "You must be at least 12 to join the gym.");
+        return;
+    }
     user.gymMembership = true;
     addLog("You bought a gym membership.", 'good');
     renderMoreDashboard();
@@ -207,6 +229,10 @@ let activeBlackjackState = null;
 
 export function openBlackjackBetting() {
     const user = state.gameState.user;
+    if (user.age < 21) {
+        UI.showModal("Too Young", "You must be at least 21 to enter the casino.");
+        return;
+    }
     if (user.money < 25) {
         UI.showModal("Not enough money", "You need at least $25 to play blackjack.");
         return;
