@@ -331,6 +331,9 @@ export function applyForJob(title, salary) {
     if (jobDef?.reqUniversity && !user.universityEnrolled && !user.universityGraduated) {
         return UI.showModal('Not Eligible', 'This job requires university enrollment or a degree.');
     }
+    if (jobDef?.minAge && user.age < jobDef.minAge) {
+        return UI.showModal('Not Eligible', `This job requires you to be at least ${jobDef.minAge} years old.`);
+    }
     _pendingInterview = { type: 'parttime', trackKey: null, title, salary, seenQuestions: [], correctAnswer: null };
     startPartTimeInterview(title, salary);
 }

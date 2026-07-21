@@ -14,8 +14,9 @@ export function renderJobMarket() {
     const sortedJobs = [...PART_TIME_JOBS].sort((a, b) => b.hourly - a.hourly);
     const listHtml = sortedJobs.map(job => {
         const isCurrent = user.jobTitle === job.title;
-        const meetsReq = !job.reqUniversity || user.universityEnrolled || user.universityGraduated;
-        const locked = !isCurrent && !meetsReq;
+        const meetsUniversityReq = !job.reqUniversity || user.universityEnrolled || user.universityGraduated;
+        const meetsAgeReq = !job.minAge || user.age >= job.minAge;
+        const locked = !isCurrent && (!meetsUniversityReq || !meetsAgeReq);
 
         let btn;
         if (isCurrent) {
@@ -26,7 +27,9 @@ export function renderJobMarket() {
             btn = `<button data-action="applyForJob" data-args="&apos;${job.title}&apos;, ${job.salary}" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-2 px-4 rounded-lg transition">Apply</button>`;
         }
 
-        const reqHtml = locked
+        const reqHtml = !meetsAgeReq
+            ? `<div class="text-[10px] text-red-400 mt-0.5"><i class="fas fa-lock mr-1"></i>Requires age ${job.minAge}+</div>`
+            : locked
             ? `<div class="text-[10px] text-red-400 mt-0.5"><i class="fas fa-lock mr-1"></i>Requires university enrollment</div>`
             : '';
 
