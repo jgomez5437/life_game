@@ -1,5 +1,6 @@
 import { addLog } from '../features/player/mainScreen.js';
 import { UI } from '../ui/ui.js';
+import { AvatarLogic } from './avatarLogic.js';
 
 function sanitizeName(rawInput) {
     if (!rawInput || typeof rawInput !== 'string') {
@@ -680,8 +681,9 @@ function generateSchoolCohort(userAge) {
         const gender = Math.random() < 0.5 ? 'male' : 'female';
         const first = getRandomFirstName(gender);
         const last = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
+        const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'rel_' + Date.now() + Math.random().toString(36).substring(2, 9);
         cohort.push({
-            id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'rel_' + Date.now() + Math.random().toString(36).substring(2, 9),
+            id,
             name: `${first} ${last}`,
             age: Math.floor(Math.random() * (classmateAgeMax - classmateAgeMin + 1)) + classmateAgeMin,
             type: 'Classmate',
@@ -689,7 +691,8 @@ function generateSchoolCohort(userAge) {
             status: Math.floor(Math.random() * 31) + 20, // 20 to 50 starting status
             category: 'classmate',
             isCurrentClassmate: true,
-            interactedThisYear: false
+            interactedThisYear: false,
+            appearance: AvatarLogic.generateRandomAppearance(id)
         });
     }
 
@@ -697,9 +700,10 @@ function generateSchoolCohort(userAge) {
     const teacherGender = Math.random() < 0.5 ? 'male' : 'female';
     const lastTeacher = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
     const title = teacherGender === 'male' ? 'Mr.' : (Math.random() > 0.5 ? 'Ms.' : 'Mrs.');
+    const teacherId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'rel_' + Date.now() + Math.random().toString(36).substring(2, 9);
 
     cohort.push({
-        id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'rel_' + Date.now() + Math.random().toString(36).substring(2, 9),
+        id: teacherId,
         name: `${title} ${lastTeacher}`,
         age: Math.floor(Math.random() * 37) + 24, // 24 to 60
         type: 'Teacher',
@@ -707,7 +711,8 @@ function generateSchoolCohort(userAge) {
         status: Math.floor(Math.random() * 31) + 20, // 20 to 50
         category: 'classmate', // Keep as 'classmate' category so they show up together
         isCurrentClassmate: true,
-        interactedThisYear: false
+        interactedThisYear: false,
+        appearance: AvatarLogic.generateRandomAppearance(teacherId)
     });
 
     return cohort;
@@ -730,16 +735,18 @@ function generateStranger(userAge, userGender, roll = Math.random()) {
 
     const first = getRandomFirstName(gender);
     const last = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
+    const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'rel_' + Date.now() + Math.random().toString(36).substring(2, 9);
 
     return {
-        id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'rel_' + Date.now() + Math.random().toString(36).substring(2, 9),
+        id,
         name: `${first} ${last}`,
         age,
         type: 'Friend',
         gender,
         status: Math.floor(Math.random() * 21) + 20, // 20 to 40 starting status
         category: 'friend',
-        interactedThisYear: false
+        interactedThisYear: false,
+        appearance: AvatarLogic.generateRandomAppearance(id)
     };
 }
 

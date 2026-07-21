@@ -10,6 +10,8 @@ import { saveGame, resetGame, CAREER_TRACKS } from '../../core/main.js';
 import { checkSchoolActionTaken } from '../education/manageEducationScreen.js';
 import { checkActionTaken } from '../career/jobCareerManagerScreen.js';
 import { autoProcessBusinessQuarter } from '../business/businessDashboard.js';
+import { AvatarLogic } from '../../core/avatarLogic.js';
+import { renderAvatar } from '../../ui/avatarRenderer.js';
 const get = id => document.getElementById(id);
 
 // public/screens/mainScreen.js
@@ -40,6 +42,7 @@ export function ageUp() {
     handleLifeEvents(user);
     handleRelationships(user);
     handlePregnancy(user);
+    handleAppearanceAging(user);
 
     // 4. Empty Year Validation (The Fix)
     const currentAgeLog = currentState.lifeLog.find(l => l.age === user.age);
@@ -227,8 +230,10 @@ export const continueAsChild = (childIndex, inheritedMoney) => {
         jobSalary: 0,
         jobPerformance: 50,
         hasBusiness: false,
-        assets: [], 
-        relationships: [] // Legacy relationships are purged to prevent cyclical graphing
+        assets: [],
+        relationships: [], // Legacy relationships are purged to prevent cyclical graphing
+        appearance: AvatarLogic.ensureAppearance(selectedChild),
+        avatarVersion: selectedChild.avatarVersion || 0
     };
 
     // Calculate initial life status
@@ -569,15 +574,17 @@ function handlePregnancy(user) {
     const lastName = GameLogic.getLastName(user.username);
     const firstName = GameLogic.getRandomFirstName(isMale ? 'male' : 'female');
 
+    const childId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'rel_' + Date.now() + Math.random().toString(36).substring(2, 9);
     const child = {
-        id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'rel_' + Date.now() + Math.random().toString(36).substring(2, 9),
+        id: childId,
         name: `${firstName} ${lastName}`,
         age: 0,
         type: isMale ? 'Son' : 'Daughter',
         gender: isMale ? 'male' : 'female',
         status: 100,
         category: 'child',
-        interactedThisYear: false
+        interactedThisYear: false,
+        appearance: AvatarLogic.generateRandomAppearance(childId)
     };
 
     if (!user.relationships) user.relationships = [];
@@ -586,6 +593,16 @@ function handlePregnancy(user) {
 
     user.isExpecting = false;
     user.expectingWithId = null;
+}
+
+// Bumps the avatar cache version for the player and every relationship once
+// per in-game year so avatarRenderer.js recomputes aged hair color/wrinkle
+// opacity, rather than re-deriving them on every single UI render.
+function handleAppearanceAging(user) {
+    user.avatarVersion = (user.avatarVersion || 0) + 1;
+    (user.relationships || []).forEach(rel => {
+        rel.avatarVersion = (rel.avatarVersion || 0) + 1;
+    });
 }
 
 //Define the rendering function globally so script.js can call it.
@@ -599,20 +616,7 @@ export function renderLifeDashboard(maybeGameState) {
     //Update the Header Bar using the UI Manager
     //    We assume 'game' holds the key stats needed for the header.
     UI.updateHeader(user);
-    //change avatar based on gender
-    let iconClass = '';
-    if (user.age < 5) {
-    iconClass = 'fas fa-baby text-green-400'; // Babies are green/neutral
-    } else if (user.age < 13) {
-    iconClass = 'fas fa-child text-yellow-400'; // Kids are yellow
-    } else {
-    // Adults get gender colors
-    iconClass = user.gender === 'male' 
-        ? 'fas fa-male text-blue-400' 
-        : 'fas fa-female text-pink-400';
-    };
-    const avatarHtml = `<i class="${iconClass} text-2xl"></i>`;
-    if(user.username) get('avatar-container').innerHTML = avatarHtml;
+    if (user.username) get('avatar-container').innerHTML = renderAvatar(user);
 // Generate the Life Log HTML 
     const logHtml = currentState.lifeLog.map(l => `
         <div class="mb-5 group">

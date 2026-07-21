@@ -4,45 +4,152 @@ import { state } from '../../core/state.js';
 import { renderLifeDashboard, addLog } from './mainScreen.js';
 import { FamilyFactory } from '../relationships/familyFactory.js';
 import { UI } from '../../ui/ui.js';
+import { AvatarLogic } from '../../core/avatarLogic.js';
+import { renderAvatar } from '../../ui/avatarRenderer.js';
 
 //Character creation screen
 const get = id => document.getElementById(id);
 let selectedGender = 'male';
 const CITIES = ["New York", "Los Angeles", "San Francisco", "Houston", "Miami", "Tucson", "London", "Osaka", "Tokyo", "Berlin", "Madrid","Bandar Seri Begawan", "Paris", "Beijing", "Toronto", "Mexico City", "Cairo"];
 
+// --- APPEARANCE DRAFT (character creation only; final pick is stored on submit) ---
+const APPEARANCE_SECTIONS = [
+    { title: 'Face', fields: [
+        { key: 'skinTone', options: AvatarLogic.SKIN_TONES },
+        { key: 'faceShape', options: AvatarLogic.FACE_SHAPES }
+    ]},
+    { title: 'Hair', fields: [
+        { key: 'hairStyle', options: AvatarLogic.HAIR_STYLES },
+        { key: 'hairColorBase', options: AvatarLogic.HAIR_COLORS }
+    ]},
+    { title: 'Eyes', fields: [
+        { key: 'eyeShape', options: AvatarLogic.EYE_SHAPES },
+        { key: 'eyeColor', options: AvatarLogic.EYE_COLORS },
+        { key: 'eyebrowStyle', options: AvatarLogic.EYEBROW_STYLES }
+    ]},
+    { title: 'Extras', fields: [
+        { key: 'facialHairStyle', options: AvatarLogic.FACIAL_HAIR_STYLES },
+        { key: 'facialHairColor', options: AvatarLogic.FACIAL_HAIR_COLORS },
+        { key: 'glassesStyle', options: AvatarLogic.GLASSES_STYLES },
+        { key: 'glassesColor', options: AvatarLogic.GLASSES_COLORS }
+    ]}
+];
+
+let draftAppearance = null;
+let previewVersion = 0;
+
+function labelize(value) {
+    return String(value).replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase());
+}
+
+function findField(key) {
+    for (const section of APPEARANCE_SECTIONS) {
+        const field = section.fields.find(f => f.key === key);
+        if (field) return field;
+    }
+    return null;
+}
+
+function renderAppearancePanel() {
+    const preview = get('avatar-preview');
+    if (preview) {
+        previewVersion++;
+        preview.innerHTML = renderAvatar({ id: 'char-creation-preview', age: 25, appearance: draftAppearance, avatarVersion: previewVersion });
+    }
+
+    const panel = get('appearance-panel');
+    if (!panel) return;
+    panel.innerHTML = APPEARANCE_SECTIONS.map(section => `
+        <div class="mb-3">
+            <div class="text-xs text-slate-500 uppercase font-bold mb-1">${section.title}</div>
+            ${section.fields.map(f => `
+                <div class="flex items-center justify-between bg-slate-900 rounded-lg px-1 py-1.5 mb-1">
+                    <button data-action="cycleTrait" data-args="'${f.key}', -1" class="text-slate-400 hover:text-white w-8 h-8"><i class="fas fa-chevron-left"></i></button>
+                    <div class="flex-1 text-center text-xs text-slate-300">${labelize(f.key)}: <span class="text-blue-300 font-bold">${labelize(draftAppearance[f.key])}</span></div>
+                    <button data-action="cycleTrait" data-args="'${f.key}', 1" class="text-slate-400 hover:text-white w-8 h-8"><i class="fas fa-chevron-right"></i></button>
+                </div>
+            `).join('')}
+            <button data-action="randomizeSection" data-args="'${section.title}'" class="text-[11px] text-slate-500 hover:text-white transition">
+                <i class="fas fa-dice mr-1"></i>Randomize ${section.title}
+            </button>
+        </div>
+    `).join('');
+}
+
+export function cycleTrait(key, direction) {
+    const field = findField(key);
+    if (!field || !draftAppearance) return;
+    const idx = field.options.indexOf(draftAppearance[key]);
+    const next = (idx + direction + field.options.length) % field.options.length;
+    draftAppearance[key] = field.options[next];
+    renderAppearancePanel();
+}
+
+export function randomizeSection(title) {
+    const section = APPEARANCE_SECTIONS.find(s => s.title === title);
+    if (!section || !draftAppearance) return;
+    section.fields.forEach(f => {
+        draftAppearance[f.key] = f.options[Math.floor(Math.random() * f.options.length)];
+    });
+    renderAppearancePanel();
+}
+
+export function randomizeAllTraits() {
+    draftAppearance = AvatarLogic.generateRandomAppearance('draft-' + Math.random());
+    renderAppearancePanel();
+}
+
 export const renderCharCreation = () => {
+    draftAppearance = AvatarLogic.generateRandomAppearance('draft-' + Math.random());
+
     const creationHTML = `
-            <div class="fade-in max-w-md mx-auto h-full flex flex-col justify-center">
-                <div class="text-center mb-8">
+            <div class="fade-in max-w-md mx-auto">
+                <div class="text-center pt-2 mb-6">
                     <i class="fas fa-baby text-6xl text-green-500 mb-4"></i>
                     <h2 class="text-3xl font-bold">New Life</h2>
                     <p class="text-slate-400">Design your destiny.</p>
                 </div>
-                <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-xl space-y-4">
-                    <div>
-                        <label class="block text-sm text-slate-400 mb-1">Full Name</label>
-                        <input type="text" id="inp-name" class="w-full bg-slate-900 border border-slate-600 rounded p-3 text-white focus:border-blue-500 outline-none" placeholder="First and Last Name">
-                    </div>
-                    <div>
-                        <label class="block text-sm text-slate-400 mb-1">Gender</label>
-                        <div class="grid grid-cols-2 gap-2">
-                            <button data-action="selectGender" data-args="&apos;male&apos;" id="btn-male" class="p-3 rounded border border-blue-500 bg-blue-900/30 text-blue-200">Male</button>
-                            <button data-action="selectGender" data-args="&apos;female&apos;" id="btn-female" class="p-3 rounded border border-slate-600 bg-slate-900 text-slate-400">Female</button>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-sm text-slate-400 mb-1">Birth City</label>
-                        <select id="inp-city" class="w-full bg-slate-900 border border-slate-600 rounded p-3 text-white outline-none">
-                            ${CITIES.map(c => `<option value="${c}">${c}</option>`).join('')}
-                        </select>
-                    </div>
-                    <button data-action="submitCharacter" class="w-full btn-life text-white font-bold py-4 rounded-xl text-lg mt-4">
-                        Start Life
+
+                <!-- Sticky so the live preview stays visible while cycling traits below on small screens -->
+                <div class="sticky top-0 z-20 bg-slate-900/95 backdrop-blur-sm border-b border-slate-700 shadow-lg rounded-lg px-3 py-3 mb-4 flex items-center gap-3">
+                    <div id="avatar-preview" class="w-14 h-14 rounded-full bg-slate-800 border-2 border-slate-600 overflow-hidden flex-shrink-0"></div>
+                    <button data-action="randomizeAllTraits" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold py-2 rounded-lg transition">
+                        <i class="fas fa-dice mr-1"></i> Randomize All
                     </button>
+                </div>
+
+                <div class="pb-6">
+                    <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-xl space-y-4">
+                        <div>
+                            <label class="block text-sm text-slate-400 mb-1">Full Name</label>
+                            <input type="text" id="inp-name" class="w-full bg-slate-900 border border-slate-600 rounded p-3 text-white focus:border-blue-500 outline-none" placeholder="First and Last Name">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-slate-400 mb-1">Gender</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button data-action="selectGender" data-args="&apos;male&apos;" id="btn-male" class="p-3 rounded border border-blue-500 bg-blue-900/30 text-blue-200">Male</button>
+                                <button data-action="selectGender" data-args="&apos;female&apos;" id="btn-female" class="p-3 rounded border border-slate-600 bg-slate-900 text-slate-400">Female</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-slate-400 mb-1">Birth City</label>
+                            <select id="inp-city" class="w-full bg-slate-900 border border-slate-600 rounded p-3 text-white outline-none">
+                                ${CITIES.map(c => `<option value="${c}">${c}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-slate-400 mb-2">Appearance</label>
+                            <div id="appearance-panel"></div>
+                        </div>
+                        <button data-action="submitCharacter" class="w-full btn-life text-white font-bold py-4 rounded-xl text-lg mt-4">
+                            Start Life
+                        </button>
+                    </div>
                 </div>
             </div>
         `;
         UI.renderScreen(creationHTML);
+        renderAppearancePanel();
     }
 
 export function selectGender(g) {
@@ -104,26 +211,28 @@ export async function submitCharacter() {
                     username: finalName,
                     gender: gender,
                     city: city,
-                    relationships: startingFamily
+                    relationships: startingFamily,
+                    appearance: draftAppearance
                 })
             });
             if (!response.ok) throw new Error('API Login Failed');
-            
-            userData = await response.json(); 
+
+            userData = await response.json();
             userData.relationships = startingFamily; // Inject before update
             updateGameInfo(userData);
-        } 
+        }
         // === IF GUEST ===
         else {
             userData = {
                 username: finalName,
                 gender: gender,
                 city: city,
-                stats: { 
-                    health: 100, 
-                    money: 0 
+                stats: {
+                    health: 100,
+                    money: 0
                 },
                 is_guest: true,
+                appearance: draftAppearance,
                 relationships: startingFamily // Inject before load
             };
             loadAndRenderGame(userData);

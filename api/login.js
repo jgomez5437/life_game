@@ -6,7 +6,7 @@ export default async function handler(request, response) {
     }
 
     // THE FIX: Destructure 'relationships' from the incoming body
-    const { auth0_id, email, username, gender, city, relationships } = request.body;
+    const { auth0_id, email, username, gender, city, relationships, appearance } = request.body;
 
     if (!auth0_id) {
         return response.status(400).json({ error: 'Missing auth0_id' });
@@ -17,8 +17,9 @@ export default async function handler(request, response) {
             name: username,
             gender: gender,
             city: city,
+            appearance: appearance || null,
             assets: [],
-            relationships: relationships || [], 
+            relationships: relationships || [],
             stats: {
                 health: 100
             },
