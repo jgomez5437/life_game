@@ -211,6 +211,8 @@ export const continueAsChild = (childIndex, inheritedMoney) => {
     const children = parentState.relationships.filter(r => r.type === 'Son' || r.type === 'Daughter');
     const selectedChild = children[childIndex];
 
+    const inheritedRelationships = GameLogic.inheritFamilyRelationships(parentState.relationships, selectedChild.id);
+
     // 1. Deep wipe and reconstruct user state
     const newUserState = {
         username: selectedChild.name,
@@ -231,7 +233,7 @@ export const continueAsChild = (childIndex, inheritedMoney) => {
         jobPerformance: 50,
         hasBusiness: false,
         assets: [],
-        relationships: [], // Legacy relationships are purged to prevent cyclical graphing
+        relationships: inheritedRelationships,
         appearance: AvatarLogic.ensureAppearance(selectedChild),
         avatarVersion: selectedChild.avatarVersion || 0
     };
@@ -384,7 +386,13 @@ function handleFinances(user) {
         user.money -= healthCosts;
     }
 
-    // 6. Business auto-quarter (runs silently each age-up)
+    // 6. Child Expenses ($500/mo per child under 21, deducted silently)
+    const childMonthlyOutflow = GameLogic.calculateChildMonthlyOutflow(user.relationships);
+    if (childMonthlyOutflow > 0) {
+        user.money -= childMonthlyOutflow * 12;
+    }
+
+    // 7. Business auto-quarter (runs silently each age-up)
     if (user.hasBusiness) {
         autoProcessBusinessQuarter(user);
     }

@@ -421,6 +421,9 @@ export function updateGameInfo(dbUser) {
             supplierId:          savedUser.supplierId          || null,
             businessHistory:     savedUser.businessHistory     || [],
             businessUpgrades:    savedUser.businessUpgrades    || [],
+            lastCompletedFiscalYearAge: savedUser.lastCompletedFiscalYearAge ?? null,
+            lastBusinessAge:      savedUser.lastBusinessAge      ?? null,
+            quartersProcessedThisAge: savedUser.quartersProcessedThisAge || 0,
 
             // --- FLAGS ---
             hasSeenExpenseMsg: savedUser.hasSeenExpenseMsg || false,
@@ -520,6 +523,9 @@ export const loadAndRenderGame = (userData) => {
             supplierId:          userData.supplierId           || null,
             businessHistory:     userData.businessHistory      || [],
             businessUpgrades:    userData.businessUpgrades     || [],
+            lastCompletedFiscalYearAge: userData.lastCompletedFiscalYearAge ?? null,
+            lastBusinessAge:      userData.lastBusinessAge      ?? null,
+            quartersProcessedThisAge: userData.quartersProcessedThisAge || 0,
             lifeStatus: userData.life_status || "Baby",
             assets: userData.assets || [],
 

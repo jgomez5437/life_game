@@ -291,6 +291,20 @@ function calculateActiveHealthCosts(hasGym, hasDiet) {
 }
 
 /**
+ * Calculates monthly outflow for children under age 21.
+ * Each child under 21 adds $500 per month. Once a child reaches 21, the amount is removed.
+ * @param {Array} relationships - Array of user relationships.
+ * @returns {number} Monthly outflow in dollars.
+ */
+function calculateChildMonthlyOutflow(relationships) {
+    if (!relationships || !Array.isArray(relationships)) return 0;
+    const childrenUnder21 = relationships.filter(r => 
+        (r.category === 'child' || r.type === 'Son' || r.type === 'Daughter') && typeof r.age === 'number' && r.age < 21
+    );
+    return childrenUnder21.length * 500;
+}
+
+/**
  * Returns the immediate health boost and cost for a medical checkup.
  * @returns {object} { boost, cost }
  */
@@ -549,6 +563,18 @@ function isInteractionBlocked(interactionKey, person, user) {
         if (!reason) reason = 'Already Expecting';
     }
 
+    if (interactionKey === 'try_for_baby') {
+        const femaleAge = user.gender === 'female' ? user.age : person.age;
+        const maleAge = user.gender === 'male' ? user.age : person.age;
+        if (femaleAge >= 45) {
+            blocked = true;
+            if (!reason) reason = 'Female Too Old';
+        } else if (maleAge >= 65) {
+            blocked = true;
+            if (!reason) reason = 'Male Too Old';
+        }
+    }
+
     if (it.blockedForTeacherUnlessFriend && person.type === 'Teacher') {
         blocked = true;
         if (!reason) reason = 'Not Friends Yet';
@@ -797,19 +823,32 @@ function calculateProposalAcceptance(status, roll = Math.random()) {
 
 /**
  * Determines if trying for a baby succeeds this year, based on the
- * biologically carrying parent's age (mirrors real-world fertility decline).
- * @param {number} carryingParentAge
+ * female's age and male's age (females 45+ or males 65+ cannot conceive).
+ * @param {number} femaleAge - Age of the female partner
+ * @param {number|undefined} [maleAgeOrRoll] - Age of male partner, or roll if 2-arg signature
  * @param {number} [roll=Math.random()]
  * @returns {boolean} true if a pregnancy begins
  */
-function calculatePregnancyChance(carryingParentAge, roll = Math.random()) {
-    let chance;
-    if (carryingParentAge < 35) chance = 0.5;
-    else if (carryingParentAge < 40) chance = 0.3;
-    else if (carryingParentAge < 45) chance = 0.1;
-    else chance = 0.02;
+function calculatePregnancyChance(femaleAge, maleAgeOrRoll = undefined, roll = Math.random()) {
+    let maleAge;
+    let actualRoll = roll;
 
-    return roll < chance;
+    if (typeof maleAgeOrRoll === 'number' && maleAgeOrRoll < 1.0 && maleAgeOrRoll >= 0) {
+        actualRoll = maleAgeOrRoll;
+        maleAge = undefined;
+    } else {
+        maleAge = maleAgeOrRoll;
+    }
+
+    if (femaleAge >= 45) return false;
+    if (maleAge !== undefined && maleAge >= 65) return false;
+
+    let chance;
+    if (femaleAge < 35) chance = 0.5;
+    else if (femaleAge < 40) chance = 0.3;
+    else chance = 0.1;
+
+    return actualRoll < chance;
 }
 
 /**
@@ -822,6 +861,157 @@ function calculatePromotionChance(performance) {
     if (performance >= 85) return 0.50;
     if (performance >= 75) return 0.25;
     return 0;
+}
+
+/**
+ * Determines whether a business owner can process another quarterly turn
+ * at their current player age (limit: 1 fiscal year / 4 quarters per age).
+ * @param {object} user - The player state object
+ * @returns {{ allowed: boolean, reason?: string }}
+ */
+function canProcessBusinessQuarter(user) {
+    if (!user || !user.hasBusiness) {
+        return { allowed: false, reason: "No active business." };
+    }
+
+    if (user.lastCompletedFiscalYearAge === user.age) {
+        return {
+            allowed: false,
+            reason: "You need to age up before continuing a new fiscal year."
+        };
+    }
+
+    const quartersThisAge = user.lastBusinessAge === user.age ? (user.quartersProcessedThisAge || 0) : 0;
+
+    if (quartersThisAge >= 4) {
+        return {
+            allowed: false,
+            reason: "You need to age up before continuing a new fiscal year."
+        };
+    }
+
+    return { allowed: true };
+}
+
+/**
+ * Records that a business quarter was processed at the current player age.
+ * Updates user.lastBusinessAge, increments user.quartersProcessedThisAge,
+ * and sets user.lastCompletedFiscalYearAge if a fiscal year was completed.
+ * @param {object} user - The player state object
+ * @param {boolean} [fiscalYearCompleted=false] - Whether this quarter completed a fiscal year
+ * @returns {object} The mutated user state
+ */
+function recordBusinessQuarterProcessed(user, fiscalYearCompleted = false) {
+    if (!user) return user;
+    if (user.lastBusinessAge !== user.age) {
+        user.lastBusinessAge = user.age;
+        user.quartersProcessedThisAge = 0;
+    }
+    user.quartersProcessedThisAge = (user.quartersProcessedThisAge || 0) + 1;
+    if (fiscalYearCompleted) {
+        user.lastCompletedFiscalYearAge = user.age;
+    }
+    return user;
+}
+
+/**
+ * Returns how many quarters remain available to process for the current player age.
+ * @param {object} user
+ * @returns {number} 0 to 4
+ */
+function getRemainingQuartersForAge(user) {
+    if (!user || !user.hasBusiness) return 0;
+    if (user.lastCompletedFiscalYearAge === user.age) return 0;
+    const processed = user.lastBusinessAge === user.age ? (user.quartersProcessedThisAge || 0) : 0;
+    return Math.max(0, 4 - processed);
+}
+
+/**
+ * Calculates how many quarters autoProcessBusinessQuarter should run when aging up.
+ * If a fiscal year was already completed at the previous age, returns 0.
+ * Otherwise returns the remaining quarters needed to complete the fiscal year for that age.
+ * @param {object} user
+ * @returns {number} Quarters to auto-process (0 to 4)
+ */
+function calculateAutoQuarterCount(user) {
+    if (!user || !user.hasBusiness) return 0;
+    const prevAge = user.age - 1;
+    if (user.lastCompletedFiscalYearAge === prevAge) {
+        return 0;
+    }
+    if (user.lastBusinessAge === prevAge) {
+        const processed = user.quartersProcessedThisAge || 0;
+        return Math.max(0, 4 - processed);
+    }
+    return 4;
+}
+
+/**
+ * Resets business quarter tracking so a newly acquired or restarted business
+ * starts with a fresh fiscal year for the current age.
+ * @param {object} user - The player state object
+ * @returns {object} The mutated user state
+ */
+function resetBusinessQuarterTracking(user) {
+    if (!user) return user;
+    user.quartersProcessedThisAge = 0;
+    user.lastBusinessAge = null;
+    user.lastCompletedFiscalYearAge = null;
+    return user;
+}
+
+/**
+ * Maps living family members from a deceased parent's state to the new child player.
+ * Inherits:
+ * - Surviving spouse -> Mother / Father
+ * - Other children of parent -> Brother / Sister
+ * - Deceased parent's siblings -> Uncle / Aunt
+ * - Deceased parent's parents -> Grandfather / Grandmother
+ * @param {Array} parentRelationships - Array of relationship objects from deceased parent
+ * @param {string} selectedChildId - ID of the child becoming the new player character
+ * @returns {Array} Array of relationship objects mapped for the new child player
+ */
+function inheritFamilyRelationships(parentRelationships, selectedChildId) {
+    if (!Array.isArray(parentRelationships)) return [];
+
+    const inherited = [];
+
+    parentRelationships.forEach(r => {
+        if (!r || r.id === selectedChildId) return;
+
+        let newType = null;
+
+        if (r.category === 'child' || r.type === 'Son' || r.type === 'Daughter') {
+            const isMale = r.gender === 'male' || r.type === 'Son';
+            newType = isMale ? 'Brother' : 'Sister';
+        } else if (r.category === 'spouse' || r.type === 'Husband' || r.type === 'Wife') {
+            const isMale = r.gender === 'male' || r.type === 'Husband';
+            newType = isMale ? 'Father' : 'Mother';
+        } else if (r.type === 'Brother' || r.type === 'Sister') {
+            const isMale = r.gender === 'male' || r.type === 'Brother';
+            newType = isMale ? 'Uncle' : 'Aunt';
+        } else if (r.type === 'Mother' || r.type === 'Father') {
+            const isMale = r.gender === 'male' || r.type === 'Father';
+            newType = isMale ? 'Grandfather' : 'Grandmother';
+        }
+
+        if (newType) {
+            inherited.push({
+                id: r.id,
+                name: r.name,
+                age: r.age,
+                gender: r.gender || (['Brother', 'Father', 'Uncle', 'Grandfather'].includes(newType) ? 'male' : 'female'),
+                type: newType,
+                status: r.status !== undefined ? r.status : 80,
+                category: 'family',
+                appearance: r.appearance,
+                avatarVersion: r.avatarVersion || 0,
+                interactedThisYear: false
+            });
+        }
+    });
+
+    return inherited;
 }
 
 export const GameLogic = {
@@ -839,6 +1029,7 @@ export const GameLogic = {
     compressLifeLog,
     calculateHealthBenefits,
     calculateActiveHealthCosts,
+    calculateChildMonthlyOutflow,
     calculateMedicalVisit,
     calculateOneTimeGymVisit,
     getDeck,
@@ -863,5 +1054,12 @@ export const GameLogic = {
     getLastName,
     getFirstName,
     calculateNameChangeAcceptance,
+    canProcessBusinessQuarter,
+    recordBusinessQuarterProcessed,
+    getRemainingQuartersForAge,
+    calculateAutoQuarterCount,
+    resetBusinessQuarterTracking,
+    inheritFamilyRelationships,
     CITY_COST_OF_LIVING,
 };
+

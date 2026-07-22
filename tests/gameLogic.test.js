@@ -389,26 +389,35 @@ describe('Relationship Logic', () => {
     });
 
     describe('Pregnancy & Birth (Chunk 3)', () => {
-        test('calculatePregnancyChance declines with carrying-parent age', () => {
-            expect(GameLogic.calculatePregnancyChance(30, 0.4)).toBe(true);  // chance 0.5
-            expect(GameLogic.calculatePregnancyChance(30, 0.6)).toBe(false);
-            expect(GameLogic.calculatePregnancyChance(37, 0.25)).toBe(true); // chance 0.3
-            expect(GameLogic.calculatePregnancyChance(37, 0.35)).toBe(false);
-            expect(GameLogic.calculatePregnancyChance(42, 0.05)).toBe(true); // chance 0.1
-            expect(GameLogic.calculatePregnancyChance(42, 0.15)).toBe(false);
-            expect(GameLogic.calculatePregnancyChance(50, 0.01)).toBe(true); // chance 0.02
-            expect(GameLogic.calculatePregnancyChance(50, 0.05)).toBe(false);
+        test('calculatePregnancyChance enforces female 45+ and male 65+ limits', () => {
+            expect(GameLogic.calculatePregnancyChance(30, 30, 0.4)).toBe(true);   // female 30, male 30
+            expect(GameLogic.calculatePregnancyChance(30, 30, 0.6)).toBe(false);
+            expect(GameLogic.calculatePregnancyChance(37, 30, 0.25)).toBe(true);  // female 37, male 30 -> 0.3 chance
+            expect(GameLogic.calculatePregnancyChance(42, 30, 0.05)).toBe(true);  // female 42, male 30 -> 0.1 chance
+            expect(GameLogic.calculatePregnancyChance(45, 30, 0.001)).toBe(false); // female age 45+ limit
+            expect(GameLogic.calculatePregnancyChance(30, 65, 0.001)).toBe(false); // male age 65+ limit
+            expect(GameLogic.calculatePregnancyChance(25, 64, 0.4)).toBe(true);   // male 64 is under limit
         });
 
-        test('try_for_baby only shows for spouse, and is blocked while already expecting', () => {
-            const spouse = { category: 'spouse', type: 'Wife', status: 50, age: 25 };
+        test('try_for_baby is blocked for female age 45+ and male age 65+', () => {
+            const wife25 = { category: 'spouse', type: 'Wife', status: 50, age: 25 };
+            const wife45 = { category: 'spouse', type: 'Wife', status: 50, age: 45 };
+            const husband65 = { category: 'spouse', type: 'Husband', status: 50, age: 65 };
             const partner = { category: 'partner', type: 'Fiancée', status: 50, age: 25 };
 
-            expect(GameLogic.getAvailableInteractions(spouse, {}).map(i => i.key)).toContain('try_for_baby');
+            expect(GameLogic.getAvailableInteractions(wife25, {}).map(i => i.key)).toContain('try_for_baby');
             expect(GameLogic.getAvailableInteractions(partner, {}).map(i => i.key)).not.toContain('try_for_baby');
 
-            expect(GameLogic.isInteractionBlocked('try_for_baby', spouse, { age: 25, isExpecting: true })).toEqual({ blocked: true, reason: 'Already Expecting' });
-            expect(GameLogic.isInteractionBlocked('try_for_baby', spouse, { age: 25, isExpecting: false })).toEqual({ blocked: false, reason: '' });
+            expect(GameLogic.isInteractionBlocked('try_for_baby', wife25, { age: 25, gender: 'male', isExpecting: true })).toEqual({ blocked: true, reason: 'Already Expecting' });
+            expect(GameLogic.isInteractionBlocked('try_for_baby', wife25, { age: 25, gender: 'male', isExpecting: false })).toEqual({ blocked: false, reason: '' });
+
+            // Female age 45+ block
+            expect(GameLogic.isInteractionBlocked('try_for_baby', wife45, { age: 30, gender: 'male' })).toEqual({ blocked: true, reason: 'Female Too Old' });
+            expect(GameLogic.isInteractionBlocked('try_for_baby', husband65, { age: 45, gender: 'female' })).toEqual({ blocked: true, reason: 'Female Too Old' });
+
+            // Male age 65+ block
+            expect(GameLogic.isInteractionBlocked('try_for_baby', husband65, { age: 30, gender: 'female' })).toEqual({ blocked: true, reason: 'Male Too Old' });
+            expect(GameLogic.isInteractionBlocked('try_for_baby', wife25, { age: 65, gender: 'male' })).toEqual({ blocked: true, reason: 'Male Too Old' });
         });
 
         test('try_for_baby is blocked under 18 for either party', () => {
@@ -589,7 +598,7 @@ describe('checkMortality', () => {
         // a meaningfully higher rate. Verify that health=1 results in more deaths than health=100
         // over many trials.
         let deathsHighHealth = 0, deathsLowHealth = 0;
-        for (let i = 0; i < 1000; i++) {
+        for (let i = 0; i < 10000; i++) {
             if (GameLogic.checkMortality(30, 100).isDead) deathsHighHealth++;
             if (GameLogic.checkMortality(30, 1).isDead) deathsLowHealth++;
         }
@@ -617,5 +626,197 @@ describe('calculatePromotionChance', () => {
     test('returns 0.80 for performance 95+', () => {
         expect(GameLogic.calculatePromotionChance(95)).toBe(0.80);
         expect(GameLogic.calculatePromotionChance(100)).toBe(0.80);
+    });
+});
+
+describe('Business Fiscal Year Limit Logic', () => {
+    test('canProcessBusinessQuarter blocks when user has no active business', () => {
+        expect(GameLogic.canProcessBusinessQuarter(null)).toEqual({ allowed: false, reason: 'No active business.' });
+        expect(GameLogic.canProcessBusinessQuarter({ hasBusiness: false })).toEqual({ allowed: false, reason: 'No active business.' });
+    });
+
+    test('canProcessBusinessQuarter blocks as soon as a fiscal year is completed at the current age', () => {
+        const user = { age: 30, hasBusiness: true, lastBusinessAge: 30, quartersProcessedThisAge: 2 };
+        expect(GameLogic.canProcessBusinessQuarter(user)).toEqual({ allowed: true });
+
+        // Complete fiscal year at age 30
+        GameLogic.recordBusinessQuarterProcessed(user, true);
+        expect(user.lastCompletedFiscalYearAge).toBe(30);
+        expect(GameLogic.canProcessBusinessQuarter(user)).toEqual({
+            allowed: false,
+            reason: 'You need to age up before continuing a new fiscal year.'
+        });
+
+        // Aging up to 31 allows starting the new fiscal year
+        user.age = 31;
+        expect(GameLogic.canProcessBusinessQuarter(user)).toEqual({ allowed: true });
+    });
+
+    test('canProcessBusinessQuarter allows up to 4 quarters per player age', () => {
+        const user = { age: 30, hasBusiness: true, lastBusinessAge: 30, quartersProcessedThisAge: 0 };
+        expect(GameLogic.canProcessBusinessQuarter(user)).toEqual({ allowed: true });
+
+        user.quartersProcessedThisAge = 3;
+        expect(GameLogic.canProcessBusinessQuarter(user)).toEqual({ allowed: true });
+
+        user.quartersProcessedThisAge = 4;
+        expect(GameLogic.canProcessBusinessQuarter(user)).toEqual({
+            allowed: false,
+            reason: 'You need to age up before continuing a new fiscal year.'
+        });
+    });
+
+    test('canProcessBusinessQuarter resets available quarters when player age changes', () => {
+        const user = { age: 31, hasBusiness: true, lastBusinessAge: 30, quartersProcessedThisAge: 4, lastCompletedFiscalYearAge: 30 };
+        expect(GameLogic.canProcessBusinessQuarter(user)).toEqual({ allowed: true });
+    });
+
+    test('recordBusinessQuarterProcessed initializes and increments quartersProcessedThisAge', () => {
+        const user = { age: 25, hasBusiness: true };
+        GameLogic.recordBusinessQuarterProcessed(user);
+        expect(user.lastBusinessAge).toBe(25);
+        expect(user.quartersProcessedThisAge).toBe(1);
+
+        GameLogic.recordBusinessQuarterProcessed(user);
+        expect(user.quartersProcessedThisAge).toBe(2);
+
+        // Player ages up to 26
+        user.age = 26;
+        GameLogic.recordBusinessQuarterProcessed(user);
+        expect(user.lastBusinessAge).toBe(26);
+        expect(user.quartersProcessedThisAge).toBe(1);
+    });
+
+    test('getRemainingQuartersForAge returns correct remaining count', () => {
+        expect(GameLogic.getRemainingQuartersForAge({ hasBusiness: false })).toBe(0);
+
+        const user = { age: 40, hasBusiness: true, lastBusinessAge: 40, quartersProcessedThisAge: 1 };
+        expect(GameLogic.getRemainingQuartersForAge(user)).toBe(3);
+
+        user.quartersProcessedThisAge = 4;
+        expect(GameLogic.getRemainingQuartersForAge(user)).toBe(0);
+
+        // Age change resets remaining to 4
+        user.age = 41;
+        expect(GameLogic.getRemainingQuartersForAge(user)).toBe(4);
+    });
+
+    test('calculateAutoQuarterCount determines auto-processing turns during ageUp', () => {
+        expect(GameLogic.calculateAutoQuarterCount({ hasBusiness: false, age: 30 })).toBe(0);
+
+        // Player completed a fiscal year manually at age 29, then aged up to 30
+        const userFull = { age: 30, hasBusiness: true, lastBusinessAge: 29, quartersProcessedThisAge: 4, lastCompletedFiscalYearAge: 29 };
+        expect(GameLogic.calculateAutoQuarterCount(userFull)).toBe(0);
+
+        // Player completed 2 quarters manually at age 29 without finishing fiscal year, then aged up to 30
+        const userPartial = { age: 30, hasBusiness: true, lastBusinessAge: 29, quartersProcessedThisAge: 2 };
+        expect(GameLogic.calculateAutoQuarterCount(userPartial)).toBe(2);
+
+        // Player didn't touch business at age 29 (or lastBusinessAge is old/null), then aged up to 30
+        const userUntouched = { age: 30, hasBusiness: true, lastBusinessAge: 20, quartersProcessedThisAge: 4 };
+        expect(GameLogic.calculateAutoQuarterCount(userUntouched)).toBe(4);
+    });
+
+    test('resetBusinessQuarterTracking resets quarter counts so a new company gets a fresh fiscal year in the same age', () => {
+        const user = { age: 30, hasBusiness: true, lastBusinessAge: 30, quartersProcessedThisAge: 2, lastCompletedFiscalYearAge: 30 };
+        expect(GameLogic.canProcessBusinessQuarter(user)).toEqual({ allowed: false, reason: 'You need to age up before continuing a new fiscal year.' });
+
+        // Selling and launching a new company at age 30 calls resetBusinessQuarterTracking
+        GameLogic.resetBusinessQuarterTracking(user);
+        expect(user.quartersProcessedThisAge).toBe(0);
+        expect(user.lastBusinessAge).toBeNull();
+        expect(user.lastCompletedFiscalYearAge).toBeNull();
+        expect(GameLogic.canProcessBusinessQuarter(user)).toEqual({ allowed: true });
+        expect(GameLogic.getRemainingQuartersForAge(user)).toBe(4);
+    });
+});
+
+describe('inheritFamilyRelationships', () => {
+    test('returns empty array when parent relationships is invalid or empty', () => {
+        expect(GameLogic.inheritFamilyRelationships(null, 'child_1')).toEqual([]);
+        expect(GameLogic.inheritFamilyRelationships([], 'child_1')).toEqual([]);
+    });
+
+    test('inherits surviving spouse, siblings, aunts/uncles, and grandparents with updated relationship types', () => {
+        const parentRelationships = [
+            { id: 'child_1', name: 'Alice Smith', category: 'child', type: 'Daughter', gender: 'female', age: 10 },
+            { id: 'child_2', name: 'Bob Smith', category: 'child', type: 'Son', gender: 'male', age: 14 },
+            { id: 'child_3', name: 'Clara Smith', category: 'child', type: 'Daughter', gender: 'female', age: 8 },
+            { id: 'spouse_1', name: 'Jane Smith', category: 'spouse', type: 'Wife', gender: 'female', age: 40 },
+            { id: 'brother_1', name: 'Uncle Mark', category: 'family', type: 'Brother', gender: 'male', age: 42 },
+            { id: 'mother_1', name: 'Grandma Betty', category: 'family', type: 'Mother', gender: 'female', age: 68 },
+            { id: 'friend_1', name: 'Friend Dave', category: 'friend', type: 'Friend', gender: 'male', age: 41 }
+        ];
+
+        // Alice (child_1) takes over life after father's death
+        const result = GameLogic.inheritFamilyRelationships(parentRelationships, 'child_1');
+
+        // Excludes child_1 (self) and friend_1 (non-family), inherits 5 relatives
+        expect(result.length).toBe(5);
+
+        // Bob (other son of parent) -> Brother
+        const bob = result.find(r => r.id === 'child_2');
+        expect(bob.type).toBe('Brother');
+        expect(bob.category).toBe('family');
+
+        // Clara (other daughter of parent) -> Sister
+        const clara = result.find(r => r.id === 'child_3');
+        expect(clara.type).toBe('Sister');
+        expect(clara.category).toBe('family');
+
+        // Jane (spouse of parent) -> Mother
+        const jane = result.find(r => r.id === 'spouse_1');
+        expect(jane.type).toBe('Mother');
+        expect(jane.category).toBe('family');
+
+        // Mark (brother of deceased parent) -> Uncle
+        const mark = result.find(r => r.id === 'brother_1');
+        expect(mark.type).toBe('Uncle');
+        expect(mark.category).toBe('family');
+
+        // Betty (mother of deceased parent) -> Grandmother
+        const betty = result.find(r => r.id === 'mother_1');
+        expect(betty.type).toBe('Grandmother');
+        expect(betty.category).toBe('family');
+
+        // Non-relatives are excluded
+        expect(result.find(r => r.id === 'friend_1')).toBeUndefined();
+    });
+});
+
+describe('calculateChildMonthlyOutflow', () => {
+    test('returns 0 for null, undefined, or empty relationships', () => {
+        expect(GameLogic.calculateChildMonthlyOutflow(null)).toBe(0);
+        expect(GameLogic.calculateChildMonthlyOutflow(undefined)).toBe(0);
+        expect(GameLogic.calculateChildMonthlyOutflow([])).toBe(0);
+    });
+
+    test('adds $500 per month for each child under 21', () => {
+        const relationships = [
+            { id: '1', category: 'child', type: 'Son', age: 0 },
+            { id: '2', category: 'child', type: 'Daughter', age: 10 },
+            { id: '3', category: 'child', type: 'Son', age: 20 }
+        ];
+        expect(GameLogic.calculateChildMonthlyOutflow(relationships)).toBe(1500);
+    });
+
+    test('removes the $500 monthly outflow when a child reaches age 21 or older', () => {
+        const relationships = [
+            { id: '1', category: 'child', type: 'Son', age: 20 },
+            { id: '2', category: 'child', type: 'Daughter', age: 21 },
+            { id: '3', category: 'child', type: 'Son', age: 25 }
+        ];
+        // Only the child at age 20 adds $500/mo. Age 21 and 25 add $0.
+        expect(GameLogic.calculateChildMonthlyOutflow(relationships)).toBe(500);
+    });
+
+    test('ignores non-child relationships regardless of age', () => {
+        const relationships = [
+            { id: '1', category: 'family', type: 'Brother', age: 15 },
+            { id: '2', category: 'family', type: 'Sister', age: 12 },
+            { id: '3', category: 'friend', type: 'Friend', age: 18 },
+            { id: '4', category: 'spouse', type: 'Wife', age: 20 }
+        ];
+        expect(GameLogic.calculateChildMonthlyOutflow(relationships)).toBe(0);
     });
 });
