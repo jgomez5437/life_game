@@ -584,7 +584,7 @@ function handlePregnancy(user) {
         status: 100,
         category: 'child',
         interactedThisYear: false,
-        appearance: AvatarLogic.generateRandomAppearance(childId)
+        appearance: AvatarLogic.generateRandomAppearance(childId, isMale ? 'male' : 'female')
     };
 
     if (!user.relationships) user.relationships = [];

@@ -32,6 +32,10 @@ const APPEARANCE_SECTIONS = [
         { key: 'facialHairColor', options: AvatarLogic.FACIAL_HAIR_COLORS },
         { key: 'glassesStyle', options: AvatarLogic.GLASSES_STYLES },
         { key: 'glassesColor', options: AvatarLogic.GLASSES_COLORS }
+    ]},
+    { title: 'Makeup', fields: [
+        { key: 'lipstickColor', options: AvatarLogic.LIPSTICK_COLORS },
+        { key: 'blushColor', options: AvatarLogic.BLUSH_COLORS }
     ]}
 ];
 

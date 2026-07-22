@@ -8,6 +8,34 @@ import { AvatarLogic } from '../core/avatarLogic.js';
 const OUTLINE = '#2b2320';
 const DARK_LENS = '#141414';
 
+// --- COLOR HELPERS -----------------------------------------------------------
+
+// Lightens (positive percent) or darkens (negative) a hex color by shifting
+// every channel toward white/black. Used to derive hair gradient stops and
+// strand/shine details from a single base hue instead of hand-picking shades
+// per color in the trait catalog.
+function shadeColor(hex, percent) {
+    const num = parseInt(hex.replace('#', ''), 16);
+    const amt = Math.round(2.55 * percent);
+    const clamp = (v) => Math.max(0, Math.min(255, v));
+    const r = clamp((num >> 16) + amt);
+    const g = clamp(((num >> 8) & 0x00FF) + amt);
+    const b = clamp((num & 0x0000FF) + amt);
+    return `#${(0x1000000 + r * 0x10000 + g * 0x100 + b).toString(16).slice(1)}`;
+}
+
+// SVG gradient/pattern ids must be unique document-wide — several avatars
+// (e.g. a relationship list) can be inlined into the DOM at once, so ids
+// are namespaced per-character rather than per-color.
+function sanitizeId(str) {
+    return String(str).replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
+function strandGroup(pathsD, strokeColor, opacity, width) {
+    if (!pathsD.length) return '';
+    return `<g fill="none" stroke="${strokeColor}" stroke-width="${width}" stroke-linecap="round" stroke-opacity="${opacity}">${pathsD.map(d => `<path d="${d}"/>`).join('')}</g>`;
+}
+
 // Module-scope cache: character id/name + avatarVersion -> SVG string.
 // Resets on page reload, which is fine — it's a derived-render cache, not
 // the source of truth (the descriptor on the character is).
@@ -57,6 +85,19 @@ const FACE_PROFILES = {
 
 function getFaceProfile(faceShape) {
     return FACE_PROFILES[faceShape] || FACE_PROFILES.oval;
+}
+
+// --- LAYER 1B: BLUSH ----------------------------------------------------------
+// Drawn directly on the skin, before eyebrows/eyes so it never sits on top
+// of those layers — just a soft flush low on each cheek.
+
+function blush(colorKey) {
+    if (!colorKey || colorKey === 'none') return '';
+    const hex = AvatarLogic.BLUSH_COLOR_HEX[colorKey] || AvatarLogic.BLUSH_COLOR_HEX.pink;
+    return `<g fill="${hex}" opacity="0.35">
+        <ellipse cx="29" cy="62" rx="7" ry="4.5"/>
+        <ellipse cx="71" cy="62" rx="7" ry="4.5"/>
+    </g>`;
 }
 
 // --- LAYER 2: EYEBROWS -------------------------------------------------------
@@ -129,10 +170,19 @@ function eyes(shape, colorHex, skinHex) {
     return oneEye(38, 52, shape, colorHex, skinHex) + oneEye(62, 52, shape, colorHex, skinHex);
 }
 
-// --- LAYER 4: MOUTH (fixed, no trait) ----------------------------------------
+// --- LAYER 4: MOUTH (plain line, or a filled lipstick shape) ------------------
 
-function mouth() {
-    return `<path d="M 42 72 Q 50 78 58 72" fill="none" stroke="${OUTLINE}" stroke-width="2.2" stroke-linecap="round"/>`;
+function mouth(lipstickColorKey) {
+    if (!lipstickColorKey || lipstickColorKey === 'none') {
+        return `<path d="M 42 72 Q 50 78 58 72" fill="none" stroke="${OUTLINE}" stroke-width="2.2" stroke-linecap="round"/>`;
+    }
+    const hex = AvatarLogic.LIPSTICK_COLOR_HEX[lipstickColorKey] || AvatarLogic.LIPSTICK_COLOR_HEX.red;
+    const dark = shadeColor(hex, -25);
+    // Closed lip shape (cupid's-bow top lip + fuller bottom lip) instead of
+    // the plain line, filled with the chosen color, plus a thin seam where
+    // the lips meet for definition.
+    return `<path d="M 42 72 Q 46 69 50 71 Q 54 69 58 72 Q 54 76.5 50 77.5 Q 46 76.5 42 72 Z" fill="${hex}" stroke="${dark}" stroke-width="1"/>
+        <path d="M 43 72 Q 50 73.6 57 72" fill="none" stroke="${dark}" stroke-width="0.7" stroke-opacity="0.6"/>`;
 }
 
 // --- LAYER 5: FACIAL HAIR -----------------------------------------------------
@@ -186,6 +236,11 @@ function wrinkles(opacity) {
 // Every shape below is generated from the face's own {top, hw} profile
 // rather than a fixed path, so hair actually matches the skull it's drawn
 // on instead of assuming one width for every face shape.
+//
+// Each fill is a diagonal gradient (built in buildSvg via hairPaint.url)
+// rather than a flat hex so the cap/cascade reads as rounded volume, and
+// every shape layers thin darker strand strokes + one light rim-highlight
+// on top so it reads as combed strands rather than a solid blob.
 
 const DOME_BASE_Y = 34;
 
@@ -209,11 +264,42 @@ function domeOuterY(x, hw, top) {
     return DOME_BASE_Y - 2 * (DOME_BASE_Y - peak) * t * (1 - t);
 }
 
+// Fine strand lines following the dome's own curvature, fanning out from
+// the crown — reads as combed hair instead of a flat cap.
+function domeStrandPaths(hw, top) {
+    return [-0.62, -0.32, -0.08, 0.16, 0.4, 0.62].map(f => {
+        const x = 50 + f * hw;
+        const yTop = domeOuterY(x, hw, top) + 2.5;
+        const yBot = DOME_BASE_Y - 1.5;
+        const bend = f * 3;
+        return `M ${x.toFixed(1)} ${yTop.toFixed(1)} Q ${(x + bend).toFixed(1)} ${((yTop + yBot) / 2).toFixed(1)} ${x.toFixed(1)} ${yBot.toFixed(1)}`;
+    });
+}
+
+// A single bright streak near the crown, offset toward the upper-left as if
+// lit from that side — the cheapest way to make a flat cap read as glossy.
+function domeHighlightPath(hw, top) {
+    const peak = domePeak(top);
+    const x1 = 50 - hw * 0.42, x2 = 50 - hw * 0.05;
+    const yMid = peak + (DOME_BASE_Y - peak) * 0.3;
+    return `M ${x1} ${yMid + 4} Q ${(x1 + x2) / 2} ${peak + 3} ${x2} ${yMid - 2}`;
+}
+
+function domeTexture(hw, top, hairHex) {
+    const strands = strandGroup(domeStrandPaths(hw, top), shadeColor(hairHex, -32), 0.4, 0.7);
+    const highlight = `<path d="${domeHighlightPath(hw, top)}" fill="none" stroke="${shadeColor(hairHex, 32)}" stroke-width="1.3" stroke-linecap="round" stroke-opacity="0.5"/>`;
+    return strands + highlight;
+}
+
 // Small tuft hanging from the temple past the ear — added on top of the
 // short dome cap to build out medium/long styles without lowering the
 // dome's own hairline (which stayed correct for the short styles).
 function templeFlap(edge, sideDrop, dir) {
     return `M ${edge} ${DOME_BASE_Y} Q ${edge + dir * 7} 42 ${edge + dir * 3} ${sideDrop} Q ${edge - dir * 3} ${sideDrop - 6} ${edge} ${DOME_BASE_Y} Z`;
+}
+
+function templeFlapStrand(edge, sideDrop, dir) {
+    return `M ${edge + dir * 2} ${DOME_BASE_Y + 4} Q ${edge + dir * 5} ${(DOME_BASE_Y + sideDrop) / 2} ${edge + dir * 1.5} ${sideDrop - 5}`;
 }
 
 function buzzedCapPath(hw, top) {
@@ -222,6 +308,19 @@ function buzzedCapPath(hw, top) {
     const innerTop = top + 2;
     const innerSide = top + 8;
     return `M ${50 - w} 30 Q 50 ${peak} ${50 + w} 30 Q ${50 + w - 2} ${innerSide} 50 ${innerTop} Q ${50 - w + 2} ${innerSide} ${50 - w} 30 Z`;
+}
+
+// Short clipped ticks (not long strands) so a buzz cut reads as cropped
+// stubble rather than the same combed texture as the longer styles.
+function buzzedStrandPaths(hw, top) {
+    const w = hw - 2;
+    const peak = top - 4;
+    return [-0.68, -0.4, -0.13, 0.13, 0.4, 0.68].map(f => {
+        const x = 50 + f * w;
+        const t = Math.abs(f) / 0.68;
+        const yTop = peak + 3 + t * 5;
+        return `M ${x.toFixed(1)} ${yTop.toFixed(1)} L ${x.toFixed(1)} ${(yTop + 3.5).toFixed(1)}`;
+    });
 }
 
 // Smooth cascade (straight hair), anchored to the head's actual side edge.
@@ -244,58 +343,99 @@ function rightCascadeWavy(edge, endY) {
     return `M ${edge + 1} 24 C ${edge + 12} ${y1 - 4} ${edge - 2} ${y1 + 4} ${edge + 10} ${y2 - 6} C ${edge + 17} ${y2 + 4} ${edge - 1} ${y3 - 3} ${edge + 4} ${endY} L ${edge - 2} ${endY - 3} C ${edge} 70 ${edge} 45 ${edge - 2} 26 Z`;
 }
 
-function hairBack(style, colorHex, faceShape) {
+// Interior strand lines for a cascade — parallel offsets of the same outer
+// curve, inset toward center, so long hair shows a few individual locks
+// instead of one flat silhouette. Shared by straight and wavy cascades:
+// the outer path already carries the straight/wavy distinction, these are
+// just depth cues layered on top.
+function cascadeStrandPaths(edge, endY, dir) {
+    return [3, 6.5].map(inset => {
+        const x1 = edge + dir * (1 - inset * 0.3);
+        const cx = edge + dir * (8 - inset * 0.6);
+        const x2 = edge + dir * (4 - inset * 0.5);
+        return `M ${x1.toFixed(1)} 27 C ${cx.toFixed(1)} 46 ${cx.toFixed(1)} 73 ${x2.toFixed(1)} ${(endY - 5).toFixed(1)}`;
+    });
+}
+
+function cascadeTexture(leftEdge, rightEdge, endY, hairHex) {
+    const dark = shadeColor(hairHex, -30);
+    const paths = cascadeStrandPaths(leftEdge, endY, -1).concat(cascadeStrandPaths(rightEdge, endY, 1));
+    return strandGroup(paths, dark, 0.4, 0.7);
+}
+
+function hairBack(style, hairPaint, faceShape) {
     if (!AvatarLogic.HAIR_STYLES_WITH_BACK_LAYER.includes(style)) return '';
     const { hw } = getFaceProfile(faceShape);
     const leftEdge = 50 - hw;
     const rightEdge = 50 + hw;
+    const { url: fill, hex } = hairPaint;
+    const light = shadeColor(hex, 30);
+    const dark = shadeColor(hex, -30);
 
     switch (style) {
-        case 'ponytail':
-            // Tie band sits behind/above the ear; the tail is pushed well clear of
-            // the front cap's edge so it isn't painted over and reads as a tail,
-            // not a stray strand, regardless of face width.
-            return `<g fill="${colorHex}" stroke="${OUTLINE}" stroke-width="1.5">
-                <rect x="${rightEdge - 2}" y="30" width="10" height="6" rx="2"/>
-                <ellipse cx="${rightEdge + 10}" cy="58" rx="6" ry="24" transform="rotate(10 ${rightEdge + 10} 58)"/>
-            </g>`;
+        case 'ponytail': {
+            // Tail is anchored close to the hair edge (rightEdge + a small
+            // constant) rather than far past it, so it hugs the skull and
+            // overlaps the ear — covering it — for every face width instead
+            // of floating off to the side on wider/rounder shapes.
+            const tailCx = rightEdge + 3;
+            const tailCy = 56;
+            const rot = 8;
+            return `<g fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5">
+                <rect x="${tailCx - 5}" y="28" width="8" height="6" rx="2"/>
+                <ellipse cx="${tailCx}" cy="${tailCy}" rx="7" ry="23" transform="rotate(${rot} ${tailCx} ${tailCy})"/>
+            </g>
+            <g fill="none" stroke="${dark}" stroke-width="0.7" stroke-linecap="round" stroke-opacity="0.4">
+                <path d="M ${tailCx - 2} 35 Q ${tailCx} 55 ${tailCx - 1} 76" transform="rotate(${rot} ${tailCx} ${tailCy})"/>
+                <path d="M ${tailCx + 3} 35 Q ${tailCx + 5} 55 ${tailCx + 4} 76" transform="rotate(${rot} ${tailCx} ${tailCy})"/>
+            </g>
+            <path d="M ${tailCx - 3} 37 Q ${tailCx - 1} 48 ${tailCx - 2} 58" fill="none" stroke="${light}" stroke-width="1" stroke-linecap="round" stroke-opacity="0.5" transform="rotate(${rot} ${tailCx} ${tailCy})"/>`;
+        }
         case 'bun':
-            return `<circle cx="50" cy="15" r="9" fill="${colorHex}" stroke="${OUTLINE}" stroke-width="1.5"/>`;
+            return `<circle cx="50" cy="15" r="9" fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5"/>
+                <path d="M 45 9 Q 50 6 55 9 Q 52 15 50 21 Q 48 15 45 9 Z" fill="none" stroke="${dark}" stroke-width="0.7" stroke-opacity="0.45"/>
+                <path d="M 45 12 Q 47 9 50 8.5" fill="none" stroke="${light}" stroke-width="1" stroke-linecap="round" stroke-opacity="0.55"/>`;
         case 'longWavy':
-            return `<g fill="${colorHex}" stroke="${OUTLINE}" stroke-width="1.5">
+            return `<g fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5">
                 <path d="${leftCascadeWavy(leftEdge, 95)}"/>
                 <path d="${rightCascadeWavy(rightEdge, 95)}"/>
-            </g>`;
+            </g>${cascadeTexture(leftEdge, rightEdge, 95, hex)}`;
         case 'longStraight':
-            return `<g fill="${colorHex}" stroke="${OUTLINE}" stroke-width="1.5">
+            return `<g fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5">
                 <path d="${leftCascade(leftEdge, 95)}"/>
                 <path d="${rightCascade(rightEdge, 95)}"/>
-            </g>`;
+            </g>${cascadeTexture(leftEdge, rightEdge, 95, hex)}`;
         case 'shoulderWave':
         default:
-            return `<g fill="${colorHex}" stroke="${OUTLINE}" stroke-width="1.5">
+            return `<g fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5">
                 <path d="${leftCascadeWavy(leftEdge, 85)}"/>
                 <path d="${rightCascadeWavy(rightEdge, 85)}"/>
-            </g>`;
+            </g>${cascadeTexture(leftEdge, rightEdge, 85, hex)}`;
     }
 }
 
-function hairFront(style, colorHex, faceShape) {
+function hairFront(style, hairPaint, faceShape) {
     const { top, hw, sideDrop } = getFaceProfile(faceShape);
     const dy = top - 16; // shifts decorative top details to match a taller/shorter crown
+    const { url: fill, hex } = hairPaint;
+    const light = shadeColor(hex, 30);
+    const dark = shadeColor(hex, -32);
 
     switch (style) {
         case 'bald':
             return '';
         case 'buzzed':
-            return `<path d="${buzzedCapPath(hw, top)}" fill="${colorHex}" stroke="${OUTLINE}" stroke-width="1.5"/>`;
+            return `<path d="${buzzedCapPath(hw, top)}" fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5"/>
+                ${strandGroup(buzzedStrandPaths(hw, top), dark, 0.5, 0.6)}`;
         case 'shortSidePart': {
             const flipX = 50 - hw * 0.35;
             const attachY = domeOuterY(flipX, hw, top);
-            return `<g fill="${colorHex}" stroke="${OUTLINE}" stroke-width="1.5">
+            return `<g fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5">
                 <path d="${domeCapPath(hw, top)}"/>
                 <path d="M ${flipX} ${attachY + 2} L ${flipX + 10} ${attachY - 7} L ${flipX + 14} ${attachY + 3} Z"/>
-            </g>`;
+            </g>
+            ${domeTexture(hw, top, hex)}
+            <path d="M ${flipX + 2} ${attachY} L ${flipX + 11} ${attachY - 6}" fill="none" stroke="${dark}" stroke-width="0.6" stroke-opacity="0.45"/>`;
         }
         case 'pixieSpiky': {
             const spikeXs = [-0.72, -0.4, 0.4, 0.72].map(f => 50 + f * hw);
@@ -303,22 +443,37 @@ function hairFront(style, colorHex, faceShape) {
                 const attachY = domeOuterY(x, hw, top);
                 return `<path d="M ${x - 3} ${attachY + 2} L ${x} ${attachY - 9} L ${x + 3} ${attachY + 3} Z"/>`;
             }).join('');
-            return `<g fill="${colorHex}" stroke="${OUTLINE}" stroke-width="1.5">
+            const spikeHighlights = spikeXs.map(x => {
+                const attachY = domeOuterY(x, hw, top);
+                return `<path d="M ${x - 1} ${attachY} L ${x - 0.3} ${attachY - 7.5}"/>`;
+            }).join('');
+            return `<g fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5">
                 <path d="${domeCapPath(hw, top)}"/>
                 ${spikes}
-            </g>`;
+            </g>
+            ${domeTexture(hw, top, hex)}
+            <g fill="none" stroke="${light}" stroke-width="0.8" stroke-linecap="round" stroke-opacity="0.55">${spikeHighlights}</g>`;
         }
         case 'curly': {
             const xs = [-0.8, -0.47, 0, 0.47, 0.8, -1.03, 1.03];
             const ys = [30, 17, 11, 17, 30, 42, 42];
             const rs = [7, 8, 9, 8, 7, 6, 6];
-            const circles = xs.map((f, i) => `<circle cx="${50 + f * hw}" cy="${ys[i] + dy}" r="${rs[i]}"/>`).join('');
-            return `<g fill="${colorHex}" stroke="${OUTLINE}" stroke-width="1.5">${circles}</g>`;
+            const circles = xs.map((f, i) => `<circle cx="${(50 + f * hw).toFixed(1)}" cy="${(ys[i] + dy).toFixed(1)}" r="${rs[i]}"/>`).join('');
+            // Small inner swirl per curl cluster reads as coiled strands
+            // instead of plain circles.
+            const swirls = xs.map((f, i) => {
+                const cx = 50 + f * hw, cy = ys[i] + dy, r = rs[i] * 0.5;
+                return `<path d="M ${(cx - r).toFixed(1)} ${cy.toFixed(1)} Q ${cx.toFixed(1)} ${(cy - r * 1.6).toFixed(1)} ${(cx + r).toFixed(1)} ${cy.toFixed(1)} Q ${cx.toFixed(1)} ${(cy + r * 1.6).toFixed(1)} ${(cx - r).toFixed(1)} ${cy.toFixed(1)}"/>`;
+            }).join('');
+            return `<g fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5">${circles}</g>
+                <g fill="none" stroke="${dark}" stroke-width="0.6" stroke-opacity="0.45">${swirls}</g>
+                <path d="M ${(50 - hw * 0.3).toFixed(1)} ${(11 + dy - 3).toFixed(1)} Q 50 ${(11 + dy - 6).toFixed(1)} ${(50 + hw * 0.15).toFixed(1)} ${(11 + dy - 2).toFixed(1)}" fill="none" stroke="${light}" stroke-width="1" stroke-linecap="round" stroke-opacity="0.5"/>`;
         }
         case 'ponytail':
         case 'bun':
         case 'shortCrop':
-            return `<path d="${domeCapPath(hw, top)}" fill="${colorHex}" stroke="${OUTLINE}" stroke-width="1.5"/>`;
+            return `<path d="${domeCapPath(hw, top)}" fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5"/>
+                ${domeTexture(hw, top, hex)}`;
         case 'mediumStraight':
         case 'shoulderWave':
         case 'longStraight':
@@ -326,11 +481,13 @@ function hairFront(style, colorHex, faceShape) {
         default:
             // Same dome/hairline as the short styles (already correctly clears the
             // eyebrows) plus a temple flap on each side for the extra length.
-            return `<g fill="${colorHex}" stroke="${OUTLINE}" stroke-width="1.5">
+            return `<g fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5">
                 <path d="${domeCapPath(hw, top)}"/>
                 <path d="${templeFlap(50 - hw, sideDrop, -1)}"/>
                 <path d="${templeFlap(50 + hw, sideDrop, 1)}"/>
-            </g>`;
+            </g>
+            ${domeTexture(hw, top, hex)}
+            ${strandGroup([templeFlapStrand(50 - hw, sideDrop, -1), templeFlapStrand(50 + hw, sideDrop, 1)], dark, 0.4, 0.6)}`;
     }
 }
 
@@ -385,7 +542,7 @@ function resolveFacialHairColor(appearance, age) {
     return AvatarLogic.getAgedHairColor(base, age, appearance.grayStartAge);
 }
 
-function buildSvg(appearance, age) {
+function buildSvg(appearance, age, idSeed) {
     const skinHex = AvatarLogic.SKIN_TONE_HEX[appearance.skinTone] || AvatarLogic.SKIN_TONE_HEX.tone4;
     const eyeHex = AvatarLogic.EYE_COLOR_HEX[appearance.eyeColor] || AvatarLogic.EYE_COLOR_HEX.brown;
     const glassesHex = AvatarLogic.GLASSES_COLOR_HEX[appearance.glassesColor] || AvatarLogic.GLASSES_COLOR_HEX.black;
@@ -393,16 +550,28 @@ function buildSvg(appearance, age) {
     const facialHairHex = resolveFacialHairColor(appearance, age);
     const wrinkleOpacity = AvatarLogic.getWrinkleOpacity(age);
 
+    // Gradient id is namespaced per-character (idSeed) since several avatars
+    // can be inlined into the DOM at once and SVG ids are document-global.
+    const hairGradId = `hairGrad_${sanitizeId(idSeed)}`;
+    const hairDefs = `<linearGradient id="${hairGradId}" x1="15%" y1="0%" x2="85%" y2="100%">
+        <stop offset="0%" stop-color="${shadeColor(hairHex, 26)}"/>
+        <stop offset="48%" stop-color="${hairHex}"/>
+        <stop offset="100%" stop-color="${shadeColor(hairHex, -22)}"/>
+    </linearGradient>`;
+    const hairPaint = { url: `url(#${hairGradId})`, hex: hairHex };
+
     const layers = [
+        `<defs>${hairDefs}</defs>`,
         headShape(appearance.faceShape, skinHex),
+        blush(appearance.blushColor),
         eyebrows(appearance.eyebrowStyle, hairHex),
         eyes(appearance.eyeShape, eyeHex, skinHex),
-        mouth(),
+        mouth(appearance.lipstickColor),
         facialHair(appearance.facialHairStyle, facialHairHex),
         wrinkles(wrinkleOpacity),
-        hairBack(appearance.hairStyle, hairHex, appearance.faceShape),
+        hairBack(appearance.hairStyle, hairPaint, appearance.faceShape),
         glasses(appearance.glassesStyle, glassesHex),
-        hairFront(appearance.hairStyle, hairHex, appearance.faceShape)
+        hairFront(appearance.hairStyle, hairPaint, appearance.faceShape)
     ].join('');
 
     return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">${layers}</svg>`;
@@ -424,7 +593,7 @@ export function renderAvatar(character) {
     const cached = _cache.get(cacheKey);
     if (cached) return cached;
 
-    const svg = buildSvg(appearance, age);
+    const svg = buildSvg(appearance, age, cacheKey);
     _cache.set(cacheKey, svg);
     return svg;
 }
