@@ -5,6 +5,7 @@ import { Utils } from '../../ui/utils.js';
 import { UI } from '../../ui/ui.js';
 import { INDUSTRIES, SUPPLIERS } from '../../core/main.js';
 import { renderBusinessDashboard } from './businessDashboard.js';
+import { GameLogic } from '../../core/gameLogic.js';
 
 const get = id => document.getElementById(id);
 
@@ -147,6 +148,7 @@ export function initBusiness() {
     user.productionTarget    = Math.floor(ind.baseDemand * 0.8);
     user.businessHistory     = [];
     user.businessUpgrades    = [];
+    GameLogic.resetBusinessQuarterTracking(user);
 
     addLog(`Founded ${name} (${ind.name})! Invested ${Utils.formatMoney(ind.startupCost)}.`, 'good');
     renderBusinessDashboard();

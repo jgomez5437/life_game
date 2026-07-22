@@ -202,10 +202,26 @@ export const goOutMeetSomeone = () => {
 };
 
 // --- INTERACTION SCREEN ---
-export const renderPersonInteraction = (id) => {
+export const renderPersonInteraction = (id, backAction = null) => {
     const user = state.gameState.user;
     const person = user.relationships.find(r => r.id === id);
     if (!person) return;
+
+    let targetBackAction = backAction;
+    if (!targetBackAction) {
+        if (person.isCurrentClassmate || person.category === 'classmate') {
+            targetBackAction = 'renderClassmates';
+        } else {
+            targetBackAction = 'renderRelationships';
+        }
+    }
+
+    let backLabel = 'Back to Relationships';
+    if (targetBackAction === 'renderClassmates') {
+        backLabel = 'Back to Classmates';
+    } else if (targetBackAction === 'renderEducation') {
+        backLabel = 'Back to Education';
+    }
 
     const interactions = GameLogic.getAvailableInteractions(person, user);
 
@@ -274,8 +290,8 @@ export const renderPersonInteraction = (id) => {
     container.innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">
-                <button data-action="renderRelationships" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
-                    <i class="fas fa-arrow-left"></i> Back to Relationships
+                <button data-action="${targetBackAction}" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+                    <i class="fas fa-arrow-left"></i> ${backLabel}
                 </button>
             </div>
 
@@ -319,6 +335,16 @@ export const openRelationshipConfirm = (personId, actionKey) => {
             UI.showModal('Refused', `${person.name} is too hostile towards you and refuses to do this.`);
         } else if (reason === 'Insufficient Funds') {
             UI.showModal('Insufficient Funds', `You need ${Utils.formatMoney(action.cost)} to ${action.name.toLowerCase()}.`);
+        } else if (reason === 'Female Too Old') {
+            const isPlayerFemale = user.gender === 'female';
+            const msg = isPlayerFemale ? "You cannot get pregnant at age 45 or above." : `${person.name} cannot get pregnant at age 45 or above.`;
+            UI.showModal('Action Blocked', msg);
+        } else if (reason === 'Male Too Old') {
+            const isPlayerMale = user.gender === 'male';
+            const msg = isPlayerMale ? "You cannot father a baby at age 65 or above." : `${person.name} cannot father a baby at age 65 or above.`;
+            UI.showModal('Action Blocked', msg);
+        } else if (reason === 'Too Old') {
+            UI.showModal('Action Blocked', "Age limit reached for having a baby.");
         } else {
             UI.showModal('Action Blocked', "You are too young to do this.");
         }
@@ -348,6 +374,16 @@ export const performRelationshipAction = (personId, actionKey) => {
             UI.showModal('Refused', `${person.name} is too hostile towards you and refuses to do this.`);
         } else if (reason === 'Insufficient Funds') {
             UI.showModal('Insufficient Funds', `You need ${Utils.formatMoney(action.cost)} to ${action.name.toLowerCase()}.`);
+        } else if (reason === 'Female Too Old') {
+            const isPlayerFemale = user.gender === 'female';
+            const msg = isPlayerFemale ? "You cannot get pregnant at age 45 or above." : `${person.name} cannot get pregnant at age 45 or above.`;
+            UI.showModal('Action Blocked', msg);
+        } else if (reason === 'Male Too Old') {
+            const isPlayerMale = user.gender === 'male';
+            const msg = isPlayerMale ? "You cannot father a baby at age 65 or above." : `${person.name} cannot father a baby at age 65 or above.`;
+            UI.showModal('Action Blocked', msg);
+        } else if (reason === 'Too Old') {
+            UI.showModal('Action Blocked', "Age limit reached for having a baby.");
         } else {
             UI.showModal('Action Blocked', "You are too young to do this.");
         }
@@ -433,8 +469,9 @@ export const performRelationshipAction = (personId, actionKey) => {
 
     if (action.key === 'try_for_baby') {
         person.interactedThisYear = true;
-        const carryingParentAge = user.gender === 'female' ? user.age : person.age;
-        const success = GameLogic.calculatePregnancyChance(carryingParentAge);
+        const femaleAge = user.gender === 'female' ? user.age : person.age;
+        const maleAge = user.gender === 'male' ? user.age : person.age;
+        const success = GameLogic.calculatePregnancyChance(femaleAge, maleAge);
 
         if (success) {
             user.isExpecting = true;
@@ -462,8 +499,9 @@ export const performRelationshipAction = (personId, actionKey) => {
     // couple making love should also carry a chance of conceiving.
     let pregnancyAnnouncement = '';
     if (action.key === 'make_love' && person.category === 'spouse' && !user.isExpecting) {
-        const carryingParentAge = user.gender === 'female' ? user.age : person.age;
-        if (GameLogic.calculatePregnancyChance(carryingParentAge)) {
+        const femaleAge = user.gender === 'female' ? user.age : person.age;
+        const maleAge = user.gender === 'male' ? user.age : person.age;
+        if (GameLogic.calculatePregnancyChance(femaleAge, maleAge)) {
             user.isExpecting = true;
             user.expectingWithId = person.id;
             pregnancyAnnouncement = ` You're expecting a baby with ${person.name}!`;

@@ -73,6 +73,11 @@ export function renderAssets() {
         monthlyOutflow += 50;
     }
     
+    // Child Outflow: $500/mo per child under 21
+    monthlyOutflow += GameLogic.calculateChildMonthlyOutflow(user.relationships);
+    
+    user.monthlyOutflow = monthlyOutflow;
+    
     // Ensure assets array exists
     const assets = user.assets || [];
     const vehicleHtml = getVehicleListHtml(assets);

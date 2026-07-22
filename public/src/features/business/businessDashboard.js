@@ -4,6 +4,7 @@ import { renderLifeDashboard, addLog } from '../player/mainScreen.js';
 import { UI } from '../../ui/ui.js';
 import { Utils } from '../../ui/utils.js';
 import { INDUSTRIES, SUPPLIERS } from '../../core/main.js';
+import { GameLogic } from '../../core/gameLogic.js';
 
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
 
@@ -305,6 +306,13 @@ function rollBusinessEvent() {
 
 export function processQuarter() {
     const user = state.gameState.user;
+
+    const check = GameLogic.canProcessBusinessQuarter(user);
+    if (!check.allowed) {
+        UI.showModal('Fiscal Year Limit', check.reason || 'You need to age up before continuing a new fiscal year.');
+        return;
+    }
+
     const ind      = INDUSTRIES[user.industry];
     const supplier = SUPPLIERS.find(s => s.id === user.supplierId) || SUPPLIERS[1];
     const maxProduction = user.employees * ind.capacityPerEmployee;
@@ -349,7 +357,6 @@ export function processQuarter() {
     if (activeEvent?.repDelta) {
         user.businessReputation = Math.max(0, Math.min(100, user.businessReputation + activeEvent.repDelta));
     }
-    // Stockout / surplus rep
     if (available < actualDemand) user.businessReputation = Math.max(0, user.businessReputation - 2);
     else user.businessReputation = Math.min(100, user.businessReputation + 1);
 
@@ -360,6 +367,9 @@ export function processQuarter() {
         revenue,
         event: activeEvent ? activeEvent.name : null
     });
+
+    const isFiscalYearEnding = user.companyQuarter === 4;
+    GameLogic.recordBusinessQuarterProcessed(user, isFiscalYearEnding);
 
     const eventLine = activeEvent
         ? `<div class="mt-2 text-yellow-300 text-xs"><i class="fas fa-bolt mr-1"></i><strong>${activeEvent.name}</strong> — ${activeEvent.description}</div>`
@@ -374,7 +384,7 @@ export function processQuarter() {
         UI.showModal(
             'Annual Report',
             `<div class="text-sm space-y-2">
-                <p>Fiscal Year complete.</p>
+                <p>Fiscal Year complete. You need to age up before continuing a new fiscal year.</p>
                 <div class="flex justify-between"><span class="text-slate-400">Annual Revenue</span><span class="text-green-400 font-bold">${Utils.formatMoney(annualRevenue)}</span></div>
                 <div class="flex justify-between"><span class="text-slate-400">Company Cash</span><span class="font-bold text-white">${Utils.formatMoney(user.compCash)}</span></div>
                 <div class="flex justify-between"><span class="text-slate-400">Your Bank</span><span class="font-bold text-white">${Utils.formatMoney(user.money)}</span></div>
@@ -390,7 +400,7 @@ export function processQuarter() {
 
 // ─── QUARTERLY TURN (silent, called by ageUp) ────────────────────────────────
 
-export function autoProcessBusinessQuarter(user) {
+function executeSingleAutoQuarter(user) {
     const ind      = INDUSTRIES[user.industry];
     const supplier = SUPPLIERS.find(s => s.id === user.supplierId) || SUPPLIERS[1];
     const maxProduction = user.employees * ind.capacityPerEmployee;
@@ -455,6 +465,15 @@ export function autoProcessBusinessQuarter(user) {
         const annualRevenue = user.businessHistory.slice(-4).reduce((s, q) => s + q.revenue, 0);
         addLog(`${user.companyName} fiscal year complete. Annual Revenue: ${Utils.formatMoney(annualRevenue)}.`, 'major');
     }
+}
+
+export function autoProcessBusinessQuarter(user) {
+    const count = GameLogic.calculateAutoQuarterCount(user);
+    for (let i = 0; i < count; i++) {
+        executeSingleAutoQuarter(user);
+    }
+    user.lastBusinessAge = user.age - 1;
+    user.quartersProcessedThisAge = 4;
 }
 
 // ─── EMPLOYEE MANAGEMENT ─────────────────────────────────────────────────────
@@ -524,6 +543,7 @@ export function sellBusiness() {
             user.industry           = null;
             user.businessHistory    = [];
             user.businessUpgrades   = [];
+            GameLogic.resetBusinessQuarterTracking(user);
             renderActivities();
         }
     );
