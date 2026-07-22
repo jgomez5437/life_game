@@ -692,7 +692,7 @@ function generateSchoolCohort(userAge) {
             category: 'classmate',
             isCurrentClassmate: true,
             interactedThisYear: false,
-            appearance: AvatarLogic.generateRandomAppearance(id)
+            appearance: AvatarLogic.generateRandomAppearance(id, gender)
         });
     }
 
@@ -712,7 +712,7 @@ function generateSchoolCohort(userAge) {
         category: 'classmate', // Keep as 'classmate' category so they show up together
         isCurrentClassmate: true,
         interactedThisYear: false,
-        appearance: AvatarLogic.generateRandomAppearance(teacherId)
+        appearance: AvatarLogic.generateRandomAppearance(teacherId, teacherGender)
     });
 
     return cohort;
@@ -746,7 +746,7 @@ function generateStranger(userAge, userGender, roll = Math.random()) {
         status: Math.floor(Math.random() * 21) + 20, // 20 to 40 starting status
         category: 'friend',
         interactedThisYear: false,
-        appearance: AvatarLogic.generateRandomAppearance(id)
+        appearance: AvatarLogic.generateRandomAppearance(id, gender)
     };
 }
 

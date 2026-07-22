@@ -30,6 +30,13 @@ const HAIR_STYLES = [
 // Styles whose hair extends behind the ears/shoulders and needs a back layer.
 const HAIR_STYLES_WITH_BACK_LAYER = ['shoulderWave', 'longStraight', 'longWavy', 'ponytail', 'bun'];
 
+// Gendered pools random generation draws from (see generateRandomAppearance)
+// so classmates/strangers/family land on a style typical for their gender.
+// Manual selection (character creation's appearance panel) is unaffected —
+// it always offers the full HAIR_STYLES list regardless of gender.
+const MALE_HAIR_STYLES = ['bald', 'buzzed', 'shortCrop', 'shortSidePart', 'pixieSpiky', 'curly', 'mediumStraight'];
+const FEMALE_HAIR_STYLES = ['shortCrop', 'pixieSpiky', 'curly', 'mediumStraight', 'shoulderWave', 'longStraight', 'longWavy', 'ponytail', 'bun'];
+
 const HAIR_COLORS = ['black', 'darkBrown', 'brown', 'lightBrown', 'blonde', 'red', 'gray'];
 const HAIR_COLOR_HEX = {
     black: '#1B1B1B', darkBrown: '#3B2314', brown: '#6B4423',
@@ -45,6 +52,16 @@ const GLASSES_COLORS = ['black', 'brown', 'gold', 'silver', 'tortoiseshell'];
 const GLASSES_COLOR_HEX = {
     black: '#1B1B1B', brown: '#5B3A29', gold: '#D4AF37',
     silver: '#C0C0C0', tortoiseshell: '#6B4423'
+};
+
+const LIPSTICK_COLORS = ['none', 'red', 'pink', 'coral', 'berry', 'nude'];
+const LIPSTICK_COLOR_HEX = {
+    red: '#B8253A', pink: '#D9698A', coral: '#E8735A', berry: '#7A2848', nude: '#C98B75'
+};
+
+const BLUSH_COLORS = ['none', 'pink', 'peach', 'rose'];
+const BLUSH_COLOR_HEX = {
+    pink: '#E8829C', peach: '#F0A385', rose: '#D97A8C'
 };
 
 const MID_GRAY_HEX = '#9E9E9E';
@@ -168,10 +185,14 @@ function buildAppearanceDescriptor(character) {
  * independent of the others (each draws from its own sub-seeded RNG), and
  * grayStartAge is derived the same way generateGrayStartAge would on its own.
  * @param {string|number} seed - something stable about the character (id/name)
+ * @param {string} [gender] - 'male'/'female' narrows the hairStyle pool to one
+ *   typical for that gender; anything else (undefined, other) draws from the
+ *   full unisex HAIR_STYLES list.
  * @returns {object} appearance descriptor
  */
-function generateRandomAppearance(seed) {
+function generateRandomAppearance(seed, gender) {
     const draw = (traitKey, options) => pick(options, makeRng(`${seed}:${traitKey}`));
+    const hairPool = gender === 'male' ? MALE_HAIR_STYLES : gender === 'female' ? FEMALE_HAIR_STYLES : HAIR_STYLES;
 
     return {
         skinTone: draw('skinTone', SKIN_TONES),
@@ -179,12 +200,14 @@ function generateRandomAppearance(seed) {
         eyeShape: draw('eyeShape', EYE_SHAPES),
         eyeColor: draw('eyeColor', EYE_COLORS),
         eyebrowStyle: draw('eyebrowStyle', EYEBROW_STYLES),
-        hairStyle: draw('hairStyle', HAIR_STYLES),
+        hairStyle: draw('hairStyle', hairPool),
         hairColorBase: draw('hairColorBase', HAIR_COLORS),
         facialHairStyle: draw('facialHairStyle', FACIAL_HAIR_STYLES),
         facialHairColor: draw('facialHairColor', FACIAL_HAIR_COLORS),
         glassesStyle: draw('glassesStyle', GLASSES_STYLES),
         glassesColor: draw('glassesColor', GLASSES_COLORS),
+        lipstickColor: draw('lipstickColor', LIPSTICK_COLORS),
+        blushColor: draw('blushColor', BLUSH_COLORS),
         grayStartAge: generateGrayStartAge(seed)
     };
 }
@@ -199,7 +222,7 @@ function generateRandomAppearance(seed) {
  */
 function ensureAppearance(character) {
     if (!character.appearance) {
-        character.appearance = generateRandomAppearance(character.id || character.name);
+        character.appearance = generateRandomAppearance(character.id || character.name, character.gender);
     }
     return character.appearance;
 }
@@ -211,9 +234,12 @@ export const AvatarLogic = {
     EYE_COLORS, EYE_COLOR_HEX,
     EYEBROW_STYLES,
     HAIR_STYLES, HAIR_STYLES_WITH_BACK_LAYER,
+    MALE_HAIR_STYLES, FEMALE_HAIR_STYLES,
     HAIR_COLORS, HAIR_COLOR_HEX,
     FACIAL_HAIR_STYLES, FACIAL_HAIR_COLORS,
     GLASSES_STYLES, GLASSES_COLORS, GLASSES_COLOR_HEX,
+    LIPSTICK_COLORS, LIPSTICK_COLOR_HEX,
+    BLUSH_COLORS, BLUSH_COLOR_HEX,
     buildAppearanceDescriptor,
     generateRandomAppearance,
     generateGrayStartAge,

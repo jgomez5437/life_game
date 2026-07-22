@@ -38,7 +38,7 @@ export const FamilyFactory = (() => {
                     gender: 'female',
                     status: getInt(70, 100),
                     category: 'family',
-                    appearance: AvatarLogic.generateRandomAppearance(id)
+                    appearance: AvatarLogic.generateRandomAppearance(id, 'female')
                 });
             }
 
@@ -52,7 +52,7 @@ export const FamilyFactory = (() => {
                     gender: 'male',
                     status: getInt(70, 100),
                     category: 'family',
-                    appearance: AvatarLogic.generateRandomAppearance(id)
+                    appearance: AvatarLogic.generateRandomAppearance(id, 'male')
                 });
             }
 
@@ -78,7 +78,7 @@ export const FamilyFactory = (() => {
                         gender: isMale ? 'male' : 'female',
                         status: getInt(50, 100),
                         category: 'family',
-                        appearance: AvatarLogic.generateRandomAppearance(id)
+                        appearance: AvatarLogic.generateRandomAppearance(id, isMale ? 'male' : 'female')
                     });
                 }
             }
