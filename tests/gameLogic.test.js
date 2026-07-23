@@ -820,3 +820,273 @@ describe('calculateChildMonthlyOutflow', () => {
         expect(GameLogic.calculateChildMonthlyOutflow(relationships)).toBe(0);
     });
 });
+
+describe('Real Estate Properties & Mortgage Pure Logic', () => {
+    test('calculateMonthlyMortgage returns realistic monthly payment', () => {
+        // $100,000 at 6.5% interest for 30 years is ~$632/month
+        const payment = GameLogic.calculateMonthlyMortgage(100000, 0.065, 30);
+        expect(payment).toBeGreaterThan(600);
+        expect(payment).toBeLessThan(700);
+        expect(payment).toBe(632);
+    });
+
+    test('calculateMonthlyMortgage returns 0 for zero or negative principal', () => {
+        expect(GameLogic.calculateMonthlyMortgage(0)).toBe(0);
+        expect(GameLogic.calculateMonthlyMortgage(-50000)).toBe(0);
+    });
+
+    test('calculateUserMonthlyIncome aggregates job and business CEO salaries', () => {
+        const userWithJob = { jobTitle: 'Software Developer', jobSalary: 120000 };
+        expect(GameLogic.calculateUserMonthlyIncome(userWithJob)).toBe(10000);
+
+        const userWithBusiness = { hasBusiness: true, ceoSalary: 15000 };
+        expect(GameLogic.calculateUserMonthlyIncome(userWithBusiness)).toBe(15000);
+
+        const userWithBoth = { jobTitle: 'Engineer', jobSalary: 60000, hasBusiness: true, ceoSalary: 8000 };
+        expect(GameLogic.calculateUserMonthlyIncome(userWithBoth)).toBe(13000);
+
+        const unemployedUser = { money: 50000 };
+        expect(GameLogic.calculateUserMonthlyIncome(unemployedUser)).toBe(0);
+    });
+
+    test('calculateTotalMonthlyMortgages sums active property mortgages', () => {
+        const user = {
+            assets: [
+                { category: 'vehicle', value: 20000 },
+                { category: 'property', name: 'Apartment', mortgage: { remainingBalance: 100000, monthlyPayment: 600 } },
+                { category: 'property', name: 'House', mortgage: { remainingBalance: 300000, monthlyPayment: 1800 } },
+                { category: 'property', name: 'Paid Off Condo', mortgage: null }
+            ]
+        };
+        expect(GameLogic.calculateTotalMonthlyMortgages(user)).toBe(2400);
+    });
+
+    test('canAffordMortgage blocks mortgage if user has no monthly income', () => {
+        const user = { money: 100000 };
+        const result = GameLogic.canAffordMortgage(user, 500);
+        expect(result.allowed).toBe(false);
+        expect(result.reason).toContain('need monthly income');
+    });
+
+    test('canAffordMortgage allows mortgage when total payment < 40% of monthly income', () => {
+        // Income = $10,000/mo. 40% limit = $4,000. New mortgage = $1,500/mo (15%).
+        const user = { jobTitle: 'Dev', jobSalary: 120000 };
+        const result = GameLogic.canAffordMortgage(user, 1500);
+        expect(result.allowed).toBe(true);
+        expect(result.ratio).toBeCloseTo(0.15);
+    });
+
+    test('canAffordMortgage rejects mortgage when payment takes up 40% or more of monthly income', () => {
+        // Income = $5,000/mo. 40% limit = $2,000. Proposed mortgage = $2,000/mo (40%).
+        const user = { jobTitle: 'Teacher', jobSalary: 60000 };
+        const result = GameLogic.canAffordMortgage(user, 2000);
+        expect(result.allowed).toBe(false);
+        expect(result.ratio).toBeCloseTo(0.40);
+        expect(result.reason).toContain('Max: 40%');
+    });
+
+    test('canAffordMortgage factors in existing mortgages against 40% limit', () => {
+        // Income = $10,000/mo ($120k salary). Limit = $4,000. Existing mortgage = $2,500/mo. New mortgage = $1,800/mo. Total = $4,300 (43%).
+        const user = {
+            jobTitle: 'Manager',
+            jobSalary: 120000,
+            assets: [
+                { category: 'property', mortgage: { remainingBalance: 200000, monthlyPayment: 2500 } }
+            ]
+        };
+        const result = GameLogic.canAffordMortgage(user, 1800);
+        expect(result.allowed).toBe(false);
+        expect(result.ratio).toBeCloseTo(0.43);
+    });
+
+    test('processMortgagePayments applies interest amortization correctly over 9 years', () => {
+        const townhouseMortgage = GameLogic.calculateMonthlyMortgage(280000, 0.065, 30); // 1770/mo
+        const user = {
+            money: 500000,
+            assets: [
+                {
+                    name: 'Suburban Townhouse',
+                    category: 'property',
+                    mortgage: { remainingBalance: 280000, monthlyPayment: townhouseMortgage, annualRate: 0.065 }
+                }
+            ]
+        };
+
+        // Age up 9 times (9 years of payments)
+        for (let year = 0; year < 9; year++) {
+            GameLogic.processMortgagePayments(user);
+        }
+
+        // After 9 years on a 30-year 6.5% loan for $280,000, balance should be ~ $242,000 - $243,000 (NOT $88,000!)
+        const remaining = user.assets[0].mortgage.remainingBalance;
+        expect(remaining).toBeGreaterThan(240000);
+        expect(remaining).toBeLessThan(245000);
+    });
+
+    test('getPropertyIcon returns correct icon and default fallback', () => {
+        expect(GameLogic.getPropertyIcon('apartment').icon).toBe('fa-building');
+        expect(GameLogic.getPropertyIcon('house').icon).toBe('fa-house');
+        expect(GameLogic.getPropertyIcon('penthouse').icon).toBe('fa-crown');
+        expect(GameLogic.getPropertyIcon('unknown').icon).toBe('fa-home');
+    });
+
+    test('updateOwnedProperties degrades condition and maxCondition over time', () => {
+        const user = {
+            assets: [
+                { category: 'property', name: 'House', value: 450000, condition: 100, maxCondition: 100 }
+            ]
+        };
+
+        GameLogic.updateOwnedProperties(user);
+
+        const prop = user.assets[0];
+        expect(prop.maxCondition).toBe(99); // Drops 1% per year
+        expect(prop.condition).toBeLessThan(100); // Drops 2-4% per year
+        expect(prop.condition).toBeLessThanOrEqual(prop.maxCondition);
+    });
+
+    test('calculateMaintenanceCost calculates realistic cost proportional to home value', () => {
+        const prop450k = { value: 450000 };
+        expect(GameLogic.calculateMaintenanceCost(prop450k)).toBe(3375); // 0.75% of $450,000
+
+        const cheapProp = { value: 20000 };
+        expect(GameLogic.calculateMaintenanceCost(cheapProp)).toBe(250); // Minimum $250
+    });
+
+    test('performPropertyMaintenance restores condition up to current maxCondition ceiling', () => {
+        const user = {
+            money: 10000,
+            assets: [
+                { id: 1, category: 'property', name: 'House', value: 450000, condition: 70, maxCondition: 90 }
+            ]
+        };
+
+        const result = GameLogic.performPropertyMaintenance(user, 1);
+        expect(result.success).toBe(true);
+        expect(result.restoredCondition).toBe(90); // Restored up to maxCondition cap, NOT 100!
+        expect(user.assets[0].condition).toBe(90);
+        expect(user.money).toBe(10000 - 3375);
+    });
+
+    test('calculateRenovationOptions produces 3 tiers scaled to property value', () => {
+        const prop = { value: 500000 };
+        const options = GameLogic.calculateRenovationOptions(prop);
+        expect(options.length).toBe(3);
+
+        expect(options[0].name).toBe('Minor Cosmetic Refresh');
+        expect(options[0].cost).toBe(15000); // 3%
+
+        expect(options[1].name).toBe('Major Interior Remodel');
+        expect(options[1].cost).toBe(40000); // 8%
+
+        expect(options[2].name).toBe('Full Gut Renovation');
+        expect(options[2].cost).toBe(90000); // 18%
+    });
+
+    test('renovateProperty restores condition, raises maxCondition, and increases market value', () => {
+        const user = {
+            money: 100000,
+            assets: [
+                { id: 1, category: 'property', name: 'House', value: 500000, condition: 60, maxCondition: 80 }
+            ]
+        };
+
+        // Full Gut Renovation (option 'full')
+        const result = GameLogic.renovateProperty(user, 1, 'full');
+        expect(result.success).toBe(true);
+        expect(user.assets[0].condition).toBe(100);
+        expect(user.assets[0].maxCondition).toBe(100);
+        expect(user.assets[0].value).toBe(625000); // +25% market value boost
+        expect(user.money).toBe(100000 - 90000);
+    });
+
+    test('generateTenantApplicants returns 3 realistic tenant applicants', () => {
+        const prop = { value: 300000 };
+        const applicants = GameLogic.generateTenantApplicants(prop);
+        expect(applicants.length).toBe(3);
+        expect(applicants[0].monthlyRent).toBeGreaterThan(0);
+        expect(applicants[1].monthlyRent).toBeGreaterThan(applicants[0].monthlyRent);
+        expect(applicants[2].monthlyRent).toBeGreaterThan(applicants[1].monthlyRent);
+    });
+
+    test('calculateTotalRentalIncome & calculateUserMonthlyIncome includes rental cashflow', () => {
+        const user = {
+            jobTitle: 'Software Developer',
+            jobSalary: 120000, // $10,000/mo salary
+            assets: [
+                { category: 'property', isRented: true, tenant: { monthlyRent: 2000 } },
+                { category: 'property', isRented: true, tenant: { monthlyRent: 1500 } },
+                { category: 'property', isRented: false, tenant: null }
+            ]
+        };
+
+        expect(GameLogic.calculateTotalRentalIncome(user.assets)).toBe(3500);
+        expect(GameLogic.calculateUserMonthlyIncome(user)).toBe(13500);
+    });
+
+    test('acceptTenantLease sets isRented and tenant object', () => {
+        const user = {
+            assets: [
+                { id: 10, category: 'property', name: 'Apartment', value: 200000, isRented: false }
+            ]
+        };
+
+        const result = GameLogic.acceptTenantLease(user, 10, 'applicant_reliable');
+        expect(result.success).toBe(true);
+        expect(user.assets[0].isRented).toBe(true);
+        expect(user.assets[0].tenant.quality).toBe('excellent');
+    });
+
+    test('processRentalIncome collects annual rent and logs transactions', () => {
+        const user = {
+            money: 10000,
+            assets: [
+                { id: 10, category: 'property', name: 'Apartment', isRented: true, tenant: { monthlyRent: 2000, quality: 'excellent' } }
+            ]
+        };
+
+        const totalCollected = GameLogic.processRentalIncome(user);
+        expect(totalCollected).toBe(24000); // 2000 * 12
+        expect(user.money).toBe(34000);
+    });
+
+    test('evictTenant clears tenant and resets isRented to false', () => {
+        const user = {
+            assets: [
+                { id: 10, category: 'property', name: 'Apartment', isRented: true, tenant: { name: 'John Doe', monthlyRent: 2000 } }
+            ]
+        };
+
+        const result = GameLogic.evictTenant(user, 10);
+        expect(result.success).toBe(true);
+        expect(user.assets[0].isRented).toBe(false);
+        expect(user.assets[0].tenant).toBeNull();
+    });
+
+    test('calculatePropertySaleTiers returns 5 pricing options ranging from below to above market value', () => {
+        const prop = { value: 300000 };
+        const tiers = GameLogic.calculatePropertySaleTiers(prop);
+        expect(tiers.length).toBe(5);
+        expect(tiers[0].id).toBe('below');
+        expect(tiers[0].price).toBe(255000); // 300k * 0.85
+        expect(tiers[2].id).toBe('at_market');
+        expect(tiers[2].price).toBe(300000);
+        expect(tiers[4].id).toBe('above');
+        expect(tiers[4].price).toBe(354000); // 300k * 1.18
+    });
+
+    test('completePropertySale pays off remaining mortgage and adds net proceeds to user money', () => {
+        const user = {
+            money: 50000,
+            assets: [
+                { id: 1, category: 'property', name: 'Suburban House', value: 300000, mortgage: { remainingBalance: 120000 } }
+            ]
+        };
+
+        const result = GameLogic.completePropertySale(user, 1, 300000);
+        expect(result.success).toBe(true);
+        expect(result.netProceeds).toBe(180000); // 300k - 120k
+        expect(user.money).toBe(230000); // 50k + 180k
+        expect(user.assets.length).toBe(0);
+    });
+});
