@@ -5,7 +5,7 @@ import { renderRelationships } from '../relationships/relationshipScreen.js';
 import { processNextFuneral } from '../relationships/funeralScreen.js';
 import { Utils } from '../../ui/utils.js';
 import { UI } from '../../ui/ui.js';
-import { renderAssets } from '../assets/assetsScreen.js';
+import { renderAssets, processNextTenantDefaultEvent } from '../assets/assetsScreen.js';
 import { saveGame, resetGame, CAREER_TRACKS } from '../../core/main.js';
 import { checkSchoolActionTaken } from '../education/manageEducationScreen.js';
 import { checkActionTaken } from '../career/jobCareerManagerScreen.js';
@@ -54,8 +54,8 @@ export function ageUp() {
     checkSchoolActionTaken(user);
     checkActionTaken();          
     
-    // Instead of rendering dashboard directly, process funerals first
-    processNextFuneral();
+    // Process tenant default popups first, then funerals, then render dashboard
+    processNextTenantDefaultEvent();
     
     if (typeof saveGame === "function") {
         saveGame();
@@ -396,6 +396,18 @@ function handleFinances(user) {
     if (user.hasBusiness) {
         autoProcessBusinessQuarter(user);
     }
+
+    // 8. Mortgage Payments
+    const mortgageResult = GameLogic.processMortgagePayments(user);
+    if (mortgageResult.paidOff && mortgageResult.paidOff.length > 0) {
+        mortgageResult.paidOff.forEach(propName => {
+            addLog(`Fully paid off the mortgage on ${propName}!`, 'good');
+        });
+    }
+
+    // 9. Rental Income & Tenant Events
+    GameLogic.processRentalIncome(user, state);
+    GameLogic.processTenantEvents(user, state);
 }
 
 export function refreshClassmates(user) {
@@ -488,6 +500,7 @@ function handleEducation(user) {
 function handleMarket(user) {
     const marketForce = GameLogic.simulateVehicleMarket();
     GameLogic.updateOwnedVehicles(user, marketForce);
+    GameLogic.updateOwnedProperties(user);
     
     if (marketForce > 0.06 && user.age > 15) {
         addLog("Inflation hits the auto market! Car prices are up.", "bad");

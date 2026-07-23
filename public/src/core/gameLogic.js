@@ -1014,6 +1014,598 @@ function inheritFamilyRelationships(parentRelationships, selectedChildId) {
     return inherited;
 }
 
+const PROPERTIES_FOR_SALE = [
+    { id: 1, name: "Cozy Studio Apartment", type: "apartment", price: 120000, desc: "A modest starter studio in the city." },
+    { id: 2, name: "Suburban Townhouse", type: "townhouse", price: 280000, desc: "A cozy 2-bedroom townhouse with a garage." },
+    { id: 3, name: "Family Suburban House", type: "house", price: 450000, desc: "Spacious 4-bedroom house with a backyard." },
+    { id: 4, name: "Downtown Luxury Condo", type: "condo", price: 850000, desc: "High-rise condo with skyline views." },
+    { id: 5, name: "Executive Hillside Villa", type: "villa", price: 2200000, desc: "Gated villa with a private pool." },
+    { id: 6, name: "Beachfront Estate", type: "estate", price: 6500000, desc: "Sprawling oceanfront luxury property." },
+    { id: 7, name: "Penthouse Skyscraper", type: "penthouse", price: 15000000, desc: "The peak of luxury overlooking the entire city." }
+];
+
+const PROPERTY_TYPES = {
+    apartment: { icon: "fa-building", color: "text-blue-400" },
+    townhouse: { icon: "fa-city", color: "text-indigo-400" },
+    house: { icon: "fa-house", color: "text-green-400" },
+    condo: { icon: "fa-building-user", color: "text-purple-400" },
+    villa: { icon: "fa-place-of-worship", color: "text-amber-400" },
+    estate: { icon: "fa-landmark", color: "text-emerald-400" },
+    penthouse: { icon: "fa-crown", color: "text-yellow-400" },
+    default: { icon: "fa-home", color: "text-slate-400" }
+};
+
+function getPropertyIcon(type) {
+    const key = type ? type.toLowerCase() : 'default';
+    return PROPERTY_TYPES[key] || PROPERTY_TYPES.default;
+}
+
+function calculateMonthlyMortgage(principal, annualRate = 0.065, years = 30) {
+    if (!principal || principal <= 0) return 0;
+    const monthlyRate = annualRate / 12;
+    const numPayments = years * 12;
+    const factor = Math.pow(1 + monthlyRate, numPayments);
+    const monthlyPayment = principal * (monthlyRate * factor) / (factor - 1);
+    return Math.round(monthlyPayment);
+}
+
+function calculateTotalRentalIncome(assets) {
+    if (!Array.isArray(assets)) return 0;
+    return assets.reduce((sum, asset) => {
+        if (asset.category === 'property' && asset.isRented && asset.tenant && asset.tenant.monthlyRent) {
+            return sum + asset.tenant.monthlyRent;
+        }
+        return sum;
+    }, 0);
+}
+
+function calculateUserMonthlyIncome(user) {
+    if (!user) return 0;
+    let monthlyIncome = 0;
+    if (user.hasBusiness && user.ceoSalary) monthlyIncome += user.ceoSalary;
+    if (user.jobTitle && user.jobSalary) monthlyIncome += Math.floor(user.jobSalary / 12);
+    monthlyIncome += calculateTotalRentalIncome(user.assets);
+    return monthlyIncome;
+}
+
+function generateTenantApplicants(property) {
+    if (!property || !property.value) return [];
+    const val = property.value;
+    const seedTime = `${property.id}_${Date.now()}_${Math.random()}`;
+
+    const maleName1 = `${getRandomFirstName('male')} ${getLastName()}`;
+    const femaleName2 = `${getRandomFirstName('female')} ${getLastName()}`;
+    const maleName3 = `${getRandomFirstName('male')} ${getLastName()}`;
+
+    const app1 = {
+        id: 'applicant_reliable',
+        name: maleName1,
+        gender: 'male',
+        age: Math.floor(Math.random() * 25) + 30,
+        type: 'Reliable Professional',
+        quality: 'excellent',
+        monthlyRent: Math.max(500, Math.floor(val * 0.007)),
+        leaseYears: 2,
+        desc: 'Corporate professional with verified credit and stellar landlord references.'
+    };
+    app1.appearance = AvatarLogic.generateRandomAppearance(`${seedTime}_1`, 'male');
+
+    const app2 = {
+        id: 'applicant_roommates',
+        name: femaleName2,
+        gender: 'female',
+        age: Math.floor(Math.random() * 15) + 22,
+        type: 'Working Roommates',
+        quality: 'good',
+        monthlyRent: Math.max(650, Math.floor(val * 0.009)),
+        leaseYears: 1,
+        desc: 'Steady combined income willing to pay higher rent for a flexible 1-year term.'
+    };
+    app2.appearance = AvatarLogic.generateRandomAppearance(`${seedTime}_2`, 'female');
+
+    const app3 = {
+        id: 'applicant_unscreened',
+        name: maleName3,
+        gender: 'male',
+        age: Math.floor(Math.random() * 20) + 25,
+        type: 'Unscreened Applicant',
+        quality: 'risky',
+        monthlyRent: Math.max(800, Math.floor(val * 0.011)),
+        leaseYears: 3,
+        desc: 'Offers top-tier rent and a long lease, but has an unverified employment history.'
+    };
+    app3.appearance = AvatarLogic.generateRandomAppearance(`${seedTime}_3`, 'male');
+
+    return [app1, app2, app3];
+}
+
+function acceptTenantLease(user, propertyId, applicantId) {
+    if (!user || !Array.isArray(user.assets)) return { success: false, reason: "No assets found." };
+    const property = user.assets.find(a => a.id === propertyId);
+    if (!property || property.category !== 'property') return { success: false, reason: "Property not found." };
+
+    if (property.isRented && property.tenant) {
+        return { success: false, reason: "Property is already occupied by a tenant." };
+    }
+
+    const applicants = generateTenantApplicants(property);
+    const selected = applicants.find(a => a.id === applicantId);
+    if (!selected) return { success: false, reason: "Invalid applicant selected." };
+
+    property.isRented = true;
+    property.tenant = {
+        id: selected.id,
+        name: selected.name,
+        gender: selected.gender,
+        age: selected.age,
+        type: selected.type,
+        quality: selected.quality,
+        monthlyRent: selected.monthlyRent,
+        leaseYears: selected.leaseYears,
+        appearance: selected.appearance
+    };
+
+    return { success: true, propertyName: property.name, tenant: property.tenant };
+}
+
+function processRentalIncome(user, stateRef) {
+    if (!user || !Array.isArray(user.assets)) return 0;
+
+    let totalCollectedThisYear = 0;
+
+    user.assets.forEach(asset => {
+        if (asset.category === 'property' && asset.isRented && asset.tenant && asset.tenant.monthlyRent) {
+            let annualRent = asset.tenant.monthlyRent * 12;
+
+            // Partial defaults for risky or good tenants
+            if (asset.tenant.quality === 'risky' && Math.random() < 0.25) {
+                const missedMonths = 2;
+                const missedAmount = asset.tenant.monthlyRent * missedMonths;
+                annualRent -= missedAmount;
+                addLog(`Tenant ${asset.tenant.name} fell behind on 2 months of rent for ${asset.name}.`, 'bad');
+
+                if (stateRef && stateRef.gameState) {
+                    if (!stateRef.gameState.pendingTenantEvents) stateRef.gameState.pendingTenantEvents = [];
+                    stateRef.gameState.pendingTenantEvents.push({
+                        eventType: 'overdue',
+                        propertyId: asset.id,
+                        propertyName: asset.name,
+                        tenantId: asset.tenant.id,
+                        tenantName: asset.tenant.name,
+                        tenant: asset.tenant,
+                        monthlyRent: asset.tenant.monthlyRent,
+                        missedMonths: 2,
+                        missedAmount
+                    });
+                }
+            } else if (asset.tenant.quality === 'good' && Math.random() < 0.10) {
+                const missedMonths = 1;
+                annualRent -= asset.tenant.monthlyRent * missedMonths;
+                addLog(`Tenant ${asset.tenant.name} paid 1 month late for ${asset.name}.`, 'bad');
+            }
+
+            annualRent = Math.max(0, annualRent);
+            user.money += annualRent;
+            totalCollectedThisYear += annualRent;
+
+            if (annualRent > 0) {
+                addLog(`Collected $${annualRent.toLocaleString()} in rental income from ${asset.name}.`, 'good');
+            }
+        }
+    });
+
+    return totalCollectedThisYear;
+}
+
+function processTenantEvents(user, stateRef) {
+    if (!user || !Array.isArray(user.assets)) return;
+
+    user.assets.forEach(asset => {
+        if (asset.category === 'property' && asset.isRented && asset.tenant) {
+            asset.tenant.leaseYears -= 1;
+
+            if (asset.tenant.leaseYears <= 0) {
+                // 70% chance tenant wants to renew for 1-3 years
+                if (Math.random() < 0.70 && stateRef && stateRef.gameState) {
+                    const requestedYears = Math.floor(Math.random() * 3) + 1;
+                    const currentRent = asset.tenant.monthlyRent;
+                    const increasedRent = Math.floor(currentRent * 1.05);
+
+                    if (!stateRef.gameState.pendingTenantEvents) stateRef.gameState.pendingTenantEvents = [];
+                    stateRef.gameState.pendingTenantEvents.push({
+                        eventType: 'lease_expiration',
+                        propertyId: asset.id,
+                        propertyName: asset.name,
+                        tenantId: asset.tenant.id,
+                        tenantName: asset.tenant.name,
+                        tenant: asset.tenant,
+                        currentRent,
+                        increasedRent,
+                        requestedYears
+                    });
+                } else {
+                    const expiredTenantName = asset.tenant.name;
+                    asset.isRented = false;
+                    asset.tenant = null;
+                    addLog(`Tenant ${expiredTenantName}'s lease on ${asset.name} has expired. Property is now vacant.`, 'neutral');
+                }
+            } else {
+                const roll = Math.random();
+                if (roll < 0.15) {
+                    const repairCost = Math.max(300, Math.floor(asset.value * 0.005));
+                    addLog(`Tenant ${asset.tenant.name} caused property damage on ${asset.name}.`, 'bad');
+
+                    if (stateRef && stateRef.gameState) {
+                        if (!stateRef.gameState.pendingTenantEvents) stateRef.gameState.pendingTenantEvents = [];
+                        stateRef.gameState.pendingTenantEvents.push({
+                            eventType: 'damage',
+                            propertyId: asset.id,
+                            propertyName: asset.name,
+                            tenantId: asset.tenant.id,
+                            tenantName: asset.tenant.name,
+                            tenant: asset.tenant,
+                            conditionLoss: 10,
+                            repairCost
+                        });
+                    }
+                }
+            }
+        }
+    });
+}
+
+function evictTenant(user, propertyId) {
+    if (!user || !Array.isArray(user.assets)) return { success: false, reason: "No assets found." };
+    const property = user.assets.find(a => a.id === propertyId);
+    if (!property || property.category !== 'property') return { success: false, reason: "Property not found." };
+
+    if (!property.isRented || !property.tenant) {
+        return { success: false, reason: "Property has no active tenant to evict." };
+    }
+
+    const tenantName = property.tenant.name;
+    property.isRented = false;
+    property.tenant = null;
+
+    return { success: true, propertyName: property.name, tenantName };
+}
+
+
+function calculateTotalMonthlyMortgages(user) {
+    if (!user || !Array.isArray(user.assets)) return 0;
+    return user.assets.reduce((sum, asset) => {
+        if (asset.category === 'property' && asset.mortgage && asset.mortgage.remainingBalance > 0) {
+            return sum + (asset.mortgage.monthlyPayment || 0);
+        }
+        return sum;
+    }, 0);
+}
+
+function canAffordMortgage(user, newMonthlyPayment) {
+    const monthlyIncome = calculateUserMonthlyIncome(user);
+    if (monthlyIncome <= 0) {
+        return {
+            allowed: false,
+            ratio: 1.0,
+            currentMortgages: calculateTotalMonthlyMortgages(user),
+            monthlyIncome: 0,
+            reason: "You need monthly income from a job or business to qualify for a mortgage."
+        };
+    }
+    const currentMortgages = calculateTotalMonthlyMortgages(user);
+    const totalMortgagePayment = currentMortgages + newMonthlyPayment;
+    const ratio = totalMortgagePayment / monthlyIncome;
+
+    if (ratio >= 0.40) {
+        return {
+            allowed: false,
+            ratio,
+            currentMortgages,
+            monthlyIncome,
+            reason: `Mortgage payments would take up ${(ratio * 100).toFixed(1)}% of your monthly income (Max: 40%).`
+        };
+    }
+
+    return {
+        allowed: true,
+        ratio,
+        currentMortgages,
+        monthlyIncome,
+        reason: "Qualified for mortgage."
+    };
+}
+
+function processMortgagePayments(user) {
+    if (!user || !Array.isArray(user.assets)) return { totalPaid: 0, paidOff: [] };
+
+    let totalPaidThisYear = 0;
+    const paidOffProperties = [];
+
+    user.assets.forEach(asset => {
+        if (asset.category === 'property' && asset.mortgage && asset.mortgage.remainingBalance > 0) {
+            const annualRate = asset.mortgage.annualRate || 0.065;
+            const monthlyRate = annualRate / 12;
+            let paidForThisProperty = 0;
+
+            for (let month = 0; month < 12; month++) {
+                if (asset.mortgage.remainingBalance <= 0) break;
+
+                const interestForMonth = asset.mortgage.remainingBalance * monthlyRate;
+                const payoffAmount = asset.mortgage.remainingBalance + interestForMonth;
+                let paymentThisMonth = asset.mortgage.monthlyPayment;
+
+                if (payoffAmount <= paymentThisMonth) {
+                    paymentThisMonth = Math.round(payoffAmount);
+                    asset.mortgage.remainingBalance = 0;
+                    paidForThisProperty += paymentThisMonth;
+                    break;
+                } else {
+                    const principalThisMonth = paymentThisMonth - interestForMonth;
+                    asset.mortgage.remainingBalance -= principalThisMonth;
+                    paidForThisProperty += paymentThisMonth;
+                }
+            }
+
+            asset.mortgage.remainingBalance = Math.max(0, Math.round(asset.mortgage.remainingBalance));
+            user.money -= Math.round(paidForThisProperty);
+            totalPaidThisYear += Math.round(paidForThisProperty);
+
+            if (asset.mortgage.remainingBalance <= 0) {
+                paidOffProperties.push(asset.name);
+                asset.mortgage = null;
+            }
+        }
+    });
+
+    return { totalPaid: totalPaidThisYear, paidOff: paidOffProperties };
+}
+
+function calculatePropertyMonthlyOutflow(assets) {
+    if (!Array.isArray(assets)) return 0;
+    return assets.reduce((sum, asset) => {
+        if (asset.category === 'property' && asset.mortgage && asset.mortgage.remainingBalance > 0) {
+            return sum + asset.mortgage.monthlyPayment;
+        }
+        return 0;
+    }, 0);
+}
+
+function updateOwnedProperties(user) {
+    if (!user || !Array.isArray(user.assets)) return;
+
+    user.assets.forEach(asset => {
+        if (asset.category === 'property') {
+            if (asset.condition === undefined) asset.condition = 100;
+            if (asset.maxCondition === undefined) asset.maxCondition = 100;
+
+            const decay = Math.floor(Math.random() * 3) + 2; // 2-4% condition drop per year
+            asset.maxCondition = Math.max(50, asset.maxCondition - 1); // 1% permanent cap degradation per year
+            asset.condition = Math.max(0, Math.min(asset.maxCondition, asset.condition - decay));
+
+            // Value impact based on condition
+            let multiplier = 1.03; // Standard 3% appreciation
+            if (asset.condition < 25) {
+                multiplier = 0.92; // 8% depreciation if severe disrepair
+            } else if (asset.condition < 50) {
+                multiplier = 0.97; // 3% depreciation if poor condition
+            } else if (asset.condition < 80) {
+                multiplier = 1.01; // Slower 1% appreciation if fair condition
+            }
+
+            asset.value = Math.max(10000, Math.floor(asset.value * multiplier));
+
+            if (asset.condition < 20 && asset.condition + decay >= 20) {
+                addLog(`URGENT: Your ${asset.name} is in severe disrepair (${asset.condition}% condition)!`, 'bad');
+            }
+        }
+    });
+}
+
+function calculateMaintenanceCost(property) {
+    if (!property || !property.value) return 0;
+    return Math.max(250, Math.floor(property.value * 0.0075));
+}
+
+function performPropertyMaintenance(user, propertyId) {
+    if (!user || !Array.isArray(user.assets)) return { success: false, reason: "No assets found." };
+    const property = user.assets.find(a => a.id === propertyId);
+    if (!property || property.category !== 'property') return { success: false, reason: "Property not found." };
+
+    if (property.condition === undefined) property.condition = 100;
+    if (property.maxCondition === undefined) property.maxCondition = 100;
+
+    if (property.condition >= property.maxCondition) {
+        return { success: false, reason: "Property is already in peak maintained condition." };
+    }
+
+    const cost = calculateMaintenanceCost(property);
+    if (user.money < cost) {
+        return { success: false, reason: `Insufficient funds. Routine maintenance costs $${cost.toLocaleString()}.` };
+    }
+
+    user.money -= cost;
+    property.condition = property.maxCondition;
+
+    return { success: true, cost, restoredCondition: property.condition, maxCondition: property.maxCondition, propertyName: property.name };
+}
+
+function calculateRenovationOptions(property) {
+    if (!property || !property.value) return [];
+    const val = property.value;
+
+    return [
+        {
+            id: 'minor',
+            name: 'Minor Cosmetic Refresh',
+            cost: Math.floor(val * 0.03),
+            condGain: 20,
+            maxCondGain: 10,
+            valueBoostRatio: 0.04,
+            desc: 'Fresh interior paint, minor repairs, and updated lighting fixtures.'
+        },
+        {
+            id: 'major',
+            name: 'Major Interior Remodel',
+            cost: Math.floor(val * 0.08),
+            condGain: 50,
+            maxCondGain: 25,
+            valueBoostRatio: 0.12,
+            desc: 'Modernized kitchen, upgraded bathrooms, and premium flooring.'
+        },
+        {
+            id: 'full',
+            name: 'Full Gut Renovation',
+            cost: Math.floor(val * 0.18),
+            condGain: 100,
+            maxCondGain: 100,
+            valueBoostRatio: 0.25,
+            desc: 'Complete structural overhaul, luxury high-end finishes, and full system upgrades.'
+        }
+    ];
+}
+
+function renovateProperty(user, propertyId, optionId) {
+    if (!user || !Array.isArray(user.assets)) return { success: false, reason: "No assets found." };
+    const property = user.assets.find(a => a.id === propertyId);
+    if (!property || property.category !== 'property') return { success: false, reason: "Property not found." };
+
+    const options = calculateRenovationOptions(property);
+    const selectedOption = options.find(o => o.id === optionId);
+    if (!selectedOption) return { success: false, reason: "Invalid renovation option selected." };
+
+    if (user.money < selectedOption.cost) {
+        return { success: false, reason: `Insufficient funds. ${selectedOption.name} costs $${selectedOption.cost.toLocaleString()}.` };
+    }
+
+    if (property.condition === undefined) property.condition = 100;
+    if (property.maxCondition === undefined) property.maxCondition = 100;
+
+    user.money -= selectedOption.cost;
+
+    if (selectedOption.id === 'full') {
+        property.maxCondition = 100;
+        property.condition = 100;
+    } else {
+        property.maxCondition = Math.min(100, property.maxCondition + selectedOption.maxCondGain);
+        property.condition = Math.min(property.maxCondition, property.condition + selectedOption.condGain);
+    }
+
+    const valueIncrease = Math.floor(property.value * selectedOption.valueBoostRatio);
+    property.value += valueIncrease;
+
+    return {
+        success: true,
+        cost: selectedOption.cost,
+        optionName: selectedOption.name,
+        propertyName: property.name,
+        newCondition: property.condition,
+        newMaxCondition: property.maxCondition,
+        newValue: property.value,
+        valueIncrease
+    };
+}
+
+function calculatePropertySaleTiers(property) {
+    if (!property || !property.value) return [];
+    const val = property.value;
+
+    return [
+        {
+            id: 'below',
+            name: 'Below Market Value',
+            price: Math.floor(val * 0.85),
+            chance: 0.95,
+            desc: 'Discounted pricing to attract fast, eager buyers.'
+        },
+        {
+            id: 'slightly_below',
+            name: 'Slightly Below Market Value',
+            price: Math.floor(val * 0.95),
+            chance: 0.85,
+            desc: 'Competitive price for a quick and reliable sale.'
+        },
+        {
+            id: 'at_market',
+            name: 'At Market Value',
+            price: val,
+            chance: 0.70,
+            desc: 'Accurately priced according to current market comps.'
+        },
+        {
+            id: 'slightly_above',
+            name: 'Slightly Above Market Value',
+            price: Math.floor(val * 1.08),
+            chance: 0.45,
+            desc: 'Targeted at interested buyers willing to pay extra.'
+        },
+        {
+            id: 'above',
+            name: 'Above Market Value',
+            price: Math.floor(val * 1.18),
+            chance: 0.25,
+            desc: 'Premium pricing aimed at maximizing total profit.'
+        }
+    ];
+}
+
+function generatePropertyBuyerOffer(property, tierId) {
+    if (!property || !property.value) return { hasOffer: false };
+    const tiers = calculatePropertySaleTiers(property);
+    const selectedTier = tiers.find(t => t.id === tierId) || tiers[2];
+
+    const roll = Math.random();
+    if (roll > selectedTier.chance) {
+        return { hasOffer: false, tierName: selectedTier.name, listPrice: selectedTier.price };
+    }
+
+    const gender = Math.random() < 0.5 ? 'male' : 'female';
+    const buyerName = `${getRandomFirstName(gender)} ${getLastName()}`;
+    const buyerAge = Math.floor(Math.random() * 30) + 28;
+    const seed = `buyer_${property.id}_${Date.now()}_${Math.random()}`;
+    const appearance = AvatarLogic.generateRandomAppearance(seed, gender);
+
+    const buyer = {
+        name: buyerName,
+        gender,
+        age: buyerAge,
+        appearance
+    };
+
+    const offerAmount = selectedTier.price;
+    const remainingMortgage = (property.mortgage && property.mortgage.remainingBalance > 0) ? property.mortgage.remainingBalance : 0;
+    const netProceeds = Math.max(0, offerAmount - remainingMortgage);
+
+    return {
+        hasOffer: true,
+        buyer,
+        offerAmount,
+        remainingMortgage,
+        netProceeds,
+        tierName: selectedTier.name
+    };
+}
+
+function completePropertySale(user, propertyId, offerAmount) {
+    if (!user || !Array.isArray(user.assets)) return { success: false, reason: "No assets found." };
+    const index = user.assets.findIndex(a => a.id === propertyId);
+    if (index === -1) return { success: false, reason: "Property not found." };
+
+    const property = user.assets[index];
+    const remainingMortgage = (property.mortgage && property.mortgage.remainingBalance > 0) ? property.mortgage.remainingBalance : 0;
+    const netProceeds = offerAmount - remainingMortgage;
+
+    user.money += netProceeds;
+    user.assets.splice(index, 1);
+
+    return {
+        success: true,
+        propertyName: property.name,
+        offerAmount,
+        remainingMortgage,
+        netProceeds
+    };
+}
+
 export const GameLogic = {
     sanitizeName,
     addLivingExpenses,
@@ -1061,5 +1653,29 @@ export const GameLogic = {
     resetBusinessQuarterTracking,
     inheritFamilyRelationships,
     CITY_COST_OF_LIVING,
+    PROPERTIES_FOR_SALE,
+    getPropertyIcon,
+    calculateMonthlyMortgage,
+    calculateUserMonthlyIncome,
+    calculateTotalMonthlyMortgages,
+    canAffordMortgage,
+    processMortgagePayments,
+    calculatePropertyMonthlyOutflow,
+    updateOwnedProperties,
+    calculateMaintenanceCost,
+    performPropertyMaintenance,
+    calculateRenovationOptions,
+    renovateProperty,
+    calculateTotalRentalIncome,
+    generateTenantApplicants,
+    acceptTenantLease,
+    processRentalIncome,
+    processTenantEvents,
+    evictTenant,
+    calculatePropertySaleTiers,
+    generatePropertyBuyerOffer,
+    completePropertySale
 };
+
+
 

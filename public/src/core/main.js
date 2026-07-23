@@ -11,8 +11,8 @@ import { selectGender, submitCharacter, renderCharCreation, cycleTrait, randomiz
 import { ageUp, continueAsChild, renderLifeDashboard, addLog, renderDeathScreen, showFullEulogy } from '../features/player/mainScreen.js';
 import { state } from './state.js';
 import { GameLogic } from './gameLogic.js';
-import { renderAssets, renderVehicleManager, repairVehicle, sellVehicle } from '../features/assets/assetsScreen.js';
-import { renderShoppingHub, renderVehicleDealer, buyVehicle } from '../features/assets/goShoppingScreen.js';
+import { renderAssets, renderVehicleManager, repairVehicle, sellVehicle, renderPropertyManager, payOffMortgage, openSellPropertyModal, submitPropertyListing, acceptBuyerOffer, doPropertyMaintenance, doPropertyRenovation, openTenantScreening, acceptTenantLease, evictTenantAction, demandTenantRentPayment, forgiveTenantRent, evictTenantFromEvent, demandTenantRepairPayment, forgiveTenantDamage, renewLeaseSameRate, renewLeaseWithIncrease, declineLeaseRenewal } from '../features/assets/assetsScreen.js';
+import { renderShoppingHub, renderVehicleDealer, buyVehicle, renderRealEstateDealer, buyPropertyCash, buyPropertyMortgage } from '../features/assets/goShoppingScreen.js';
 import { renderActivities } from '../features/career/occupationScreen.js';
 import { renderRelationships, renderPersonInteraction, openRelationshipConfirm, spendTimeWithAll, goOutMeetSomeone } from '../features/relationships/relationshipScreen.js';
 import { chooseFuneralType, cancelFuneralPlan, confirmFuneralPlan, donateBody, lookTheOtherWay, goToFuneral, skipFuneral } from '../features/relationships/funeralScreen.js';
@@ -777,6 +777,27 @@ const routeHandlers = {
   sellVehicle,
   renderVehicleDealer,
   buyVehicle,
+  renderRealEstateDealer,
+  buyPropertyCash,
+  buyPropertyMortgage,
+  renderPropertyManager,
+  payOffMortgage,
+  openSellPropertyModal,
+  submitPropertyListing,
+  acceptBuyerOffer,
+  doPropertyMaintenance,
+  doPropertyRenovation,
+  openTenantScreening,
+  acceptTenantLease,
+  evictTenantAction,
+  demandTenantRentPayment,
+  forgiveTenantRent,
+  evictTenantFromEvent,
+  demandTenantRepairPayment,
+  forgiveTenantDamage,
+  renewLeaseSameRate,
+  renewLeaseWithIncrease,
+  declineLeaseRenewal,
   renderActivities,
   processQuarter,
   selectIndustry,

@@ -57,7 +57,7 @@ export const renderShoppingHub = () => {
                     <i class="fas fa-chevron-right text-slate-600 group-hover:text-white"></i>
                 </button>
 
-                <button data-action="showComingSoon" class="bg-slate-800 p-6 rounded-xl border border-slate-700 flex items-center justify-between hover:bg-slate-750 hover:border-green-500 transition group">
+                <button data-action="renderRealEstateDealer" class="bg-slate-800 p-6 rounded-xl border border-slate-700 flex items-center justify-between hover:bg-slate-750 hover:border-green-500 transition group">
                     <div class="flex items-center gap-4">
                         <div class="w-12 h-12 rounded-full bg-green-900/30 flex items-center justify-center text-green-400 text-xl group-hover:scale-110 transition">
                             <i class="fas fa-home"></i>
@@ -148,6 +148,76 @@ export const renderVehicleDealer = () => {
     `;
 };
 
+// Real Estate Screen
+export const renderRealEstateDealer = () => {
+    const user = state.gameState.user;
+    const monthlyIncome = GameLogic.calculateUserMonthlyIncome(user);
+    const properties = GameLogic.PROPERTIES_FOR_SALE || [];
+
+    const propertyListHtml = properties.map(prop => {
+        const canCash = user.money >= prop.price;
+        const monthlyMortgage = GameLogic.calculateMonthlyMortgage(prop.price);
+        const qualification = GameLogic.canAffordMortgage(user, monthlyMortgage);
+        const iconStyle = GameLogic.getPropertyIcon(prop.type);
+
+        return `
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex flex-col gap-3 mb-3">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center border border-slate-600 shrink-0">
+                            <i class="fas ${iconStyle.icon} ${iconStyle.color} text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-white text-base leading-tight">${prop.name}</h3>
+                            <p class="text-xs text-slate-400">${prop.desc}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-green-400 font-bold text-base">${Utils.formatMoney(prop.price)}</div>
+                        <div class="text-xs text-slate-400 font-semibold">${Utils.formatMoney(monthlyMortgage)}/mo</div>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-700/60">
+                    <button data-action="buyPropertyCash" data-args="${prop.id}"
+                        ${canCash ? '' : 'disabled'}
+                        class="${canCash ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-slate-700 text-slate-500 cursor-not-allowed'} px-3 py-1.5 rounded-lg font-bold text-xs transition">
+                        ${canCash ? 'Pay Cash' : "Can't Afford Cash"}
+                    </button>
+
+                    <button data-action="buyPropertyMortgage" data-args="${prop.id}"
+                        ${qualification.allowed ? '' : 'disabled'}
+                        class="${qualification.allowed ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-slate-700 text-slate-500 cursor-not-allowed'} px-3 py-1.5 rounded-lg font-bold text-xs transition">
+                        ${qualification.allowed ? 'Get Mortgage' : (monthlyIncome <= 0 ? 'No Income' : 'DTI > 40%')}
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    get('game-container').innerHTML = `
+        <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
+            <div class="mb-4">
+                <button data-action="renderShoppingHub" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+                    <i class="fas fa-arrow-left"></i> Back to Market
+                </button>
+            </div>
+
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 rounded-full bg-green-900/50 flex items-center justify-center text-green-400 mx-auto mb-3 text-2xl">
+                    <i class="fas fa-home"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-white">${user.city} Real Estate</h2>
+                <p class="text-slate-400 text-sm">Monthly Income: <span class="text-green-400 font-bold">${Utils.formatMoney(monthlyIncome)}</span> • Max Debt Ratio: 40%</p>
+            </div>
+
+            <div class="flex-1 overflow-y-auto pb-6">
+                ${propertyListHtml}
+            </div>
+        </div>
+    `;
+};
+
 // --- LOGIC FUNCTIONS (The "Controller") ---
 
 export const buyVehicle = (carId) => {
@@ -189,3 +259,76 @@ export const buyVehicle = (carId) => {
     // Optional: Show success modal
     UI.showModal("Purchase Successful", `You are now the owner of a ${car.name}!`);
 };
+
+export const buyPropertyCash = (propertyId) => {
+    const user = state.gameState.user;
+    const prop = (GameLogic.PROPERTIES_FOR_SALE || []).find(p => p.id === propertyId);
+
+    if (!prop) return;
+
+    if (user.money < prop.price) {
+        UI.showModal("Insufficient Funds", "You do not have enough cash to purchase this property outright.");
+        return;
+    }
+
+    user.money -= prop.price;
+
+    const newAsset = {
+        id: Date.now(),
+        name: prop.name,
+        type: prop.type,
+        value: prop.price,
+        purchasePrice: prop.price,
+        condition: 100,
+        category: "property",
+        mortgage: null
+    };
+
+    if (!user.assets) user.assets = [];
+    user.assets.push(newAsset);
+
+    addLog(`Purchased ${prop.name} for ${Utils.formatMoney(prop.price)} in cash.`, 'good');
+    UI.updateHeader(user);
+    renderRealEstateDealer();
+    UI.showModal("Property Purchased", `Congratulations! You bought ${prop.name} for ${Utils.formatMoney(prop.price)} in cash.`);
+};
+
+export const buyPropertyMortgage = (propertyId) => {
+    const user = state.gameState.user;
+    const prop = (GameLogic.PROPERTIES_FOR_SALE || []).find(p => p.id === propertyId);
+
+    if (!prop) return;
+
+    const monthlyMortgage = GameLogic.calculateMonthlyMortgage(prop.price);
+    const qualification = GameLogic.canAffordMortgage(user, monthlyMortgage);
+
+    if (!qualification.allowed) {
+        UI.showModal("Mortgage Application Denied", qualification.reason);
+        return;
+    }
+
+    const newAsset = {
+        id: Date.now(),
+        name: prop.name,
+        type: prop.type,
+        value: prop.price,
+        purchasePrice: prop.price,
+        condition: 100,
+        category: "property",
+        mortgage: {
+            remainingBalance: prop.price,
+            monthlyPayment: monthlyMortgage,
+            originalPrincipal: prop.price,
+            years: 30,
+            annualRate: 0.065
+        }
+    };
+
+    if (!user.assets) user.assets = [];
+    user.assets.push(newAsset);
+
+    addLog(`Acquired ${prop.name} with a mortgage (${Utils.formatMoney(monthlyMortgage)}/month).`, 'good');
+    UI.updateHeader(user);
+    renderRealEstateDealer();
+    UI.showModal("Mortgage Approved!", `You acquired ${prop.name}! Your monthly mortgage payment is ${Utils.formatMoney(monthlyMortgage)}.`);
+};
