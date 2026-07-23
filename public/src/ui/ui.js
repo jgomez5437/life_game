@@ -152,4 +152,4 @@ export const UI = {
         _elements.modalOverlay.classList.add('hidden');
         _elements.modalOverlay.classList.remove('flex');
     }
-}
+};

@@ -115,19 +115,31 @@ const VEHICLE_TYPES = {
     default: { icon: "fa-car", color: "text-gray-400" }
 };
 
+const VEHICLES_FOR_SALE = [
+    { id: 1, name: "Rusty Toyota Camry", type: "sedan", price: 2000, condition: 60 },
+    { id: 2, name: "Rusty Honda Civic", type: "sedan", price: 2200, condition: 60 },
+    { id: 3, name: "Used Honda Fit", type: "hatchback", price: 6000, condition: 80 },
+    { id: 4, name: "Used Ford Fiesta", type: "hatchback", price: 5500, condition: 80 },
+    { id: 5, name: "New Subaru Forester", type: "suv", price: 35000, condition: 100 },
+    { id: 6, name: "New Toyota Rav4", type: "suv", price: 35000, condition: 100 },
+    { id: 7, name: "New Ford F-150 XL", type: "truck", price: 45500, condition: 100 },
+    { id: 8, name: "New Chevrolet Silverado 1500", type: "truck", price: 42000, condition: 100 },
+    { id: 9, name: "New Chevrolet Corvette Stingray", type: "sports", price: 67000, condition: 100 },
+    { id: 10, name: "New BMW M2", type: "sports", price: 65000, condition: 100 },
+    { id: 11, name: "New Lamborghini Huracán", type: "supercar", price: 255000, condition: 100 },
+    { id: 12, name: "New Ferrari Roma", type: "supercar", price: 260000, condition: 100 }
+];
+
 function getVehicleIcon(type) {
-    // Convert type to lowercase to match keys
     const key = type ? type.toLowerCase() : 'default';
-    return VEHICLE_TYPES[key] || window.VEHICLE_TYPES.default;
-};
+    return VEHICLE_TYPES[key] || VEHICLE_TYPES.default;
+}
 
     // Simulates market fluctuation
 function simulateVehicleMarket() {
-    // This generates a number between -0.08 (-8%) and 0.08 (+8%)
     const marketForce = (Math.random() * 0.16) - 0.08;
     
-    // 2. Apply to every car
-    window.VEHICLES_FOR_SALE.forEach(car => {
+    VEHICLES_FOR_SALE.forEach(car => {
         // Each car has a slight individual variance on top of the market force
         const individualVariance = (Math.random() * 0.04) - 0.02; // +/- 2%
         const totalChangePercent = 1 + marketForce + individualVariance;
@@ -810,16 +822,104 @@ function attemptBefriend(status, isTeacher, roll = Math.random()) {
     return roll < chance;
 }
 
+const JEWELRY_TYPES = {
+    ring: { icon: "fa-ring", color: "text-amber-400" },
+    watch: { icon: "fa-clock", color: "text-blue-400" },
+    necklace: { icon: "fa-gem", color: "text-pink-400" },
+    earrings: { icon: "fa-shield-halved", color: "text-purple-400" },
+    bracelet: { icon: "fa-circle-notch", color: "text-emerald-400" },
+    tiara: { icon: "fa-crown", color: "text-yellow-300" },
+    default: { icon: "fa-gem", color: "text-amber-300" }
+};
+
+function getJewelryIcon(type) {
+    const key = type ? type.toLowerCase() : 'default';
+    return JEWELRY_TYPES[key] || JEWELRY_TYPES.default;
+}
+
+const JEWELRY_FOR_SALE = [
+    // Rings - Women & Men (Budget to Heirloom)
+    { id: "ring_1", name: "Silver Band", type: "ring", category: "jewelry", tier: "budget", price: 150, appreciationRate: 0, desc: "A simple, polished silver band for any occasion." },
+    { id: "ring_2", name: "Titanium Men's Band", type: "ring", category: "jewelry", tier: "budget", price: 350, appreciationRate: 0, desc: "Durable, brushed titanium ring designed for men." },
+    { id: "ring_3", name: "14K Gold Band", type: "ring", category: "jewelry", tier: "fine", price: 1200, appreciationRate: 0.01, desc: "Classic solid 14K yellow gold band." },
+    { id: "ring_4", name: "Men's Heavy Gold Ring", type: "ring", category: "jewelry", tier: "fine", price: 2500, appreciationRate: 0.01, desc: "Substantial 18K gold signet ring for men." },
+    { id: "ring_5", name: "Classic Diamond Engagement Ring", type: "ring", category: "jewelry", tier: "fine", price: 5000, appreciationRate: 0.02, desc: "Stunning solitaire diamond set in platinum." },
+    { id: "ring_6", name: "Platinum Diamond Wedding Ring", type: "ring", category: "jewelry", tier: "luxury", price: 12000, appreciationRate: 0.02, desc: "Pavé diamond wedding band in high-grade platinum." },
+    { id: "ring_7", name: "Emerald Cut Solitaire Ring", type: "ring", category: "jewelry", tier: "luxury", price: 25000, appreciationRate: 0.03, desc: "Flawless 3-carat emerald cut diamond." },
+    { id: "ring_8", name: "Royal Crown Diamond Ring", type: "ring", category: "jewelry", tier: "heirloom", price: 75000, appreciationRate: 0.04, desc: "Rare pink diamond ring fit for royalty." },
+
+    // Luxury Watches
+    { id: "watch_1", name: "Stainless Steel Watch", type: "watch", category: "jewelry", tier: "budget", price: 400, appreciationRate: 0, desc: "Reliable daily quartz timepiece." },
+    { id: "watch_2", name: "Designer Automatic Watch", type: "watch", category: "jewelry", tier: "fine", price: 3500, appreciationRate: 0.01, desc: "Swiss-made automatic mechanical watch." },
+    { id: "watch_3", name: "Vintage Rolex Submariner", type: "watch", category: "jewelry", tier: "luxury", price: 28000, appreciationRate: 0.03, desc: "Iconic collector luxury watch that retains value." },
+    { id: "watch_4", name: "Patek Philippe Grand Complication", type: "watch", category: "jewelry", tier: "heirloom", price: 95000, appreciationRate: 0.04, desc: "Masterpiece horology timepiece with perpetual calendar." },
+    { id: "watch_5", name: "Richard Mille Tourbillon", type: "watch", category: "jewelry", tier: "heirloom", price: 350000, appreciationRate: 0.05, desc: "Ultra-rare titanium & sapphire crystal masterpiece." },
+
+    // Fine Necklaces, Earrings & Accessories
+    { id: "acc_1", name: "Pearl Earrings", type: "earrings", category: "jewelry", tier: "budget", price: 750, appreciationRate: 0, desc: "Freshwater cultured pearl drop earrings." },
+    { id: "acc_2", name: "14K Gold Chain", type: "necklace", category: "jewelry", tier: "fine", price: 2200, appreciationRate: 0.01, desc: "Solid Cuban link 14K gold chain." },
+    { id: "acc_3", name: "Platinum Diamond Bracelet", type: "bracelet", category: "jewelry", tier: "luxury", price: 45000, appreciationRate: 0.02, desc: "Tennis bracelet with 10 carats of VVS diamonds." },
+    { id: "acc_4", name: "Royal Sapphire Tiara", type: "tiara", category: "jewelry", tier: "heirloom", price: 250000, appreciationRate: 0.04, desc: "Historical Burmese sapphire and diamond tiara." },
+    { id: "acc_5", name: "Imperial Diamond Necklace", type: "necklace", category: "jewelry", tier: "heirloom", price: 600000, appreciationRate: 0.05, desc: "One-of-a-kind 50-carat yellow diamond necklace." }
+];
+
+function updateOwnedJewelry(user) {
+    if (!user || !Array.isArray(user.assets)) return { totalInsurancePaid: 0, totalAppreciation: 0 };
+
+    let totalInsurancePaid = 0;
+    let totalAppreciation = 0;
+
+    user.assets.forEach(asset => {
+        if (asset.category === 'jewelry') {
+            const rate = asset.appreciationRate || 0;
+            if (rate > 0) {
+                const increase = Math.floor(asset.value * rate);
+                asset.value += increase;
+                totalAppreciation += increase;
+            }
+
+            if (asset.insured) {
+                const insuranceFee = Math.max(10, Math.floor(asset.value * 0.005));
+                user.money -= insuranceFee;
+                totalInsurancePaid += insuranceFee;
+            }
+        }
+    });
+
+    return { totalInsurancePaid, totalAppreciation };
+}
+
 /**
  * Determines if a partner accepts a marriage proposal. Chance scales with
- * relationship status, mirroring attemptBefriend's status-derived chance.
+ * relationship status and ring quality. Supports signatures:
+ * - calculateProposalAcceptance(status, roll)
+ * - calculateProposalAcceptance(status, ringValue, roll)
  * @param {number} status
+ * @param {number} [ringValueOrRoll=0]
  * @param {number} [roll=Math.random()]
  * @returns {boolean} true if accepted, false if rejected
  */
-function calculateProposalAcceptance(status, roll = Math.random()) {
-    return roll < (status / 100);
+function calculateProposalAcceptance(status, ringValueOrRoll = 0, roll = Math.random()) {
+    let ringValue = 0;
+    let actualRoll = roll;
+
+    if (typeof ringValueOrRoll === 'number') {
+        if (ringValueOrRoll > 0 && ringValueOrRoll <= 1) {
+            actualRoll = ringValueOrRoll;
+            ringValue = 0;
+        } else if (ringValueOrRoll > 1) {
+            ringValue = ringValueOrRoll;
+        }
+    }
+
+    let baseChance = status / 100;
+    let ringBonus = 0;
+    if (ringValue > 0) {
+        ringBonus = Math.min(0.25, Math.log10(Math.max(10, ringValue)) * 0.05);
+    }
+    return actualRoll < Math.min(0.95, baseChance + ringBonus);
 }
+
 
 /**
  * Determines if trying for a baby succeeds this year, based on the
@@ -1674,7 +1774,11 @@ export const GameLogic = {
     evictTenant,
     calculatePropertySaleTiers,
     generatePropertyBuyerOffer,
-    completePropertySale
+    completePropertySale,
+    getJewelryIcon,
+    JEWELRY_FOR_SALE,
+    updateOwnedJewelry,
+    VEHICLES_FOR_SALE
 };
 
 

@@ -8,23 +8,6 @@ const get = id => document.getElementById(id);
 
 // screens/shoppingScreen.js
 
-// Vehicle list
-window.VEHICLES_FOR_SALE = [
-    { id: 1, name: "Rusty Toyota Camry", type: "sedan", price: 2000, condition: 60 },
-    { id: 2, name: "Rusty Honda Civic", type: "sedan", price: 2200, condition: 60 },
-    { id: 3, name: "Used Honda Fit", type: "hatchback", price: 6000, condition: 80 },
-    { id: 4, name: "Used Ford Fiesta", type: "hatchback", price: 5500, condition: 80 },
-    { id: 5, name: "New Subaru Forester", type: "suv", price: 35000, condition: 100 },
-    { id: 6, name: "New Toyota Rav4", type: "suv", price: 35000, condition: 100 },
-    { id: 7, name: "New Ford F-150 XL", type: "truck", price: 45500, condition: 100 },
-    { id: 8, name: "New Chevrolet Silverado 1500", type: "truck", price: 42000, condition: 100 },
-    { id: 9, name: "New Chevrolet Corvette Stingray", type: "sports", price: 67000, condition: 100 },
-    { id: 10, name: "New BMW M2", type: "sports", price: 65000, condition: 100 },
-    { id: 11, name: "New Lamborghini Huracán", type: "supercar", price: 255000, condition: 100 },
-    { id: 12, name: "New Ferrari Roma", type: "supercar", price: 260000, condition: 100 }
-];
-
-
 // Main shopping hub
 export const renderShoppingHub = () => {
     const user = state.gameState.user;
@@ -70,14 +53,14 @@ export const renderShoppingHub = () => {
                     <i class="fas fa-chevron-right text-slate-600 group-hover:text-white"></i>
                 </button>
 
-                <button data-action="showComingSoon" class="bg-slate-800 p-6 rounded-xl border border-slate-700 flex items-center justify-between hover:bg-slate-750 hover:border-yellow-500 transition group">
+                <button data-action="renderJewelryDealer" class="bg-slate-800 p-6 rounded-xl border border-slate-700 flex items-center justify-between hover:bg-slate-750 hover:border-yellow-500 transition group">
                     <div class="flex items-center gap-4">
                         <div class="w-12 h-12 rounded-full bg-yellow-900/30 flex items-center justify-center text-yellow-400 text-xl group-hover:scale-110 transition">
                             <i class="fas fa-gem"></i>
                         </div>
                         <div class="text-left">
-                            <h3 class="font-bold text-white text-lg">Luxury Goods</h3>
-                            <div class="text-xs text-slate-500">Watches, jewelry, art</div>
+                            <h3 class="font-bold text-white text-lg">Jewelry & Luxury Goods</h3>
+                            <div class="text-xs text-slate-500">Watches, rings, fine jewelry</div>
                         </div>
                     </div>
                     <i class="fas fa-chevron-right text-slate-600 group-hover:text-white"></i>
@@ -92,7 +75,7 @@ export const renderShoppingHub = () => {
 export const renderVehicleDealer = () => {
     const user = state.gameState.user;
     
-    const carListHtml = window.VEHICLES_FOR_SALE.map(car => {
+    const carListHtml = (GameLogic.VEHICLES_FOR_SALE || []).map(car => {
         const canAfford = user.money >= car.price;
         const style = GameLogic.getVehicleIcon(car.type);
         
@@ -222,7 +205,7 @@ export const renderRealEstateDealer = () => {
 
 export const buyVehicle = (carId) => {
     const user = state.gameState.user;
-    const car = window.VEHICLES_FOR_SALE.find(c => c.id === carId);
+    const car = (GameLogic.VEHICLES_FOR_SALE || []).find(c => c.id === carId);
 
     if (!car) return;
 
@@ -331,4 +314,132 @@ export const buyPropertyMortgage = (propertyId) => {
     UI.updateHeader(user);
     renderRealEstateDealer();
     UI.showModal("Mortgage Approved!", `You acquired ${prop.name}! Your monthly mortgage payment is ${Utils.formatMoney(monthlyMortgage)}.`);
+};
+
+// --- JEWELRY STORE DEALER ---
+export const renderJewelryDealer = (selectedCategory = 'all') => {
+    UI.hideModal();
+    const user = state.gameState.user;
+    const items = GameLogic.JEWELRY_FOR_SALE || [];
+
+    const categories = [
+        { id: 'all', label: 'All Items', icon: 'fa-gem' },
+        { id: 'ring', label: 'Rings', icon: 'fa-ring' },
+        { id: 'watch', label: 'Watches', icon: 'fa-clock' },
+        { id: 'necklace', label: 'Necklaces & Accessories', icon: 'fa-box-open' }
+    ];
+
+    const categoryTabsHtml = categories.map(cat => {
+        const active = cat.id === selectedCategory ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-800 text-slate-400 hover:text-white border border-slate-700';
+        return `
+            <button data-action="renderJewelryDealer" data-args="&apos;${cat.id}&apos;" class="px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition ${active}">
+                <i class="fas ${cat.icon}"></i> ${cat.label}
+            </button>
+        `;
+    }).join('');
+
+    const filteredItems = selectedCategory === 'all'
+        ? items
+        : selectedCategory === 'necklace'
+            ? items.filter(i => ['necklace', 'earrings', 'bracelet', 'tiara'].includes(i.type))
+            : items.filter(i => i.type === selectedCategory);
+
+    const itemListHtml = filteredItems.map(item => {
+        const canAfford = user.money >= item.price;
+        const style = GameLogic.getJewelryIcon(item.type);
+        const buyBtnText = canAfford ? 'Buy' : "Can't Afford";
+        const buyBtnClass = canAfford
+            ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold cursor-pointer'
+            : 'bg-slate-700 text-slate-500 cursor-not-allowed';
+
+        let tierBadge = 'bg-slate-700 text-slate-300';
+        if (item.tier === 'fine') tierBadge = 'bg-blue-900/60 text-blue-300 border border-blue-700';
+        else if (item.tier === 'luxury') tierBadge = 'bg-purple-900/60 text-purple-300 border border-purple-700';
+        else if (item.tier === 'heirloom') tierBadge = 'bg-amber-900/60 text-amber-300 border border-amber-500';
+
+        return `
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-3 flex items-center justify-between group hover:border-amber-500/50 transition">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center border border-slate-700">
+                        <i class="fas ${style.icon} ${style.color} text-xl"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h4 class="font-bold text-white text-sm">${item.name}</h4>
+                            <span class="text-[9px] uppercase px-1.5 py-0.5 rounded font-bold ${tierBadge}">${item.tier}</span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-0.5">${item.desc}</p>
+                    </div>
+                </div>
+                <div class="text-right flex flex-col items-end gap-1 pl-2">
+                    <div class="text-green-400 font-bold text-sm">${Utils.formatMoney(item.price)}</div>
+                    <button data-action="buyJewelry" data-args="&apos;${item.id}&apos;" ${canAfford ? '' : 'disabled'} class="px-3 py-1 rounded text-xs transition ${buyBtnClass}">
+                        ${buyBtnText}
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    get('game-container').innerHTML = `
+        <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
+            <div class="mb-4">
+                <button data-action="renderShoppingHub" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+                    <i class="fas fa-arrow-left"></i> Back to Marketplace
+                </button>
+            </div>
+
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto mb-2 text-amber-400 text-2xl shadow-lg">
+                    <i class="fas fa-gem"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-white">Jewelry & Luxury Boutique</h2>
+                <p class="text-slate-400 text-xs mt-1">Fine jewelry, luxury watches, and proposal rings</p>
+                <div class="mt-2 font-bold text-sm text-green-400">Cash: ${Utils.formatMoney(user.money)}</div>
+            </div>
+
+            <div class="flex gap-1.5 mb-4 overflow-x-auto pb-1">
+                ${categoryTabsHtml}
+            </div>
+
+            <div class="flex-1 overflow-y-auto pb-4 custom-scrollbar">
+                ${itemListHtml || '<div class="text-slate-500 italic text-center py-8">No items available in this category.</div>'}
+            </div>
+        </div>
+    `;
+};
+
+export const buyJewelry = (itemId) => {
+    const user = state.gameState.user;
+    const item = (GameLogic.JEWELRY_FOR_SALE || []).find(i => i.id === itemId);
+    if (!item) return;
+
+    if (user.money < item.price) {
+        UI.showModal("Insufficient Funds", "You cannot afford this item right now.");
+        return;
+    }
+
+    user.money -= item.price;
+    const newAsset = {
+        id: 'jew_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+        catalogId: item.id,
+        name: item.name,
+        type: item.type,
+        tier: item.tier,
+        category: "jewelry",
+        value: item.price,
+        purchasePrice: item.price,
+        appreciationRate: item.appreciationRate || 0,
+        wearing: false,
+        insured: false,
+        acquiredAge: user.age
+    };
+
+    if (!user.assets) user.assets = [];
+    user.assets.push(newAsset);
+
+    addLog(`Purchased ${item.name} for ${Utils.formatMoney(item.price)}.`, 'good');
+    UI.updateHeader(user);
+    renderJewelryDealer();
+    UI.showModal("Purchase Successful", `You bought a ${item.name}! Check your Assets to wear, gift, or manage it.`);
 };

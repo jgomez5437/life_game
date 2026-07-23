@@ -501,6 +501,7 @@ function handleMarket(user) {
     const marketForce = GameLogic.simulateVehicleMarket();
     GameLogic.updateOwnedVehicles(user, marketForce);
     GameLogic.updateOwnedProperties(user);
+    GameLogic.updateOwnedJewelry(user);
     
     if (marketForce > 0.06 && user.age > 15) {
         addLog("Inflation hits the auto market! Car prices are up.", "bad");

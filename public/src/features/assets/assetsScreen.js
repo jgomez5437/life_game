@@ -9,6 +9,43 @@ import { renderAvatar } from '../../ui/avatarRenderer.js';
 
 const get = id => document.getElementById(id);
 
+// --- HELPER: Generates the HTML for the list of jewelry ---
+function getJewelryListHtml(assets) {
+    const jewelry = assets.filter(a => a.category === 'jewelry');
+
+    if (jewelry.length === 0) {
+        return `<div class="bg-slate-800 p-4 rounded border border-slate-700 text-slate-500 italic text-sm text-center">You don't own any jewelry or luxury items.</div>`;
+    }
+
+    return jewelry.map(j => {
+        const style = GameLogic.getJewelryIcon(j.type);
+        const wearingBadge = j.wearing ? `<span class="bg-emerald-900/60 text-emerald-300 border border-emerald-700 text-[9px] uppercase px-1.5 py-0.5 rounded font-bold">Equipped</span>` : '';
+        const insuredBadge = j.insured ? `<span class="bg-blue-900/60 text-blue-300 border border-blue-700 text-[9px] uppercase px-1.5 py-0.5 rounded font-bold">Insured</span>` : '';
+
+        return `
+            <div data-action="renderJewelryManager" data-args="&apos;${j.id}&apos;" class="cursor-pointer hover:bg-slate-700 transition bg-slate-800 p-4 rounded-xl border border-slate-700 flex items-center justify-between mb-3 group">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center border border-slate-600 group-hover:border-slate-500">
+                        <i class="fas ${style.icon} ${style.color} text-xl"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-white text-sm group-hover:text-amber-300 transition">${j.name}</h4>
+                        <div class="text-xs text-slate-400 capitalize flex items-center gap-1.5 mt-0.5">
+                            <span class="text-amber-400 font-bold">${j.type}</span>
+                            ${wearingBadge}
+                            ${insuredBadge}
+                        </div>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="text-green-400 font-bold text-sm">Value: ${Utils.formatMoney(j.value)}</div>
+                    <i class="fas fa-chevron-right text-slate-600 text-xs mt-1"></i>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
 // --- HELPER: Generates the HTML for the list of cars ---
 function getVehicleListHtml(assets) {
     const vehicles = assets.filter(a => a.category === 'vehicle');
@@ -120,6 +157,7 @@ export function renderAssets() {
     const assets = user.assets || [];
     const vehicleHtml = getVehicleListHtml(assets);
     const propertyHtml = getPropertyListHtml(assets);
+    const jewelryHtml = getJewelryListHtml(assets);
 
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
@@ -158,6 +196,15 @@ export function renderAssets() {
                     <div class="bg-slate-900 p-3 rounded border border-slate-700 flex justify-between items-center">
                          <div class="text-sm text-white font-bold">Buy Items</div>
                          <i class="fas fa-chevron-right text-slate-600"></i>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <h3 class="text-slate-400 font-bold mb-2 text-sm uppercase flex items-center gap-2">
+                        <i class="fas fa-gem text-amber-400"></i> Jewelry & Luxury Goods
+                    </h3>
+                    <div class="flex flex-col">
+                        ${jewelryHtml}
                     </div>
                 </div>
 
@@ -1010,6 +1057,171 @@ export const declineLeaseRenewal = (propertyId) => {
     UI.updateHeader(user);
     UI.hideModal();
     processNextTenantDefaultEvent();
+};
+
+// --- JEWELRY ASSET MANAGER ---
+export const renderJewelryManager = (id) => {
+    const user = state.gameState.user;
+    const item = (user.assets || []).find(a => a.id === id);
+    if (!item) {
+        renderAssets();
+        return;
+    }
+
+    const style = GameLogic.getJewelryIcon(item.type);
+    const wearBtnText = item.wearing ? "Take Off (Unequip)" : "Wear (Equip)";
+    const wearBtnClass = item.wearing ? "bg-slate-700 text-white hover:bg-slate-600" : "bg-amber-500 text-slate-950 font-bold hover:bg-amber-400";
+    const insureFee = Math.max(10, Math.floor(item.value * 0.005));
+    const insureBtnText = item.insured ? "Cancel Insurance Policy" : `Insure Item (${Utils.formatMoney(insureFee)}/yr)`;
+
+    get('game-container').innerHTML = `
+        <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
+            <div class="mb-4">
+                <button data-action="renderAssets" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+                    <i class="fas fa-arrow-left"></i> Back to Assets
+                </button>
+            </div>
+
+            <div class="text-center mb-6">
+                <div class="w-24 h-24 rounded-full bg-slate-800 flex items-center justify-center border-4 border-slate-700 mx-auto mb-4 shadow-lg">
+                    <i class="fas ${style.icon} ${style.color} text-4xl"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-white">${item.name}</h2>
+                <div class="text-green-400 font-bold text-xl mt-1">${Utils.formatMoney(item.value)}</div>
+                <p class="text-slate-400 text-xs capitalize mt-1">${item.tier || 'Fine'} ${item.type} • Purchased for ${Utils.formatMoney(item.purchasePrice)}</p>
+            </div>
+
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-6 space-y-2 text-sm">
+                <div class="flex justify-between border-b border-slate-700 pb-2">
+                    <span class="text-slate-400">Status</span>
+                    <span class="font-bold ${item.wearing ? 'text-emerald-400' : 'text-slate-400'}">${item.wearing ? 'Equipped (Wearing)' : 'Stored in Vault'}</span>
+                </div>
+                <div class="flex justify-between border-b border-slate-700 pb-2">
+                    <span class="text-slate-400">Insurance Protection</span>
+                    <span class="font-bold ${item.insured ? 'text-blue-400' : 'text-slate-500'}">${item.insured ? 'Active Policy' : 'Uninsured'}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-400">Annual Appreciation</span>
+                    <span class="font-bold text-amber-400">+${((item.appreciationRate || 0) * 100).toFixed(1)}%/yr</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 gap-3">
+                <button data-action="toggleWearJewelry" data-args="&apos;${item.id}&apos;" class="w-full py-3 px-4 rounded-xl font-bold flex items-center justify-center gap-2 transition ${wearBtnClass}">
+                    <i class="fas fa-user-check"></i> ${wearBtnText}
+                </button>
+
+                <button data-action="openGiftJewelryModal" data-args="&apos;${item.id}&apos;" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition">
+                    <i class="fas fa-gift text-pink-400"></i> Gift to Someone
+                </button>
+
+                <button data-action="toggleInsureJewelry" data-args="&apos;${item.id}&apos;" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition">
+                    <i class="fas fa-shield-alt text-blue-400"></i> ${insureBtnText}
+                </button>
+
+                <button data-action="sellJewelry" data-args="&apos;${item.id}&apos;" class="w-full bg-red-900/30 hover:bg-red-900/50 border border-red-800 text-red-300 font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition mt-2">
+                    <i class="fas fa-dollar-sign"></i> Sell / Pawn for ${Utils.formatMoney(item.value)}
+                </button>
+            </div>
+        </div>
+    `;
+};
+
+export const toggleWearJewelry = (id) => {
+    const user = state.gameState.user;
+    const item = (user.assets || []).find(a => a.id === id);
+    if (!item) return;
+
+    item.wearing = !item.wearing;
+    if (item.wearing) {
+        addLog(`You put on your ${item.name}.`, 'good');
+    } else {
+        addLog(`You stored your ${item.name} safely back in your vault.`, 'neutral');
+    }
+    renderJewelryManager(id);
+};
+
+export const toggleInsureJewelry = (id) => {
+    const user = state.gameState.user;
+    const item = (user.assets || []).find(a => a.id === id);
+    if (!item) return;
+
+    item.insured = !item.insured;
+    if (item.insured) {
+        addLog(`Insured ${item.name} for an annual fee of ${Utils.formatMoney(Math.max(10, Math.floor(item.value * 0.005)))}.`, 'good');
+    } else {
+        addLog(`Cancelled insurance policy on ${item.name}.`, 'neutral');
+    }
+    renderJewelryManager(id);
+};
+
+export const sellJewelry = (id) => {
+    const user = state.gameState.user;
+    const index = (user.assets || []).findIndex(a => a.id === id);
+    if (index === -1) return;
+
+    const item = user.assets[index];
+    user.money += item.value;
+    user.assets.splice(index, 1);
+
+    addLog(`Sold ${item.name} for ${Utils.formatMoney(item.value)}.`, 'good');
+    UI.updateHeader(user);
+    renderAssets();
+    UI.showModal("Item Sold", `You sold ${item.name} for ${Utils.formatMoney(item.value)}.`);
+};
+
+export const openGiftJewelryModal = (id) => {
+    const user = state.gameState.user;
+    const item = (user.assets || []).find(a => a.id === id);
+    if (!item) return;
+
+    const relationships = user.relationships || [];
+    if (relationships.length === 0) {
+        UI.showModal("No Relationships", "You don't have any family or friends to gift this item to!");
+        return;
+    }
+
+    const relHtml = relationships.map(rel => `
+        <button data-action="confirmGiftJewelry" data-args="&apos;${item.id}&apos;, &apos;${rel.id}&apos;" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-pink-500 text-white font-bold p-3 rounded-xl mb-2 flex items-center justify-between transition">
+            <div class="text-left">
+                <div class="text-sm text-white font-bold">${rel.name}</div>
+                <div class="text-xs text-slate-400 capitalize">${rel.type} • ${rel.status}% Relationship</div>
+            </div>
+            <i class="fas fa-gift text-pink-400"></i>
+        </button>
+    `).join('');
+
+    const modalHtml = `
+        <div class="text-center mb-4">
+            <h3 class="text-lg font-bold text-white">Gift ${item.name}</h3>
+            <p class="text-xs text-slate-400">Who would you like to give this to?</p>
+        </div>
+        <div class="max-h-60 overflow-y-auto custom-scrollbar pr-1">
+            ${relHtml}
+        </div>
+    `;
+
+    UI.showModal("Gift Jewelry", modalHtml);
+};
+
+export const confirmGiftJewelry = (jewelryId, relationshipId) => {
+    const user = state.gameState.user;
+    const itemIndex = (user.assets || []).findIndex(a => a.id === jewelryId);
+    const person = (user.relationships || []).find(r => r.id === relationshipId);
+
+    if (itemIndex === -1 || !person) return;
+
+    const item = user.assets[itemIndex];
+    user.assets.splice(itemIndex, 1);
+
+    const statusBoost = Math.min(35, Math.max(15, Math.floor(Math.log10(Math.max(10, item.value)) * 8)));
+    person.status = Math.min(100, (person.status || 0) + statusBoost);
+    person.interactedThisYear = true;
+
+    addLog(`You gifted a ${item.name} (${Utils.formatMoney(item.value)}) to ${person.name}! (+${statusBoost}% Status)`, 'good');
+    UI.hideModal();
+    renderAssets();
+    UI.showModal("Gift Received!", `${person.name} was thrilled to receive the ${item.name}! Your relationship improved by +${statusBoost}%.`);
 };
 
 

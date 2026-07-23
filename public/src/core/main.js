@@ -11,10 +11,10 @@ import { selectGender, submitCharacter, renderCharCreation, cycleTrait, randomiz
 import { ageUp, continueAsChild, renderLifeDashboard, addLog, renderDeathScreen, showFullEulogy } from '../features/player/mainScreen.js';
 import { state } from './state.js';
 import { GameLogic } from './gameLogic.js';
-import { renderAssets, renderVehicleManager, repairVehicle, sellVehicle, renderPropertyManager, payOffMortgage, openSellPropertyModal, submitPropertyListing, acceptBuyerOffer, doPropertyMaintenance, doPropertyRenovation, openTenantScreening, acceptTenantLease, evictTenantAction, demandTenantRentPayment, forgiveTenantRent, evictTenantFromEvent, demandTenantRepairPayment, forgiveTenantDamage, renewLeaseSameRate, renewLeaseWithIncrease, declineLeaseRenewal } from '../features/assets/assetsScreen.js';
-import { renderShoppingHub, renderVehicleDealer, buyVehicle, renderRealEstateDealer, buyPropertyCash, buyPropertyMortgage } from '../features/assets/goShoppingScreen.js';
+import { renderAssets, renderVehicleManager, repairVehicle, sellVehicle, renderPropertyManager, payOffMortgage, openSellPropertyModal, submitPropertyListing, acceptBuyerOffer, doPropertyMaintenance, doPropertyRenovation, openTenantScreening, acceptTenantLease, evictTenantAction, demandTenantRentPayment, forgiveTenantRent, evictTenantFromEvent, demandTenantRepairPayment, forgiveTenantDamage, renewLeaseSameRate, renewLeaseWithIncrease, declineLeaseRenewal, renderJewelryManager, toggleWearJewelry, toggleInsureJewelry, sellJewelry, openGiftJewelryModal, confirmGiftJewelry } from '../features/assets/assetsScreen.js';
+import { renderShoppingHub, renderVehicleDealer, buyVehicle, renderRealEstateDealer, buyPropertyCash, buyPropertyMortgage, renderJewelryDealer, buyJewelry } from '../features/assets/goShoppingScreen.js';
 import { renderActivities } from '../features/career/occupationScreen.js';
-import { renderRelationships, renderPersonInteraction, openRelationshipConfirm, spendTimeWithAll, goOutMeetSomeone } from '../features/relationships/relationshipScreen.js';
+import { renderRelationships, renderPersonInteraction, openRelationshipConfirm, spendTimeWithAll, goOutMeetSomeone, handleProposeAction, openRingSelectionModal, proposeWithRing } from '../features/relationships/relationshipScreen.js';
 import { chooseFuneralType, cancelFuneralPlan, confirmFuneralPlan, donateBody, lookTheOtherWay, goToFuneral, skipFuneral } from '../features/relationships/funeralScreen.js';
 import { openWeddingPlanner, confirmWeddingPlan, openNameChangeChoice, chooseNameChange } from '../features/relationships/romanceScreen.js';
 import { renderMoreDashboard, buyGymMembership, cancelGymMembership, visitGymOneTime, startBetterDiet, cancelBetterDiet, visitDoctor, openBlackjackBetting, startBlackjackGame, blackjackHit, blackjackStand, openTravelModal, bookTrip } from '../features/more/moreScreen.js';
@@ -854,7 +854,18 @@ const routeHandlers = {
   blackjackStand,
   hideModal: UI.hideModal,
   openTravelModal,
-  bookTrip
+  bookTrip,
+  renderJewelryDealer,
+  buyJewelry,
+  renderJewelryManager,
+  toggleWearJewelry,
+  toggleInsureJewelry,
+  sellJewelry,
+  openGiftJewelryModal,
+  confirmGiftJewelry,
+  handleProposeAction,
+  openRingSelectionModal,
+  proposeWithRing
 };
 
 document.addEventListener('click', (e) => {

@@ -436,21 +436,7 @@ export const performRelationshipAction = (personId, actionKey) => {
     }
 
     if (action.key === 'propose') {
-        person.interactedThisYear = true;
-        const accepted = GameLogic.calculateProposalAcceptance(person.status);
-
-        if (accepted) {
-            person.type = person.gender === 'male' ? 'Fiancé' : 'Fiancée';
-            addLog(`You proposed to ${person.name}, and they said yes!`, 'good');
-            const pronoun = person.gender === 'male' ? 'He' : 'She';
-            UI.showModal(`${pronoun} Said Yes!`, `${person.name} accepted your proposal!`);
-        } else {
-            person.status = Math.max(0, person.status - 15);
-            addLog(`You proposed to ${person.name}, but they said no.`, 'bad');
-            UI.showModal('Rejected', `${person.name} wasn't ready for that. (-15 Status)`);
-        }
-        UI.updateHeader(user);
-        setTimeout(() => renderPersonInteraction(personId), 300);
+        handleProposeAction(personId);
         return;
     }
 
@@ -582,4 +568,118 @@ export const spendTimeWithAll = () => {
     } else {
         UI.showModal('Notice', "Nobody was available to spend time with.");
     }
+};
+
+// --- PROPOSAL RING MECHANICS ---
+export const handleProposeAction = (personId) => {
+    const user = state.gameState.user;
+    const person = (user.relationships || []).find(r => r.id === personId);
+    if (!person) return;
+
+    const rings = (user.assets || []).filter(a => a.category === 'jewelry' && a.type === 'ring');
+
+    if (rings.length === 0) {
+        const modalContent = `
+            <div class="text-center py-2">
+                <div class="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto mb-4 text-amber-400 text-3xl shadow-lg">
+                    <i class="fas fa-ring"></i>
+                </div>
+                <h3 class="text-xl font-bold text-white mb-2">You Need a Ring!</h3>
+                <p class="text-sm text-slate-300 mb-6">You must buy a ring before proposing to ${person.name}.</p>
+                <div class="flex flex-col gap-2">
+                    <button data-action="renderJewelryDealer" data-args="&apos;ring&apos;" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 px-4 rounded-xl transition flex items-center justify-center gap-2">
+                        <i class="fas fa-shopping-cart"></i> Go Ring Shopping
+                    </button>
+                    <button data-action="hideModal" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 px-4 rounded-xl transition text-sm">
+                        Not Ready Yet
+                    </button>
+                </div>
+            </div>
+        `;
+        UI.showModal("Proposal Ring Required", modalContent);
+        return;
+    }
+
+    openRingSelectionModal(personId);
+};
+
+export const openRingSelectionModal = (personId) => {
+    const user = state.gameState.user;
+    const person = (user.relationships || []).find(r => r.id === personId);
+    if (!person) return;
+
+    const rings = (user.assets || []).filter(a => a.category === 'jewelry' && a.type === 'ring');
+
+    const ringsListHtml = rings.map(ring => {
+        const style = GameLogic.getJewelryIcon(ring.type);
+        return `
+            <div class="bg-slate-800 p-3 rounded-xl border border-slate-700 mb-2.5 flex items-center justify-between group hover:border-amber-500/50 transition">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center border border-slate-600">
+                        <i class="fas ${style.icon} ${style.color} text-lg"></i>
+                    </div>
+                    <div class="text-left">
+                        <div class="text-sm font-bold text-white">${ring.name}</div>
+                        <div class="text-xs text-amber-400 font-semibold">${Utils.formatMoney(ring.value)} Value</div>
+                    </div>
+                </div>
+                <button data-action="proposeWithRing" data-args="&apos;${personId}&apos;, &apos;${ring.id}&apos;" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs px-3 py-2 rounded-lg transition">
+                    Propose
+                </button>
+            </div>
+        `;
+    }).join('');
+
+    const modalContent = `
+        <div class="text-center mb-4">
+            <div class="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto mb-2 text-amber-400 text-xl shadow-lg">
+                <i class="fas fa-ring"></i>
+            </div>
+            <h3 class="text-lg font-bold text-white">Choose a Ring to Propose</h3>
+            <p class="text-xs text-slate-400">Select which ring you want to propose to ${person.name} with:</p>
+        </div>
+        <div class="max-h-56 overflow-y-auto custom-scrollbar pr-1 mb-4">
+            ${ringsListHtml}
+        </div>
+        <div class="flex flex-col gap-2 border-t border-slate-700/60 pt-3">
+            <button data-action="renderJewelryDealer" data-args="&apos;ring&apos;" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold py-2 px-3 rounded-lg transition border border-slate-700">
+                <i class="fas fa-shopping-cart mr-1"></i> Go Ring Shopping
+            </button>
+            <button data-action="hideModal" class="w-full text-slate-400 hover:text-white text-xs font-semibold py-1">
+                Not Ready Yet
+            </button>
+        </div>
+    `;
+
+    UI.showModal("Select Proposal Ring", modalContent);
+};
+
+export const proposeWithRing = (personId, ringAssetId) => {
+    const user = state.gameState.user;
+    const person = (user.relationships || []).find(r => r.id === personId);
+    const ringIndex = (user.assets || []).findIndex(a => a.id === ringAssetId);
+
+    if (!person || ringIndex === -1) return;
+
+    const ring = user.assets[ringIndex];
+    person.interactedThisYear = true;
+
+    const accepted = GameLogic.calculateProposalAcceptance(person.status, ring.value);
+
+    if (accepted) {
+        user.assets.splice(ringIndex, 1);
+        person.type = person.gender === 'male' ? 'Fiancé' : 'Fiancée';
+        person.status = Math.min(100, (person.status || 0) + 25);
+
+        addLog(`You proposed to ${person.name} with a ${ring.name} (${Utils.formatMoney(ring.value)}), and they said YES!`, 'good');
+        const pronoun = person.gender === 'male' ? 'He' : 'She';
+        UI.showModal(`${pronoun} Said Yes!`, `You proposed to ${person.name} with a ${ring.name} and they accepted! You are now engaged!`);
+    } else {
+        person.status = Math.max(0, (person.status || 0) - 15);
+        addLog(`You proposed to ${person.name} with a ${ring.name}, but they weren't ready.`, 'bad');
+        UI.showModal('Rejected', `${person.name} wasn't ready to accept your proposal. (-15 Relationship Status)`);
+    }
+
+    UI.updateHeader(user);
+    setTimeout(() => renderPersonInteraction(personId), 300);
 };
