@@ -503,6 +503,9 @@ function handleMarket(user) {
     GameLogic.updateOwnedProperties(user);
     GameLogic.updateOwnedJewelry(user);
 
+    user.lotteryTicketsBoughtThisYear = 0;
+    GameLogic.rollOverMegaJackpot(user);
+
     // Primary vehicle status / happiness boost
     const primaryVehicle = (user.assets || []).find(a => a.category === 'vehicle' && a.isPrimary);
     if (primaryVehicle && primaryVehicle.statusBonus > 0 && primaryVehicle.condition >= 30) {

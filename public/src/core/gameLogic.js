@@ -405,6 +405,277 @@ function compressLifeLog(lifeLog) {
  * @param {boolean} hasDiet - Whether user has better diet.
  * @returns {number} Health points to offset decay.
  */
+const DIET_PLANS = {
+    junk: {
+        id: 'junk',
+        name: 'Fast Food & Junk Food',
+        monthlyCost: 0,
+        annualCost: 0,
+        healthDecayMod: 1.25,
+        happinessBonus: 0,
+        desc: 'Processed food, takeout, and soda. Cheap, but catches up to your health.'
+    },
+    balanced: {
+        id: 'balanced',
+        name: 'Balanced Home-Cooked Diet',
+        monthlyCost: 150,
+        annualCost: 1800,
+        healthDecayMod: 0.90,
+        happinessBonus: 1,
+        desc: 'Well-rounded meals with fresh veggies, lean meats, and whole grains.'
+    },
+    organic: {
+        id: 'organic',
+        name: 'Mediterranean & Organic Diet',
+        monthlyCost: 450,
+        annualCost: 5400,
+        healthDecayMod: 0.75,
+        happinessBonus: 2,
+        desc: 'Rich in olive oil, fresh seafood, nuts, and organic produce.'
+    },
+    keto: {
+        id: 'keto',
+        name: 'Keto & Fitness Diet',
+        monthlyCost: 650,
+        annualCost: 7800,
+        healthDecayMod: 0.80,
+        gymBonus: 1.20,
+        happinessBonus: 2,
+        desc: 'Low-carb, high-protein meal prep designed to maximize physical fitness.'
+    },
+    gourmet: {
+        id: 'gourmet',
+        name: 'Personal Chef Gourmet Diet',
+        monthlyCost: 2500,
+        annualCost: 30000,
+        healthDecayMod: 0.50,
+        happinessBonus: 4,
+        desc: 'Custom farm-to-table meals prepared daily by your private chef.'
+    }
+};
+
+function getDietPlan(dietId) {
+    return DIET_PLANS[dietId] || DIET_PLANS.junk;
+}
+
+const BASE_MEGA_JACKPOT = 20000000; // $20 Million base jackpot
+
+function getMegaJackpotAmount(user) {
+    if (!user || typeof user.megaJackpotAmount !== 'number') return BASE_MEGA_JACKPOT;
+    return user.megaJackpotAmount;
+}
+
+function rollOverMegaJackpot(user) {
+    if (!user) return BASE_MEGA_JACKPOT;
+    const current = getMegaJackpotAmount(user);
+    // Increases by $5M to $25M each year until won
+    const growth = (Math.floor(Math.random() * 21) + 5) * 1000000;
+    user.megaJackpotAmount = current + growth;
+    return user.megaJackpotAmount;
+}
+
+const LOTTERY_TYPES = {
+    scratch: {
+        id: 'scratch',
+        name: 'Quick Cash Scratch-Off',
+        price: 5,
+        icon: 'fa-ticket-alt',
+        color: 'text-amber-400',
+        prizes: [
+            { minRoll: 0.00, maxRoll: 0.65, payout: 0, title: 'Sorry! Better luck next time.' },
+            { minRoll: 0.65, maxRoll: 0.85, payout: 10, title: 'Winner! Won $10 ($5 Profit)' },
+            { minRoll: 0.85, maxRoll: 0.95, payout: 25, title: 'Winner! Won $25!' },
+            { minRoll: 0.95, maxRoll: 0.995, payout: 100, title: 'Big Winner! Won $100!' },
+            { minRoll: 0.995, maxRoll: 1.00, payout: 500, title: 'JACKPOT! Won $500 Top Prize!' }
+        ]
+    },
+    daily: {
+        id: 'daily',
+        name: 'State Daily Draw',
+        price: 20,
+        icon: 'fa-star',
+        color: 'text-cyan-400',
+        prizes: [
+            { minRoll: 0.00, maxRoll: 0.70, payout: 0, title: 'No matching numbers.' },
+            { minRoll: 0.70, maxRoll: 0.88, payout: 50, title: 'Matched 2 numbers! Won $50!' },
+            { minRoll: 0.88, maxRoll: 0.97, payout: 200, title: 'Matched 3 numbers! Won $200!' },
+            { minRoll: 0.97, maxRoll: 0.996, payout: 1000, title: 'Matched 4 numbers! Won $1,000!' },
+            { minRoll: 0.996, maxRoll: 1.00, payout: 10000, title: 'GRAND PRIZE! Matched all 5 numbers for $10,000!' }
+        ]
+    },
+    mega: {
+        id: 'mega',
+        name: 'Mega Powerball Jackpot',
+        price: 100,
+        icon: 'fa-bolt',
+        color: 'text-purple-400',
+        prizes: [
+            { minRoll: 0.00, maxRoll: 0.75, payout: 0, title: 'No winning combination.' },
+            { minRoll: 0.75, maxRoll: 0.92, payout: 250, title: 'Matched Powerball! Won $250!' },
+            { minRoll: 0.92, maxRoll: 0.985, payout: 1500, title: 'Matched 3 + Powerball! Won $1,500!' },
+            { minRoll: 0.985, maxRoll: 0.998, payout: 15000, title: 'Matched 4 + Powerball! Won $15,000!' },
+            { minRoll: 0.998, maxRoll: 1.00, payout: 20000000, title: 'MEGA JACKPOT! Won GRAND PRIZE!' }
+        ]
+    }
+};
+
+function playLotteryTicket(ticketTypeId, user) {
+    if (!user) return { success: false, message: 'Invalid user state.' };
+
+    const type = LOTTERY_TYPES[ticketTypeId] || LOTTERY_TYPES.scratch;
+    const boughtCount = user.lotteryTicketsBoughtThisYear || 0;
+
+    if (boughtCount >= 10) {
+        return { success: false, message: 'You have reached the annual limit of 10 lottery tickets! Age up to buy more.' };
+    }
+
+    if (user.money < type.price) {
+        return { success: false, message: `Insufficient funds. A ${type.name} ticket costs $${type.price}.` };
+    }
+
+    user.money -= type.price;
+    user.lotteryTicketsBoughtThisYear = boughtCount + 1;
+
+    const roll = Math.random();
+    const prize = type.prizes.find(p => roll >= p.minRoll && roll < p.maxRoll) || type.prizes[0];
+
+    let actualPayout = prize.payout;
+    let actualTitle = prize.title;
+
+    if (ticketTypeId === 'mega' && prize.payout > 0 && prize.minRoll >= 0.998) {
+        actualPayout = getMegaJackpotAmount(user);
+        actualTitle = `MEGA POWERBALL JACKPOT! Won $${actualPayout.toLocaleString()} GRAND PRIZE!`;
+        user.megaJackpotAmount = BASE_MEGA_JACKPOT; // Reset to $20M base!
+    }
+
+    if (actualPayout > 0) {
+        user.money += actualPayout;
+        if (!user.stats) user.stats = { happiness: 50 };
+        user.stats.happiness = Math.min(100, (user.stats.happiness || 50) + (actualPayout >= 1000 ? 15 : 5));
+    }
+
+    return {
+        success: true,
+        payout: actualPayout,
+        title: actualTitle,
+        ticketName: type.name,
+        ticketsRemaining: 10 - user.lotteryTicketsBoughtThisYear,
+        roll
+    };
+}
+
+function generateLifeSuggestions(user) {
+    if (!user) return [];
+
+    const suggestions = [];
+
+    // 1. Health & Diet
+    if (user.health < 40) {
+        suggestions.push({
+            category: 'Health Alert',
+            icon: 'fa-heart-crack text-red-400',
+            title: 'Critical Health Warning',
+            desc: `Your health is at ${user.health}%. Visit the doctor immediately or upgrade your diet to prevent sudden life complications.`
+        });
+    } else if (user.health < 75) {
+        suggestions.push({
+            category: 'Health & Wellness',
+            icon: 'fa-apple-alt text-green-400',
+            title: 'Upgrade Your Diet & Fitness',
+            desc: 'Starting a Mediterranean or Keto diet along with regular gym workouts will boost your longevity.'
+        });
+    } else {
+        suggestions.push({
+            category: 'Health & Fitness',
+            icon: 'fa-dumbbell text-emerald-400',
+            title: 'Peak Physical Condition',
+            desc: 'Your health is in top shape! Maintain your current routine to preserve maximum energy.'
+        });
+    }
+
+    // 2. Career & Education
+    if (!user.jobTitle && user.age >= 18 && !user.isStudent) {
+        suggestions.push({
+            category: 'Career Aspiration',
+            icon: 'fa-briefcase text-amber-400',
+            title: 'Seek Employment',
+            desc: 'You are currently unemployed. Visit the Occupations tab to apply for a job or enroll in University.'
+        });
+    } else if (user.jobPerformance >= 80) {
+        suggestions.push({
+            category: 'Career Growth',
+            icon: 'fa-chart-line text-blue-400',
+            title: 'High Work Performance',
+            desc: `Your performance at ${user.jobTitle || 'work'} is outstanding (${user.jobPerformance}%). Keep it up for annual raises and promotion opportunities.`
+        });
+    } else if (user.jobPerformance < 40 && user.jobTitle) {
+        suggestions.push({
+            category: 'Work Warning',
+            icon: 'fa-triangle-exclamation text-yellow-400',
+            title: 'Workplace Risk',
+            desc: `Your job performance is low (${user.jobPerformance}%). Work harder or spend time developing career skills to avoid being fired.`
+        });
+    } else {
+        suggestions.push({
+            category: 'Personal Development',
+            icon: 'fa-graduation-cap text-indigo-400',
+            title: 'Continuous Learning',
+            desc: 'Enhance your skills or take night classes to qualify for higher-paying executive roles.'
+        });
+    }
+
+    // 3. Financial & Wealth
+    if (user.money > 50000) {
+        suggestions.push({
+            category: 'Wealth & Assets',
+            icon: 'fa-building text-cyan-400',
+            title: 'Invest Surplus Capital',
+            desc: 'You have significant cash savings! Consider purchasing rental properties, luxury vehicles, or fine jewelry.'
+        });
+    } else if (user.money < 1000 && user.age >= 18) {
+        suggestions.push({
+            category: 'Financial Advice',
+            icon: 'fa-piggy-bank text-rose-400',
+            title: 'Build an Emergency Fund',
+            desc: 'Your cash balance is low. Reduce unnecessary luxury expenses and focus on building liquid savings.'
+        });
+    } else {
+        suggestions.push({
+            category: 'Financial Planning',
+            icon: 'fa-wallet text-teal-400',
+            title: 'Balanced Budgeting',
+            desc: 'Monitor your monthly outflows (mortgages, loans, gym, and diet costs) to maintain a healthy savings rate.'
+        });
+    }
+
+    // 4. Social & Relationships
+    const currentPartner = (user.relationships || []).find(r => r.category === 'partner' || r.isPartner || r.status > 70);
+    if (currentPartner && currentPartner.status >= 80 && !user.isMarried) {
+        suggestions.push({
+            category: 'Romance & Future',
+            icon: 'fa-ring text-yellow-400',
+            title: `Take Next Step with ${currentPartner.name}`,
+            desc: `Your relationship with ${currentPartner.name} is exceptional (${currentPartner.status}%). Consider buying an engagement ring and proposing!`
+        });
+    } else if (!currentPartner && user.age >= 18) {
+        suggestions.push({
+            category: 'Social Life',
+            icon: 'fa-users text-purple-400',
+            title: 'Expand Social Network',
+            desc: 'Go out to meet new people or spend time with friends to boost your happiness stat.'
+        });
+    } else {
+        suggestions.push({
+            category: 'Relationships',
+            icon: 'fa-handshake text-orange-400',
+            title: 'Nurture Connections',
+            desc: 'Regularly interact with family members and close friends to keep relationship meters at 100%.'
+        });
+    }
+
+    return suggestions;
+}
+
 function calculateHealthBenefits(hasGym, hasDiet) {
     let benefit = 0;
     if (hasGym) benefit += 1;
@@ -412,16 +683,31 @@ function calculateHealthBenefits(hasGym, hasDiet) {
     return benefit;
 }
 
-/**
- * Calculates the cost of active health mechanics per year.
- * @param {boolean} hasGym - Whether user has active monthly gym membership.
- * @param {boolean} hasDiet - Whether user has better diet.
- * @returns {number} Yearly cost to deduct.
- */
-function calculateActiveHealthCosts(hasGym, hasDiet) {
+function calculateActiveHealthCosts(hasGymArg, dietArg) {
     let cost = 0;
-    if (hasGym) cost += 600; // $50/mo * 12
-    if (hasDiet) cost += 2400; // $200/mo * 12
+    let hasGym = false;
+    let dietKey = 'junk';
+
+    if (typeof hasGymArg === 'object' && hasGymArg !== null) {
+        const u = hasGymArg;
+        hasGym = Boolean(u.gymMembership);
+        dietKey = u.diet || (u.hasBetterDiet ? 'balanced' : 'junk');
+    } else {
+        hasGym = Boolean(hasGymArg);
+        if (typeof dietArg === 'string') {
+            dietKey = dietArg;
+        } else if (dietArg === true) {
+            cost += 2400; // Legacy test support: hasDiet = true -> $200/mo * 12
+            if (hasGym) cost += 600;
+            return cost;
+        }
+    }
+
+    if (hasGym) cost += 600;
+
+    const diet = getDietPlan(dietKey);
+    cost += (diet.monthlyCost * 12);
+
     return cost;
 }
 
@@ -1903,7 +2189,14 @@ export const GameLogic = {
     updateOwnedJewelry,
     VEHICLES_FOR_SALE,
     calculateAutoLoan,
-    calculateTotalAutoLoanMonthlyOutflow
+    calculateTotalAutoLoanMonthlyOutflow,
+    DIET_PLANS,
+    getDietPlan,
+    LOTTERY_TYPES,
+    playLotteryTicket,
+    generateLifeSuggestions,
+    getMegaJackpotAmount,
+    rollOverMegaJackpot
 };
 
 

@@ -1143,4 +1143,41 @@ describe('Vehicle System Revamp', () => {
         GameLogic.updateOwnedVehicles(user, 0);
         expect(user.assets[0].value).toBeGreaterThan(260000);
     });
+});
+
+describe('More Options Revamp: Diets, Lottery & Suggestions', () => {
+    test('calculateActiveHealthCosts calculates custom diet monthly cost correctly', () => {
+        const user = { gymMembership: true, diet: 'gourmet' };
+        const costs = GameLogic.calculateActiveHealthCosts(user);
+        // Gym ($600/yr) + Gourmet ($2500/mo * 12 = $30,000/yr) = $30,600
+        expect(costs).toBe(30600);
+    });
+
+    test('playLotteryTicket enforces max 10 tickets per year limit', () => {
+        const user = { money: 1000, lotteryTicketsBoughtThisYear: 10 };
+        const result = GameLogic.playLotteryTicket('scratch', user);
+        expect(result.success).toBe(false);
+        expect(result.message).toContain('annual limit');
+    });
+
+    test('playLotteryTicket deducts ticket price and updates bought count when valid', () => {
+        const user = { money: 500, lotteryTicketsBoughtThisYear: 2 };
+        const result = GameLogic.playLotteryTicket('scratch', user);
+        expect(result.success).toBe(true);
+        expect(user.lotteryTicketsBoughtThisYear).toBe(3);
+    });
+
+    test('generateLifeSuggestions produces non-empty list of smart advice', () => {
+        const user = { age: 25, health: 30, money: 100, jobTitle: null, relationships: [] };
+        const suggestions = GameLogic.generateLifeSuggestions(user);
+        expect(suggestions.length).toBeGreaterThan(0);
+        expect(suggestions.some(s => s.category.includes('Health'))).toBe(true);
+    });
+
+    test('rollOverMegaJackpot increases jackpot amount annually until won', () => {
+        const user = { megaJackpotAmount: 20000000 };
+        const newJackpot = GameLogic.rollOverMegaJackpot(user);
+        expect(newJackpot).toBeGreaterThanOrEqual(25000000);
+        expect(user.megaJackpotAmount).toBe(newJackpot);
+    });
 });
