@@ -96,38 +96,55 @@ function checkLifeStatus(user) {
 }
 
 const VEHICLE_TYPES = {
-    // Standard Cars
     sedan: { icon: "fa-car", color: "text-blue-400" },
     coupe: { icon: "fa-car-side", color: "text-indigo-400" },
     hatchback: { icon: "fa-car", color: "text-slate-400" },
-    
-    // Larger Vehicles
-    suv: { icon: "fa-shuttle-van", color: "text-emerald-400" }, // Use shuttle van for SUV
+    suv: { icon: "fa-shuttle-van", color: "text-emerald-400" },
     truck: { icon: "fa-truck-pickup", color: "text-orange-400" },
     van: { icon: "fa-van-shuttle", color: "text-slate-500" },
-
-    // Special
-    sports: { icon: "fa-car-burst", color: "text-red-500" }, // "Fast" car icon
-    supercar: { icon: "fa-fire", color: "text-red-600" }, // Or use fire/rocket for exotic
-    motorcycle: { icon: "fa-motorcycle", color: "text-yellow-400" },
-    
-    // Default fallback
+    motorcycle: { icon: "fa-motorcycle", color: "text-amber-400" },
+    sports: { icon: "fa-car-burst", color: "text-red-500" },
+    supercar: { icon: "fa-fire", color: "text-red-600" },
+    hypercar: { icon: "fa-bolt", color: "text-purple-400" },
+    ev: { icon: "fa-charging-station", color: "text-teal-400" },
+    luxury_suv: { icon: "fa-gem", color: "text-yellow-400" },
+    vintage: { icon: "fa-crown", color: "text-amber-500" },
     default: { icon: "fa-car", color: "text-gray-400" }
 };
 
 const VEHICLES_FOR_SALE = [
-    { id: 1, name: "Rusty Toyota Camry", type: "sedan", price: 2000, condition: 60 },
-    { id: 2, name: "Rusty Honda Civic", type: "sedan", price: 2200, condition: 60 },
-    { id: 3, name: "Used Honda Fit", type: "hatchback", price: 6000, condition: 80 },
-    { id: 4, name: "Used Ford Fiesta", type: "hatchback", price: 5500, condition: 80 },
-    { id: 5, name: "New Subaru Forester", type: "suv", price: 35000, condition: 100 },
-    { id: 6, name: "New Toyota Rav4", type: "suv", price: 35000, condition: 100 },
-    { id: 7, name: "New Ford F-150 XL", type: "truck", price: 45500, condition: 100 },
-    { id: 8, name: "New Chevrolet Silverado 1500", type: "truck", price: 42000, condition: 100 },
-    { id: 9, name: "New Chevrolet Corvette Stingray", type: "sports", price: 67000, condition: 100 },
-    { id: 10, name: "New BMW M2", type: "sports", price: 65000, condition: 100 },
-    { id: 11, name: "New Lamborghini Huracán", type: "supercar", price: 255000, condition: 100 },
-    { id: 12, name: "New Ferrari Roma", type: "supercar", price: 260000, condition: 100 }
+    // --- 1. USED CAR LOT ($800 - $9,500) ---
+    { id: 1, name: "Beater Hatchback", type: "hatchback", showroom: "used", price: 800, condition: 45, statusBonus: 0, reliability: 2, valuationType: "standard", desc: "High mileage, rusted body, but gets you from A to B." },
+    { id: 2, name: "Vintage Moped", type: "motorcycle", showroom: "used", price: 1200, condition: 55, statusBonus: 0, reliability: 2, valuationType: "standard", desc: "Retro 50cc scooter with character and noisy exhaust." },
+    { id: 3, name: "Rusty Toyota Camry", type: "sedan", showroom: "used", price: 2000, condition: 60, statusBonus: 0, reliability: 4, valuationType: "standard", desc: "Reliable Japanese sedan with a dented rear bumper." },
+    { id: 4, name: "Rusty Honda Civic", type: "sedan", showroom: "used", price: 2200, condition: 60, statusBonus: 0, reliability: 4, valuationType: "standard", desc: "Dependable 2005 commuter with fading clearcoat." },
+    { id: 5, name: "Used Ford Fiesta", type: "hatchback", showroom: "used", price: 5500, condition: 75, statusBonus: 0, reliability: 3, valuationType: "standard", desc: "Zippy compact city car with 110k miles." },
+    { id: 6, name: "Used Honda Fit", type: "hatchback", showroom: "used", price: 6000, condition: 80, statusBonus: 0, reliability: 4, valuationType: "standard", desc: "Versatile hatch with great fuel economy." },
+    { id: 7, name: "Used Harley Cruiser", type: "motorcycle", showroom: "used", price: 8500, condition: 80, statusBonus: 1, reliability: 3, valuationType: "standard", desc: "Classic V-twin cruiser with chrome exhausts." },
+    { id: 8, name: "Used Nissan Altima", type: "sedan", showroom: "used", price: 9500, condition: 82, statusBonus: 0, reliability: 3, valuationType: "standard", desc: "Smooth midsize sedan with cold AC." },
+
+    // --- 2. CITY AUTO MALL ($16,000 - $67,000) ---
+    { id: 9, name: "New Honda Civic LX", type: "sedan", showroom: "mall", price: 24000, condition: 100, statusBonus: 1, reliability: 5, valuationType: "standard", desc: "Brand new efficient sedan with modern safety tech." },
+    { id: 10, name: "New Toyota Camry SE", type: "sedan", showroom: "mall", price: 28000, condition: 100, statusBonus: 1, reliability: 5, valuationType: "standard", desc: "Sporty styling, bulletproof reliability, and great MPG." },
+    { id: 11, name: "New Subaru Forester SUV", type: "suv", showroom: "mall", price: 35000, condition: 100, statusBonus: 2, reliability: 4, valuationType: "standard", desc: "All-wheel drive crossover perfect for all weather." },
+    { id: 12, name: "New Toyota RAV4 Hybrid", type: "suv", showroom: "mall", price: 36000, condition: 100, statusBonus: 2, reliability: 5, valuationType: "standard", desc: "Best-selling hybrid SUV with exceptional fuel economy." },
+    { id: 13, name: "Tesla Model 3 EV", type: "ev", showroom: "mall", price: 42000, condition: 100, statusBonus: 3, reliability: 4, valuationType: "standard", desc: "All-electric sedan with autopilot and instant acceleration." },
+    { id: 14, name: "New Chevrolet Silverado 1500", type: "truck", showroom: "mall", price: 42000, condition: 100, statusBonus: 2, reliability: 4, valuationType: "standard", desc: "V8-powered full-size pickup with heavy towing capacity." },
+    { id: 15, name: "New Ford F-150 XL", type: "truck", showroom: "mall", price: 45500, condition: 100, statusBonus: 2, reliability: 4, valuationType: "standard", desc: "America's top-selling workhorse pickup truck." },
+    { id: 16, name: "Tesla Model Y EV", type: "ev", showroom: "mall", price: 48000, condition: 100, statusBonus: 3, reliability: 4, valuationType: "standard", desc: "Spacious electric SUV with long battery range." },
+    { id: 17, name: "Ford Mustang GT", type: "coupe", showroom: "mall", price: 48000, condition: 100, statusBonus: 3, reliability: 4, valuationType: "luxury", desc: "Roaring 5.0L V8 American muscle coupe." },
+    { id: 18, name: "BMW 3-Series Sedan", type: "sedan", showroom: "mall", price: 49000, condition: 100, statusBonus: 4, reliability: 4, valuationType: "luxury", desc: "German luxury sport sedan with refined handling." },
+    { id: 19, name: "New Chevrolet Corvette Stingray", type: "sports", showroom: "mall", price: 67000, condition: 100, statusBonus: 5, reliability: 4, valuationType: "luxury", desc: "Mid-engine V8 supercar performance at a fraction of the cost." },
+
+    // --- 3. EXOTIC & LUXURY SHOWROOM ($85,000 - $1,800,000) ---
+    { id: 20, name: "Porsche 911 Carrera", type: "sports", showroom: "exotic", price: 115000, condition: 100, statusBonus: 6, reliability: 5, valuationType: "luxury", desc: "Timeless German sports car with rear-engine precision." },
+    { id: 21, name: "Mercedes-AMG G 63 SUV", type: "luxury_suv", showroom: "exotic", price: 180000, condition: 100, statusBonus: 8, reliability: 4, valuationType: "luxury", desc: "Iconic twin-turbo V8 luxury box-truck status symbol." },
+    { id: 22, name: "New Lamborghini Huracán", type: "supercar", showroom: "exotic", price: 255000, condition: 100, statusBonus: 10, reliability: 4, valuationType: "exotic", desc: "Naturally aspirated V10 Italian exotic with aggressive styling." },
+    { id: 23, name: "New Ferrari Roma", type: "supercar", showroom: "exotic", price: 260000, condition: 100, statusBonus: 10, reliability: 4, valuationType: "exotic", desc: "Elegant front-mid V8 Italian grand tourer." },
+    { id: 24, name: "McLaren 720S", type: "supercar", showroom: "exotic", price: 310000, condition: 100, statusBonus: 11, reliability: 3, valuationType: "exotic", desc: "Dihedral door twin-turbo supercar with rocket acceleration." },
+    { id: 25, name: "Rolls-Royce Phantom", type: "luxury_suv", showroom: "exotic", price: 460000, condition: 100, statusBonus: 12, reliability: 4, valuationType: "exotic", desc: "Pinnacle ultra-luxury V12 sedan with starlight headliner." },
+    { id: 26, name: "Ferrari SF90 Stradale", type: "supercar", showroom: "exotic", price: 520000, condition: 100, statusBonus: 13, reliability: 4, valuationType: "exotic", desc: "1,000 HP hybrid AWD Italian flagship supercar." },
+    { id: 27, name: "Bugatti Chiron Hypercar", type: "hypercar", showroom: "exotic", price: 1800000, condition: 100, statusBonus: 15, reliability: 5, valuationType: "exotic", desc: "Quad-turbo W16 hypercar engineering masterpiece." }
 ];
 
 function getVehicleIcon(type) {
@@ -135,64 +152,170 @@ function getVehicleIcon(type) {
     return VEHICLE_TYPES[key] || VEHICLE_TYPES.default;
 }
 
-    // Simulates market fluctuation
+function calculateAutoLoan(price, downPaymentPercent = 0.15, termYears = 4) {
+    const downPayment = Math.floor(price * downPaymentPercent);
+    const principal = Math.max(0, price - downPayment);
+    const annualRate = 0.065; // 6.5% interest rate
+    const monthlyRate = annualRate / 12;
+    const totalMonths = termYears * 12;
+
+    let monthlyPayment = 0;
+    if (principal > 0) {
+        monthlyPayment = Math.round((principal * monthlyRate * Math.pow(1 + monthlyRate, totalMonths)) / (Math.pow(1 + monthlyRate, totalMonths) - 1));
+    }
+
+    return {
+        price,
+        downPayment,
+        principal,
+        termYears,
+        totalMonths,
+        monthlyPayment,
+        annualRate
+    };
+}
+
+function calculateTotalAutoLoanMonthlyOutflow(assets) {
+    if (!Array.isArray(assets)) return 0;
+    return assets.reduce((sum, asset) => {
+        if (asset.category === 'vehicle' && asset.loan && asset.loan.remainingBalance > 0) {
+            return sum + (asset.loan.monthlyPayment || 0);
+        }
+        return sum;
+    }, 0);
+}
+
 function simulateVehicleMarket() {
     const marketForce = (Math.random() * 0.16) - 0.08;
     
     VEHICLES_FOR_SALE.forEach(car => {
-        // Each car has a slight individual variance on top of the market force
-        const individualVariance = (Math.random() * 0.04) - 0.02; // +/- 2%
+        const individualVariance = (Math.random() * 0.04) - 0.02;
         const totalChangePercent = 1 + marketForce + individualVariance;
         
-        // Calculate new price
         let newPrice = Math.floor(car.price * totalChangePercent);
         
-        // Round to nearest $10 or $100 for cleaner numbers
         if (newPrice > 10000) {
             newPrice = Math.round(newPrice / 100) * 100;
         } else {
             newPrice = Math.round(newPrice / 10) * 10;
         }
-        // Safety: Don't let prices drop below 50% of original or go too crazy
-        // (Optional, but keeps Rusty Camrys from becoming free)
         newPrice = Math.max(500, newPrice); 
-        // Update the global object
         car.price = newPrice;
-        
-        // Store the % change to show UI arrows later (Optional feature)
         car.lastChange = totalChangePercent > 1 ? 'up' : 'down';
     });
     return marketForce;
-};
+}
 
 function updateOwnedVehicles(user, marketForce) {
-    if (!user.assets || user.assets.length === 0) return;
+    if (!user.assets || !Array.isArray(user.assets)) return;
+
     user.assets.forEach(asset => {
-        // Only affect vehicles
         if (asset.category === 'vehicle') {
-            // Lose between 3% and 7% condition every year randomly
-            const decay = Math.floor(Math.random() * 5) + 3; 
-            asset.condition = Math.max(0, asset.condition - decay);
-            // Base depreciation (cars lose ~15% value naturally)
-            const baseDepreciation = 0.85; 
-            
-            // Market Impact: If market is up (+8%), depreciation is less severe
-            // We use 0.5 to dampen the market effect on used cars
-            const marketImpact = 1 + (marketForce * 0.5); 
-            // Calculate new value
-            let newValue = Math.floor(asset.value * baseDepreciation * marketImpact);
-            
-            // Penalty: If condition is terrible (< 40%), value drops harder
-            if (asset.condition < 40) {
-                newValue = Math.floor(newValue * 0.80); // Extra 20% drop
+            if (asset.acquiredAge === undefined) {
+                asset.acquiredAge = Math.max(0, (user.age || 0) - 1);
             }
-            asset.value = Math.max(0, newValue);
-            // CRITICAL WARNINGS
-            // If the car just hit 0% or low condition, warn the user
+            const ownedYears = Math.max(0, user.age - asset.acquiredAge);
+
+            // Condition decay based on reliability rating (1-5)
+            const reliability = asset.reliability || 3;
+            const decay = Math.max(1, Math.floor(Math.random() * (6 - reliability)) + 2);
+            asset.condition = Math.max(0, asset.condition - decay);
+
+            // Realistic Tier-Based Depreciation / Appreciation:
+            const originalPrice = asset.purchasePrice || asset.value || 10000;
+            const valType = asset.valuationType || 'standard';
+
+            let newValue = asset.value;
+
+            if (valType === 'exotic') {
+                // Exotic & Hypercars:
+                // Years 1-3: minor 3-5% drop. Years 4-7: hold value. Years 8+: APPRECIATE (+2-4%/yr) as collector items!
+                if (ownedYears <= 3) {
+                    newValue = Math.floor(asset.value * 0.96);
+                } else if (ownedYears <= 7) {
+                    newValue = asset.value; // Retains value
+                } else {
+                    const appreciation = 1.03; // +3% collector appreciation
+                    newValue = Math.floor(asset.value * appreciation);
+                }
+            } else if (valType === 'luxury') {
+                // Luxury & Sports cars:
+                // Years 1-5: 6% drop/yr. Years 6+: 3% drop/yr with a 30% value floor of original purchase price.
+                if (ownedYears <= 5) {
+                    newValue = Math.floor(asset.value * 0.94);
+                } else {
+                    newValue = Math.floor(asset.value * 0.97);
+                }
+                const valueFloor = Math.floor(originalPrice * 0.30);
+                newValue = Math.max(valueFloor, newValue);
+            } else {
+                // Standard & Budget cars:
+                // Year 1: 12% drop. Years 2-6: 8% drop. Years 7+: 4% drop with a 15% value floor of original price.
+                if (ownedYears <= 1) {
+                    newValue = Math.floor(asset.value * 0.88);
+                } else if (ownedYears <= 6) {
+                    newValue = Math.floor(asset.value * 0.92);
+                } else {
+                    newValue = Math.floor(asset.value * 0.96);
+                }
+                const valueFloor = asset.condition > 15 ? Math.floor(originalPrice * 0.15) : Math.floor(originalPrice * 0.05);
+                newValue = Math.max(valueFloor, newValue);
+            }
+
+            if (marketForce) {
+                newValue = Math.floor(newValue * (1 + marketForce * 0.3));
+            }
+
+            if (asset.condition < 40) {
+                newValue = Math.floor(newValue * 0.85);
+            }
+
+            asset.value = Math.max(100, newValue);
+
+            // Auto Loan Payments
+            if (asset.loan && asset.loan.remainingBalance > 0) {
+                const annualRate = asset.loan.annualRate || 0.065;
+                const monthlyRate = annualRate / 12;
+                let loanPaid = 0;
+
+                for (let month = 0; month < 12; month++) {
+                    if (asset.loan.remainingBalance <= 0) break;
+                    const interest = asset.loan.remainingBalance * monthlyRate;
+                    const payoff = asset.loan.remainingBalance + interest;
+                    let payment = asset.loan.monthlyPayment;
+
+                    if (payoff <= payment) {
+                        payment = Math.round(payoff);
+                        asset.loan.remainingBalance = 0;
+                        loanPaid += payment;
+                        break;
+                    } else {
+                        const principal = payment - interest;
+                        asset.loan.remainingBalance -= principal;
+                        loanPaid += payment;
+                    }
+                }
+
+                asset.loan.remainingBalance = Math.max(0, Math.round(asset.loan.remainingBalance));
+                user.money -= Math.round(loanPaid);
+
+                if (asset.loan.remainingBalance <= 0) {
+                    addLog(`Fully paid off your auto loan for ${asset.name}!`, 'good');
+                    asset.loan = null;
+                }
+            }
+
+            // Auto Insurance Policy Fee
+            if (asset.insured) {
+                const insuranceFee = Math.max(20, Math.floor(asset.value * 0.008));
+                user.money -= insuranceFee;
+            }
+
+            // Warnings
             if (asset.condition === 0) {
-                 addLog(`URGENT: Your ${asset.name} has broken down completely!`, 'bad');
+                addLog(`URGENT: Your ${asset.name} has broken down completely!`, 'bad');
             } else if (asset.condition < 20 && asset.condition + decay >= 20) {
-                 addLog(`Your ${asset.name} is falling apart. Repair it soon!`, 'bad');
+                addLog(`Your ${asset.name} is falling apart (${asset.condition}% condition). Repair it soon!`, 'bad');
             }
         }
     });
@@ -1778,7 +1901,9 @@ export const GameLogic = {
     getJewelryIcon,
     JEWELRY_FOR_SALE,
     updateOwnedJewelry,
-    VEHICLES_FOR_SALE
+    VEHICLES_FOR_SALE,
+    calculateAutoLoan,
+    calculateTotalAutoLoanMonthlyOutflow
 };
 
 

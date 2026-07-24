@@ -34,8 +34,8 @@ const HAIR_STYLES_WITH_BACK_LAYER = ['shoulderWave', 'longStraight', 'longWavy',
 // so classmates/strangers/family land on a style typical for their gender.
 // Manual selection (character creation's appearance panel) is unaffected —
 // it always offers the full HAIR_STYLES list regardless of gender.
-const MALE_HAIR_STYLES = ['bald', 'buzzed', 'shortCrop', 'shortSidePart', 'pixieSpiky', 'curly', 'mediumStraight'];
-const FEMALE_HAIR_STYLES = ['shortCrop', 'pixieSpiky', 'curly', 'mediumStraight', 'shoulderWave', 'longStraight', 'longWavy', 'ponytail', 'bun'];
+const MALE_HAIR_STYLES = ['bald', 'buzzed', 'shortCrop', 'shortSidePart', 'pixieSpiky', 'mediumStraight', 'curly', 'shoulderWave', 'longStraight', 'longWavy', 'ponytail', 'bun'];
+const FEMALE_HAIR_STYLES = ['buzzed', 'shortCrop', 'shortSidePart', 'pixieSpiky', 'mediumStraight', 'curly', 'shoulderWave', 'longStraight', 'longWavy', 'ponytail', 'bun'];
 
 const HAIR_COLORS = ['black', 'darkBrown', 'brown', 'lightBrown', 'blonde', 'red', 'gray'];
 const HAIR_COLOR_HEX = {
@@ -181,18 +181,24 @@ function buildAppearanceDescriptor(character) {
 }
 
 /**
- * Rolls a fully random appearance descriptor from a seed. Every trait is
- * independent of the others (each draws from its own sub-seeded RNG), and
- * grayStartAge is derived the same way generateGrayStartAge would on its own.
+ * Rolls a fully random appearance descriptor from a seed.
+ * Rules:
+ * - Beards/facial hair only on males.
+ * - Lipstick and blush only on females.
+ * - Hair (short/long) fine for both, but 'bald' only on males.
  * @param {string|number} seed - something stable about the character (id/name)
- * @param {string} [gender] - 'male'/'female' narrows the hairStyle pool to one
- *   typical for that gender; anything else (undefined, other) draws from the
- *   full unisex HAIR_STYLES list.
+ * @param {string} [gender] - 'male'/'female'
  * @returns {object} appearance descriptor
  */
 function generateRandomAppearance(seed, gender) {
     const draw = (traitKey, options) => pick(options, makeRng(`${seed}:${traitKey}`));
-    const hairPool = gender === 'male' ? MALE_HAIR_STYLES : gender === 'female' ? FEMALE_HAIR_STYLES : HAIR_STYLES;
+    const isFemale = gender === 'female';
+    const isMale = gender === 'male';
+
+    const hairPool = isFemale ? FEMALE_HAIR_STYLES : MALE_HAIR_STYLES;
+    const facialHairStyle = isMale ? draw('facialHairStyle', FACIAL_HAIR_STYLES) : 'none';
+    const lipstickColor = isFemale ? draw('lipstickColor', LIPSTICK_COLORS) : 'none';
+    const blushColor = isFemale ? draw('blushColor', BLUSH_COLORS) : 'none';
 
     return {
         skinTone: draw('skinTone', SKIN_TONES),
@@ -202,12 +208,12 @@ function generateRandomAppearance(seed, gender) {
         eyebrowStyle: draw('eyebrowStyle', EYEBROW_STYLES),
         hairStyle: draw('hairStyle', hairPool),
         hairColorBase: draw('hairColorBase', HAIR_COLORS),
-        facialHairStyle: draw('facialHairStyle', FACIAL_HAIR_STYLES),
+        facialHairStyle: facialHairStyle,
         facialHairColor: draw('facialHairColor', FACIAL_HAIR_COLORS),
         glassesStyle: draw('glassesStyle', GLASSES_STYLES),
         glassesColor: draw('glassesColor', GLASSES_COLORS),
-        lipstickColor: draw('lipstickColor', LIPSTICK_COLORS),
-        blushColor: draw('blushColor', BLUSH_COLORS),
+        lipstickColor: lipstickColor,
+        blushColor: blushColor,
         grayStartAge: generateGrayStartAge(seed)
     };
 }

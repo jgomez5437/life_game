@@ -1089,4 +1089,58 @@ describe('Real Estate Properties & Mortgage Pure Logic', () => {
         expect(user.money).toBe(230000); // 50k + 180k
         expect(user.assets.length).toBe(0);
     });
+});
+
+describe('Vehicle System Revamp', () => {
+    test('calculateAutoLoan returns down payment, principal, and monthly payment', () => {
+        const loan = GameLogic.calculateAutoLoan(30000, 0.15, 4);
+        expect(loan.price).toBe(30000);
+        expect(loan.downPayment).toBe(4500); // 15% of 30k
+        expect(loan.principal).toBe(25500);
+        expect(loan.monthlyPayment).toBeGreaterThan(500);
+    });
+
+    test('updateOwnedVehicles enforces value floor on standard cars', () => {
+        const user = {
+            age: 28,
+            assets: [
+                {
+                    id: 1,
+                    category: 'vehicle',
+                    name: 'Commuter Car',
+                    purchasePrice: 20000,
+                    value: 4000,
+                    acquiredAge: 20,
+                    condition: 80,
+                    reliability: 5,
+                    valuationType: 'standard'
+                }
+            ]
+        };
+
+        GameLogic.updateOwnedVehicles(user, 0);
+        expect(user.assets[0].value).toBeGreaterThanOrEqual(3000);
+    });
+
+    test('updateOwnedVehicles causes exotic hypercars to appreciate after 7 years', () => {
+        const user = {
+            age: 30,
+            assets: [
+                {
+                    id: 2,
+                    category: 'vehicle',
+                    name: 'Ferrari Roma',
+                    purchasePrice: 260000,
+                    value: 260000,
+                    acquiredAge: 20,
+                    condition: 100,
+                    reliability: 5,
+                    valuationType: 'exotic'
+                }
+            ]
+        };
+
+        GameLogic.updateOwnedVehicles(user, 0);
+        expect(user.assets[0].value).toBeGreaterThan(260000);
+    });
 });
