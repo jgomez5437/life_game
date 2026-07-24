@@ -69,6 +69,28 @@ export const UI = {
     },
 
     /**
+     * Resets header to modern standard placeholders for a new life.
+     */
+    resetHeader: () => {
+        if (_elements.name) _elements.name.innerText = '—';
+        if (_elements.age) _elements.age.innerText = '—';
+        if (_elements.healthText) _elements.healthText.innerText = '100%';
+        if (_elements.healthContainer) {
+            _elements.healthContainer.classList.remove('text-yellow-400', 'text-red-500');
+            _elements.healthContainer.classList.add('text-green-400');
+        }
+        if (_elements.bank) {
+            _elements.bank.innerText = '$0';
+            _elements.bank.classList.remove('text-red-400');
+            _elements.bank.classList.add('text-green-400');
+        }
+        const avatarContainer = document.getElementById('avatar-container');
+        if (avatarContainer) {
+            avatarContainer.innerHTML = '<i class="fas fa-user text-slate-400 text-base"></i>';
+        }
+    },
+
+    /**
      * @param {string} htmlContent
      */
     renderScreen: (htmlContent) => {

@@ -9,15 +9,17 @@ import { renderEducation, workHarder, skipSchool, renderClassmates } from '../fe
 import { attemptEnrollment, openGradEnrollmentModal, attemptGradEnrollment, renderGradSchoolMarket, openUniversityModal } from '../features/career/occupationScreen.js';
 import { selectGender, submitCharacter, renderCharCreation, cycleTrait, randomizeSection, randomizeAllTraits } from '../features/player/charCreationScreen.js';
 import { ageUp, continueAsChild, renderLifeDashboard, addLog, renderDeathScreen, showFullEulogy } from '../features/player/mainScreen.js';
+import { openPlayerOverviewModal } from '../features/player/playerOverviewScreen.js';
 import { state } from './state.js';
 import { GameLogic } from './gameLogic.js';
 import { renderAssets, renderVehicleManager, repairVehicle, sellVehicle, renderPropertyManager, payOffMortgage, openSellPropertyModal, submitPropertyListing, acceptBuyerOffer, doPropertyMaintenance, doPropertyRenovation, openTenantScreening, acceptTenantLease, evictTenantAction, demandTenantRentPayment, forgiveTenantRent, evictTenantFromEvent, demandTenantRepairPayment, forgiveTenantDamage, renewLeaseSameRate, renewLeaseWithIncrease, declineLeaseRenewal, renderJewelryManager, toggleWearJewelry, toggleInsureJewelry, sellJewelry, openGiftJewelryModal, confirmGiftJewelry, setPrimaryVehicle, toggleInsureVehicle, takeJoyride, openGiftVehicleModal, confirmGiftVehicle } from '../features/assets/assetsScreen.js';
 import { renderShoppingHub, renderVehicleDealer, buyVehicle, buyVehicleCash, buyVehicleLoan, renderRealEstateDealer, buyPropertyCash, buyPropertyMortgage, renderJewelryDealer, buyJewelry } from '../features/assets/goShoppingScreen.js';
 import { renderActivities } from '../features/career/occupationScreen.js';
 import { renderRelationships, renderPersonInteraction, openRelationshipConfirm, spendTimeWithAll, goOutMeetSomeone, handleProposeAction, openRingSelectionModal, proposeWithRing } from '../features/relationships/relationshipScreen.js';
-import { chooseFuneralType, cancelFuneralPlan, confirmFuneralPlan, donateBody, lookTheOtherWay, goToFuneral, skipFuneral } from '../features/relationships/funeralScreen.js';
+import { chooseFuneralType, cancelFuneralPlan, confirmFuneralPlan, donateBody, lookTheOtherWay, goToFuneral, skipFuneral, respondNewTeacher, processNextTeacherReplacement } from '../features/relationships/funeralScreen.js';
 import { openWeddingPlanner, confirmWeddingPlan, openNameChangeChoice, chooseNameChange } from '../features/relationships/romanceScreen.js';
 import { renderMoreDashboard, buyGymMembership, cancelGymMembership, visitGymOneTime, startBetterDiet, cancelBetterDiet, visitDoctor, openBlackjackBetting, startBlackjackGame, blackjackHit, blackjackStand, openTravelModal, bookTrip, openDietSelectionModal, selectDiet, openLotteryModal, buyLotteryTicket, openSuggestionsModal } from '../features/more/moreScreen.js';
+import { openSettingsModal, triggerManualSave, promptResetGame, toggleSettingSFX, toggleSettingCompact } from '../features/more/settingsScreen.js';
 import { Utils } from '../ui/utils.js';
 import { UI } from '../ui/ui.js';
 
@@ -692,6 +694,7 @@ async function initGame() {
 // --- RESET GAME PIPELINE ---
 export async function resetGame() {
     console.log("Resetting game state...");
+    UI.resetHeader();
 
     UI.renderScreen(`
         <div class="fade-in max-w-md mx-auto h-full flex flex-col justify-center items-center text-center px-4">
@@ -841,6 +844,8 @@ const routeHandlers = {
   lookTheOtherWay,
   goToFuneral,
   skipFuneral,
+  respondNewTeacher,
+  processNextTeacherReplacement,
   renderMoreDashboard,
   buyGymMembership,
   cancelGymMembership,
@@ -877,7 +882,13 @@ const routeHandlers = {
   selectDiet,
   openLotteryModal,
   buyLotteryTicket,
-  openSuggestionsModal
+  openSuggestionsModal,
+  openSettingsModal,
+  triggerManualSave,
+  promptResetGame,
+  toggleSettingSFX,
+  toggleSettingCompact,
+  openPlayerOverviewModal
 };
 
 document.addEventListener('click', (e) => {

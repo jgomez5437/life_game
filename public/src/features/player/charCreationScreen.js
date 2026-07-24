@@ -120,6 +120,7 @@ export function randomizeAllTraits() {
 }
 
 export const renderCharCreation = () => {
+    UI.resetHeader();
     draftAppearance = AvatarLogic.generateRandomAppearance('draft-' + Math.random(), selectedGender);
 
     const creationHTML = `
