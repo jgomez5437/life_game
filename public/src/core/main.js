@@ -9,6 +9,7 @@ import { renderEducation, workHarder, skipSchool, renderClassmates } from '../fe
 import { attemptEnrollment, openGradEnrollmentModal, attemptGradEnrollment, renderGradSchoolMarket, openUniversityModal } from '../features/career/occupationScreen.js';
 import { selectGender, submitCharacter, renderCharCreation, cycleTrait, randomizeSection, randomizeAllTraits } from '../features/player/charCreationScreen.js';
 import { ageUp, continueAsChild, renderLifeDashboard, addLog, renderDeathScreen, showFullEulogy } from '../features/player/mainScreen.js';
+import { openPlayerOverviewModal } from '../features/player/playerOverviewScreen.js';
 import { state } from './state.js';
 import { GameLogic } from './gameLogic.js';
 import { renderAssets, renderVehicleManager, repairVehicle, sellVehicle, renderPropertyManager, payOffMortgage, openSellPropertyModal, submitPropertyListing, acceptBuyerOffer, doPropertyMaintenance, doPropertyRenovation, openTenantScreening, acceptTenantLease, evictTenantAction, demandTenantRentPayment, forgiveTenantRent, evictTenantFromEvent, demandTenantRepairPayment, forgiveTenantDamage, renewLeaseSameRate, renewLeaseWithIncrease, declineLeaseRenewal, renderJewelryManager, toggleWearJewelry, toggleInsureJewelry, sellJewelry, openGiftJewelryModal, confirmGiftJewelry, setPrimaryVehicle, toggleInsureVehicle, takeJoyride, openGiftVehicleModal, confirmGiftVehicle } from '../features/assets/assetsScreen.js';
@@ -886,7 +887,8 @@ const routeHandlers = {
   triggerManualSave,
   promptResetGame,
   toggleSettingSFX,
-  toggleSettingCompact
+  toggleSettingCompact,
+  openPlayerOverviewModal
 };
 
 document.addEventListener('click', (e) => {

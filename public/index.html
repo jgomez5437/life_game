@@ -14,12 +14,12 @@
     <!-- Header Stats Bar (Persistent) -->
     <header class="bg-slate-800 border-b border-slate-700 p-3 shadow-lg z-10 flex justify-center items-center h-16 shrink-0">
         <div class="w-full max-w-lg mx-auto flex justify-between items-center px-1">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-slate-700 overflow-hidden flex items-center justify-center border-2 border-slate-600" id="avatar-container">
+            <div id="header-user-info" data-action="openPlayerOverviewModal" class="flex items-center gap-3 cursor-pointer hover:opacity-90 transition group select-none" title="Click for Life Overview">
+                <div class="w-10 h-10 rounded-full bg-slate-700 overflow-hidden flex items-center justify-center border-2 border-slate-600 group-hover:border-blue-400 transition" id="avatar-container">
                     <i class="fas fa-user text-slate-400"></i>
                 </div>
                 <div>
-                    <h1 id="header-name" class="font-bold text-sm leading-tight text-white">Player</h1>
+                    <h1 id="header-name" class="font-bold text-sm leading-tight text-white group-hover:text-blue-300 transition">Player</h1>
                     <div class="text-xs text-slate-400 flex items-center gap-3 mt-1">
                         <div>Age: <span id="header-age" class="text-white font-bold">0</span></div>
                         <div id="health-container" class="font-bold flex items-center transition-colors duration-300 text-green-400">
