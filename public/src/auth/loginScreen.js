@@ -2,6 +2,7 @@ import { renderCharCreation } from '../features/player/charCreationScreen.js';
 import { UI } from '../ui/ui.js';
 
 export const renderLoginScreen = () => {
+    UI.resetHeader();
     const container = document.getElementById('game-container');
     
     const html = `

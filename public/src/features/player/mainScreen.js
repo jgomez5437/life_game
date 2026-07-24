@@ -566,6 +566,16 @@ function handleRelationships(user) {
         const deathCheck = GameLogic.checkMortality(rel.age, rel.health ?? 100);
         if (deathCheck.isDead) {
             rel.deathCause = deathCheck.cause;
+
+            if (rel.type === 'Teacher' && (user.isStudent || (user.age >= 5 && user.age <= 18))) {
+                if (!state.gameState.pendingTeacherReplacements) {
+                    state.gameState.pendingTeacherReplacements = [];
+                }
+                state.gameState.pendingTeacherReplacements.push({
+                    deceasedTeacherName: rel.name
+                });
+            }
+
             state.gameState.pendingFunerals.push(rel);
             
             // Remove them from active relationships immediately

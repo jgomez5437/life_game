@@ -1166,6 +1166,31 @@ function generateSchoolCohort(userAge) {
 }
 
 /**
+ * Generates a replacement teacher when a teacher passes away while player is in school.
+ * @param {number} userAge 
+ * @returns {object} Relationship object for the replacement teacher
+ */
+function generateReplacementTeacher(userAge) {
+    const teacherGender = Math.random() < 0.5 ? 'male' : 'female';
+    const lastTeacher = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
+    const title = teacherGender === 'male' ? 'Mr.' : (Math.random() > 0.5 ? 'Ms.' : 'Mrs.');
+    const teacherId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'rel_' + Date.now() + Math.random().toString(36).substring(2, 9);
+
+    return {
+        id: teacherId,
+        name: `${title} ${lastTeacher}`,
+        age: Math.floor(Math.random() * 37) + 24, // 24 to 60
+        type: 'Teacher',
+        gender: teacherGender,
+        status: 30, // Default base starting status
+        category: 'classmate',
+        isCurrentClassmate: true,
+        interactedThisYear: false,
+        appearance: AvatarLogic.generateRandomAppearance(teacherId, teacherGender)
+    };
+}
+
+/**
  * Generates a single opposite-gender stranger the player meets while out
  * (e.g. a "Go Out / Meet Someone" action). Starts as a regular friend —
  * romance only begins once the player uses "Ask Out" on them.
@@ -2145,6 +2170,7 @@ export const GameLogic = {
     calculateInheritance,
     calculateSpousalLifeInsurance,
     generateSchoolCohort,
+    generateReplacementTeacher,
     generateStranger,
     backfillRelationshipGender,
     attemptBefriend,

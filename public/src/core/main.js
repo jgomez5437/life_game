@@ -15,9 +15,10 @@ import { renderAssets, renderVehicleManager, repairVehicle, sellVehicle, renderP
 import { renderShoppingHub, renderVehicleDealer, buyVehicle, buyVehicleCash, buyVehicleLoan, renderRealEstateDealer, buyPropertyCash, buyPropertyMortgage, renderJewelryDealer, buyJewelry } from '../features/assets/goShoppingScreen.js';
 import { renderActivities } from '../features/career/occupationScreen.js';
 import { renderRelationships, renderPersonInteraction, openRelationshipConfirm, spendTimeWithAll, goOutMeetSomeone, handleProposeAction, openRingSelectionModal, proposeWithRing } from '../features/relationships/relationshipScreen.js';
-import { chooseFuneralType, cancelFuneralPlan, confirmFuneralPlan, donateBody, lookTheOtherWay, goToFuneral, skipFuneral } from '../features/relationships/funeralScreen.js';
+import { chooseFuneralType, cancelFuneralPlan, confirmFuneralPlan, donateBody, lookTheOtherWay, goToFuneral, skipFuneral, respondNewTeacher, processNextTeacherReplacement } from '../features/relationships/funeralScreen.js';
 import { openWeddingPlanner, confirmWeddingPlan, openNameChangeChoice, chooseNameChange } from '../features/relationships/romanceScreen.js';
 import { renderMoreDashboard, buyGymMembership, cancelGymMembership, visitGymOneTime, startBetterDiet, cancelBetterDiet, visitDoctor, openBlackjackBetting, startBlackjackGame, blackjackHit, blackjackStand, openTravelModal, bookTrip, openDietSelectionModal, selectDiet, openLotteryModal, buyLotteryTicket, openSuggestionsModal } from '../features/more/moreScreen.js';
+import { openSettingsModal, triggerManualSave, promptResetGame, toggleSettingSFX, toggleSettingCompact } from '../features/more/settingsScreen.js';
 import { Utils } from '../ui/utils.js';
 import { UI } from '../ui/ui.js';
 
@@ -692,6 +693,7 @@ async function initGame() {
 // --- RESET GAME PIPELINE ---
 export async function resetGame() {
     console.log("Resetting game state...");
+    UI.resetHeader();
 
     UI.renderScreen(`
         <div class="fade-in max-w-md mx-auto h-full flex flex-col justify-center items-center text-center px-4">
@@ -841,6 +843,8 @@ const routeHandlers = {
   lookTheOtherWay,
   goToFuneral,
   skipFuneral,
+  respondNewTeacher,
+  processNextTeacherReplacement,
   renderMoreDashboard,
   buyGymMembership,
   cancelGymMembership,
@@ -877,7 +881,12 @@ const routeHandlers = {
   selectDiet,
   openLotteryModal,
   buyLotteryTicket,
-  openSuggestionsModal
+  openSuggestionsModal,
+  openSettingsModal,
+  triggerManualSave,
+  promptResetGame,
+  toggleSettingSFX,
+  toggleSettingCompact
 };
 
 document.addEventListener('click', (e) => {

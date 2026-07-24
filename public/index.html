@@ -12,25 +12,32 @@
 <body class="h-[100dvh] flex flex-col overflow-hidden">
 
     <!-- Header Stats Bar (Persistent) -->
-<header class="bg-slate-800 border-b border-slate-700 p-3 shadow-lg z-10 flex justify-between items-center h-16 shrink-0">
-        <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full bg-slate-700 overflow-hidden flex items-center justify-center border-2 border-slate-600" id="avatar-container">
-                <i class="fas fa-user text-slate-400"></i>
-            </div>
-            <div>
-                <h1 id="header-name" class="font-bold text-sm leading-tight text-white">Player</h1>
-                <div class="text-xs text-slate-400 flex items-center gap-3 mt-1">
-                    <div>Age: <span id="header-age" class="text-white font-bold">0</span></div>
-                    <div id="health-container" class="font-bold flex items-center transition-colors duration-300 text-green-400">
-                        <i class="fas fa-heart mr-1"></i>
-                        <span id="ui-health">100%</span>
+    <header class="bg-slate-800 border-b border-slate-700 p-3 shadow-lg z-10 flex justify-center items-center h-16 shrink-0">
+        <div class="w-full max-w-lg mx-auto flex justify-between items-center px-1">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-slate-700 overflow-hidden flex items-center justify-center border-2 border-slate-600" id="avatar-container">
+                    <i class="fas fa-user text-slate-400"></i>
+                </div>
+                <div>
+                    <h1 id="header-name" class="font-bold text-sm leading-tight text-white">Player</h1>
+                    <div class="text-xs text-slate-400 flex items-center gap-3 mt-1">
+                        <div>Age: <span id="header-age" class="text-white font-bold">0</span></div>
+                        <div id="health-container" class="font-bold flex items-center transition-colors duration-300 text-green-400">
+                            <i class="fas fa-heart mr-1"></i>
+                            <span id="ui-health">100%</span>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-        <div class="text-right">
-            <div id="header-bank" class="font-bold text-green-400 text-lg">$0</div>
-            <div class="text-xs text-slate-500 uppercase tracking-wider">Bank Account</div>
+            <div class="flex items-center gap-3">
+                <div class="text-right">
+                    <div id="header-bank" class="font-bold text-green-400 text-lg">$0</div>
+                    <div class="text-xs text-slate-500 uppercase tracking-wider">Bank Account</div>
+                </div>
+                <button id="header-settings-btn" data-action="openSettingsModal" class="w-9 h-9 rounded-xl bg-slate-700/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-600/70 flex items-center justify-center transition-colors shadow-sm ml-1" title="Settings">
+                    <i class="fas fa-cog text-base"></i>
+                </button>
+            </div>
         </div>
     </header>
 

@@ -8,7 +8,11 @@ import { renderAvatar } from '../../ui/avatarRenderer.js';
 
 export const processNextFuneral = () => {
     if (!state.gameState.pendingFunerals || state.gameState.pendingFunerals.length === 0) {
-        // Queue is empty, proceed to dashboard
+        // Queue is empty, check pending teacher replacements or proceed to dashboard
+        if (state.gameState.pendingTeacherReplacements && state.gameState.pendingTeacherReplacements.length > 0) {
+            processNextTeacherReplacement();
+            return;
+        }
         renderLifeDashboard(state.gameState);
         if (typeof saveGame === "function") saveGame();
         return;
@@ -17,6 +21,87 @@ export const processNextFuneral = () => {
     // Get the first pending funeral
     const deceased = state.gameState.pendingFunerals[0];
     renderFuneralScreen(deceased);
+};
+
+export const processNextTeacherReplacement = () => {
+    const queue = state.gameState.pendingTeacherReplacements;
+    if (!queue || queue.length === 0) {
+        renderLifeDashboard(state.gameState);
+        if (typeof saveGame === "function") saveGame();
+        return;
+    }
+
+    const item = queue[0];
+    const user = state.gameState.user;
+
+    // Generate or retrieve the new replacement teacher for this prompt
+    if (!item.newTeacher) {
+        item.newTeacher = GameLogic.generateReplacementTeacher(user.age);
+    }
+
+    const newTeacher = item.newTeacher;
+
+    const modalHtml = `
+        <div class="fade-in max-w-md mx-auto min-h-full py-8 flex flex-col justify-center items-center text-center px-4">
+            <div class="w-20 h-20 rounded-full bg-slate-700 overflow-hidden flex items-center justify-center mx-auto mb-3 border-2 border-slate-500 shadow-xl">
+                ${renderAvatar(newTeacher)}
+            </div>
+            <div class="text-xs font-bold uppercase tracking-wider text-amber-400 mb-1">Classroom Update</div>
+            <h1 class="text-3xl font-bold text-white mb-2">New Teacher Assigned</h1>
+            <p class="text-slate-300 text-sm mb-6">
+                Following the tragic passing of <span class="font-bold text-amber-300">${item.deceasedTeacherName}</span>, your new teacher is <span class="font-bold text-white">${newTeacher.name}</span> (Age ${newTeacher.age}).
+            </p>
+            
+            <div class="w-full space-y-3">
+                <button data-action="respondNewTeacher" data-args="'hello'" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-between transition group shadow-lg">
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-hand text-xl"></i>
+                        <div class="text-left">
+                            <div class="font-bold text-sm">Say Hello</div>
+                            <div class="text-[11px] text-emerald-200">Polite & friendly greeting (+15 Status)</div>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right text-emerald-300 group-hover:translate-x-1 transition"></i>
+                </button>
+
+                <button data-action="respondNewTeacher" data-args="'side_eye'" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-bold py-3.5 px-4 rounded-xl flex items-center justify-between transition group">
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-eye text-xl text-amber-400"></i>
+                        <div class="text-left">
+                            <div class="font-bold text-sm text-white">Give ${newTeacher.name} the side eye</div>
+                            <div class="text-[11px] text-slate-400">Skeptical & distant reaction (-15 Status)</div>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right text-slate-500 group-hover:translate-x-1 transition"></i>
+                </button>
+            </div>
+        </div>
+    `;
+
+    UI.renderScreen(modalHtml);
+};
+
+export const respondNewTeacher = (reaction) => {
+    const queue = state.gameState.pendingTeacherReplacements;
+    if (!queue || queue.length === 0) return;
+
+    const item = queue.shift();
+    const user = state.gameState.user;
+    const newTeacher = item.newTeacher;
+
+    if (!user.relationships) user.relationships = [];
+
+    if (reaction === 'hello') {
+        newTeacher.status = Math.min(100, (newTeacher.status || 30) + 15);
+        addLog(`You politely introduced yourself to your new teacher, ${newTeacher.name}. (+15 Relationship)`, 'good');
+    } else {
+        newTeacher.status = Math.max(0, (newTeacher.status || 30) - 15);
+        addLog(`You gave your new teacher, ${newTeacher.name}, the side eye when they entered the classroom. (-15 Relationship)`, 'neutral');
+    }
+
+    user.relationships.push(newTeacher);
+
+    processNextTeacherReplacement();
 };
 
 const renderFuneralScreen = (deceased) => {
