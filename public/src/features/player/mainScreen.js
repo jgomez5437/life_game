@@ -503,6 +503,10 @@ function handleMarket(user) {
     GameLogic.updateOwnedProperties(user);
     GameLogic.updateOwnedJewelry(user);
 
+    if (user.age >= 18) {
+        GameLogic.processInvestmentsAgeUp(user);
+    }
+
     user.lotteryTicketsBoughtThisYear = 0;
     GameLogic.rollOverMegaJackpot(user);
 

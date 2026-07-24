@@ -7,13 +7,14 @@ import { confirmQuitCareer, quitCareer, renderCareerManager, workHarderJob, slac
 import { renderJobMarket } from '../features/career/partTimeJobsScreen.js';
 import { renderEducation, workHarder, skipSchool, renderClassmates } from '../features/education/manageEducationScreen.js';
 import { attemptEnrollment, openGradEnrollmentModal, attemptGradEnrollment, renderGradSchoolMarket, openUniversityModal } from '../features/career/occupationScreen.js';
-import { selectGender, submitCharacter, renderCharCreation, cycleTrait, randomizeSection, randomizeAllTraits } from '../features/player/charCreationScreen.js';
+import { selectGender, submitCharacter, renderCharCreation, cycleTrait, randomizeSection, randomizeAllTraits, updateCityDropdown } from '../features/player/charCreationScreen.js';
 import { ageUp, continueAsChild, renderLifeDashboard, addLog, renderDeathScreen, showFullEulogy } from '../features/player/mainScreen.js';
 import { openPlayerOverviewModal } from '../features/player/playerOverviewScreen.js';
 import { state } from './state.js';
 import { GameLogic } from './gameLogic.js';
 import { renderAssets, renderVehicleManager, repairVehicle, sellVehicle, renderPropertyManager, payOffMortgage, openSellPropertyModal, submitPropertyListing, acceptBuyerOffer, doPropertyMaintenance, doPropertyRenovation, openTenantScreening, acceptTenantLease, evictTenantAction, demandTenantRentPayment, forgiveTenantRent, evictTenantFromEvent, demandTenantRepairPayment, forgiveTenantDamage, renewLeaseSameRate, renewLeaseWithIncrease, declineLeaseRenewal, renderJewelryManager, toggleWearJewelry, toggleInsureJewelry, sellJewelry, openGiftJewelryModal, confirmGiftJewelry, setPrimaryVehicle, toggleInsureVehicle, takeJoyride, openGiftVehicleModal, confirmGiftVehicle } from '../features/assets/assetsScreen.js';
 import { renderShoppingHub, renderVehicleDealer, buyVehicle, buyVehicleCash, buyVehicleLoan, renderRealEstateDealer, buyPropertyCash, buyPropertyMortgage, renderJewelryDealer, buyJewelry } from '../features/assets/goShoppingScreen.js';
+import { renderInvestmentsScreen, switchInvestmentTab, setStockFilter, openStockDetailsModal, openBuyStockModal, confirmBuyStock, openSellStockModal, confirmSellStock, openDepositSavingsModal, confirmDepositSavings, openWithdrawSavingsModal, confirmWithdrawSavings } from '../features/assets/investmentsScreen.js';
 import { renderActivities } from '../features/career/occupationScreen.js';
 import { renderRelationships, renderPersonInteraction, openRelationshipConfirm, spendTimeWithAll, goOutMeetSomeone, handleProposeAction, openRingSelectionModal, proposeWithRing } from '../features/relationships/relationshipScreen.js';
 import { chooseFuneralType, cancelFuneralPlan, confirmFuneralPlan, donateBody, lookTheOtherWay, goToFuneral, skipFuneral, respondNewTeacher, processNextTeacherReplacement } from '../features/relationships/funeralScreen.js';
@@ -759,6 +760,7 @@ const routeHandlers = {
   cycleTrait,
   randomizeSection,
   randomizeAllTraits,
+  updateCityDropdown,
   applyForJob,
   applyForCareerTrack,
   answerInterview,
@@ -776,6 +778,18 @@ const routeHandlers = {
   renderLifeDashboard,
   renderShoppingHub,
   renderAssets,
+  renderInvestmentsScreen,
+  switchInvestmentTab,
+  setStockFilter,
+  openStockDetailsModal,
+  openBuyStockModal,
+  confirmBuyStock,
+  openSellStockModal,
+  confirmSellStock,
+  openDepositSavingsModal,
+  confirmDepositSavings,
+  openWithdrawSavingsModal,
+  confirmWithdrawSavings,
   repairVehicle,
   sellVehicle,
   renderVehicleDealer,
@@ -916,6 +930,16 @@ document.addEventListener('click', (e) => {
             routeHandlers[action](...args);
         } else {
             console.warn('Unhandled action:', action);
+        }
+    }
+});
+
+document.addEventListener('change', (e) => {
+    const actionElement = e.target.closest('[data-action]');
+    if (actionElement) {
+        const action = actionElement.dataset.action;
+        if (routeHandlers[action]) {
+            routeHandlers[action](e.target.value);
         }
     }
 });
