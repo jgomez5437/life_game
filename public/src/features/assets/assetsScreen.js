@@ -198,16 +198,31 @@ export function renderAssets() {
             
             <div class="flex-1 overflow-y-auto pb-4">
                 
-                <div data-action="renderShoppingHub" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-6 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
-                    <div class="flex items-center gap-3 mb-2">
-                         <div class="w-8 h-8 rounded-full bg-yellow-600/30 flex items-center justify-center text-yellow-500">
-                            <i class="fas fa-shopping-cart"></i>
+                <div class="grid grid-cols-1 gap-3 mb-6">
+                    <div data-action="renderShoppingHub" class="bg-slate-800 p-4 rounded-xl border border-slate-700 cursor-pointer hover:bg-slate-750 hover:border-yellow-500/50 transition">
+                        <div class="flex items-center gap-3 mb-2">
+                             <div class="w-8 h-8 rounded-full bg-yellow-600/30 flex items-center justify-center text-yellow-500">
+                                <i class="fas fa-shopping-cart"></i>
+                            </div>
+                            <h3 class="font-bold text-white">Go Shopping</h3>
                         </div>
-                        <h3 class="font-bold text-white">Go Shopping</h3>
+                        <div class="bg-slate-900 p-3 rounded border border-slate-700 flex justify-between items-center">
+                             <div class="text-sm text-white font-bold">Buy Items & Real Estate</div>
+                             <i class="fas fa-chevron-right text-slate-600"></i>
+                        </div>
                     </div>
-                    <div class="bg-slate-900 p-3 rounded border border-slate-700 flex justify-between items-center">
-                         <div class="text-sm text-white font-bold">Buy Items</div>
-                         <i class="fas fa-chevron-right text-slate-600"></i>
+
+                    <div data-action="renderInvestmentsScreen" class="bg-slate-800 p-4 rounded-xl border border-slate-700 cursor-pointer hover:bg-slate-750 hover:border-emerald-500/50 transition">
+                        <div class="flex items-center gap-3 mb-2">
+                             <div class="w-8 h-8 rounded-full bg-emerald-600/30 flex items-center justify-center text-emerald-400">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <h3 class="font-bold text-white">Investments</h3>
+                        </div>
+                        <div class="bg-slate-900 p-3 rounded border border-slate-700 flex justify-between items-center">
+                             <div class="text-sm text-white font-bold">Manage Savings & Stock Market</div>
+                             <i class="fas fa-chevron-right text-slate-600"></i>
+                        </div>
                     </div>
                 </div>
 
@@ -237,13 +252,7 @@ export function renderAssets() {
                         ${propertyHtml}
                     </div>
                 </div>
-
-                <div class="mb-4">
-                    <h3 class="text-slate-400 font-bold mb-2 text-sm uppercase flex items-center gap-2">
-                        <i class="fas fa-chart-line text-purple-400"></i> Investments
-                    </h3>
-                    <div class="bg-slate-800 p-3 rounded border border-slate-700 text-slate-500 italic text-sm">Coming Soon</div>
-                </div>
+            </div>
             </div>
         </div>
     `;

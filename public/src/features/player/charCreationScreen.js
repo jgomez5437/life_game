@@ -4,13 +4,22 @@ import { state } from '../../core/state.js';
 import { renderLifeDashboard, addLog } from './mainScreen.js';
 import { FamilyFactory } from '../relationships/familyFactory.js';
 import { UI } from '../../ui/ui.js';
+import { Utils, COUNTRIES_DATA } from '../../ui/utils.js';
 import { AvatarLogic } from '../../core/avatarLogic.js';
 import { renderAvatar } from '../../ui/avatarRenderer.js';
 
 //Character creation screen
 const get = id => document.getElementById(id);
 let selectedGender = 'male';
-const CITIES = ["New York", "Los Angeles", "San Francisco", "Houston", "Miami", "Tucson", "London", "Osaka", "Tokyo", "Berlin", "Madrid","Bandar Seri Begawan", "Paris", "Beijing", "Toronto", "Mexico City", "Cairo"];
+
+export function updateCityDropdown(countryName) {
+    const selectedCountry = countryName || (get('inp-country') ? get('inp-country').value : 'United States');
+    const countryObj = COUNTRIES_DATA.find(c => c.name === selectedCountry) || COUNTRIES_DATA[0];
+    const citySelect = get('inp-city');
+    if (citySelect) {
+        citySelect.innerHTML = countryObj.cities.map(c => `<option value="${c}">${c}</option>`).join('');
+    }
+}
 
 // --- APPEARANCE DRAFT (character creation only; final pick is stored on submit) ---
 const APPEARANCE_SECTIONS = [
@@ -153,9 +162,14 @@ export const renderCharCreation = () => {
                             </div>
                         </div>
                         <div>
+                            <label class="block text-sm text-slate-400 mb-1">Birth Country</label>
+                            <select id="inp-country" data-action="updateCityDropdown" class="w-full bg-slate-900 border border-slate-600 rounded p-3 text-white outline-none">
+                                ${COUNTRIES_DATA.map(c => `<option value="${c.name}">${c.name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div>
                             <label class="block text-sm text-slate-400 mb-1">Birth City</label>
                             <select id="inp-city" class="w-full bg-slate-900 border border-slate-600 rounded p-3 text-white outline-none">
-                                ${CITIES.map(c => `<option value="${c}">${c}</option>`).join('')}
                             </select>
                         </div>
                         <div>
@@ -171,6 +185,7 @@ export const renderCharCreation = () => {
         `;
         UI.renderScreen(creationHTML);
         renderAppearancePanel();
+        updateCityDropdown('United States');
     }
 
 export function selectGender(g) {
@@ -219,7 +234,8 @@ export async function submitCharacter() {
     const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : finalName;
     
     const gender = selectedGender;
-    const city = get('inp-city').value;
+    const country = get('inp-country') ? get('inp-country').value : 'United States';
+    const city = get('inp-city') ? get('inp-city').value : 'New York';
 
     // === 1. GENERATE LOCAL ARRAY (DO NOT MUTATE STATE YET) ===
     let startingFamily = [];
@@ -242,6 +258,7 @@ export async function submitCharacter() {
                     email: user.email,
                     username: finalName,
                     gender: gender,
+                    country: country,
                     city: city,
                     relationships: startingFamily,
                     appearance: draftAppearance
@@ -258,6 +275,7 @@ export async function submitCharacter() {
             userData = {
                 username: finalName,
                 gender: gender,
+                country: country,
                 city: city,
                 stats: {
                     health: 100,
