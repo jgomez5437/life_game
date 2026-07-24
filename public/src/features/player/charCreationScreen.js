@@ -83,9 +83,17 @@ function renderAppearancePanel() {
 export function cycleTrait(key, direction) {
     const field = findField(key);
     if (!field || !draftAppearance) return;
-    const idx = field.options.indexOf(draftAppearance[key]);
-    const next = (idx + direction + field.options.length) % field.options.length;
-    draftAppearance[key] = field.options[next];
+    let options = field.options;
+    if (key === 'hairStyle' && selectedGender === 'female') {
+        options = AvatarLogic.FEMALE_HAIR_STYLES;
+    } else if (key === 'facialHairStyle' && selectedGender === 'female') {
+        options = ['none'];
+    } else if ((key === 'lipstickColor' || key === 'blushColor') && selectedGender === 'male') {
+        options = ['none'];
+    }
+    const idx = options.indexOf(draftAppearance[key]);
+    const next = (idx + direction + options.length) % options.length;
+    draftAppearance[key] = options[next];
     renderAppearancePanel();
 }
 
@@ -93,18 +101,26 @@ export function randomizeSection(title) {
     const section = APPEARANCE_SECTIONS.find(s => s.title === title);
     if (!section || !draftAppearance) return;
     section.fields.forEach(f => {
-        draftAppearance[f.key] = f.options[Math.floor(Math.random() * f.options.length)];
+        let options = f.options;
+        if (f.key === 'hairStyle' && selectedGender === 'female') {
+            options = AvatarLogic.FEMALE_HAIR_STYLES;
+        } else if (f.key === 'facialHairStyle' && selectedGender === 'female') {
+            options = ['none'];
+        } else if ((f.key === 'lipstickColor' || f.key === 'blushColor') && selectedGender === 'male') {
+            options = ['none'];
+        }
+        draftAppearance[f.key] = options[Math.floor(Math.random() * options.length)];
     });
     renderAppearancePanel();
 }
 
 export function randomizeAllTraits() {
-    draftAppearance = AvatarLogic.generateRandomAppearance('draft-' + Math.random());
+    draftAppearance = AvatarLogic.generateRandomAppearance('draft-' + Math.random(), selectedGender);
     renderAppearancePanel();
 }
 
 export const renderCharCreation = () => {
-    draftAppearance = AvatarLogic.generateRandomAppearance('draft-' + Math.random());
+    draftAppearance = AvatarLogic.generateRandomAppearance('draft-' + Math.random(), selectedGender);
 
     const creationHTML = `
             <div class="fade-in max-w-md mx-auto">
@@ -158,7 +174,17 @@ export const renderCharCreation = () => {
 
 export function selectGender(g) {
     selectedGender = g;
-    console.log(selectedGender);
+    if (draftAppearance) {
+        if (g === 'female') {
+            draftAppearance.facialHairStyle = 'none';
+            if (draftAppearance.hairStyle === 'bald') {
+                draftAppearance.hairStyle = 'shortCrop';
+            }
+        } else if (g === 'male') {
+            draftAppearance.lipstickColor = 'none';
+            draftAppearance.blushColor = 'none';
+        }
+    }
     if(g === 'male') {
         get('btn-male').className = "p-3 rounded border border-blue-500 bg-blue-900/30 text-blue-200";
         get('btn-female').className = "p-3 rounded border border-slate-600 bg-slate-900 text-slate-400";
@@ -166,6 +192,7 @@ export function selectGender(g) {
         get('btn-male').className = "p-3 rounded border border-slate-600 bg-slate-900 text-slate-400";
         get('btn-female').className = "p-3 rounded border border-pink-500 bg-pink-900/30 text-pink-200";
     } 
+    renderAppearancePanel();
 }
 
 export async function submitCharacter() {

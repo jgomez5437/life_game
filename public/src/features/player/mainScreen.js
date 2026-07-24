@@ -501,6 +501,17 @@ function handleMarket(user) {
     const marketForce = GameLogic.simulateVehicleMarket();
     GameLogic.updateOwnedVehicles(user, marketForce);
     GameLogic.updateOwnedProperties(user);
+    GameLogic.updateOwnedJewelry(user);
+
+    user.lotteryTicketsBoughtThisYear = 0;
+    GameLogic.rollOverMegaJackpot(user);
+
+    // Primary vehicle status / happiness boost
+    const primaryVehicle = (user.assets || []).find(a => a.category === 'vehicle' && a.isPrimary);
+    if (primaryVehicle && primaryVehicle.statusBonus > 0 && primaryVehicle.condition >= 30) {
+        const bonus = Math.min(6, primaryVehicle.statusBonus);
+        user.stats.happiness = Math.min(100, (user.stats.happiness || 50) + bonus);
+    }
     
     if (marketForce > 0.06 && user.age > 15) {
         addLog("Inflation hits the auto market! Car prices are up.", "bad");

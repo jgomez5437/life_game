@@ -10,69 +10,80 @@ export function renderMoreDashboard() {
     const user = state.gameState.user;
     const gymLocked = user.age < 12;
     const casinoLocked = user.age < 21;
+    const currentDiet = GameLogic.getDietPlan(user.diet || (user.hasBetterDiet ? 'balanced' : 'junk'));
+    const ticketsBought = user.lotteryTicketsBoughtThisYear || 0;
+    const ticketsLeft = 10 - ticketsBought;
 
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
-            <div class="mb-4">
+            <div class="mb-4 flex items-center justify-between">
                 <button data-action="renderLifeDashboard" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
                     <i class="fas fa-arrow-left"></i> Back to Dashboard
                 </button>
             </div>
             
-            <h2 class="text-2xl font-bold mb-4 px-1">More Options</h2>
-            <p class="text-slate-400 text-sm mb-6 px-1">Improve your life and health with these activities.</p>
+            <h2 class="text-2xl font-bold mb-1 px-1 text-white">More Options</h2>
+            <p class="text-slate-400 text-sm mb-4 px-1">Improve your health, try your luck, or get personal life advice.</p>
             
-            <div class="flex-1 overflow-y-auto pb-4 space-y-4">
-                
-                <!-- Travel & Vacations -->
-                <div class="bg-slate-800 p-3 rounded-xl border border-slate-700">
+            <div class="flex-1 overflow-y-auto pb-6 space-y-4">
+
+                <!-- SECTION 1: HEALTH & WELLNESS -->
+                <div class="text-xs font-bold uppercase tracking-wider text-emerald-400 px-1 flex items-center gap-1.5">
+                    <i class="fas fa-heartbeat"></i> Health & Wellness
+                </div>
+
+                <!-- Custom Diet Selection -->
+                <div class="bg-slate-800 p-3.5 rounded-xl border border-slate-700">
                     <div class="flex justify-between items-center mb-2">
-                        <div class="flex items-center gap-2">
-                            <div class="w-8 h-8 rounded-full bg-cyan-900/30 flex items-center justify-center text-cyan-400 border border-cyan-500/50">
-                                <i class="fas fa-plane text-sm"></i>
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-9 h-9 rounded-full bg-green-900/40 flex items-center justify-center text-green-400 border border-green-500/50">
+                                <i class="fas fa-apple-alt text-sm"></i>
                             </div>
                             <div>
-                                <h3 class="font-bold text-white">Travel</h3>
-                                <div class="text-xs text-slate-500">Take a vacation</div>
+                                <h3 class="font-bold text-white text-sm">Diet Plan</h3>
+                                <div class="text-xs text-emerald-400 font-semibold">${currentDiet.name}</div>
                             </div>
                         </div>
+                        <div class="text-right">
+                            <div class="text-xs font-bold text-white">${currentDiet.monthlyCost > 0 ? `$${currentDiet.monthlyCost}/mo` : 'Free'}</div>
+                        </div>
                     </div>
-                    <p class="text-xs text-slate-400 mb-2">Escape the daily grind, restore your health, and maybe have an adventure.</p>
-                    <button data-action="openTravelModal" class="bg-cyan-600 hover:bg-cyan-500 w-full py-2 rounded text-sm text-white font-bold transition">
-                        View Options
+                    <p class="text-xs text-slate-400 mb-3">${currentDiet.desc}</p>
+                    <button data-action="openDietSelectionModal" class="bg-emerald-600 hover:bg-emerald-500 w-full py-2 rounded-lg text-sm text-white font-bold transition">
+                        Change Diet Plan
                     </button>
                 </div>
-                
+
                 <!-- Gym Membership -->
-                <div class="bg-slate-800 p-3 rounded-xl border border-slate-700">
+                <div class="bg-slate-800 p-3.5 rounded-xl border border-slate-700">
                     <div class="flex justify-between items-center mb-2">
-                        <div class="flex items-center gap-2">
-                            <div class="w-8 h-8 rounded-full bg-blue-900/30 flex items-center justify-center text-blue-400 border border-blue-500/50">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-9 h-9 rounded-full bg-blue-900/40 flex items-center justify-center text-blue-400 border border-blue-500/50">
                                 <i class="fas fa-dumbbell text-sm"></i>
                             </div>
                             <div>
-                                <h3 class="font-bold text-white">Gym</h3>
-                                <div class="text-xs ${user.gymMembership ? 'text-green-400' : 'text-slate-500'}">
-                                    ${user.gymMembership ? 'Monthly Member' : 'Not a member'}
+                                <h3 class="font-bold text-white text-sm">Gym Membership</h3>
+                                <div class="text-xs ${user.gymMembership ? 'text-blue-400 font-semibold' : 'text-slate-400'}">
+                                    ${user.gymMembership ? 'Active Member ($50/mo)' : 'Not a member'}
                                 </div>
                             </div>
                         </div>
                     </div>
                     ${gymLocked ? `
-                        <div class="text-xs font-bold text-red-400 uppercase tracking-wide text-center py-2 border border-dashed border-slate-700 rounded">
+                        <div class="text-xs font-bold text-red-400 uppercase tracking-wide text-center py-2 border border-dashed border-slate-700 rounded-lg">
                             <i class="fas fa-lock mr-1"></i>Must be 12 or older
                         </div>
                     ` : `
-                    <div class="grid grid-cols-2 gap-2 mt-4">
-                        <button data-action="visitGymOneTime" class="bg-slate-700 hover:bg-slate-600 p-2 rounded text-sm text-white font-bold transition">
-                            ${user.gymMembership ? 'Visit' : 'Visit Once ($20)'}
+                    <div class="grid grid-cols-2 gap-2 mt-2">
+                        <button data-action="visitGymOneTime" class="bg-slate-700 hover:bg-slate-600 p-2 rounded-lg text-xs text-white font-bold transition">
+                            ${user.gymMembership ? 'Workout Day' : 'Visit Once ($20)'}
                         </button>
                         ${user.gymMembership ? `
-                            <button data-action="cancelGymMembership" class="bg-red-900/40 hover:bg-red-900/60 border border-red-800/50 p-2 rounded text-sm text-white font-bold transition">
-                                Cancel ($50/mo)
+                            <button data-action="cancelGymMembership" class="bg-red-900/40 hover:bg-red-900/60 border border-red-800/50 p-2 rounded-lg text-xs text-white font-bold transition">
+                                Cancel Membership
                             </button>
                         ` : `
-                            <button data-action="buyGymMembership" class="bg-blue-600 hover:bg-blue-500 p-2 rounded text-sm text-white font-bold transition">
+                            <button data-action="buyGymMembership" class="bg-blue-600 hover:bg-blue-500 p-2 rounded-lg text-xs text-white font-bold transition">
                                 Join ($50/mo)
                             </button>
                         `}
@@ -80,77 +91,118 @@ export function renderMoreDashboard() {
                     `}
                 </div>
 
-                <!-- Diet Plan -->
-                <div class="bg-slate-800 p-3 rounded-xl border border-slate-700">
-                    <div class="flex justify-between items-center mb-2">
-                        <div class="flex items-center gap-2">
-                            <div class="w-8 h-8 rounded-full bg-green-900/30 flex items-center justify-center text-green-400 border border-green-500/50">
-                                <i class="fas fa-apple-alt text-sm"></i>
-                            </div>
-                            <div>
-                                <h3 class="font-bold text-white">Better Diet</h3>
-                                <div class="text-xs ${user.hasBetterDiet ? 'text-green-400' : 'text-slate-500'}">
-                                    ${user.hasBetterDiet ? 'Active' : 'Inactive'}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <p class="text-xs text-slate-400 mb-2">Eating better slows down health decay. Costs $200/mo.</p>
-                    <div class="flex justify-end">
-                        ${user.hasBetterDiet ? `
-                            <button data-action="cancelBetterDiet" class="bg-red-900/40 hover:bg-red-900/60 border border-red-800/50 px-4 py-2 rounded text-sm text-white font-bold transition w-full">
-                                Go back to cheap food
-                            </button>
-                        ` : `
-                            <button data-action="startBetterDiet" class="bg-green-600 hover:bg-green-500 px-4 py-2 rounded text-sm text-white font-bold transition w-full">
-                                Start Diet ($200/mo)
-                            </button>
-                        `}
-                    </div>
-                </div>
-
                 <!-- Medical Visit -->
-                <div class="bg-slate-800 p-3 rounded-xl border border-slate-700">
+                <div class="bg-slate-800 p-3.5 rounded-xl border border-slate-700">
                     <div class="flex justify-between items-center mb-2">
-                        <div class="flex items-center gap-2">
-                            <div class="w-8 h-8 rounded-full bg-red-900/30 flex items-center justify-center text-red-400 border border-red-500/50">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-9 h-9 rounded-full bg-red-900/40 flex items-center justify-center text-red-400 border border-red-500/50">
                                 <i class="fas fa-stethoscope text-sm"></i>
                             </div>
                             <div>
-                                <h3 class="font-bold text-white">Medical Checkup</h3>
-                                <div class="text-xs text-slate-500">Restore your health</div>
+                                <h3 class="font-bold text-white text-sm">Medical Checkup</h3>
+                                <div class="text-xs text-slate-400">Restore your health</div>
                             </div>
                         </div>
+                        <span class="text-xs font-bold text-white">$1,000</span>
                     </div>
-                    <p class="text-xs text-slate-400 mb-2">A full physical can catch issues early and provide a quick health boost.</p>
-                    <button data-action="visitDoctor" class="bg-red-600 hover:bg-red-500 w-full py-2 rounded text-sm text-white font-bold transition">
+                    <p class="text-xs text-slate-400 mb-3">A full physical catches illnesses early and boosts health (+10 Health).</p>
+                    <button data-action="visitDoctor" class="bg-red-600 hover:bg-red-500 w-full py-2 rounded-lg text-sm text-white font-bold transition">
                         Visit Doctor ($1,000)
                     </button>
                 </div>
 
-                <!-- Casino -->
-                <div class="bg-slate-800 p-3 rounded-xl border border-slate-700">
+                <!-- SECTION 2: ENTERTAINMENT & LUCK -->
+                <div class="text-xs font-bold uppercase tracking-wider text-amber-400 px-1 pt-2 flex items-center gap-1.5">
+                    <i class="fas fa-clover"></i> Entertainment & Luck
+                </div>
+
+                <!-- Lottery Tickets -->
+                <div class="bg-slate-800 p-3.5 rounded-xl border border-slate-700">
                     <div class="flex justify-between items-center mb-2">
-                        <div class="flex items-center gap-2">
-                            <div class="w-8 h-8 rounded-full bg-purple-900/30 flex items-center justify-center text-purple-400 border border-purple-500/50">
-                                <i class="fas fa-dice text-sm"></i>
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-9 h-9 rounded-full bg-amber-900/40 flex items-center justify-center text-amber-400 border border-amber-500/50">
+                                <i class="fas fa-ticket-alt text-sm"></i>
                             </div>
                             <div>
-                                <h3 class="font-bold text-white">Casino</h3>
-                                <div class="text-xs text-slate-500">Play Blackjack</div>
+                                <h3 class="font-bold text-white text-sm">Lottery Tickets</h3>
+                                <div class="text-xs ${ticketsLeft > 0 ? 'text-amber-400 font-semibold' : 'text-red-400'}">
+                                    ${ticketsLeft} / 10 remaining this year
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <p class="text-xs text-slate-400 mb-2">Risk your hard-earned money at the tables. 1:1 payout.</p>
+                    <p class="text-xs text-slate-400 mb-3">Buy instant scratch-offs, daily draws, or mega multi-million powerball tickets.</p>
+                    <button data-action="openLotteryModal" class="bg-amber-600 hover:bg-amber-500 w-full py-2 rounded-lg text-sm text-white font-bold transition">
+                        Play Lottery
+                    </button>
+                </div>
+
+                <!-- Casino Blackjack -->
+                <div class="bg-slate-800 p-3.5 rounded-xl border border-slate-700">
+                    <div class="flex justify-between items-center mb-2">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-9 h-9 rounded-full bg-purple-900/40 flex items-center justify-center text-purple-400 border border-purple-500/50">
+                                <i class="fas fa-dice text-sm"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-white text-sm">Casino Blackjack</h3>
+                                <div class="text-xs text-slate-400">High-stakes table game</div>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-400 mb-3">Risk your hard-earned cash at the card table for instant 1:1 payouts.</p>
                     ${casinoLocked ? `
-                        <div class="text-xs font-bold text-red-400 uppercase tracking-wide text-center py-2 border border-dashed border-slate-700 rounded">
+                        <div class="text-xs font-bold text-red-400 uppercase tracking-wide text-center py-2 border border-dashed border-slate-700 rounded-lg">
                             <i class="fas fa-lock mr-1"></i>Must be 21 or older
                         </div>
                     ` : `
-                    <button data-action="openBlackjackBetting" class="bg-purple-600 hover:bg-purple-500 w-full py-2 rounded text-sm text-white font-bold transition">
+                    <button data-action="openBlackjackBetting" class="bg-purple-600 hover:bg-purple-500 w-full py-2 rounded-lg text-sm text-white font-bold transition">
                         Play Blackjack
                     </button>
                     `}
+                </div>
+
+                <!-- Travel & Vacations -->
+                <div class="bg-slate-800 p-3.5 rounded-xl border border-slate-700">
+                    <div class="flex justify-between items-center mb-2">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-9 h-9 rounded-full bg-cyan-900/40 flex items-center justify-center text-cyan-400 border border-cyan-500/50">
+                                <i class="fas fa-plane text-sm"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-white text-sm">Travel & Vacations</h3>
+                                <div class="text-xs text-slate-400">Restore health & happiness</div>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-400 mb-3">Escape daily stress with local getaways or international luxury tours.</p>
+                    <button data-action="openTravelModal" class="bg-cyan-600 hover:bg-cyan-500 w-full py-2 rounded-lg text-sm text-white font-bold transition">
+                        Book Vacation
+                    </button>
+                </div>
+
+                <!-- SECTION 3: PERSONAL GROWTH -->
+                <div class="text-xs font-bold uppercase tracking-wider text-indigo-400 px-1 pt-2 flex items-center gap-1.5">
+                    <i class="fas fa-lightbulb"></i> Personal Growth & Guidance
+                </div>
+
+                <!-- Life Suggestions Box -->
+                <div class="bg-slate-800 p-3.5 rounded-xl border border-slate-700">
+                    <div class="flex justify-between items-center mb-2">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-9 h-9 rounded-full bg-indigo-900/40 flex items-center justify-center text-indigo-400 border border-indigo-500/50">
+                                <i class="fas fa-compass text-sm"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-white text-sm">Life Suggestions</h3>
+                                <div class="text-xs text-slate-400">Personalized advisor</div>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-400 mb-3">Receive tailored recommendations for your career, health, finances, and relationships.</p>
+                    <button data-action="openSuggestionsModal" class="bg-indigo-600 hover:bg-indigo-500 w-full py-2 rounded-lg text-sm text-white font-bold transition">
+                        Get Suggestions
+                    </button>
                 </div>
 
             </div>
@@ -197,17 +249,202 @@ export function cancelGymMembership() {
 }
 
 export function startBetterDiet() {
-    const user = state.gameState.user;
-    user.hasBetterDiet = true;
-    addLog("You started eating a healthier diet.", 'good');
-    renderMoreDashboard();
+    selectDiet('balanced');
 }
 
 export function cancelBetterDiet() {
+    selectDiet('junk');
+}
+
+export function openDietSelectionModal() {
     const user = state.gameState.user;
-    user.hasBetterDiet = false;
-    addLog("You stopped your healthy diet to save money.", 'neutral');
+    const currentDietId = user.diet || (user.hasBetterDiet ? 'balanced' : 'junk');
+    const plans = Object.values(GameLogic.DIET_PLANS);
+
+    const html = `
+        <div class="space-y-3">
+            <p class="text-xs text-slate-300">Choosing or changing your diet plan requires paying the <strong>first month upfront immediately</strong>. Monthly billing applies during annual financial processing.</p>
+            <div class="max-h-80 overflow-y-auto space-y-2 pr-1">
+                ${plans.map(plan => {
+                    const isSelected = currentDietId === plan.id;
+                    return `
+                        <div class="p-3 rounded-xl border ${isSelected ? 'border-emerald-500 bg-emerald-950/30' : 'border-slate-700 bg-slate-800/80'} transition">
+                            <div class="flex justify-between items-start mb-1">
+                                <div>
+                                    <div class="font-bold text-white text-sm flex items-center gap-2">
+                                        ${plan.name}
+                                        ${isSelected ? '<span class="text-[10px] bg-emerald-600 text-white font-bold px-2 py-0.5 rounded-full">ACTIVE</span>' : ''}
+                                    </div>
+                                    <div class="text-xs text-slate-400 mt-0.5">${plan.desc}</div>
+                                </div>
+                                <div class="text-right ml-3 shrink-0">
+                                    <div class="font-bold text-sm ${plan.monthlyCost > 0 ? 'text-emerald-400' : 'text-slate-400'}">
+                                        ${plan.monthlyCost > 0 ? `$${plan.monthlyCost}/mo` : 'Free'}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-2 text-right">
+                                ${isSelected ? `
+                                    <button disabled class="px-3 py-1 bg-slate-700 text-slate-400 text-xs font-bold rounded cursor-not-allowed">Current Plan</button>
+                                ` : `
+                                    <button data-action="selectDiet" data-args="${plan.id}" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded transition">
+                                        Select (${plan.monthlyCost > 0 ? `Pay $${plan.monthlyCost}` : 'Switch Free'})
+                                    </button>
+                                `}
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+            <div class="text-right pt-2 border-t border-slate-700">
+                <button data-action="hideModal" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs rounded-lg transition">Close</button>
+            </div>
+        </div>
+    `;
+
+    UI.showCustomModal("Choose Diet Plan", html);
+}
+
+export function selectDiet(dietId) {
+    const user = state.gameState.user;
+    const plan = GameLogic.getDietPlan(dietId);
+
+    if (user.money < plan.monthlyCost) {
+        UI.showModal("Insufficient Funds", `You need $${plan.monthlyCost} in cash to pay the upfront month fee for ${plan.name}.`);
+        return;
+    }
+
+    user.money -= plan.monthlyCost;
+    user.diet = dietId;
+    user.hasBetterDiet = (dietId !== 'junk');
+
+    addLog(`Switched diet plan to ${plan.name}. Paid $${plan.monthlyCost} upfront.`, 'good');
+    UI.updateHeader(user);
+    UI.hideModal();
     renderMoreDashboard();
+
+    UI.showModal("Diet Plan Active", `You are now on the <strong>${plan.name}</strong>! Upfront 1-month fee of $${plan.monthlyCost} deducted.`);
+}
+
+export function openLotteryModal() {
+    const user = state.gameState.user;
+    const boughtCount = user.lotteryTicketsBoughtThisYear || 0;
+    const ticketsLeft = 10 - boughtCount;
+    const types = Object.values(GameLogic.LOTTERY_TYPES);
+    const megaJackpot = GameLogic.getMegaJackpotAmount(user);
+
+    const html = `
+        <div class="space-y-3">
+            <div class="flex justify-between items-center bg-slate-800 p-2.5 rounded-lg border border-slate-700 text-xs">
+                <span class="text-slate-400">Annual Limit:</span>
+                <span class="font-bold ${ticketsLeft > 0 ? 'text-amber-400' : 'text-red-400'}">${ticketsLeft} / 10 tickets remaining</span>
+            </div>
+            <div class="space-y-2.5">
+                ${types.map(t => {
+                    const isMega = t.id === 'mega';
+                    return `
+                        <div class="bg-slate-800 p-3 rounded-xl border ${isMega ? 'border-amber-500/60 bg-amber-950/20' : 'border-slate-700'} flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-slate-900/80 flex items-center justify-center ${t.color} text-lg border border-slate-700">
+                                    <i class="fas ${t.icon}"></i>
+                                </div>
+                                <div>
+                                    <div class="font-bold text-white text-sm flex items-center gap-2">
+                                        ${t.name}
+                                    </div>
+                                    <div class="text-xs text-slate-400">
+                                        Cost: <strong class="text-emerald-400">$${t.price}</strong>
+                                    </div>
+                                    ${isMega ? `<div class="text-[11px] font-extrabold text-amber-400 mt-0.5"><i class="fas fa-trophy text-amber-400 mr-1"></i>EST. JACKPOT: $${megaJackpot.toLocaleString()}</div>` : ''}
+                                </div>
+                            </div>
+                            <button data-action="buyLotteryTicket" data-args="${t.id}" ${ticketsLeft <= 0 ? 'disabled' : ''} class="${ticketsLeft <= 0 ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-amber-600 hover:bg-amber-500 text-white'} font-bold px-3 py-1.5 text-xs rounded-lg transition shrink-0 ml-2">
+                                Buy Ticket
+                            </button>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+            <div class="text-right pt-2 border-t border-slate-700">
+                <button data-action="hideModal" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs rounded-lg transition">Close</button>
+            </div>
+        </div>
+    `;
+
+    UI.showCustomModal("Lottery Station", html);
+}
+
+export function buyLotteryTicket(ticketTypeId) {
+    const user = state.gameState.user;
+    const result = GameLogic.playLotteryTicket(ticketTypeId, user);
+
+    if (!result.success) {
+        UI.showModal("Lottery Notice", result.message);
+        return;
+    }
+
+    UI.updateHeader(user);
+
+    if (result.payout > 0) {
+        addLog(`Won $${result.payout.toLocaleString()} on a ${result.ticketName}!`, 'good');
+    } else {
+        addLog(`Bought a ${result.ticketName} but didn't win anything.`, 'neutral');
+    }
+
+    const outcomeHtml = result.payout > 0 ? `
+        <div class="text-center py-3">
+            <div class="text-4xl text-amber-400 mb-2">🎉</div>
+            <h3 class="text-xl font-bold text-emerald-400 mb-1">${result.title}</h3>
+            <p class="text-sm text-slate-300 mb-4">Congratulations! <strong>+$${result.payout.toLocaleString()}</strong> has been added to your bank account.</p>
+            <div class="text-xs text-slate-400 mb-4">Tickets remaining this year: ${result.ticketsRemaining}/10</div>
+            <div class="flex gap-2">
+                ${result.ticketsRemaining > 0 ? `<button data-action="openLotteryModal" class="flex-1 bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 rounded-lg text-xs transition">Play Again</button>` : ''}
+                <button data-action="hideModal" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 rounded-lg text-xs transition">Close</button>
+            </div>
+        </div>
+    ` : `
+        <div class="text-center py-3">
+            <div class="text-4xl text-slate-500 mb-2">🎟️</div>
+            <h3 class="text-lg font-bold text-slate-300 mb-1">${result.title}</h3>
+            <p class="text-xs text-slate-400 mb-4">Your numbers didn't hit this time.</p>
+            <div class="text-xs text-slate-400 mb-4">Tickets remaining this year: ${result.ticketsRemaining}/10</div>
+            <div class="flex gap-2">
+                ${result.ticketsRemaining > 0 ? `<button data-action="openLotteryModal" class="flex-1 bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 rounded-lg text-xs transition">Try Again</button>` : ''}
+                <button data-action="hideModal" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 rounded-lg text-xs transition">Close</button>
+            </div>
+        </div>
+    `;
+
+    UI.showCustomModal("Lottery Reveal", outcomeHtml);
+    renderMoreDashboard();
+}
+
+export function openSuggestionsModal() {
+    const user = state.gameState.user;
+    const suggestions = GameLogic.generateLifeSuggestions(user);
+
+    const html = `
+        <div class="space-y-3">
+            <p class="text-xs text-slate-300">Based on your character's current age, career, health, finances, and relationships:</p>
+            <div class="max-h-80 overflow-y-auto space-y-2 pr-1">
+                ${suggestions.map(s => `
+                    <div class="bg-slate-800 p-3 rounded-xl border border-slate-700">
+                        <div class="flex items-center gap-2 mb-1">
+                            <i class="fas ${s.icon} text-sm"></i>
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">${s.category}</span>
+                        </div>
+                        <h4 class="font-bold text-white text-sm mb-1">${s.title}</h4>
+                        <p class="text-xs text-slate-300">${s.desc}</p>
+                    </div>
+                `).join('')}
+            </div>
+            <div class="text-right pt-2 border-t border-slate-700">
+                <button data-action="hideModal" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-lg transition">Got It!</button>
+            </div>
+        </div>
+    `;
+
+    UI.showCustomModal("Personalized Life Suggestions", html);
 }
 
 export function visitDoctor() {
