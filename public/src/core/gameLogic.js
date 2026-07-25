@@ -683,15 +683,43 @@ function generateLifeSuggestions(user) {
     }
 
     // 4. Social & Relationships
-    const currentPartner = (user.relationships || []).find(r => r.category === 'partner' || r.isPartner || r.status > 70);
-    if (currentPartner && currentPartner.status >= 80 && !user.isMarried) {
+    const relationships = user.relationships || [];
+    const spouse = relationships.find(r => r.category === 'spouse' || ['Wife', 'Husband', 'Spouse'].includes(r.type));
+    const fiancé = relationships.find(r => ['Fiancé', 'Fiancée', 'Fiance'].includes(r.type));
+    const partner = relationships.find(r => r.category === 'partner' && !['Fiancé', 'Fiancée', 'Fiance'].includes(r.type));
+
+    if (spouse) {
+        const hasChildren = relationships.some(r => r.category === 'child' || r.type === 'Son' || r.type === 'Daughter');
+        if (!hasChildren && !user.isExpecting && user.age >= 18 && user.age < 45) {
+            suggestions.push({
+                category: 'Romance & Family',
+                icon: 'fa-baby text-pink-400',
+                title: 'Start a Family',
+                desc: `You are married to ${spouse.name}. Select 'Try for a Baby' on their profile in Social to start a family.`
+            });
+        } else {
+            suggestions.push({
+                category: 'Romance & Family',
+                icon: 'fa-heart text-pink-400',
+                title: 'Nurture Your Marriage',
+                desc: `Spend quality time or go on dates with your spouse ${spouse.name} to keep your bond strong.`
+            });
+        }
+    } else if (fiancé) {
+        suggestions.push({
+            category: 'Romance & Family',
+            icon: 'fa-ring text-pink-400',
+            title: 'Plan Your Wedding',
+            desc: `You are engaged to ${fiancé.name}! Tap 'Plan Wedding' on their profile in Social to get married.`
+        });
+    } else if (partner && partner.status >= 70) {
         suggestions.push({
             category: 'Romance & Future',
             icon: 'fa-ring text-yellow-400',
-            title: `Take Next Step with ${currentPartner.name}`,
-            desc: `Your relationship with ${currentPartner.name} is exceptional (${currentPartner.status}%). Consider buying an engagement ring and proposing!`
+            title: `Take Next Step with ${partner.name}`,
+            desc: `Your relationship with ${partner.name} is exceptional (${partner.status}%). Consider buying an engagement ring and proposing!`
         });
-    } else if (!currentPartner && user.age >= 18) {
+    } else if (!partner && user.age >= 18) {
         suggestions.push({
             category: 'Social Life',
             icon: 'fa-users text-purple-400',
@@ -1163,17 +1191,20 @@ function generateSchoolCohort(userAge) {
         const first = getRandomFirstName(gender);
         const last = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
         const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'rel_' + Date.now() + Math.random().toString(36).substring(2, 9);
+        const age = Math.floor(Math.random() * (classmateAgeMax - classmateAgeMin + 1)) + classmateAgeMin;
+        const occupationInfo = generateNPCOccupation(age);
         cohort.push({
             id,
             name: `${first} ${last}`,
-            age: Math.floor(Math.random() * (classmateAgeMax - classmateAgeMin + 1)) + classmateAgeMin,
+            age,
             type: 'Classmate',
             gender,
             status: Math.floor(Math.random() * 31) + 20, // 20 to 50 starting status
             category: 'classmate',
             isCurrentClassmate: true,
             interactedThisYear: false,
-            appearance: AvatarLogic.generateRandomAppearance(id, gender)
+            appearance: AvatarLogic.generateRandomAppearance(id, gender),
+            ...occupationInfo
         });
     }
 
@@ -1193,7 +1224,12 @@ function generateSchoolCohort(userAge) {
         category: 'classmate', // Keep as 'classmate' category so they show up together
         isCurrentClassmate: true,
         interactedThisYear: false,
-        appearance: AvatarLogic.generateRandomAppearance(teacherId, teacherGender)
+        appearance: AvatarLogic.generateRandomAppearance(teacherId, teacherGender),
+        occupation: "Teacher",
+        occupationType: "job",
+        income: 50000,
+        careerTrack: "education_track",
+        careerLevel: 0
     });
 
     return cohort;
@@ -1220,7 +1256,12 @@ function generateReplacementTeacher(userAge) {
         category: 'classmate',
         isCurrentClassmate: true,
         interactedThisYear: false,
-        appearance: AvatarLogic.generateRandomAppearance(teacherId, teacherGender)
+        appearance: AvatarLogic.generateRandomAppearance(teacherId, teacherGender),
+        occupation: "Teacher",
+        occupationType: "job",
+        income: 50000,
+        careerTrack: "education_track",
+        careerLevel: 0
     };
 }
 
@@ -1242,6 +1283,7 @@ function generateStranger(userAge, userGender, roll = Math.random()) {
     const first = getRandomFirstName(gender);
     const last = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
     const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'rel_' + Date.now() + Math.random().toString(36).substring(2, 9);
+    const occupationInfo = generateNPCOccupation(age);
 
     return {
         id,
@@ -1252,7 +1294,8 @@ function generateStranger(userAge, userGender, roll = Math.random()) {
         status: Math.floor(Math.random() * 21) + 20, // 20 to 40 starting status
         category: 'friend',
         interactedThisYear: false,
-        appearance: AvatarLogic.generateRandomAppearance(id, gender)
+        appearance: AvatarLogic.generateRandomAppearance(id, gender),
+        ...occupationInfo
     };
 }
 
@@ -1634,6 +1677,49 @@ function calculateUserMonthlyIncome(user) {
     if (user.jobTitle && user.jobSalary) monthlyIncome += Math.floor(user.jobSalary / 12);
     monthlyIncome += calculateTotalRentalIncome(user.assets);
     return monthlyIncome;
+}
+
+function calculateUserMonthlyOutflow(user) {
+    if (!user) return 0;
+    let monthlyOutflow = 0;
+
+    // 1. Living Expenses (annual / 12)
+    const annualLiving = addLivingExpenses(user.age, user.isStudent, user.city);
+    monthlyOutflow += Math.round(annualLiving / 12);
+
+    // 2. Student Loans (monthly)
+    if (user.studentLoans > 0 && !user.isStudent && user.age >= 18) {
+        const annualCap = Math.min(2400, user.studentLoans);
+        monthlyOutflow += Math.round(annualCap / 12);
+    }
+
+    // 3. Property Mortgages (monthly)
+    monthlyOutflow += calculatePropertyMonthlyOutflow(user.assets);
+
+    // 4. Auto Loans (monthly)
+    monthlyOutflow += calculateTotalAutoLoanMonthlyOutflow(user.assets);
+
+    // 5. Children ($500/mo per child under 21)
+    monthlyOutflow += calculateChildMonthlyOutflow(user.relationships);
+
+    // 6. Active Health & Diet (monthly)
+    const annualHealth = calculateActiveHealthCosts(user);
+    monthlyOutflow += Math.round(annualHealth / 12);
+
+    // 7. Vehicle & Jewelry Insurance (monthly)
+    if (Array.isArray(user.assets)) {
+        user.assets.forEach(asset => {
+            if (asset.category === 'vehicle' && asset.insured) {
+                const annualFee = Math.max(20, Math.floor(asset.value * 0.008));
+                monthlyOutflow += Math.round(annualFee / 12);
+            } else if (asset.category === 'jewelry' && asset.insured) {
+                const annualFee = Math.max(10, Math.floor(asset.value * 0.005));
+                monthlyOutflow += Math.round(annualFee / 12);
+            }
+        });
+    }
+
+    return monthlyOutflow;
 }
 
 function generateTenantApplicants(property) {
@@ -2842,7 +2928,472 @@ function withdrawSavings(user, amount) {
     };
 }
 
+const RELOCATION_COST = 2000;
+
+function getPartner(user) {
+    if (!user || !user.relationships) return null;
+    return user.relationships.find(r => 
+        r.category === 'partner' || 
+        r.category === 'spouse' || 
+        ['Girlfriend', 'Boyfriend', 'Partner', 'Fiancé', 'Fiancée', 'Fiance', 'Wife', 'Husband', 'Spouse'].includes(r.type)
+    ) || null;
+}
+
+function calculatePartnerRelocateAcceptance(partner, rollOverride = null) {
+    if (!partner) return false;
+    const status = partner.status || 50;
+    let baseChance = 0.50;
+    if (status >= 80) baseChance = 0.85;
+    else if (status >= 60) baseChance = 0.70;
+    else if (status >= 40) baseChance = 0.50;
+    else baseChance = 0.25;
+
+    const roll = rollOverride !== null ? rollOverride : Math.random();
+    return roll < baseChance;
+}
+
+function breakUpWithPartner(user, partner) {
+    if (!partner) return;
+    partner.category = 'ex';
+    if (['Spouse', 'Husband', 'Wife'].includes(partner.type) || partner.category === 'spouse') {
+        partner.type = partner.gender === 'male' ? 'Ex-Husband' : 'Ex-Wife';
+    } else if (['Fiancé', 'Fiancée', 'Fiance'].includes(partner.type)) {
+        partner.type = 'Ex-Fiancé';
+    } else {
+        partner.type = partner.gender === 'male' ? 'Ex-Boyfriend' : 'Ex-Girlfriend';
+    }
+}
+
+function canMoveCountry(user, targetCountry, targetCity = null) {
+    if (!user) return { allowed: false, reason: "No character data found." };
+    if ((user.age || 0) < 18) return { allowed: false, reason: "You must be at least 18 years old to relocate to a new country." };
+    if (targetCountry && user.country === targetCountry) return { allowed: false, reason: `You are already living in ${targetCountry}.` };
+    if (targetCity && user.city === targetCity) return { allowed: false, reason: `You are already living in ${targetCity}.` };
+    if ((user.money || 0) < RELOCATION_COST) return { allowed: false, reason: `You need at least $${RELOCATION_COST.toLocaleString()} to move to a new country.` };
+    return { allowed: true };
+}
+
+function moveCountry(user, targetCountry, targetCity) {
+    const check = canMoveCountry(user, targetCountry, targetCity);
+    if (!check.allowed) return { success: false, message: check.reason };
+
+    const hadJob = !!user.jobTitle;
+    const oldJobTitle = user.jobTitle;
+
+    user.money -= RELOCATION_COST;
+    user.country = targetCountry;
+    user.city = targetCity;
+
+    if (hadJob) {
+        user.jobTitle = null;
+        user.jobSalary = 0;
+        user.jobPerformance = 50;
+        user.careerActionTaken = false;
+        user.careerTrack = null;
+        user.careerLevel = 0;
+        user.yearsInRole = 0;
+        user.consecutivePoorYears = 0;
+        user.hasSeenJobSalary = false;
+    }
+
+    const jobMsg = hadJob ? ` You lost your job as ${oldJobTitle} and are now unemployed.` : '';
+
+    return {
+        success: true,
+        cost: RELOCATION_COST,
+        newCountry: targetCountry,
+        newCity: targetCity,
+        hadJob,
+        oldJobTitle,
+        message: `Relocated to ${targetCity}, ${targetCountry} for $${RELOCATION_COST.toLocaleString()}.${jobMsg}`
+    };
+}
+
+const NPC_MAJORS = [
+    "Psychology", "Computer Science", "English", "Education", "Marketing",
+    "Business", "Nursing", "Religious Studies", "Biology", "Graphic Design", "Chemistry",
+    "Political Science", "Criminal Justice", "Communications", "Pharmacy"
+];
+
+const NPC_CAREER_TRACKS = [
+    {
+        key: 'retail', majors: ['Marketing', 'Business', 'Communications'],
+        levels: [
+            { title: 'Cashier', salary: 28000 },
+            { title: 'Sales Associate', salary: 34000 },
+            { title: 'Team Lead', salary: 45000 },
+            { title: 'Store Manager', salary: 65000 },
+            { title: 'District Manager', salary: 100000 }
+        ]
+    },
+    {
+        key: 'food_service', majors: [],
+        levels: [
+            { title: 'Line Cook', salary: 30000 },
+            { title: 'Cook', salary: 38000 },
+            { title: 'Sous Chef', salary: 52000 },
+            { title: 'Head Chef', salary: 75000 },
+            { title: 'Executive Chef', salary: 95000 }
+        ]
+    },
+    {
+        key: 'trades', majors: [],
+        levels: [
+            { title: 'Trade Helper', salary: 32000 },
+            { title: 'Apprentice', salary: 42000 },
+            { title: 'Journeyman', salary: 60000 },
+            { title: 'Foreman', salary: 78000 },
+            { title: 'Master Tradesperson', salary: 100000 }
+        ]
+    },
+    {
+        key: 'law_enforcement', majors: ['Criminal Justice'],
+        levels: [
+            { title: 'Patrol Officer', salary: 55000 },
+            { title: 'Detective', salary: 70000 },
+            { title: 'Sergeant', salary: 85000 },
+            { title: 'Lieutenant', salary: 100000 },
+            { title: 'Police Captain', salary: 120000 }
+        ]
+    },
+    {
+        key: 'fire_service', majors: [],
+        levels: [
+            { title: 'Firefighter', salary: 48000 },
+            { title: 'Driver/Engineer', salary: 62000 },
+            { title: 'Fire Lieutenant', salary: 76000 },
+            { title: 'Fire Captain', salary: 90000 },
+            { title: 'Fire Chief', salary: 105000 }
+        ]
+    },
+    {
+        key: 'logistics', majors: ['Business'],
+        levels: [
+            { title: 'Delivery Driver', salary: 35000 },
+            { title: 'Senior Driver', salary: 45000 },
+            { title: 'Dispatch Coordinator', salary: 60000 },
+            { title: 'Logistics Manager', salary: 82000 },
+            { title: 'VP of Logistics', salary: 110000 }
+        ]
+    },
+    {
+        key: 'software_eng', majors: ['Computer Science'],
+        levels: [
+            { title: 'Jr. Software Developer', salary: 50000 },
+            { title: 'Software Developer', salary: 72000 },
+            { title: 'Senior Developer', salary: 100000 },
+            { title: 'Lead Engineer', salary: 135000 },
+            { title: 'Engineering Director', salary: 175000 }
+        ]
+    },
+    {
+        key: 'graphic_design', majors: ['Graphic Design'],
+        levels: [
+            { title: 'Junior Designer', salary: 45000 },
+            { title: 'Graphic Designer', salary: 58000 },
+            { title: 'Senior Designer', salary: 75000 },
+            { title: 'Art Director', salary: 100000 },
+            { title: 'Creative Director', salary: 130000 }
+        ]
+    },
+    {
+        key: 'education_track', majors: ['Education', 'English'],
+        levels: [
+            { title: 'Teacher', salary: 40000 },
+            { title: 'Senior Teacher', salary: 52000 },
+            { title: 'Department Chair', salary: 70000 },
+            { title: 'Vice Principal', salary: 90000 },
+            { title: 'Principal', salary: 110000 }
+        ]
+    },
+    {
+        key: 'nursing', majors: ['Nursing', 'Biology'],
+        levels: [
+            { title: 'Registered Nurse', salary: 50000 },
+            { title: 'Charge Nurse', salary: 65000 },
+            { title: 'Nurse Manager', salary: 85000 },
+            { title: 'Director of Nursing', salary: 110000 },
+            { title: 'Chief Nursing Officer', salary: 150000 }
+        ]
+    },
+    {
+        key: 'banking', majors: ['Business', 'Marketing', 'Psychology'],
+        levels: [
+            { title: 'Bank Teller', salary: 42000 },
+            { title: 'Loan Officer', salary: 55000 },
+            { title: 'Branch Manager', salary: 80000 },
+            { title: 'VP of Banking', salary: 120000 },
+            { title: 'Chief Banking Officer', salary: 190000 }
+        ]
+    },
+    {
+        key: 'law', majors: ['Political Science'],
+        levels: [
+            { title: 'Law Clerk', salary: 70000 },
+            { title: 'Associate Attorney', salary: 100000 },
+            { title: 'Junior Partner', salary: 145000 },
+            { title: 'Senior Partner', salary: 200000 },
+            { title: 'Managing Partner', salary: 250000 }
+        ]
+    },
+    {
+        key: 'medicine', majors: ['Biology', 'Chemistry'],
+        levels: [
+            { title: 'Resident', salary: 65000 },
+            { title: 'Staff Physician', salary: 120000 },
+            { title: 'Attending Physician', salary: 200000 },
+            { title: 'Department Head', salary: 280000 },
+            { title: 'Chief of Medicine', salary: 350000 }
+        ]
+    }
+];
+
+function generateNPCOccupation(age) {
+    if (age === undefined || age === null) age = 18;
+
+    if (age < 5) {
+        return {
+            occupation: age === 0 ? "Baby" : "Toddler",
+            occupationType: 'school',
+            educationLevel: 'None',
+            income: 0
+        };
+    }
+    if (age >= 5 && age <= 11) {
+        return {
+            occupation: "Elementary Student",
+            occupationType: 'school',
+            educationLevel: 'Elementary',
+            income: 0
+        };
+    }
+    if (age >= 12 && age <= 13) {
+        return {
+            occupation: "Middle School Student",
+            occupationType: 'school',
+            educationLevel: 'Middle School',
+            income: 0
+        };
+    }
+    if (age >= 14 && age <= 17) {
+        return {
+            occupation: "High School Student",
+            occupationType: 'school',
+            educationLevel: 'High School',
+            schoolYear: age - 13,
+            income: 0
+        };
+    }
+    if (age >= 18 && age <= 21) {
+        const roll = Math.random();
+        if (roll < 0.55) {
+            const major = NPC_MAJORS[Math.floor(Math.random() * NPC_MAJORS.length)];
+            return {
+                occupation: `University Student (${major})`,
+                occupationType: 'school',
+                educationLevel: 'High School',
+                schoolMajor: major,
+                schoolYear: Math.max(1, age - 17),
+                income: 0
+            };
+        } else if (roll < 0.85) {
+            const entryTracks = NPC_CAREER_TRACKS.filter(t => ['retail', 'food_service', 'trades', 'logistics'].includes(t.key));
+            const track = entryTracks[Math.floor(Math.random() * entryTracks.length)];
+            const lvl = track.levels[0];
+            return {
+                occupation: lvl.title,
+                occupationType: 'job',
+                careerTrack: track.key,
+                careerLevel: 0,
+                income: lvl.salary,
+                educationLevel: 'High School'
+            };
+        } else {
+            return {
+                occupation: "Unemployed",
+                occupationType: 'unemployed',
+                educationLevel: 'High School',
+                income: 0
+            };
+        }
+    }
+    if (age >= 22 && age <= 64) {
+        const roll = Math.random();
+        if (roll < 0.85) {
+            const track = NPC_CAREER_TRACKS[Math.floor(Math.random() * NPC_CAREER_TRACKS.length)];
+            let level = 0;
+            if (age >= 45) {
+                level = Math.floor(Math.random() * 3) + 2;
+            } else if (age >= 32) {
+                level = Math.floor(Math.random() * 3) + 1;
+            } else {
+                level = Math.floor(Math.random() * 2);
+            }
+            level = Math.min(level, track.levels.length - 1);
+            const lvl = track.levels[level];
+            const hasDegree = ['software_eng', 'graphic_design', 'education_track', 'nursing', 'banking', 'law', 'medicine'].includes(track.key);
+            const major = track.majors.length > 0 ? track.majors[0] : (hasDegree ? NPC_MAJORS[Math.floor(Math.random() * NPC_MAJORS.length)] : null);
+
+            return {
+                occupation: lvl.title,
+                occupationType: 'job',
+                careerTrack: track.key,
+                careerLevel: level,
+                income: lvl.salary,
+                educationLevel: hasDegree ? 'University' : 'High School',
+                schoolMajor: major
+            };
+        } else {
+            return {
+                occupation: "Unemployed",
+                occupationType: 'unemployed',
+                educationLevel: 'High School',
+                income: 0
+            };
+        }
+    }
+    // age >= 65
+    return {
+        occupation: "Retired",
+        occupationType: 'retired',
+        educationLevel: 'High School',
+        income: Math.floor(Math.random() * 20000) + 18000
+    };
+}
+
+function isCloseRelationship(person) {
+    if (!person) return false;
+    if (['spouse', 'partner', 'family', 'child'].includes(person.category)) return true;
+    if (['Brother', 'Sister', 'Son', 'Daughter', 'Mother', 'Father', 'Boyfriend', 'Girlfriend', 'Wife', 'Husband', 'Fiancé', 'Fiancée', 'Fiance'].includes(person.type)) return true;
+    return false;
+}
+
+function progressNPCOccupation(person, userAge) {
+    if (!person) return null;
+
+    if (!person.occupation) {
+        Object.assign(person, generateNPCOccupation(person.age));
+        return null;
+    }
+
+    const isClose = isCloseRelationship(person);
+    let milestoneMessage = null;
+
+    if (person.age === 5) {
+        person.occupation = "Elementary Student";
+        person.occupationType = 'school';
+        person.educationLevel = 'Elementary';
+        if (isClose) milestoneMessage = `${person.name} started Elementary School!`;
+    } else if (person.age === 12) {
+        person.occupation = "Middle School Student";
+        person.occupationType = 'school';
+        person.educationLevel = 'Middle School';
+        if (isClose) milestoneMessage = `${person.name} started Middle School!`;
+    } else if (person.age === 14) {
+        person.occupation = "High School Student";
+        person.occupationType = 'school';
+        person.educationLevel = 'High School';
+        person.schoolYear = 1;
+        if (isClose) milestoneMessage = `${person.name} started High School!`;
+    } else if (person.age === 18) {
+        const roll = Math.random();
+        if (roll < 0.55) {
+            const major = NPC_MAJORS[Math.floor(Math.random() * NPC_MAJORS.length)];
+            person.occupation = `University Student (${major})`;
+            person.occupationType = 'school';
+            person.schoolMajor = major;
+            person.schoolYear = 1;
+            person.income = 0;
+            if (isClose) milestoneMessage = `${person.name} graduated High School and enrolled in University studying ${major}!`;
+        } else if (roll < 0.85) {
+            const entryTracks = NPC_CAREER_TRACKS.filter(t => ['retail', 'food_service', 'trades', 'logistics'].includes(t.key));
+            const track = entryTracks[Math.floor(Math.random() * entryTracks.length)];
+            const lvl = track.levels[0];
+            person.occupation = lvl.title;
+            person.occupationType = 'job';
+            person.careerTrack = track.key;
+            person.careerLevel = 0;
+            person.income = lvl.salary;
+            if (isClose) milestoneMessage = `${person.name} graduated High School and started working as a ${lvl.title}!`;
+        } else {
+            person.occupation = "Unemployed";
+            person.occupationType = 'unemployed';
+            person.income = 0;
+            if (isClose) milestoneMessage = `${person.name} finished High School and is currently unemployed.`;
+        }
+    } else if (person.occupationType === 'school' && person.occupation && person.occupation.startsWith("University Student")) {
+        person.schoolYear = (person.schoolYear || 1) + 1;
+        if (person.schoolYear > 4 || person.age >= 22) {
+            const major = person.schoolMajor;
+            let track = NPC_CAREER_TRACKS.find(t => t.majors.includes(major));
+            if (!track) {
+                track = NPC_CAREER_TRACKS[Math.floor(Math.random() * NPC_CAREER_TRACKS.length)];
+            }
+            const lvl = track.levels[0];
+            person.educationLevel = 'University';
+            person.occupation = lvl.title;
+            person.occupationType = 'job';
+            person.careerTrack = track.key;
+            person.careerLevel = 0;
+            person.income = lvl.salary;
+            if (isClose) milestoneMessage = `${person.name} graduated University with a degree in ${major || 'their major'} and got a job as a ${lvl.title}!`;
+        }
+    } else if (person.occupationType === 'job' && person.age < 65) {
+        const roll = Math.random();
+        const track = NPC_CAREER_TRACKS.find(t => t.key === person.careerTrack);
+        if (track && (person.careerLevel || 0) < track.levels.length - 1 && roll < 0.15) {
+            person.careerLevel = (person.careerLevel || 0) + 1;
+            const lvl = track.levels[person.careerLevel];
+            person.occupation = lvl.title;
+            person.income = lvl.salary;
+            if (isClose) milestoneMessage = `${person.name} was promoted to ${lvl.title}!`;
+        } else if (roll > 0.95) {
+            person.occupation = "Unemployed";
+            person.occupationType = 'unemployed';
+            person.income = 0;
+            if (isClose) milestoneMessage = `${person.name} became unemployed.`;
+        }
+    } else if (person.occupationType === 'unemployed' && person.age >= 18 && person.age < 65) {
+        if (Math.random() < 0.25) {
+            const track = NPC_CAREER_TRACKS[Math.floor(Math.random() * NPC_CAREER_TRACKS.length)];
+            const lvl = track.levels[0];
+            person.occupation = lvl.title;
+            person.occupationType = 'job';
+            person.careerTrack = track.key;
+            person.careerLevel = 0;
+            person.income = lvl.salary;
+            if (isClose) milestoneMessage = `${person.name} found a job as a ${lvl.title}!`;
+        }
+    } else if (person.age >= 65 && person.occupationType !== 'retired') {
+        person.occupation = "Retired";
+        person.occupationType = 'retired';
+        person.income = Math.floor((person.income || 40000) * 0.4) || 20000;
+        if (isClose) milestoneMessage = `${person.name} retired from their career!`;
+    }
+
+    return milestoneMessage;
+}
+
+function calculateSpousalIncomeContribution(user) {
+    if (!user || !Array.isArray(user.relationships)) return { amount: 0, spouseName: null };
+    const spouse = user.relationships.find(r => r.category === 'spouse' || r.type === 'Wife' || r.type === 'Husband' || r.type === 'Spouse');
+    if (!spouse) return { amount: 0, spouseName: null };
+
+    if (!spouse.occupation) {
+        Object.assign(spouse, generateNPCOccupation(spouse.age));
+    }
+
+    if (spouse.income > 0) {
+        const amount = Math.floor(spouse.income * 0.50);
+        return { amount, spouseName: spouse.name, spouseJob: spouse.occupation };
+    }
+    return { amount: 0, spouseName: spouse.name, spouseJob: spouse.occupation };
+}
+
 export const GameLogic = {
+    generateNPCOccupation,
+    progressNPCOccupation,
+    calculateSpousalIncomeContribution,
     sanitizeName,
     addLivingExpenses,
     calculateBirthdayMoney,
@@ -2894,6 +3445,7 @@ export const GameLogic = {
     getPropertyIcon,
     calculateMonthlyMortgage,
     calculateUserMonthlyIncome,
+    calculateUserMonthlyOutflow,
     calculateTotalMonthlyMortgages,
     canAffordMortgage,
     processMortgagePayments,
@@ -2932,7 +3484,13 @@ export const GameLogic = {
     playLotteryTicket,
     generateLifeSuggestions,
     getMegaJackpotAmount,
-    rollOverMegaJackpot
+    rollOverMegaJackpot,
+    RELOCATION_COST,
+    canMoveCountry,
+    moveCountry,
+    getPartner,
+    calculatePartnerRelocateAcceptance,
+    breakUpWithPartner
 };
 
 

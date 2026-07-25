@@ -40,21 +40,11 @@ export function openPlayerOverviewModal() {
     const netWorthClass = netWorth >= 0 ? 'text-emerald-400' : 'text-red-400';
 
     // 4. Income Calculation
-    const jobAnnual = user.jobSalary || 0;
-    const ceoAnnual = (user.hasBusiness && user.ceoSalary) ? user.ceoSalary : 0;
-    const rentalAnnual = GameLogic.calculateTotalRentalIncome(user.assets) * 12;
-    const totalAnnualIncome = jobAnnual + ceoAnnual + rentalAnnual;
-    const monthlyIncome = Math.round(totalAnnualIncome / 12);
+    const monthlyIncome = GameLogic.calculateUserMonthlyIncome(user);
+    const totalAnnualIncome = monthlyIncome * 12;
 
     // 5. Monthly Outflow Calculation
-    const livingMonthly = user.monthlyLivingExpense || 0;
-    const studentLoanMonthly = Math.round((user.studentLoans > 0 && !user.isStudent && user.age >= 18 ? Math.min(2400, user.studentLoans) : 0) / 12);
-    const mortgageMonthly = properties.filter(p => p.mortgage && p.mortgage.remainingBalance > 0).reduce((sum, p) => sum + (p.mortgage.monthlyPayment || 0), 0);
-    const autoLoanMonthly = GameLogic.calculateTotalAutoLoanMonthlyOutflow(user.assets);
-    const childMonthly = GameLogic.calculateChildMonthlyOutflow(user.relationships);
-    const healthMonthly = Math.round(GameLogic.calculateActiveHealthCosts(user) / 12);
-
-    const totalMonthlyOutflow = livingMonthly + studentLoanMonthly + mortgageMonthly + autoLoanMonthly + childMonthly + healthMonthly;
+    const totalMonthlyOutflow = GameLogic.calculateUserMonthlyOutflow(user);
 
     // 6. Children Count
     const children = (user.relationships || []).filter(r => r.category === 'child' || r.type === 'Son' || r.type === 'Daughter');

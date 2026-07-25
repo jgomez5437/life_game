@@ -19,7 +19,7 @@ import { renderActivities } from '../features/career/occupationScreen.js';
 import { renderRelationships, renderPersonInteraction, openRelationshipConfirm, spendTimeWithAll, goOutMeetSomeone, handleProposeAction, openRingSelectionModal, proposeWithRing } from '../features/relationships/relationshipScreen.js';
 import { chooseFuneralType, cancelFuneralPlan, confirmFuneralPlan, donateBody, lookTheOtherWay, goToFuneral, skipFuneral, respondNewTeacher, processNextTeacherReplacement } from '../features/relationships/funeralScreen.js';
 import { openWeddingPlanner, confirmWeddingPlan, openNameChangeChoice, chooseNameChange } from '../features/relationships/romanceScreen.js';
-import { renderMoreDashboard, buyGymMembership, cancelGymMembership, visitGymOneTime, startBetterDiet, cancelBetterDiet, visitDoctor, openBlackjackBetting, startBlackjackGame, blackjackHit, blackjackStand, openTravelModal, bookTrip, openDietSelectionModal, selectDiet, openLotteryModal, buyLotteryTicket, openSuggestionsModal } from '../features/more/moreScreen.js';
+import { renderMoreDashboard, buyGymMembership, cancelGymMembership, visitGymOneTime, startBetterDiet, cancelBetterDiet, visitDoctor, openBlackjackBetting, startBlackjackGame, blackjackHit, blackjackStand, openTravelModal, bookTrip, openDietSelectionModal, selectDiet, openLotteryModal, buyLotteryTicket, openSuggestionsModal, openMoveCountryModal, updateRelocateCityDropdown, confirmMoveCountry, askPartnerToMove, confirmMoveAlone } from '../features/more/moreScreen.js';
 import { openSettingsModal, triggerManualSave, promptResetGame, toggleSettingSFX, toggleSettingCompact } from '../features/more/settingsScreen.js';
 import { Utils } from '../ui/utils.js';
 import { UI } from '../ui/ui.js';
@@ -899,6 +899,11 @@ const routeHandlers = {
   openLotteryModal,
   buyLotteryTicket,
   openSuggestionsModal,
+  openMoveCountryModal,
+  updateRelocateCityDropdown,
+  confirmMoveCountry,
+  askPartnerToMove,
+  confirmMoveAlone,
   openSettingsModal,
   triggerManualSave,
   promptResetGame,

@@ -142,28 +142,8 @@ function getPropertyListHtml(assets) {
 export function renderAssets() {
     const user = state.gameState.user;
 
-    // --- CALCULATE STATS ---
     let monthlyIncome = GameLogic.calculateUserMonthlyIncome(user);
-
-    let monthlyOutflow = 0;
-    if (user.studentLoans > 0 && user.age >= 23 && !user.gradSchoolEnrolled) {
-        monthlyOutflow += 200;
-    }
-    // Living Expenses: Age 19+ AND Not enrolled in ANY school
-    if (user.age >= 19 && (typeof isStudent === 'function' ? !isStudent() : !user.isStudent)) {
-        monthlyOutflow += 2000;
-    }
-    
-    if (user.gymMembership) {
-        monthlyOutflow += 50;
-    }
-    
-    // Child Outflow: $500/mo per child under 21
-    monthlyOutflow += GameLogic.calculateChildMonthlyOutflow(user.relationships);
-    
-    // Property Mortgage Outflow
-    monthlyOutflow += GameLogic.calculatePropertyMonthlyOutflow(user.assets);
-
+    let monthlyOutflow = GameLogic.calculateUserMonthlyOutflow(user);
     user.monthlyOutflow = monthlyOutflow;
     
     // Ensure assets array exists

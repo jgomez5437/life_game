@@ -1180,4 +1180,166 @@ describe('More Options Revamp: Diets, Lottery & Suggestions', () => {
         expect(newJackpot).toBeGreaterThanOrEqual(25000000);
         expect(user.megaJackpotAmount).toBe(newJackpot);
     });
+});
+
+describe('Relocation to New Country Pure Functions', () => {
+    test('RELOCATION_COST constant is $2,000', () => {
+        expect(GameLogic.RELOCATION_COST).toBe(2000);
+    });
+
+    test('canMoveCountry rejects null or missing user object', () => {
+        const result = GameLogic.canMoveCountry(null, 'United Kingdom');
+        expect(result.allowed).toBe(false);
+        expect(result.reason).toContain('No character data');
+    });
+
+    test('canMoveCountry rejects players under 18 years old', () => {
+        const user = { age: 17, money: 5000, country: 'United States', city: 'New York' };
+        const result = GameLogic.canMoveCountry(user, 'United Kingdom');
+        expect(result.allowed).toBe(false);
+        expect(result.reason).toContain('18 years old');
+    });
+
+    test('canMoveCountry rejects target country if it is the user current country', () => {
+        const user = { age: 25, money: 5000, country: 'United States', city: 'New York' };
+        const result = GameLogic.canMoveCountry(user, 'United States');
+        expect(result.allowed).toBe(false);
+        expect(result.reason).toContain('already living');
+    });
+
+    test('canMoveCountry rejects player with insufficient funds (< $2,000)', () => {
+        const user = { age: 25, money: 1500, country: 'United States', city: 'New York' };
+        const result = GameLogic.canMoveCountry(user, 'United Kingdom');
+        expect(result.allowed).toBe(false);
+        expect(result.reason).toContain('$2,000');
+    });
+
+    test('canMoveCountry approves relocation when eligible (age >= 18, money >= $2,000, new country)', () => {
+        const user = { age: 25, money: 3000, country: 'United States', city: 'New York' };
+        const result = GameLogic.canMoveCountry(user, 'United Kingdom');
+        expect(result.allowed).toBe(true);
+    });
+
+    test('moveCountry fails and preserves money if user is ineligible', () => {
+        const user = { age: 16, money: 3000, country: 'United States', city: 'New York' };
+        const result = GameLogic.moveCountry(user, 'Japan', 'Tokyo');
+        expect(result.success).toBe(false);
+        expect(user.money).toBe(3000);
+        expect(user.country).toBe('United States');
+        expect(user.city).toBe('New York');
+    });
+
+    test('moveCountry deducts $2,000 and updates country & city when successful', () => {
+        const user = { age: 30, money: 5000, country: 'United States', city: 'New York' };
+        const result = GameLogic.moveCountry(user, 'Japan', 'Tokyo');
+
+        expect(result.success).toBe(true);
+        expect(result.cost).toBe(2000);
+        expect(user.money).toBe(3000);
+        expect(user.country).toBe('Japan');
+        expect(user.city).toBe('Tokyo');
+        expect(result.message).toContain('Relocated to Tokyo, Japan for $2,000.');
+    });
+
+    test('moveCountry clears job title, salary, and career progress when player has a job', () => {
+        const user = {
+            age: 28,
+            money: 5000,
+            country: 'United States',
+            city: 'New York',
+            jobTitle: 'Software Developer',
+            jobSalary: 72000,
+            jobPerformance: 80,
+            careerTrack: 'software_eng',
+            careerLevel: 1,
+            yearsInRole: 2
+        };
+
+        const result = GameLogic.moveCountry(user, 'United Kingdom', 'London');
+
+        expect(result.success).toBe(true);
+        expect(result.hadJob).toBe(true);
+        expect(result.oldJobTitle).toBe('Software Developer');
+        expect(user.jobTitle).toBeNull();
+        expect(user.jobSalary).toBe(0);
+        expect(user.careerTrack).toBeNull();
+        expect(user.careerLevel).toBe(0);
+        expect(user.yearsInRole).toBe(0);
+        expect(result.message).toContain('You lost your job as Software Developer');
+    });
+
+    test('getPartner correctly identifies romance partners and spouses', () => {
+        const partner = { id: 'p1', name: 'Emma', type: 'Girlfriend', category: 'partner' };
+        const user = { relationships: [partner] };
+        expect(GameLogic.getPartner(user)).toBe(partner);
+    });
+
+    test('getPartner returns null if user has no partner', () => {
+        const friend = { id: 'f1', name: 'John', type: 'Friend', category: 'friend' };
+        const user = { relationships: [friend] };
+        expect(GameLogic.getPartner(user)).toBeNull();
+    });
+
+    test('calculatePartnerRelocateAcceptance returns true for high relationship status when roll is favorable', () => {
+        const partner = { name: 'Emma', status: 90 };
+        expect(GameLogic.calculatePartnerRelocateAcceptance(partner, 0.1)).toBe(true);
+        expect(GameLogic.calculatePartnerRelocateAcceptance(partner, 0.9)).toBe(false);
+    });
+
+    test('breakUpWithPartner sets category to ex and updates relationship type accordingly', () => {
+        const partner = { id: 'p1', name: 'Sarah', type: 'Girlfriend', category: 'partner', gender: 'female' };
+        const user = { relationships: [partner] };
+
+        GameLogic.breakUpWithPartner(user, partner);
+
+        expect(partner.category).toBe('ex');
+        expect(partner.type).toBe('Ex-Girlfriend');
+    });
+
+    test('canMoveCountry rejects moving to current city', () => {
+        const user = { age: 25, money: 5000, country: 'United States', city: 'New York' };
+        const result = GameLogic.canMoveCountry(user, 'United States', 'New York');
+        expect(result.allowed).toBe(false);
+        expect(result.reason).toContain('already living in');
+    });
+
+    test('calculateUserMonthlyOutflow calculates correct monthly living expense for New York ($2,500/mo)', () => {
+        const user = { age: 25, city: 'New York', isStudent: false, assets: [], relationships: [] };
+        const outflow = GameLogic.calculateUserMonthlyOutflow(user);
+        expect(outflow).toBe(2500); // $30,000 / 12 = $2,500
+    });
+
+    describe('generateLifeSuggestions', () => {
+        test('recommends Nurture Your Marriage if married and already has a child', () => {
+            const spouse = { id: 's1', name: 'Emily', type: 'Wife', category: 'spouse', age: 30 };
+            const child = { id: 'c1', name: 'Leo', type: 'Son', category: 'child', age: 3 };
+            const user = { age: 30, health: 100, money: 2000, relationships: [spouse, child] };
+
+            const suggestions = GameLogic.generateLifeSuggestions(user);
+            const romanceSuggestion = suggestions.find(s => s.category === 'Romance & Family');
+            expect(romanceSuggestion).toBeDefined();
+            expect(romanceSuggestion.title).toBe('Nurture Your Marriage');
+            expect(romanceSuggestion.desc).toContain('Emily');
+        });
+
+        test('recommends Start a Family if married with no children and not expecting', () => {
+            const spouse = { id: 's1', name: 'Emily', type: 'Wife', category: 'spouse', age: 30 };
+            const user = { age: 30, health: 100, money: 2000, relationships: [spouse] };
+
+            const suggestions = GameLogic.generateLifeSuggestions(user);
+            const romanceSuggestion = suggestions.find(s => s.category === 'Romance & Family');
+            expect(romanceSuggestion).toBeDefined();
+            expect(romanceSuggestion.title).toBe('Start a Family');
+        });
+
+        test('recommends Plan Your Wedding if engaged', () => {
+            const fiancé = { id: 'f1', name: 'Sarah', type: 'Fiancée', category: 'partner', age: 26 };
+            const user = { age: 26, health: 100, money: 2000, relationships: [fiancé] };
+
+            const suggestions = GameLogic.generateLifeSuggestions(user);
+            const romanceSuggestion = suggestions.find(s => s.category === 'Romance & Family');
+            expect(romanceSuggestion).toBeDefined();
+            expect(romanceSuggestion.title).toBe('Plan Your Wedding');
+        });
+    });
 });
