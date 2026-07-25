@@ -1,5 +1,6 @@
 import { GameLogic } from '../../core/gameLogic.js';
 import { state } from '../../core/state.js';
+import { saveGame } from '../../core/main.js';
 import { renderShoppingHub } from './goShoppingScreen.js';
 import { renderLifeDashboard, addLog } from '../player/mainScreen.js';
 import { processNextFuneral } from '../relationships/funeralScreen.js';
@@ -630,6 +631,7 @@ export const doPropertyMaintenance = (id) => {
 
     if (result.success) {
         addLog(`Performed routine maintenance on ${result.propertyName} for ${Utils.formatMoney(result.cost)}.`, 'good');
+        saveGame();
         UI.updateHeader(user);
         renderPropertyManager(id);
         UI.showModal("Maintenance Completed", `Restored ${result.propertyName}'s condition to ${result.restoredCondition}% (Max cap: ${result.maxCondition}%).`);
@@ -644,6 +646,7 @@ export const doPropertyRenovation = (id, optionId) => {
 
     if (result.success) {
         addLog(`Renovated ${result.propertyName} (${result.optionName}) for ${Utils.formatMoney(result.cost)}. Value increased by ${Utils.formatMoney(result.valueIncrease)}!`, 'major');
+        saveGame();
         UI.updateHeader(user);
         renderPropertyManager(id);
         UI.showModal("Renovation Complete!", `Your ${result.propertyName} underwent a ${result.optionName}! Condition is now ${result.newCondition}% (Max: ${result.newMaxCondition}%) and property value increased to ${Utils.formatMoney(result.newValue)}.`);
@@ -664,6 +667,7 @@ export const payOffMortgage = (id) => {
         property.mortgage = null;
 
         addLog(`Paid off remaining mortgage of ${Utils.formatMoney(cost)} on ${property.name}!`, 'good');
+        saveGame();
         UI.updateHeader(user);
         renderPropertyManager(id);
         UI.showModal("Mortgage Paid Off!", `You now own ${property.name} free and clear!`);
@@ -775,6 +779,7 @@ export const acceptBuyerOffer = (propertyId, offerAmount, buyerName) => {
             addLog(`Sold ${result.propertyName} to ${buyerName} for ${Utils.formatMoney(result.offerAmount)}. Net proceeds: ${Utils.formatMoney(result.netProceeds)}.`, 'good');
         }
 
+        saveGame();
         UI.hideModal();
         UI.updateHeader(user);
         renderAssets();
@@ -796,6 +801,7 @@ export const repairVehicle = (id, cost) => {
         vehicle.value = Math.floor(vehicle.value * 1.05); 
         
         addLog(`Repaired ${vehicle.name} for ${Utils.formatMoney(cost)}.`, 'neutral');
+        saveGame();
         UI.updateHeader(user);
         renderVehicleManager(id); // Refresh screen
     }
@@ -817,6 +823,7 @@ export const sellVehicle = (id) => {
     user.assets.splice(index, 1); // Remove from array
     
     addLog(`Sold ${vehicle.name} for ${Utils.formatMoney(salePrice)}.`, 'good');
+    saveGame();
     UI.updateHeader(user);
     
     // Go back to the main list since this car is gone
@@ -875,6 +882,7 @@ export const acceptTenantLease = (propertyId, applicantId) => {
 
     if (result.success) {
         addLog(`Signed a ${result.tenant.leaseYears}-year lease with ${result.tenant.name} for ${result.propertyName} (${Utils.formatMoney(result.tenant.monthlyRent)}/month).`, 'good');
+        saveGame();
         UI.hideModal();
         UI.updateHeader(user);
         renderPropertyManager(propertyId);
@@ -890,6 +898,7 @@ export const evictTenantAction = (propertyId) => {
 
     if (result.success) {
         addLog(`Evicted tenant ${result.tenantName} from ${result.propertyName}. Property is now vacant.`, 'neutral');
+        saveGame();
         UI.updateHeader(user);
         renderPropertyManager(propertyId);
         UI.showModal("Tenant Evicted", `You evicted ${result.tenantName} from ${result.propertyName}.`);
@@ -1237,6 +1246,7 @@ export const toggleWearJewelry = (id) => {
     } else {
         addLog(`You stored your ${item.name} safely back in your vault.`, 'neutral');
     }
+    saveGame();
     renderJewelryManager(id);
 };
 
@@ -1251,6 +1261,7 @@ export const toggleInsureJewelry = (id) => {
     } else {
         addLog(`Cancelled insurance policy on ${item.name}.`, 'neutral');
     }
+    saveGame();
     renderJewelryManager(id);
 };
 
@@ -1264,6 +1275,7 @@ export const sellJewelry = (id) => {
     user.assets.splice(index, 1);
 
     addLog(`Sold ${item.name} for ${Utils.formatMoney(item.value)}.`, 'good');
+    saveGame();
     UI.updateHeader(user);
     renderAssets();
     UI.showModal("Item Sold", `You sold ${item.name} for ${Utils.formatMoney(item.value)}.`);
@@ -1318,6 +1330,7 @@ export const confirmGiftJewelry = (jewelryId, relationshipId) => {
     person.interactedThisYear = true;
 
     addLog(`You gifted a ${item.name} (${Utils.formatMoney(item.value)}) to ${person.name}! (+${statusBoost}% Status)`, 'good');
+    saveGame();
     UI.hideModal();
     renderAssets();
     UI.showModal("Gift Received!", `${person.name} was thrilled to receive the ${item.name}! Your relationship improved by +${statusBoost}%.`);
@@ -1338,6 +1351,7 @@ export const setPrimaryVehicle = (id) => {
         addLog(`Set ${target.name} as your primary ride!`, 'good');
     }
 
+    saveGame();
     renderVehicleManager(id);
 };
 
@@ -1355,6 +1369,7 @@ export const toggleInsureVehicle = (id) => {
         addLog(`Cancelled auto insurance policy for ${vehicle.name}.`, 'neutral');
     }
 
+    saveGame();
     renderVehicleManager(id);
 };
 
@@ -1396,6 +1411,7 @@ export const takeJoyride = (id) => {
         }
     }
 
+    saveGame();
     UI.updateHeader(user);
     renderVehicleManager(id);
 };
@@ -1450,6 +1466,7 @@ export const confirmGiftVehicle = (vehicleId, personId) => {
 
     user.assets.splice(index, 1);
 
+    saveGame();
     UI.hideModal();
     addLog(`Gifted your ${vehicle.name} to ${person.name}! (+${boost}% Relationship Status)`, 'good');
     UI.showModal("Vehicle Gifted!", `You gave your ${vehicle.name} to ${person.name}! They were overwhelmed with gratitude (+${boost}% Relationship).`);

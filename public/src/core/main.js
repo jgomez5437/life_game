@@ -434,8 +434,9 @@ export function updateGameInfo(dbUser) {
             gymMembership: savedUser.gymMembership || false,
             hasBetterDiet: savedUser.hasBetterDiet || false,
 
-            // --- ASSETS ---
+            // --- ASSETS & INVESTMENTS ---
             assets: savedUser.assets || [],
+            investments: savedUser.investments || null,
 
             // --- RELATIONSHIPS ---
             relationships: savedUser.relationships || [],
@@ -531,6 +532,7 @@ export const loadAndRenderGame = (userData) => {
             quartersProcessedThisAge: userData.quartersProcessedThisAge || 0,
             lifeStatus: userData.life_status || "Baby",
             assets: userData.assets || [],
+            investments: userData.investments || null,
 
             // --- RELATIONSHIPS ---
             relationships: userData.relationships || []
