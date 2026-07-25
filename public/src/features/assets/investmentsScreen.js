@@ -1,5 +1,6 @@
 import { GameLogic } from '../../core/gameLogic.js';
 import { state } from '../../core/state.js';
+import { saveGame } from '../../core/main.js';
 import { Utils } from '../../ui/utils.js';
 import { UI } from '../../ui/ui.js';
 
@@ -457,6 +458,7 @@ export function confirmBuyStock(symbol) {
 
     UI.hideModal();
     if (result.success) {
+        saveGame();
         UI.showModal('Trade Executed', `<p class="text-emerald-400 font-bold">${result.msg}</p>`);
     } else {
         UI.showModal('Trade Failed', `<p class="text-red-400 font-bold">${result.msg}</p>`);
@@ -513,6 +515,7 @@ export function confirmSellStock(symbol) {
 
     UI.hideModal();
     if (result.success) {
+        saveGame();
         UI.showModal('Trade Executed', `<p class="text-purple-300 font-bold">${result.msg}</p>`);
     } else {
         UI.showModal('Trade Failed', `<p class="text-red-400 font-bold">${result.msg}</p>`);
@@ -562,6 +565,7 @@ export function confirmDepositSavings() {
 
     UI.hideModal();
     if (result.success) {
+        saveGame();
         UI.showModal('Deposit Complete', `<p class="text-emerald-400 font-bold">${result.msg}</p>`);
     } else {
         UI.showModal('Deposit Failed', `<p class="text-red-400 font-bold">${result.msg}</p>`);
@@ -612,6 +616,7 @@ export function confirmWithdrawSavings() {
 
     UI.hideModal();
     if (result.success) {
+        saveGame();
         UI.showModal('Withdrawal Complete', `<p class="text-cyan-300 font-bold">${result.msg}</p>`);
     } else {
         UI.showModal('Withdrawal Failed', `<p class="text-red-400 font-bold">${result.msg}</p>`);

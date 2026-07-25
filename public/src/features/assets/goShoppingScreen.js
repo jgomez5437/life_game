@@ -1,5 +1,6 @@
 import { GameLogic } from '../../core/gameLogic.js';
 import { state } from '../../core/state.js';
+import { saveGame } from '../../core/main.js';
 import { renderLifeDashboard, addLog } from '../player/mainScreen.js';
 import { Utils } from '../../ui/utils.js';
 import { UI } from '../../ui/ui.js';
@@ -280,6 +281,7 @@ export const buyVehicleCash = (carId) => {
     user.assets.push(newAsset);
 
     addLog(`Purchased a ${car.name} for ${Utils.formatMoney(car.price)} in cash.`, 'good');
+    saveGame();
 
     UI.updateHeader(user);
     renderVehicleDealer();
@@ -328,6 +330,7 @@ export const buyVehicleLoan = (carId) => {
     user.assets.push(newAsset);
 
     addLog(`Financed a ${car.name} with ${Utils.formatMoney(loanInfo.downPayment)} down (${Utils.formatMoney(loanInfo.monthlyPayment)}/mo loan).`, 'good');
+    saveGame();
 
     UI.updateHeader(user);
     renderVehicleDealer();
@@ -366,6 +369,7 @@ export const buyPropertyCash = (propertyId) => {
     user.assets.push(newAsset);
 
     addLog(`Purchased ${prop.name} for ${Utils.formatMoney(prop.price)} in cash.`, 'good');
+    saveGame();
     UI.updateHeader(user);
     renderRealEstateDealer();
     UI.showModal("Property Purchased", `Congratulations! You bought ${prop.name} for ${Utils.formatMoney(prop.price)} in cash.`);
@@ -406,6 +410,7 @@ export const buyPropertyMortgage = (propertyId) => {
     user.assets.push(newAsset);
 
     addLog(`Acquired ${prop.name} with a mortgage (${Utils.formatMoney(monthlyMortgage)}/month).`, 'good');
+    saveGame();
     UI.updateHeader(user);
     renderRealEstateDealer();
     UI.showModal("Mortgage Approved!", `You acquired ${prop.name}! Your monthly mortgage payment is ${Utils.formatMoney(monthlyMortgage)}.`);
@@ -534,6 +539,7 @@ export const buyJewelry = (itemId) => {
     user.assets.push(newAsset);
 
     addLog(`Purchased ${item.name} for ${Utils.formatMoney(item.price)}.`, 'good');
+    saveGame();
     UI.updateHeader(user);
     renderJewelryDealer();
     UI.showModal("Purchase Successful", `You bought a ${item.name}! Check your Assets to wear, gift, or manage it.`);
