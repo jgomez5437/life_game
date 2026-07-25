@@ -480,11 +480,12 @@ export const performRelationshipAction = (personId, actionKey) => {
     // Mark interaction for this year
     person.interactedThisYear = true;
 
-    // --- PREGNANCY ROLL (Make Love, married couples only) ---
-    // "Try for a Baby" is the deliberate/guaranteed-chance action, but a married
-    // couple making love should also carry a chance of conceiving.
+    // --- PREGNANCY ROLL (Make Love for all romantic partners: married, engaged, or dating) ---
+    // "Try for a Baby" is the deliberate action, but any romantic couple making love
+    // carries a biological chance of conceiving.
     let pregnancyAnnouncement = '';
-    if (action.key === 'make_love' && person.category === 'spouse' && !user.isExpecting) {
+    const isRomanticPartner = person.category === 'spouse' || person.category === 'partner' || ['Girlfriend', 'Boyfriend', 'Partner', 'Fiancé', 'Fiancée', 'Fiance', 'Wife', 'Husband', 'Spouse'].includes(person.type);
+    if (action.key === 'make_love' && isRomanticPartner && !user.isExpecting) {
         const femaleAge = user.gender === 'female' ? user.age : person.age;
         const maleAge = user.gender === 'male' ? user.age : person.age;
         if (GameLogic.calculatePregnancyChance(femaleAge, maleAge)) {

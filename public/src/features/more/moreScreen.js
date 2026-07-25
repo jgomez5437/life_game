@@ -1,8 +1,9 @@
 import { GameLogic } from '../../core/gameLogic.js';
 import { state } from '../../core/state.js';
 import { renderLifeDashboard, addLog } from '../player/mainScreen.js';
+import { saveGame } from '../../core/main.js';
 import { UI } from '../../ui/ui.js';
-import { Utils } from '../../ui/utils.js';
+import { Utils, COUNTRIES_DATA } from '../../ui/utils.js';
 
 const get = id => document.getElementById(id);
 
@@ -178,6 +179,25 @@ export function renderMoreDashboard() {
                     <p class="text-xs text-slate-400 mb-3">Escape daily stress with local getaways or international luxury tours.</p>
                     <button data-action="openTravelModal" class="bg-cyan-600 hover:bg-cyan-500 w-full py-2 rounded-lg text-sm text-white font-bold transition">
                         Book Vacation
+                    </button>
+                </div>
+
+                <!-- Relocate to a New Country -->
+                <div class="bg-slate-800 p-3.5 rounded-xl border border-slate-700">
+                    <div class="flex justify-between items-center mb-2">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-9 h-9 rounded-full bg-emerald-900/40 flex items-center justify-center text-emerald-400 border border-emerald-500/50">
+                                <i class="fas fa-globe text-sm"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-white text-sm">Relocate Country</h3>
+                                <div class="text-xs text-slate-400">Current: <span class="text-emerald-400 font-semibold">${user.country || 'United States'} (${user.city || 'New York'})</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-400 mb-3">Move to a new country and start fresh in a new city ($2,000).</p>
+                    <button data-action="openMoveCountryModal" class="bg-emerald-600 hover:bg-emerald-500 w-full py-2 rounded-lg text-sm text-white font-bold transition">
+                        Move to New Country ($2,000)
                     </button>
                 </div>
 
@@ -736,6 +756,223 @@ export function bookTrip(tier) {
                 </div>
                 ` : ''}
             </div>
+        </div>
+    `);
+}
+
+export function openMoveCountryModal() {
+    const user = state.gameState.user;
+
+    if (user.age < 18) {
+        UI.showModal("Too Young", "You must be at least 18 years old to relocate to another country.");
+        return;
+    }
+    if (user.money < GameLogic.RELOCATION_COST) {
+        UI.showModal("Insufficient Funds", `You need at least $${GameLogic.RELOCATION_COST.toLocaleString()} to move to a new country.`);
+        return;
+    }
+
+    const currentCountry = user.country || 'United States';
+    const currentCity = user.city || 'New York';
+
+    // Target countries excluding current country
+    const targetCountries = COUNTRIES_DATA.filter(c => c.name !== currentCountry);
+    const defaultTargetCountry = targetCountries[0] || COUNTRIES_DATA[0];
+
+    // Cities for default target country (excluding current city)
+    const availableCities = defaultTargetCountry.cities.filter(c => c !== currentCity);
+
+    const jobWarningHtml = user.jobTitle
+        ? `<div class="bg-amber-950/40 border border-amber-800/60 p-2.5 rounded-lg text-amber-300 text-xs flex items-center gap-2">
+            <i class="fas fa-exclamation-triangle text-amber-400 shrink-0"></i>
+            <span>Relocating to another country will force you to leave your current position as <strong>${user.jobTitle}</strong>.</span>
+           </div>`
+        : '';
+
+    const html = `
+        <div class="space-y-4">
+            <p class="text-xs text-slate-300">Moving to a new country costs <strong>$${GameLogic.RELOCATION_COST.toLocaleString()}</strong>. Your local currency, headers, and living cost calculations will update accordingly.</p>
+            ${jobWarningHtml}
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1">Target Country</label>
+                    <select id="relocate-country-select" data-action="updateRelocateCityDropdown" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+                        ${targetCountries.map((c, idx) => `
+                            <option value="${c.name}" ${idx === 0 ? 'selected' : ''}>
+                                ${c.name}
+                            </option>
+                        `).join('')}
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1">Target City</label>
+                    <select id="relocate-city-select" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+                        ${availableCities.map(city => `<option value="${city}">${city}</option>`).join('')}
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex gap-2 pt-2 border-t border-slate-700">
+                <button data-action="confirmMoveCountry" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-lg text-xs transition">
+                    Pay $${GameLogic.RELOCATION_COST.toLocaleString()} & Relocate
+                </button>
+                <button data-action="hideModal" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 rounded-lg text-xs transition">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    `;
+
+    UI.showCustomModal("Relocate to New Country", html);
+
+    setTimeout(() => {
+        const countrySelect = get('relocate-country-select');
+        if (countrySelect) {
+            countrySelect.addEventListener('change', (e) => {
+                updateRelocateCityDropdown(e.target.value);
+            });
+        }
+    }, 50);
+}
+
+export function updateRelocateCityDropdown(selectedCountryName) {
+    const user = state.gameState?.user || {};
+    const currentCity = user.city || '';
+    const selectedCountry = selectedCountryName || (get('relocate-country-select') ? get('relocate-country-select').value : '');
+    const countryObj = COUNTRIES_DATA.find(c => c.name === selectedCountry) || COUNTRIES_DATA[0];
+    const citySelect = get('relocate-city-select');
+    if (citySelect && countryObj) {
+        const availableCities = countryObj.cities.filter(c => c !== currentCity);
+        citySelect.innerHTML = availableCities.map(c => `<option value="${c}">${c}</option>`).join('');
+    }
+}
+
+export function confirmMoveCountry() {
+    const user = state.gameState.user;
+    const countrySelect = get('relocate-country-select');
+    const citySelect = get('relocate-city-select');
+
+    if (!countrySelect || !citySelect) return;
+
+    const targetCountry = countrySelect.value;
+    const targetCity = citySelect.value;
+
+    const check = GameLogic.canMoveCountry(user, targetCountry);
+    if (!check.allowed) {
+        UI.showModal("Relocation Blocked", check.reason);
+        return;
+    }
+
+    const partner = GameLogic.getPartner(user);
+
+    if (partner) {
+        const html = `
+            <div class="space-y-4 text-left">
+                <p class="text-xs text-slate-300">You are currently in a relationship with <strong>${partner.name}</strong> (${partner.type}). Do you want to ask them to relocate to <strong>${targetCountry}</strong> with you?</p>
+                <div class="space-y-2 pt-2 border-t border-slate-700">
+                    <button data-action="askPartnerToMove" data-args="&apos;${targetCountry}&apos;, &apos;${targetCity}&apos;" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-lg text-xs transition">
+                        <i class="fas fa-heart mr-1"></i> Ask ${partner.name} to Move With You
+                    </button>
+                    <button data-action="confirmMoveAlone" data-args="&apos;${targetCountry}&apos;, &apos;${targetCity}&apos;" class="w-full bg-red-900/40 hover:bg-red-800/60 border border-red-700/50 text-red-300 font-bold py-2.5 rounded-lg text-xs transition">
+                        <i class="fas fa-user-alt mr-1"></i> Move Alone (End Relationship)
+                    </button>
+                    <button data-action="hideModal" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 rounded-lg text-xs transition">
+                        Cancel Relocation
+                    </button>
+                </div>
+            </div>
+        `;
+        UI.showCustomModal(`Relocate with ${partner.name}?`, html);
+        return;
+    }
+
+    executeRelocation(user, targetCountry, targetCity, false, null);
+}
+
+export function askPartnerToMove(targetCountry, targetCity) {
+    const user = state.gameState.user;
+    const partner = GameLogic.getPartner(user);
+
+    if (!partner) {
+        executeRelocation(user, targetCountry, targetCity, false, null);
+        return;
+    }
+
+    const accepted = GameLogic.calculatePartnerRelocateAcceptance(partner);
+
+    if (accepted) {
+        partner.status = Math.min(100, (partner.status || 50) + 10);
+        addLog(`${partner.name} agreed to move to ${targetCountry} with you!`, 'good');
+        executeRelocation(user, targetCountry, targetCity, true, partner);
+    } else {
+        const html = `
+            <div class="space-y-4 text-left">
+                <div class="bg-red-950/40 border border-red-800/60 p-3 rounded-lg text-red-300 text-xs flex items-center gap-2">
+                    <i class="fas fa-heart-broken text-red-400 text-base shrink-0"></i>
+                    <span><strong>${partner.name}</strong> does not want to leave their home country and refused to relocate to <strong>${targetCountry}</strong>.</span>
+                </div>
+                <p class="text-xs text-slate-300">Would you like to end your relationship and move alone, or cancel and stay?</p>
+                <div class="space-y-2 pt-2 border-t border-slate-700">
+                    <button data-action="confirmMoveAlone" data-args="&apos;${targetCountry}&apos;, &apos;${targetCity}&apos;" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 rounded-lg text-xs transition">
+                        Break Up & Move Alone ($2,000)
+                    </button>
+                    <button data-action="hideModal" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 rounded-lg text-xs transition">
+                        Cancel Relocation & Stay
+                    </button>
+                </div>
+            </div>
+        `;
+        UI.showCustomModal(`${partner.name} Refused to Move`, html);
+    }
+}
+
+export function confirmMoveAlone(targetCountry, targetCity) {
+    const user = state.gameState.user;
+    const partner = GameLogic.getPartner(user);
+    const partnerName = partner ? partner.name : null;
+
+    if (partner) {
+        GameLogic.breakUpWithPartner(user, partner);
+        addLog(`Broke up with ${partnerName} and decided to move to ${targetCountry} alone.`, 'bad');
+    }
+
+    executeRelocation(user, targetCountry, targetCity, false, null, partnerName);
+}
+
+function executeRelocation(user, targetCountry, targetCity, partnerMovedWith, partnerObj = null, exPartnerName = null) {
+    const result = GameLogic.moveCountry(user, targetCountry, targetCity);
+
+    if (!result.success) {
+        UI.showModal("Relocation Failed", result.message);
+        return;
+    }
+
+    addLog(result.message, result.hadJob ? 'neutral' : 'good');
+    UI.updateHeader(user);
+
+    if (typeof saveGame === 'function') {
+        saveGame();
+    }
+
+    UI.hideModal();
+    renderMoreDashboard();
+
+    const partnerNoticeHtml = partnerMovedWith && partnerObj
+        ? `<div class="mt-2 text-xs text-emerald-400 bg-emerald-950/40 p-2 rounded-lg border border-emerald-800/50"><i class="fas fa-heart mr-1"></i><strong>${partnerObj.name}</strong> moved with you! (+10 Relationship)</div>`
+        : exPartnerName
+        ? `<div class="mt-2 text-xs text-red-400 bg-red-950/40 p-2 rounded-lg border border-red-800/50"><i class="fas fa-heart-broken mr-1"></i>You broke up with <strong>${exPartnerName}</strong> to move alone.</div>`
+        : '';
+
+    const jobNoticeHtml = result.hadJob
+        ? `<div class="mt-2 text-xs text-amber-400 bg-amber-950/40 p-2 rounded-lg border border-amber-800/50"><i class="fas fa-exclamation-circle mr-1"></i>You lost your position as <strong>${result.oldJobTitle}</strong> and must apply for a new job.</div>`
+        : '';
+
+    UI.showModal("Welcome to Your New Home!", `
+        <div class="text-left space-y-2">
+            <p class="text-sm text-slate-200">You have successfully relocated to <strong>${targetCity}, ${targetCountry}</strong>. $${result.cost.toLocaleString()} was deducted for travel expenses.</p>
+            ${partnerNoticeHtml}
+            ${jobNoticeHtml}
         </div>
     `);
 }

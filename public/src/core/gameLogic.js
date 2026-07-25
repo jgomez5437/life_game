@@ -1636,6 +1636,49 @@ function calculateUserMonthlyIncome(user) {
     return monthlyIncome;
 }
 
+function calculateUserMonthlyOutflow(user) {
+    if (!user) return 0;
+    let monthlyOutflow = 0;
+
+    // 1. Living Expenses (annual / 12)
+    const annualLiving = addLivingExpenses(user.age, user.isStudent, user.city);
+    monthlyOutflow += Math.round(annualLiving / 12);
+
+    // 2. Student Loans (monthly)
+    if (user.studentLoans > 0 && !user.isStudent && user.age >= 18) {
+        const annualCap = Math.min(2400, user.studentLoans);
+        monthlyOutflow += Math.round(annualCap / 12);
+    }
+
+    // 3. Property Mortgages (monthly)
+    monthlyOutflow += calculatePropertyMonthlyOutflow(user.assets);
+
+    // 4. Auto Loans (monthly)
+    monthlyOutflow += calculateTotalAutoLoanMonthlyOutflow(user.assets);
+
+    // 5. Children ($500/mo per child under 21)
+    monthlyOutflow += calculateChildMonthlyOutflow(user.relationships);
+
+    // 6. Active Health & Diet (monthly)
+    const annualHealth = calculateActiveHealthCosts(user);
+    monthlyOutflow += Math.round(annualHealth / 12);
+
+    // 7. Vehicle & Jewelry Insurance (monthly)
+    if (Array.isArray(user.assets)) {
+        user.assets.forEach(asset => {
+            if (asset.category === 'vehicle' && asset.insured) {
+                const annualFee = Math.max(20, Math.floor(asset.value * 0.008));
+                monthlyOutflow += Math.round(annualFee / 12);
+            } else if (asset.category === 'jewelry' && asset.insured) {
+                const annualFee = Math.max(10, Math.floor(asset.value * 0.005));
+                monthlyOutflow += Math.round(annualFee / 12);
+            }
+        });
+    }
+
+    return monthlyOutflow;
+}
+
 function generateTenantApplicants(property) {
     if (!property || !property.value) return [];
     const val = property.value;
@@ -2842,6 +2885,87 @@ function withdrawSavings(user, amount) {
     };
 }
 
+const RELOCATION_COST = 2000;
+
+function getPartner(user) {
+    if (!user || !user.relationships) return null;
+    return user.relationships.find(r => 
+        r.category === 'partner' || 
+        r.category === 'spouse' || 
+        ['Girlfriend', 'Boyfriend', 'Partner', 'Fiancé', 'Fiancée', 'Fiance', 'Wife', 'Husband', 'Spouse'].includes(r.type)
+    ) || null;
+}
+
+function calculatePartnerRelocateAcceptance(partner, rollOverride = null) {
+    if (!partner) return false;
+    const status = partner.status || 50;
+    let baseChance = 0.50;
+    if (status >= 80) baseChance = 0.85;
+    else if (status >= 60) baseChance = 0.70;
+    else if (status >= 40) baseChance = 0.50;
+    else baseChance = 0.25;
+
+    const roll = rollOverride !== null ? rollOverride : Math.random();
+    return roll < baseChance;
+}
+
+function breakUpWithPartner(user, partner) {
+    if (!partner) return;
+    partner.category = 'ex';
+    if (['Spouse', 'Husband', 'Wife'].includes(partner.type) || partner.category === 'spouse') {
+        partner.type = partner.gender === 'male' ? 'Ex-Husband' : 'Ex-Wife';
+    } else if (['Fiancé', 'Fiancée', 'Fiance'].includes(partner.type)) {
+        partner.type = 'Ex-Fiancé';
+    } else {
+        partner.type = partner.gender === 'male' ? 'Ex-Boyfriend' : 'Ex-Girlfriend';
+    }
+}
+
+function canMoveCountry(user, targetCountry, targetCity = null) {
+    if (!user) return { allowed: false, reason: "No character data found." };
+    if ((user.age || 0) < 18) return { allowed: false, reason: "You must be at least 18 years old to relocate to a new country." };
+    if (targetCountry && user.country === targetCountry) return { allowed: false, reason: `You are already living in ${targetCountry}.` };
+    if (targetCity && user.city === targetCity) return { allowed: false, reason: `You are already living in ${targetCity}.` };
+    if ((user.money || 0) < RELOCATION_COST) return { allowed: false, reason: `You need at least $${RELOCATION_COST.toLocaleString()} to move to a new country.` };
+    return { allowed: true };
+}
+
+function moveCountry(user, targetCountry, targetCity) {
+    const check = canMoveCountry(user, targetCountry, targetCity);
+    if (!check.allowed) return { success: false, message: check.reason };
+
+    const hadJob = !!user.jobTitle;
+    const oldJobTitle = user.jobTitle;
+
+    user.money -= RELOCATION_COST;
+    user.country = targetCountry;
+    user.city = targetCity;
+
+    if (hadJob) {
+        user.jobTitle = null;
+        user.jobSalary = 0;
+        user.jobPerformance = 50;
+        user.careerActionTaken = false;
+        user.careerTrack = null;
+        user.careerLevel = 0;
+        user.yearsInRole = 0;
+        user.consecutivePoorYears = 0;
+        user.hasSeenJobSalary = false;
+    }
+
+    const jobMsg = hadJob ? ` You lost your job as ${oldJobTitle} and are now unemployed.` : '';
+
+    return {
+        success: true,
+        cost: RELOCATION_COST,
+        newCountry: targetCountry,
+        newCity: targetCity,
+        hadJob,
+        oldJobTitle,
+        message: `Relocated to ${targetCity}, ${targetCountry} for $${RELOCATION_COST.toLocaleString()}.${jobMsg}`
+    };
+}
+
 export const GameLogic = {
     sanitizeName,
     addLivingExpenses,
@@ -2894,6 +3018,7 @@ export const GameLogic = {
     getPropertyIcon,
     calculateMonthlyMortgage,
     calculateUserMonthlyIncome,
+    calculateUserMonthlyOutflow,
     calculateTotalMonthlyMortgages,
     canAffordMortgage,
     processMortgagePayments,
@@ -2932,7 +3057,13 @@ export const GameLogic = {
     playLotteryTicket,
     generateLifeSuggestions,
     getMegaJackpotAmount,
-    rollOverMegaJackpot
+    rollOverMegaJackpot,
+    RELOCATION_COST,
+    canMoveCountry,
+    moveCountry,
+    getPartner,
+    calculatePartnerRelocateAcceptance,
+    breakUpWithPartner
 };
 
 
