@@ -408,6 +408,13 @@ function handleFinances(user) {
     // 9. Rental Income & Tenant Events
     GameLogic.processRentalIncome(user, state);
     GameLogic.processTenantEvents(user, state);
+
+    // 10. Spousal Income Contribution
+    const spousalInfo = GameLogic.calculateSpousalIncomeContribution(user);
+    if (spousalInfo.amount > 0) {
+        user.money += spousalInfo.amount;
+        addLog(`Your spouse ${spousalInfo.spouseName} contributed ${Utils.formatMoney(spousalInfo.amount)} to household income!`, 'good');
+    }
 }
 
 export function refreshClassmates(user) {
@@ -566,6 +573,12 @@ function handleRelationships(user) {
         const rel = user.relationships[i];
         rel.age++;
         
+        // Progress NPC Occupation and check for milestones
+        const milestoneMsg = GameLogic.progressNPCOccupation(rel, user.age);
+        if (milestoneMsg) {
+            addLog(milestoneMsg, 'good');
+        }
+        
         // Check Mortality
         const deathCheck = GameLogic.checkMortality(rel.age, rel.health ?? 100);
         if (deathCheck.isDead) {
@@ -621,6 +634,7 @@ function handlePregnancy(user) {
     const firstName = GameLogic.getRandomFirstName(isMale ? 'male' : 'female');
 
     const childId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'rel_' + Date.now() + Math.random().toString(36).substring(2, 9);
+    const childOcc = GameLogic.generateNPCOccupation(0);
     const child = {
         id: childId,
         name: `${firstName} ${lastName}`,
@@ -630,7 +644,8 @@ function handlePregnancy(user) {
         status: 100,
         category: 'child',
         interactedThisYear: false,
-        appearance: AvatarLogic.generateRandomAppearance(childId, isMale ? 'male' : 'female')
+        appearance: AvatarLogic.generateRandomAppearance(childId, isMale ? 'male' : 'female'),
+        ...childOcc
     };
 
     if (!user.relationships) user.relationships = [];

@@ -30,29 +30,35 @@ export const FamilyFactory = (() => {
 
             if (hasMother) {
                 const id = getUUID();
+                const age = getInt(18, 45);
+                const occ = GameLogic.generateNPCOccupation(age);
                 family.push({
                     id,
                     name: `${getName('female')} ${lastName}`,
-                    age: getInt(18, 45), // Age at player birth
+                    age, // Age at player birth
                     type: 'Mother',
                     gender: 'female',
                     status: getInt(70, 100),
                     category: 'family',
-                    appearance: AvatarLogic.generateRandomAppearance(id, 'female')
+                    appearance: AvatarLogic.generateRandomAppearance(id, 'female'),
+                    ...occ
                 });
             }
 
             if (hasFather) {
                 const id = getUUID();
+                const age = getInt(18, 50);
+                const occ = GameLogic.generateNPCOccupation(age);
                 family.push({
                     id,
                     name: `${getName('male')} ${lastName}`,
-                    age: getInt(18, 50), // Age at player birth
+                    age, // Age at player birth
                     type: 'Father',
                     gender: 'male',
                     status: getInt(70, 100),
                     category: 'family',
-                    appearance: AvatarLogic.generateRandomAppearance(id, 'male')
+                    appearance: AvatarLogic.generateRandomAppearance(id, 'male'),
+                    ...occ
                 });
             }
 
@@ -70,15 +76,18 @@ export const FamilyFactory = (() => {
                 for (let i = 0; i < siblingCount; i++) {
                     const isMale = Math.random() > 0.5;
                     const id = getUUID();
+                    const age = getInt(1, 15);
+                    const occ = GameLogic.generateNPCOccupation(age);
                     family.push({
                         id,
                         name: `${getName(isMale ? 'male' : 'female')} ${lastName}`,
-                        age: getInt(1, 15), // Siblings are strictly older than the Age 0 player
+                        age, // Siblings are strictly older than the Age 0 player
                         type: isMale ? 'Brother' : 'Sister',
                         gender: isMale ? 'male' : 'female',
                         status: getInt(50, 100),
                         category: 'family',
-                        appearance: AvatarLogic.generateRandomAppearance(id, isMale ? 'male' : 'female')
+                        appearance: AvatarLogic.generateRandomAppearance(id, isMale ? 'male' : 'female'),
+                        ...occ
                     });
                 }
             }

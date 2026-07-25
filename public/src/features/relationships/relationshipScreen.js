@@ -28,6 +28,7 @@ export const addNewRelationship = (name, age, type, status, category = 'friend')
 
     // Use crypto for unique IDs to prevent rendering collisions
     const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'rel_' + Date.now() + Math.floor(Math.random() * 1000);
+    const occ = GameLogic.generateNPCOccupation(age);
     const newPerson = {
         id,
         name: name,
@@ -35,7 +36,8 @@ export const addNewRelationship = (name, age, type, status, category = 'friend')
         type: finalType,
         status: status,
         category: finalCategory,
-        appearance: AvatarLogic.generateRandomAppearance(id)
+        appearance: AvatarLogic.generateRandomAppearance(id),
+        ...occ
     };
 
     user.relationships.push(newPerson);
@@ -59,6 +61,10 @@ export const renderRelationships = () => {
 
     // --- HELPER: Generate Card HTML ---
     const getPersonCard = (person) => {
+        if (!person.occupation) {
+            Object.assign(person, GameLogic.generateNPCOccupation(person.age));
+        }
+
         // A. Determine Wellness Bar Color
         let barColor = 'bg-green-500';
         if (person.status < 30) barColor = 'bg-red-500';
@@ -92,7 +98,7 @@ export const renderRelationships = () => {
                                 ${person.type}
                             </span>
                         </div>
-                        <div class="text-xs text-slate-400 font-medium">Age: ${person.age}</div>
+                        <div class="text-xs text-slate-400 font-medium">Age: ${person.age}${person.occupation ? ' • ' + person.occupation : ''}</div>
                     </div>
                 </div>
 
@@ -201,11 +207,23 @@ export const goOutMeetSomeone = () => {
     renderRelationships();
 };
 
+function getOccupationIcon(type) {
+    if (type === 'school') return 'fa-graduation-cap text-blue-400';
+    if (type === 'job') return 'fa-briefcase text-emerald-400';
+    if (type === 'unemployed') return 'fa-bed text-amber-400';
+    if (type === 'retired') return 'fa-couch text-purple-400';
+    return 'fa-user-tag text-slate-400';
+}
+
 // --- INTERACTION SCREEN ---
 export const renderPersonInteraction = (id, backAction = null) => {
     const user = state.gameState.user;
     const person = user.relationships.find(r => r.id === id);
     if (!person) return;
+
+    if (!person.occupation) {
+        Object.assign(person, GameLogic.generateNPCOccupation(person.age));
+    }
 
     let targetBackAction = backAction;
     if (!targetBackAction) {
@@ -300,8 +318,15 @@ export const renderPersonInteraction = (id, backAction = null) => {
                     ${renderAvatar(person)}
                 </div>
                 <h2 class="text-2xl font-bold text-white">${person.name}</h2>
-                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider ${badgeStyle} inline-block mt-2 shadow-sm">${person.type}</span>
-                <p class="text-slate-400 text-sm mt-2">Age: ${person.age}</p>
+                <div class="flex items-center justify-center gap-2 mt-2">
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider ${badgeStyle} shadow-sm">${person.type}</span>
+                    <span class="text-xs text-slate-400 font-medium">Age ${person.age}</span>
+                </div>
+
+                <div class="inline-flex items-center gap-2 mt-3 bg-slate-800/90 px-4 py-1.5 rounded-full border border-slate-700 shadow-sm">
+                    <i class="fas ${getOccupationIcon(person.occupationType)} text-xs"></i>
+                    <span class="text-xs font-semibold text-slate-200">${person.occupation || 'Unemployed'}</span>
+                </div>
             </div>
 
             <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-6 shadow-md">

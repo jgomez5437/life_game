@@ -1308,4 +1308,38 @@ describe('Relocation to New Country Pure Functions', () => {
         const outflow = GameLogic.calculateUserMonthlyOutflow(user);
         expect(outflow).toBe(2500); // $30,000 / 12 = $2,500
     });
+
+    describe('generateLifeSuggestions', () => {
+        test('recommends Nurture Your Marriage if married and already has a child', () => {
+            const spouse = { id: 's1', name: 'Emily', type: 'Wife', category: 'spouse', age: 30 };
+            const child = { id: 'c1', name: 'Leo', type: 'Son', category: 'child', age: 3 };
+            const user = { age: 30, health: 100, money: 2000, relationships: [spouse, child] };
+
+            const suggestions = GameLogic.generateLifeSuggestions(user);
+            const romanceSuggestion = suggestions.find(s => s.category === 'Romance & Family');
+            expect(romanceSuggestion).toBeDefined();
+            expect(romanceSuggestion.title).toBe('Nurture Your Marriage');
+            expect(romanceSuggestion.desc).toContain('Emily');
+        });
+
+        test('recommends Start a Family if married with no children and not expecting', () => {
+            const spouse = { id: 's1', name: 'Emily', type: 'Wife', category: 'spouse', age: 30 };
+            const user = { age: 30, health: 100, money: 2000, relationships: [spouse] };
+
+            const suggestions = GameLogic.generateLifeSuggestions(user);
+            const romanceSuggestion = suggestions.find(s => s.category === 'Romance & Family');
+            expect(romanceSuggestion).toBeDefined();
+            expect(romanceSuggestion.title).toBe('Start a Family');
+        });
+
+        test('recommends Plan Your Wedding if engaged', () => {
+            const fiancé = { id: 'f1', name: 'Sarah', type: 'Fiancée', category: 'partner', age: 26 };
+            const user = { age: 26, health: 100, money: 2000, relationships: [fiancé] };
+
+            const suggestions = GameLogic.generateLifeSuggestions(user);
+            const romanceSuggestion = suggestions.find(s => s.category === 'Romance & Family');
+            expect(romanceSuggestion).toBeDefined();
+            expect(romanceSuggestion.title).toBe('Plan Your Wedding');
+        });
+    });
 });
