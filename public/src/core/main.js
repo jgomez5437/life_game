@@ -20,6 +20,7 @@ import { renderRelationships, renderPersonInteraction, openRelationshipConfirm, 
 import { chooseFuneralType, cancelFuneralPlan, confirmFuneralPlan, donateBody, lookTheOtherWay, goToFuneral, skipFuneral, respondNewTeacher, processNextTeacherReplacement } from '../features/relationships/funeralScreen.js';
 import { openWeddingPlanner, confirmWeddingPlan, openNameChangeChoice, chooseNameChange } from '../features/relationships/romanceScreen.js';
 import { renderMoreDashboard, buyGymMembership, cancelGymMembership, visitGymOneTime, startBetterDiet, cancelBetterDiet, visitDoctor, openBlackjackBetting, startBlackjackGame, blackjackHit, blackjackStand, openTravelModal, bookTrip, openDietSelectionModal, selectDiet, openLotteryModal, buyLotteryTicket, openSuggestionsModal, openMoveCountryModal, updateRelocateCityDropdown, confirmMoveCountry, askPartnerToMove, confirmMoveAlone } from '../features/more/moreScreen.js';
+import { renderCasinoHub, openRouletteModal, confirmRouletteBet, confirmRouletteSingleNumberBet, openSlotsModal, confirmSlotsSpin } from '../features/more/casinoScreen.js';
 import { openSettingsModal, triggerManualSave, promptResetGame, toggleSettingSFX, toggleSettingCompact } from '../features/more/settingsScreen.js';
 import { Utils } from '../ui/utils.js';
 import { UI } from '../ui/ui.js';
@@ -863,6 +864,12 @@ const routeHandlers = {
   respondNewTeacher,
   processNextTeacherReplacement,
   renderMoreDashboard,
+  renderCasinoHub,
+  openRouletteModal,
+  confirmRouletteBet,
+  confirmRouletteSingleNumberBet,
+  openSlotsModal,
+  confirmSlotsSpin,
   buyGymMembership,
   cancelGymMembership,
   visitGymOneTime,

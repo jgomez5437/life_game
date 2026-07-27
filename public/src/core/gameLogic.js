@@ -1,5 +1,6 @@
 import { addLog } from '../features/player/mainScreen.js';
 import { UI } from '../ui/ui.js';
+import { Utils } from '../ui/utils.js';
 import { AvatarLogic } from './avatarLogic.js';
 
 function sanitizeName(rawInput) {
@@ -584,8 +585,6 @@ function playLotteryTicket(ticketTypeId, user) {
 
     if (actualPayout > 0) {
         user.money += actualPayout;
-        if (!user.stats) user.stats = { happiness: 50 };
-        user.stats.happiness = Math.min(100, (user.stats.happiness || 50) + (actualPayout >= 1000 ? 15 : 5));
     }
 
     return {
@@ -861,6 +860,195 @@ function determineBlackjackOutcome(playerHand, dealerHand) {
     if (playerTotal === dealerTotal) return 'push';
     if (playerTotal > dealerTotal) return 'win';
     return 'lose';
+}
+
+const ROULETTE_RED_NUMBERS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
+
+/**
+ * Simulates a European Roulette wheel spin and evaluates the bet outcome.
+ * @param {Object} user - User state object
+ * @param {string} betType - 'color' | 'parity' | 'range' | 'number'
+ * @param {string|number} betTarget - 'red'/'black', 'even'/'odd', 'low'/'high', or specific number (0-36)
+ * @param {number} betAmount - Amount wagered
+ * @param {number} [injectedNumber=null] - Optional forced roll for unit tests
+ * @returns {Object} { success, winningNumber, winningColor, isWin, multiplier, payout, netProfit, msg }
+ */
+function playRoulette(user, betType, betTarget, betAmount, injectedNumber = null) {
+    const wager = Math.floor(Number(betAmount) || 0);
+    if (wager <= 0) {
+        return { success: false, msg: 'Please enter a valid bet amount.' };
+    }
+    if (user.money < wager) {
+        return { success: false, msg: `Insufficient funds. You need ${Utils.formatMoney(wager)} to place this bet.` };
+    }
+
+    const winningNumber = (injectedNumber !== null && typeof injectedNumber === 'number')
+        ? injectedNumber
+        : Math.floor(Math.random() * 37);
+
+    let winningColor = 'green';
+    if (winningNumber !== 0) {
+        winningColor = ROULETTE_RED_NUMBERS.includes(winningNumber) ? 'red' : 'black';
+    }
+
+    let isWin = false;
+    let multiplier = 0;
+
+    if (betType === 'color') {
+        if (betTarget === winningColor) {
+            isWin = true;
+            multiplier = 1;
+        }
+    } else if (betType === 'parity') {
+        if (winningNumber !== 0) {
+            const isEven = winningNumber % 2 === 0;
+            if ((betTarget === 'even' && isEven) || (betTarget === 'odd' && !isEven)) {
+                isWin = true;
+                multiplier = 1;
+            }
+        }
+    } else if (betType === 'range') {
+        if (winningNumber !== 0) {
+            const isLow = winningNumber >= 1 && winningNumber <= 18;
+            if ((betTarget === 'low' && isLow) || (betTarget === 'high' && !isLow)) {
+                isWin = true;
+                multiplier = 1;
+            }
+        }
+    } else if (betType === 'number') {
+        const targetNum = parseInt(betTarget, 10);
+        if (targetNum === winningNumber) {
+            isWin = true;
+            multiplier = 35;
+        }
+    }
+
+    if (isWin) {
+        const netProfit = wager * multiplier;
+        const totalPayout = wager + netProfit;
+        user.money += netProfit;
+        return {
+            success: true,
+            winningNumber,
+            winningColor,
+            isWin: true,
+            multiplier,
+            payout: totalPayout,
+            netProfit,
+            msg: `Winning number ${winningNumber} (${winningColor.toUpperCase()})! Won ${Utils.formatMoney(totalPayout)}!`
+        };
+    } else {
+        user.money -= wager;
+        return {
+            success: true,
+            winningNumber,
+            winningColor,
+            isWin: false,
+            multiplier: 0,
+            payout: 0,
+            netProfit: -wager,
+            msg: `Landed on ${winningNumber} (${winningColor.toUpperCase()}). Lost ${Utils.formatMoney(wager)}.`
+        };
+    }
+}
+
+const SLOT_SYMBOLS = [
+    { icon: '💎', name: 'Diamond', weight: 6, payout3: 50, payout2: 5 },
+    { icon: '7️⃣', name: 'Seven', weight: 10, payout3: 15, payout2: 0 },
+    { icon: '🔔', name: 'Bell', weight: 16, payout3: 8, payout2: 0 },
+    { icon: '🍒', name: 'Cherry', weight: 22, payout3: 4, payout2: 1.5 },
+    { icon: '🍋', name: 'Lemon', weight: 23, payout3: 2, payout2: 0 },
+    { icon: '🍇', name: 'Grape', weight: 23, payout3: 1.5, payout2: 0 }
+];
+
+function getRandomSlotSymbol() {
+    const totalWeight = SLOT_SYMBOLS.reduce((acc, s) => acc + s.weight, 0);
+    let rand = Math.random() * totalWeight;
+    for (const sym of SLOT_SYMBOLS) {
+        if (rand < sym.weight) return sym;
+        rand -= sym.weight;
+    }
+    return SLOT_SYMBOLS[SLOT_SYMBOLS.length - 1];
+}
+
+/**
+ * Simulates a 3-reel high-roller slot machine spin.
+ * @param {Object} user 
+ * @param {number} betAmount 
+ * @param {Array} [injectedReels=null] - Optional forced reels array e.g. [symObj, symObj, symObj]
+ * @returns {Object} { success, reels, isWin, isJackpot, multiplier, totalPayout, netProfit, msg }
+ */
+function spinSlotMachine(user, betAmount, injectedReels = null) {
+    const wager = Math.floor(Number(betAmount) || 0);
+    if (wager <= 0) {
+        return { success: false, msg: 'Please select a valid bet amount.' };
+    }
+    if (user.money < wager) {
+        return { success: false, msg: `Insufficient funds. You need ${Utils.formatMoney(wager)} to spin.` };
+    }
+
+    const reels = injectedReels || [
+        getRandomSlotSymbol(),
+        getRandomSlotSymbol(),
+        getRandomSlotSymbol()
+    ];
+
+    const [r1, r2, r3] = reels;
+    let multiplier = 0;
+    let isJackpot = false;
+
+    if (r1.name === r2.name && r2.name === r3.name) {
+        if (r1.name === 'Diamond') {
+            multiplier = 50;
+            isJackpot = true;
+        } else {
+            multiplier = r1.payout3;
+        }
+    } else {
+        const diamondCount = reels.filter(r => r.name === 'Diamond').length;
+        const cherryCount = reels.filter(r => r.name === 'Cherry').length;
+
+        if (diamondCount === 2) {
+            multiplier = 5;
+        } else if (cherryCount === 2) {
+            multiplier = 1.5;
+        } else if (diamondCount === 1) {
+            multiplier = 1;
+        } else {
+            multiplier = 0;
+        }
+    }
+
+    const isWin = multiplier > 0;
+    if (isWin) {
+        const totalPayout = Math.floor(wager * multiplier);
+        const netProfit = totalPayout - wager;
+        user.money += netProfit;
+        return {
+            success: true,
+            reels,
+            isWin: true,
+            isJackpot,
+            multiplier,
+            totalPayout,
+            netProfit,
+            msg: isJackpot 
+                ? `🎰 MEGA JACKPOT! 3 Diamonds! Won ${Utils.formatMoney(totalPayout)}! (50x)`
+                : `Matched ${reels.map(r => r.icon).join(' ')}! Won ${Utils.formatMoney(totalPayout)}!`
+        };
+    } else {
+        user.money -= wager;
+        return {
+            success: true,
+            reels,
+            isWin: false,
+            isJackpot: false,
+            multiplier: 0,
+            totalPayout: 0,
+            netProfit: -wager,
+            msg: `Spun ${reels.map(r => r.icon).join(' ')}. No match! Lost ${Utils.formatMoney(wager)}.`
+        };
+    }
 }
 
 /**
@@ -3490,7 +3678,11 @@ export const GameLogic = {
     moveCountry,
     getPartner,
     calculatePartnerRelocateAcceptance,
-    breakUpWithPartner
+    breakUpWithPartner,
+    playRoulette,
+    spinSlotMachine,
+    ROULETTE_RED_NUMBERS,
+    SLOT_SYMBOLS
 };
 
 

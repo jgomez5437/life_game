@@ -14,3 +14,9 @@ test('formatMoney formats custom international cities dynamically', () => {
     expect(Utils.getCountryCode('Tokyo')).toBe('jp');
     expect(Utils.getCountryCode('Sydney')).toBe('au');
 });
+
+test('formatMoney uses Western numerals for non-Latin locales like Egypt and UAE', () => {
+    expect(Utils.formatMoney(85000, 'Cairo')).toBe('E£85,000');
+    expect(Utils.formatMoney(85000, 'Dubai')).toBe('AED 85,000');
+    expect(Utils.formatMoney(85000, 'Berlin')).toBe('€85,000');
+});

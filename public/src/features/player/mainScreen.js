@@ -249,7 +249,7 @@ export const continueAsChild = (childIndex, inheritedMoney) => {
         age: newUserState.age,
         events: [
             { msg: `You took over the life of ${newUserState.username} following your parent's death.`, color: "text-blue-400 font-bold" },
-            { msg: `Inherited $${inheritedMoney.toLocaleString()} from the estate.`, color: "text-green-400" }
+            { msg: `Inherited ${Utils.formatMoney(inheritedMoney)} from the estate.`, color: "text-green-400" }
         ]
     }];
 
@@ -516,13 +516,6 @@ function handleMarket(user) {
 
     user.lotteryTicketsBoughtThisYear = 0;
     GameLogic.rollOverMegaJackpot(user);
-
-    // Primary vehicle status / happiness boost
-    const primaryVehicle = (user.assets || []).find(a => a.category === 'vehicle' && a.isPrimary);
-    if (primaryVehicle && primaryVehicle.statusBonus > 0 && primaryVehicle.condition >= 30) {
-        const bonus = Math.min(6, primaryVehicle.statusBonus);
-        user.stats.happiness = Math.min(100, (user.stats.happiness || 50) + bonus);
-    }
     
     if (marketForce > 0.06 && user.age > 15) {
         addLog("Inflation hits the auto market! Car prices are up.", "bad");
@@ -549,7 +542,7 @@ function handleLifeEvents(user) {
         if (roll < 0.2) {
             const gift = Math.floor(Math.random() * 20) + 5;
             user.money += gift;
-            addLog(`Found $${gift} on the sidewalk!`, 'good');
+            addLog(`Found ${Utils.formatMoney(gift)} on the sidewalk!`, 'good');
         } else if (roll > 0.9) {
             addLog("Got the flu. Stayed home for a week.", 'bad');
         }

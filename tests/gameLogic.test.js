@@ -1342,4 +1342,55 @@ describe('Relocation to New Country Pure Functions', () => {
             expect(romanceSuggestion.title).toBe('Plan Your Wedding');
         });
     });
+
+    describe('Casino Games: playRoulette and spinSlotMachine', () => {
+        test('playRoulette correctly handles Red/Black even money bets (1:1 payout)', () => {
+            const user = { money: 1000 };
+            // Land on 1 (Red)
+            const winRes = GameLogic.playRoulette(user, 'color', 'red', 100, 1);
+            expect(winRes.isWin).toBe(true);
+            expect(winRes.netProfit).toBe(100);
+            expect(user.money).toBe(1100);
+
+            // Land on 2 (Black) when betting Red
+            const lossRes = GameLogic.playRoulette(user, 'color', 'red', 100, 2);
+            expect(lossRes.isWin).toBe(false);
+            expect(lossRes.netProfit).toBe(-100);
+            expect(user.money).toBe(1000);
+        });
+
+        test('playRoulette correctly handles 35:1 straight-up single number bets', () => {
+            const user = { money: 1000 };
+            // Bet on 17, land on 17
+            const res = GameLogic.playRoulette(user, 'number', 17, 100, 17);
+            expect(res.isWin).toBe(true);
+            expect(res.multiplier).toBe(35);
+            expect(res.netProfit).toBe(3500);
+            expect(user.money).toBe(4500);
+        });
+
+        test('spinSlotMachine correctly calculates payouts for 3-of-a-kind and 50x Mega Jackpot', () => {
+            const user = { money: 1000 };
+            const diamondSym = GameLogic.SLOT_SYMBOLS.find(s => s.name === 'Diamond');
+            const jackpotRes = GameLogic.spinSlotMachine(user, 100, [diamondSym, diamondSym, diamondSym]);
+
+            expect(jackpotRes.isWin).toBe(true);
+            expect(jackpotRes.isJackpot).toBe(true);
+            expect(jackpotRes.multiplier).toBe(50);
+            expect(jackpotRes.totalPayout).toBe(5000);
+            expect(user.money).toBe(5900); // 1000 + 4900 net
+        });
+
+        test('spinSlotMachine returns loss for non-matching common symbols', () => {
+            const user = { money: 1000 };
+            const lemonSym = GameLogic.SLOT_SYMBOLS.find(s => s.name === 'Lemon');
+            const grapeSym = GameLogic.SLOT_SYMBOLS.find(s => s.name === 'Grape');
+            const bellSym = GameLogic.SLOT_SYMBOLS.find(s => s.name === 'Bell');
+
+            const lossRes = GameLogic.spinSlotMachine(user, 100, [lemonSym, grapeSym, bellSym]);
+            expect(lossRes.isWin).toBe(false);
+            expect(lossRes.totalPayout).toBe(0);
+            expect(user.money).toBe(900);
+        });
+    });
 });
