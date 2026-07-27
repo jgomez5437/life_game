@@ -35,12 +35,12 @@ function renderUniversityModalContent(selectedMajor = null) {
                 </select>
             </div>
         </div>
-        <div class="text-sm text-slate-300 mb-2">Tuition: <span class="text-white font-bold">$40,000</span></div>
+        <div class="text-sm text-slate-300 mb-2">Tuition: <span class="text-white font-bold">${Utils.formatMoney(40000)}</span></div>
     `;
     
     // Render Actions
     const cashDisabled = user.money < 40000;
-    const cashBtn = `<button data-action="attemptEnrollment" data-args="&apos;cash&apos;" ${cashDisabled ? 'disabled' : ''} class="w-full bg-green-600 hover:bg-green-500 disabled:bg-slate-700 disabled:opacity-50 text-white font-bold py-2 rounded mb-2">Pay Cash ($40k)</button>`;
+    const cashBtn = `<button data-action="attemptEnrollment" data-args="&apos;cash&apos;" ${cashDisabled ? 'disabled' : ''} class="w-full bg-green-600 hover:bg-green-500 disabled:bg-slate-700 disabled:opacity-50 text-white font-bold py-2 rounded mb-2">Pay Cash (${Utils.formatMoney(40000)})</button>`;
     
     const loanBtn = `<button data-action="attemptEnrollment" data-args="&apos;loan&apos;" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded mb-2">Student Loans</button>`;
     
@@ -133,7 +133,7 @@ export function renderGradSchoolMarket() {
                     </div>
                     <div>
                         <h3 class="font-bold text-white">${school.name}</h3>
-                        <div class="text-xs text-slate-400">${school.years} Years • Cost: $100,000</div>
+                        <div class="text-xs text-slate-400">${school.years} Years • Cost: ${Utils.formatMoney(100000)}</div>
                     </div>
                 </div>
                 <i class="fas fa-chevron-right text-slate-600"></i>
@@ -168,13 +168,13 @@ function renderGradModalContent(schoolType) {
     const m = get('modal-overlay');
     get('modal-title').innerText = "Enroll in " + schoolType;
     get('modal-content').innerHTML = `
-        <div class="text-sm text-slate-300 mb-4">Total Tuition: <span class="text-white font-bold">$100,000</span></div>
+        <div class="text-sm text-slate-300 mb-4">Total Tuition: <span class="text-white font-bold">${Utils.formatMoney(100000)}</span></div>
         <div class="text-xs text-slate-400 mb-2">Student loan payments will be deferred while enrolled.</div>
     `;
     
     // Render Actions
     const cashDisabled = user.money < 100000;
-    const cashBtn = `<button data-action="attemptGradEnrollment" data-args="&apos;${schoolType}&apos;, &apos;cash&apos;" ${cashDisabled ? 'disabled' : ''} class="w-full bg-green-600 hover:bg-green-500 disabled:bg-slate-700 disabled:opacity-50 text-white font-bold py-2 rounded mb-2">Pay Cash ($100k)</button>`;
+    const cashBtn = `<button data-action="attemptGradEnrollment" data-args="&apos;${schoolType}&apos;, &apos;cash&apos;" ${cashDisabled ? 'disabled' : ''} class="w-full bg-green-600 hover:bg-green-500 disabled:bg-slate-700 disabled:opacity-50 text-white font-bold py-2 rounded mb-2">Pay Cash (${Utils.formatMoney(100000)})</button>`;
     
     const loanBtn = `<button data-action="attemptGradEnrollment" data-args="&apos;${schoolType}&apos;, &apos;loan&apos;" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded mb-2">Student Loans</button>`;
     

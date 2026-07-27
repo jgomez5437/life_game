@@ -4,6 +4,33 @@ import { renderLifeDashboard, addLog } from '../player/mainScreen.js';
 import { saveGame } from '../../core/main.js';
 import { UI } from '../../ui/ui.js';
 import { Utils, COUNTRIES_DATA } from '../../ui/utils.js';
+import {
+    renderCasinoHub,
+    openBlackjackBetting,
+    startBlackjackGame,
+    renderBlackjackGame,
+    blackjackHit,
+    blackjackStand,
+    openRouletteModal,
+    confirmRouletteBet,
+    confirmRouletteSingleNumberBet,
+    openSlotsModal,
+    confirmSlotsSpin
+} from './casinoScreen.js';
+
+export {
+    renderCasinoHub,
+    openBlackjackBetting,
+    startBlackjackGame,
+    renderBlackjackGame,
+    blackjackHit,
+    blackjackStand,
+    openRouletteModal,
+    confirmRouletteBet,
+    confirmRouletteSingleNumberBet,
+    openSlotsModal,
+    confirmSlotsSpin
+};
 
 const get = id => document.getElementById(id);
 
@@ -46,7 +73,7 @@ export function renderMoreDashboard() {
                             </div>
                         </div>
                         <div class="text-right">
-                            <div class="text-xs font-bold text-white">${currentDiet.monthlyCost > 0 ? `$${currentDiet.monthlyCost}/mo` : 'Free'}</div>
+                            <div class="text-xs font-bold text-white">${currentDiet.monthlyCost > 0 ? `${Utils.formatMoney(currentDiet.monthlyCost)}/mo` : 'Free'}</div>
                         </div>
                     </div>
                     <p class="text-xs text-slate-400 mb-3">${currentDiet.desc}</p>
@@ -65,7 +92,7 @@ export function renderMoreDashboard() {
                             <div>
                                 <h3 class="font-bold text-white text-sm">Gym Membership</h3>
                                 <div class="text-xs ${user.gymMembership ? 'text-blue-400 font-semibold' : 'text-slate-400'}">
-                                    ${user.gymMembership ? 'Active Member ($50/mo)' : 'Not a member'}
+                                    ${user.gymMembership ? `Active Member (${Utils.formatMoney(50)}/mo)` : 'Not a member'}
                                 </div>
                             </div>
                         </div>
@@ -77,7 +104,7 @@ export function renderMoreDashboard() {
                     ` : `
                     <div class="grid grid-cols-2 gap-2 mt-2">
                         <button data-action="visitGymOneTime" class="bg-slate-700 hover:bg-slate-600 p-2 rounded-lg text-xs text-white font-bold transition">
-                            ${user.gymMembership ? 'Workout Day' : 'Visit Once ($20)'}
+                            ${user.gymMembership ? 'Workout Day' : `Visit Once (${Utils.formatMoney(20)})`}
                         </button>
                         ${user.gymMembership ? `
                             <button data-action="cancelGymMembership" class="bg-red-900/40 hover:bg-red-900/60 border border-red-800/50 p-2 rounded-lg text-xs text-white font-bold transition">
@@ -85,7 +112,7 @@ export function renderMoreDashboard() {
                             </button>
                         ` : `
                             <button data-action="buyGymMembership" class="bg-blue-600 hover:bg-blue-500 p-2 rounded-lg text-xs text-white font-bold transition">
-                                Join ($50/mo)
+                                Join (${Utils.formatMoney(50)}/mo)
                             </button>
                         `}
                     </div>
@@ -104,11 +131,11 @@ export function renderMoreDashboard() {
                                 <div class="text-xs text-slate-400">Restore your health</div>
                             </div>
                         </div>
-                        <span class="text-xs font-bold text-white">$1,000</span>
+                        <span class="text-xs font-bold text-white">${Utils.formatMoney(1000)}</span>
                     </div>
                     <p class="text-xs text-slate-400 mb-3">A full physical catches illnesses early and boosts health (+10 Health).</p>
                     <button data-action="visitDoctor" class="bg-red-600 hover:bg-red-500 w-full py-2 rounded-lg text-sm text-white font-bold transition">
-                        Visit Doctor ($1,000)
+                        Visit Doctor (${Utils.formatMoney(1000)})
                     </button>
                 </div>
 
@@ -138,27 +165,27 @@ export function renderMoreDashboard() {
                     </button>
                 </div>
 
-                <!-- Casino Blackjack -->
-                <div class="bg-slate-800 p-3.5 rounded-xl border border-slate-700">
+                <!-- Royal Palm Casino -->
+                <div class="bg-gradient-to-br from-amber-950/60 via-slate-800 to-purple-950/60 p-3.5 rounded-xl border border-amber-700/60">
                     <div class="flex justify-between items-center mb-2">
                         <div class="flex items-center gap-2.5">
-                            <div class="w-9 h-9 rounded-full bg-purple-900/40 flex items-center justify-center text-purple-400 border border-purple-500/50">
+                            <div class="w-9 h-9 rounded-full bg-amber-900/40 flex items-center justify-center text-amber-300 border border-amber-500/50 shadow">
                                 <i class="fas fa-dice text-sm"></i>
                             </div>
                             <div>
-                                <h3 class="font-bold text-white text-sm">Casino Blackjack</h3>
-                                <div class="text-xs text-slate-400">High-stakes table game</div>
+                                <h3 class="font-bold text-white text-sm">Royal Palm Casino</h3>
+                                <div class="text-xs text-amber-400 font-semibold">3 High-Stakes Games</div>
                             </div>
                         </div>
                     </div>
-                    <p class="text-xs text-slate-400 mb-3">Risk your hard-earned cash at the card table for instant 1:1 payouts.</p>
+                    <p class="text-xs text-slate-300 mb-3">Step onto the high-stakes floor: Blackjack 21, European Roulette, and Mega Jackpot Slots!</p>
                     ${casinoLocked ? `
                         <div class="text-xs font-bold text-red-400 uppercase tracking-wide text-center py-2 border border-dashed border-slate-700 rounded-lg">
-                            <i class="fas fa-lock mr-1"></i>Must be 21 or older
+                            <i class="fas fa-lock mr-1"></i>Must be 18 or older
                         </div>
                     ` : `
-                    <button data-action="openBlackjackBetting" class="bg-purple-600 hover:bg-purple-500 w-full py-2 rounded-lg text-sm text-white font-bold transition">
-                        Play Blackjack
+                    <button data-action="renderCasinoHub" class="bg-gradient-to-r from-amber-600 to-purple-600 hover:from-amber-500 hover:to-purple-500 w-full py-2 rounded-lg text-sm text-white font-bold transition shadow">
+                        Enter Casino Floor
                     </button>
                     `}
                 </div>
@@ -195,9 +222,9 @@ export function renderMoreDashboard() {
                             </div>
                         </div>
                     </div>
-                    <p class="text-xs text-slate-400 mb-3">Move to a new country and start fresh in a new city ($2,000).</p>
+                    <p class="text-xs text-slate-400 mb-3">Move to a new country and start fresh in a new city (${Utils.formatMoney(2000)}).</p>
                     <button data-action="openMoveCountryModal" class="bg-emerald-600 hover:bg-emerald-500 w-full py-2 rounded-lg text-sm text-white font-bold transition">
-                        Move to New Country ($2,000)
+                        Move to New Country (${Utils.formatMoney(2000)})
                     </button>
                 </div>
 
@@ -299,7 +326,7 @@ export function openDietSelectionModal() {
                                 </div>
                                 <div class="text-right ml-3 shrink-0">
                                     <div class="font-bold text-sm ${plan.monthlyCost > 0 ? 'text-emerald-400' : 'text-slate-400'}">
-                                        ${plan.monthlyCost > 0 ? `$${plan.monthlyCost}/mo` : 'Free'}
+                                        ${plan.monthlyCost > 0 ? `${Utils.formatMoney(plan.monthlyCost)}/mo` : 'Free'}
                                     </div>
                                 </div>
                             </div>
@@ -308,7 +335,7 @@ export function openDietSelectionModal() {
                                     <button disabled class="px-3 py-1 bg-slate-700 text-slate-400 text-xs font-bold rounded cursor-not-allowed">Current Plan</button>
                                 ` : `
                                     <button data-action="selectDiet" data-args="${plan.id}" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded transition">
-                                        Select (${plan.monthlyCost > 0 ? `Pay $${plan.monthlyCost}` : 'Switch Free'})
+                                        Select (${plan.monthlyCost > 0 ? `Pay ${Utils.formatMoney(plan.monthlyCost)}` : 'Switch Free'})
                                     </button>
                                 `}
                             </div>
@@ -330,7 +357,7 @@ export function selectDiet(dietId) {
     const plan = GameLogic.getDietPlan(dietId);
 
     if (user.money < plan.monthlyCost) {
-        UI.showModal("Insufficient Funds", `You need $${plan.monthlyCost} in cash to pay the upfront month fee for ${plan.name}.`);
+        UI.showModal("Insufficient Funds", `You need ${Utils.formatMoney(plan.monthlyCost)} in cash to pay the upfront month fee for ${plan.name}.`);
         return;
     }
 
@@ -338,12 +365,12 @@ export function selectDiet(dietId) {
     user.diet = dietId;
     user.hasBetterDiet = (dietId !== 'junk');
 
-    addLog(`Switched diet plan to ${plan.name}. Paid $${plan.monthlyCost} upfront.`, 'good');
+    addLog(`Switched diet plan to ${plan.name}. Paid ${Utils.formatMoney(plan.monthlyCost)} upfront.`, 'good');
     UI.updateHeader(user);
     UI.hideModal();
     renderMoreDashboard();
 
-    UI.showModal("Diet Plan Active", `You are now on the <strong>${plan.name}</strong>! Upfront 1-month fee of $${plan.monthlyCost} deducted.`);
+    UI.showModal("Diet Plan Active", `You are now on the <strong>${plan.name}</strong>! Upfront 1-month fee of ${Utils.formatMoney(plan.monthlyCost)} deducted.`);
 }
 
 export function openLotteryModal() {
@@ -373,9 +400,9 @@ export function openLotteryModal() {
                                         ${t.name}
                                     </div>
                                     <div class="text-xs text-slate-400">
-                                        Cost: <strong class="text-emerald-400">$${t.price}</strong>
+                                        Cost: <strong class="text-emerald-400">${Utils.formatMoney(t.price)}</strong>
                                     </div>
-                                    ${isMega ? `<div class="text-[11px] font-extrabold text-amber-400 mt-0.5"><i class="fas fa-trophy text-amber-400 mr-1"></i>EST. JACKPOT: $${megaJackpot.toLocaleString()}</div>` : ''}
+                                    ${isMega ? `<div class="text-[11px] font-extrabold text-amber-400 mt-0.5"><i class="fas fa-trophy text-amber-400 mr-1"></i>EST. JACKPOT: ${Utils.formatMoney(megaJackpot)}</div>` : ''}
                                 </div>
                             </div>
                             <button data-action="buyLotteryTicket" data-args="${t.id}" ${ticketsLeft <= 0 ? 'disabled' : ''} class="${ticketsLeft <= 0 ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-amber-600 hover:bg-amber-500 text-white'} font-bold px-3 py-1.5 text-xs rounded-lg transition shrink-0 ml-2">
@@ -406,7 +433,7 @@ export function buyLotteryTicket(ticketTypeId) {
     UI.updateHeader(user);
 
     if (result.payout > 0) {
-        addLog(`Won $${result.payout.toLocaleString()} on a ${result.ticketName}!`, 'good');
+        addLog(`Won ${Utils.formatMoney(result.payout)} on a ${result.ticketName}!`, 'good');
     } else {
         addLog(`Bought a ${result.ticketName} but didn't win anything.`, 'neutral');
     }
@@ -415,7 +442,7 @@ export function buyLotteryTicket(ticketTypeId) {
         <div class="text-center py-3">
             <div class="text-4xl text-amber-400 mb-2">🎉</div>
             <h3 class="text-xl font-bold text-emerald-400 mb-1">${result.title}</h3>
-            <p class="text-sm text-slate-300 mb-4">Congratulations! <strong>+$${result.payout.toLocaleString()}</strong> has been added to your bank account.</p>
+            <p class="text-sm text-slate-300 mb-4">Congratulations! <strong>+${Utils.formatMoney(result.payout)}</strong> has been added to your bank account.</p>
             <div class="text-xs text-slate-400 mb-4">Tickets remaining this year: ${result.ticketsRemaining}/10</div>
             <div class="flex gap-2">
                 ${result.ticketsRemaining > 0 ? `<button data-action="openLotteryModal" class="flex-1 bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 rounded-lg text-xs transition">Play Again</button>` : ''}
@@ -482,227 +509,20 @@ export function visitDoctor() {
     }
 }
 
-let activeBlackjackState = null;
-
-export function openBlackjackBetting() {
-    const user = state.gameState.user;
-    if (user.age < 21) {
-        UI.showModal("Too Young", "You must be at least 21 to enter the casino.");
-        return;
-    }
-    if (user.money < 25) {
-        UI.showModal("Not enough money", "You need at least $25 to play blackjack.");
-        return;
-    }
-    
-    const maxBet = Math.floor(Math.min(user.money, 500000) / 25) * 25;
-    const htmlContent = `
-        <div class="flex flex-col gap-4">
-            <div class="flex justify-between items-center">
-                <p>Select your bet amount:</p>
-                <span id="betValueDisplay" class="font-bold text-2xl text-green-400">$25</span>
-            </div>
-            
-            <input type="range" id="blackjackBetSlider" min="25" max="${maxBet}" step="25" value="25" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer">
-            <div class="flex justify-between text-xs text-slate-400 px-1">
-                <span>$25</span>
-                <span>$${Utils.formatMoney(maxBet).replace('$', '')}</span>
-            </div>
-            
-            <div class="flex gap-2 mt-4">
-                <button data-action="startBlackjackGame" class="flex-1 bg-green-600 hover:bg-green-500 py-3 rounded text-white font-bold transition">Bet</button>
-                <button data-action="hideModal" class="flex-1 bg-slate-700 hover:bg-slate-600 py-3 rounded text-white font-bold transition">Cancel</button>
-            </div>
-        </div>
-    `;
-    
-    UI.showCustomModal("Place Your Bet", htmlContent);
-    
-    setTimeout(() => {
-        const slider = document.getElementById('blackjackBetSlider');
-        const display = document.getElementById('betValueDisplay');
-        if(slider && display) {
-            slider.addEventListener('input', (e) => {
-                display.innerText = '$' + Utils.formatMoney(Number(e.target.value)).replace('$', '');
-            });
-        }
-    }, 100);
-}
-
-export function startBlackjackGame() {
-    const slider = document.getElementById('blackjackBetSlider');
-    if (!slider) return;
-    
-    const betAmount = Number(slider.value);
-    const user = state.gameState.user;
-    
-    if (user.money < betAmount) {
-        UI.showModal("Error", "You don't have enough money.");
-        return;
-    }
-    
-    user.money -= betAmount;
-    UI.updateHeader(user);
-    
-    const deck = GameLogic.getDeck();
-    const playerHand = [deck.pop(), deck.pop()];
-    const dealerHand = [deck.pop(), deck.pop()];
-    
-    activeBlackjackState = {
-        deck,
-        playerHand,
-        dealerHand,
-        betAmount,
-        status: 'playing' // 'playing', 'player_turn', 'dealer_turn', 'finished'
-    };
-    
-    // Check for initial blackjack
-    const playerTotal = GameLogic.calculateBlackjackHand(playerHand);
-    if (playerTotal === 21) {
-        finishBlackjackGame(true); // Player auto-stands/wins on natural blackjack if dealer doesn't have it, but we can just resolve it
-    } else {
-        renderBlackjackGame();
-    }
-}
-
-function renderHand(hand, hideSecondCard = false) {
-    let html = '<div class="flex gap-2">';
-    hand.forEach((card, index) => {
-        if (hideSecondCard && index === 1) {
-            html += `<div class="w-12 h-16 bg-slate-700 border-2 border-slate-600 rounded flex items-center justify-center font-bold text-slate-500">?</div>`;
-        } else {
-            const isRed = card.suit === 'hearts' || card.suit === 'diamonds';
-            const suitSymbol = { hearts: '♥', diamonds: '♦', clubs: '♣', spades: '♠' }[card.suit];
-            html += `<div class="w-12 h-16 bg-white rounded flex flex-col items-center justify-center font-bold ${isRed ? 'text-red-600' : 'text-black'}">
-                <div>${card.value}</div>
-                <div class="text-xl leading-none">${suitSymbol}</div>
-            </div>`;
-        }
-    });
-    html += '</div>';
-    return html;
-}
-
-export function renderBlackjackGame() {
-    if (!activeBlackjackState) return;
-    
-    const { playerHand, dealerHand, betAmount, status } = activeBlackjackState;
-    const hideDealerCard = status === 'playing';
-    
-    const dealerTotal = hideDealerCard ? GameLogic.calculateBlackjackHand([dealerHand[0]]) : GameLogic.calculateBlackjackHand(dealerHand);
-    const playerTotal = GameLogic.calculateBlackjackHand(playerHand);
-    
-    let actionsHtml = '';
-    
-    if (status === 'playing') {
-        actionsHtml = `
-            <div class="flex gap-2 mt-4">
-                <button data-action="blackjackHit" class="flex-1 bg-blue-600 hover:bg-blue-500 py-3 rounded text-white font-bold transition">Hit</button>
-                <button data-action="blackjackStand" class="flex-1 bg-yellow-600 hover:bg-yellow-500 py-3 rounded text-white font-bold transition">Stand</button>
-            </div>
-        `;
-    } else {
-        let resultText = '';
-        let resultColor = '';
-        const outcome = GameLogic.determineBlackjackOutcome(playerHand, dealerHand);
-        if (outcome === 'win') {
-            resultText = `You won $${Utils.formatMoney(betAmount * 2).replace('$', '')}!`;
-            resultColor = 'text-green-400';
-        } else if (outcome === 'push') {
-            resultText = "Push! Bet returned.";
-            resultColor = 'text-yellow-400';
-        } else {
-            resultText = "Dealer wins. You lost.";
-            resultColor = 'text-red-400';
-        }
-        actionsHtml = `
-            <div class="mt-4 text-center font-bold text-lg ${resultColor}">${resultText}</div>
-            <div class="flex gap-2 mt-4">
-                <button data-action="openBlackjackBetting" class="flex-1 bg-purple-600 hover:bg-purple-500 py-3 rounded text-white font-bold transition">Play Again</button>
-                <button data-action="hideModal" class="flex-1 bg-slate-700 hover:bg-slate-600 py-3 rounded text-white font-bold transition">Close</button>
-            </div>
-        `;
-    }
-    
-    const htmlContent = `
-        <div class="flex flex-col gap-6">
-            <div>
-                <h4 class="font-bold mb-2">Dealer's Hand (${hideDealerCard ? dealerTotal + ' + ?' : dealerTotal})</h4>
-                ${renderHand(dealerHand, hideDealerCard)}
-            </div>
-            <div>
-                <h4 class="font-bold mb-2">Your Hand (${playerTotal})</h4>
-                ${renderHand(playerHand, false)}
-                <div class="text-sm text-slate-400 mt-2">Bet: $${Utils.formatMoney(betAmount).replace('$', '')}</div>
-            </div>
-            ${actionsHtml}
-        </div>
-    `;
-    
-    UI.showCustomModal("Blackjack", htmlContent);
-}
-
-export function blackjackHit() {
-    if (!activeBlackjackState) return;
-    const { playerHand, deck } = activeBlackjackState;
-    playerHand.push(deck.pop());
-    
-    if (GameLogic.calculateBlackjackHand(playerHand) > 21) {
-        finishBlackjackGame(false);
-    } else {
-        renderBlackjackGame();
-    }
-}
-
-export function blackjackStand() {
-    finishBlackjackGame(false);
-}
-
-function finishBlackjackGame(playerNaturalBlackjack) {
-    if (!activeBlackjackState) return;
-    
-    activeBlackjackState.status = 'finished';
-    const { playerHand, dealerHand, deck, betAmount } = activeBlackjackState;
-    
-    const playerTotal = GameLogic.calculateBlackjackHand(playerHand);
-    
-    if (!playerNaturalBlackjack && playerTotal <= 21) {
-        // Dealer hits on soft 17 is standard, but simple logic is hit < 17
-        while (GameLogic.calculateBlackjackHand(dealerHand) < 17) {
-            dealerHand.push(deck.pop());
-        }
-    }
-    
-    const outcome = GameLogic.determineBlackjackOutcome(playerHand, dealerHand);
-    const user = state.gameState.user;
-    
-    if (outcome === 'win') {
-        user.money += betAmount * 2;
-        addLog(`Won $${Utils.formatMoney(betAmount).replace('$', '')} at Blackjack!`, 'good');
-    } else if (outcome === 'push') {
-        user.money += betAmount;
-        addLog(`Pushed $${Utils.formatMoney(betAmount).replace('$', '')} at Blackjack.`, 'neutral');
-    } else {
-        addLog(`Lost $${Utils.formatMoney(betAmount).replace('$', '')} at Blackjack.`, 'bad');
-    }
-    
-    UI.updateHeader(user);
-    renderBlackjackGame();
-}
 
 export function openTravelModal() {
     const htmlContent = `
         <div class="flex flex-col gap-3">
             <button data-action="bookTrip" data-args="1" class="bg-slate-700 hover:bg-slate-600 p-4 rounded-xl text-left border border-slate-600 transition">
-                <div class="font-bold text-white text-lg">Local Getaway ($500)</div>
+                <div class="font-bold text-white text-lg">Local Getaway (${Utils.formatMoney(500)})</div>
                 <div class="text-sm text-slate-400">A short break to refresh your mind. (+5 Health)</div>
             </button>
             <button data-action="bookTrip" data-args="2" class="bg-slate-700 hover:bg-slate-600 p-4 rounded-xl text-left border border-slate-600 transition">
-                <div class="font-bold text-white text-lg">Cross-Country Trip ($2,000)</div>
+                <div class="font-bold text-white text-lg">Cross-Country Trip (${Utils.formatMoney(2000)})</div>
                 <div class="text-sm text-slate-400">Explore new horizons and take a breather. (+10 Health)</div>
             </button>
             <button data-action="bookTrip" data-args="3" class="bg-slate-700 hover:bg-slate-600 p-4 rounded-xl text-left border border-slate-600 transition">
-                <div class="font-bold text-white text-lg border-l-4 border-yellow-400 pl-2">Luxury International Tour ($10,000)</div>
+                <div class="font-bold text-white text-lg border-l-4 border-yellow-400 pl-2">Luxury International Tour (${Utils.formatMoney(10000)})</div>
                 <div class="text-sm text-slate-400 pl-3">A once-in-a-lifetime journey across the globe. (+15 Health)</div>
             </button>
             <button data-action="hideModal" class="mt-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 p-3 rounded-xl text-center text-white font-bold transition">
@@ -768,7 +588,7 @@ export function openMoveCountryModal() {
         return;
     }
     if (user.money < GameLogic.RELOCATION_COST) {
-        UI.showModal("Insufficient Funds", `You need at least $${GameLogic.RELOCATION_COST.toLocaleString()} to move to a new country.`);
+        UI.showModal("Insufficient Funds", `You need at least ${Utils.formatMoney(GameLogic.RELOCATION_COST)} to move to a new country.`);
         return;
     }
 
@@ -791,7 +611,7 @@ export function openMoveCountryModal() {
 
     const html = `
         <div class="space-y-4">
-            <p class="text-xs text-slate-300">Moving to a new country costs <strong>$${GameLogic.RELOCATION_COST.toLocaleString()}</strong>. Your local currency, headers, and living cost calculations will update accordingly.</p>
+            <p class="text-xs text-slate-300">Moving to a new country costs <strong>${Utils.formatMoney(GameLogic.RELOCATION_COST)}</strong>. Your local currency, headers, and living cost calculations will update accordingly.</p>
             ${jobWarningHtml}
             <div class="space-y-3">
                 <div>
@@ -815,7 +635,7 @@ export function openMoveCountryModal() {
 
             <div class="flex gap-2 pt-2 border-t border-slate-700">
                 <button data-action="confirmMoveCountry" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-lg text-xs transition">
-                    Pay $${GameLogic.RELOCATION_COST.toLocaleString()} & Relocate
+                    Pay ${Utils.formatMoney(GameLogic.RELOCATION_COST)} & Relocate
                 </button>
                 <button data-action="hideModal" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 rounded-lg text-xs transition">
                     Cancel
@@ -915,7 +735,7 @@ export function askPartnerToMove(targetCountry, targetCity) {
                 <p class="text-xs text-slate-300">Would you like to end your relationship and move alone, or cancel and stay?</p>
                 <div class="space-y-2 pt-2 border-t border-slate-700">
                     <button data-action="confirmMoveAlone" data-args="&apos;${targetCountry}&apos;, &apos;${targetCity}&apos;" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 rounded-lg text-xs transition">
-                        Break Up & Move Alone ($2,000)
+                        Break Up & Move Alone (${Utils.formatMoney(GameLogic.RELOCATION_COST)})
                     </button>
                     <button data-action="hideModal" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 rounded-lg text-xs transition">
                         Cancel Relocation & Stay
@@ -970,7 +790,7 @@ function executeRelocation(user, targetCountry, targetCity, partnerMovedWith, pa
 
     UI.showModal("Welcome to Your New Home!", `
         <div class="text-left space-y-2">
-            <p class="text-sm text-slate-200">You have successfully relocated to <strong>${targetCity}, ${targetCountry}</strong>. $${result.cost.toLocaleString()} was deducted for travel expenses.</p>
+            <p class="text-sm text-slate-200">You have successfully relocated to <strong>${targetCity}, ${targetCountry}</strong>. ${Utils.formatMoney(result.cost)} was deducted for travel expenses.</p>
             ${partnerNoticeHtml}
             ${jobNoticeHtml}
         </div>

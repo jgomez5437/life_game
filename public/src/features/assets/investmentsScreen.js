@@ -8,6 +8,52 @@ const get = id => document.getElementById(id);
 let activeTab = 'stocks'; // 'stocks' | 'savings' | 'blogs'
 let stockFilter = 'all'; // 'all' | 'owned'
 
+export function renderStockSparkline(history, width = 120, height = 36, showDots = false) {
+    if (!history || history.length === 0) return '';
+    const points = history.length === 1 ? [history[0], history[0]] : history;
+    const minP = Math.min(...points);
+    const maxP = Math.max(...points);
+    const range = (maxP - minP) || (minP * 0.05) || 1;
+
+    const isUp = points[points.length - 1] >= points[0];
+    const strokeColor = isUp ? '#10b981' : '#f43f5e';
+    const gradId = `spark-${Math.random().toString(36).substr(2, 6)}`;
+
+    const padX = 4;
+    const padY = 4;
+    const effW = width - (padX * 2);
+    const effH = height - (padY * 2);
+
+    const coords = points.map((p, i) => {
+        const x = padX + (i / (points.length - 1)) * effW;
+        const y = (height - padY) - ((p - minP) / range) * effH;
+        return { x: x.toFixed(1), y: y.toFixed(1), price: p };
+    });
+
+    const pathD = coords.map((c, i) => `${i === 0 ? 'M' : 'L'} ${c.x} ${c.y}`).join(' ');
+    const areaD = `${pathD} L ${coords[coords.length - 1].x} ${height} L ${coords[0].x} ${height} Z`;
+
+    const dots = showDots ? coords.map(c => `
+        <circle cx="${c.x}" cy="${c.y}" r="3" fill="${strokeColor}" class="transition-all hover:r-4">
+            <title>${Utils.formatMoney(c.price)}</title>
+        </circle>
+    `).join('') : '';
+
+    return `
+        <svg viewBox="0 0 ${width} ${height}" class="w-full h-full overflow-visible">
+            <defs>
+                <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="${strokeColor}" stop-opacity="0.25" />
+                    <stop offset="100%" stop-color="${strokeColor}" stop-opacity="0.0" />
+                </linearGradient>
+            </defs>
+            <path d="${areaD}" fill="url(#${gradId})" />
+            <path d="${pathD}" fill="none" stroke="${strokeColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+            ${dots}
+        </svg>
+    `;
+}
+
 export function renderInvestmentsScreen(tabName, filterName) {
     const user = state.gameState.user;
     if (tabName && typeof tabName === 'string') {
@@ -207,12 +253,16 @@ function renderStocksTab(user, ownedCompaniesCount, totalStockValue, totalStockC
                         </div>
                     </div>
 
-                    <div class="text-right shrink-0 px-1">
+                    <div class="text-right shrink-0 px-1 min-w-[75px]">
                         <div class="text-white font-extrabold text-xs">${Utils.formatMoney(stock.price)}</div>
                         <div class="text-[10px] font-bold ${isUp ? 'text-emerald-400' : 'text-red-400'} flex items-center justify-end gap-0.5">
                             <i class="fas ${isUp ? 'fa-arrow-trend-up' : 'fa-arrow-trend-down'} text-[9px]"></i>
                             ${isUp ? '+' : ''}${changePct}%
                         </div>
+                    </div>
+
+                    <div class="w-16 h-8 hidden sm:block shrink-0 px-1">
+                        ${renderStockSparkline(stock.priceHistory || [stock.price], 64, 28, false)}
                     </div>
 
                     <div class="flex items-center gap-1 shrink-0">
@@ -340,9 +390,15 @@ export function openStockDetailsModal(symbol) {
     const stock = (user.investments.stockMarket || []).find(s => s.symbol === symbol);
     if (!stock) return;
 
-    const history = stock.priceHistory || [stock.price];
+    const history = stock.priceHistory && stock.priceHistory.length > 0 ? stock.priceHistory : [stock.price];
     const minPrice = Math.min(...history);
     const maxPrice = Math.max(...history);
+    const range = (maxPrice - minPrice) || (minPrice * 0.05) || 1;
+    const firstP = history[0];
+    const lastP = history[history.length - 1];
+    const overallChangePct = firstP > 0 ? (((lastP - firstP) / firstP) * 100).toFixed(1) : '0.0';
+    const isOverallUp = lastP >= firstP;
+
     const holding = (user.investments.stocks || {})[symbol] || { shares: 0, totalCost: 0 };
 
     const modalHTML = `
@@ -351,30 +407,46 @@ export function openStockDetailsModal(symbol) {
                 <div class="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center border border-slate-700 text-xl shrink-0">
                     <i class="fas ${stock.icon} ${stock.color}"></i>
                 </div>
-                <div>
-                    <h3 class="font-bold text-white text-lg">${stock.name} (${stock.symbol})</h3>
+                <div class="flex-1">
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-bold text-white text-lg">${stock.name} (${stock.symbol})</h3>
+                        <span class="text-xs font-extrabold px-2.5 py-0.5 rounded-full ${isOverallUp ? 'bg-emerald-900/60 text-emerald-300 border border-emerald-700' : 'bg-red-900/60 text-red-300 border border-red-700'}">
+                            ${isOverallUp ? '+' : ''}${overallChangePct}%
+                        </span>
+                    </div>
                     <div class="text-xs text-slate-400">${stock.sector} • ${stock.dividendYield > 0 ? (stock.dividendYield * 100).toFixed(1) + '% Dividend' : 'No Dividend'}</div>
                 </div>
             </div>
 
             <p class="text-slate-300 text-xs leading-relaxed bg-slate-900 p-3 rounded-lg border border-slate-700">${stock.desc}</p>
 
-            <div class="bg-slate-900 p-4 rounded-xl border border-slate-700 space-y-2">
-                <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Recent Price History Trend</div>
-                <div class="flex items-end justify-between gap-1 h-20 pt-2 border-b border-slate-800 pb-1">
+            <div class="bg-slate-900 p-4 rounded-xl border border-slate-700 space-y-3">
+                <div class="flex justify-between items-center text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    <span>Price History Trend</span>
+                    <span class="text-white font-extrabold text-sm">${Utils.formatMoney(stock.price)}</span>
+                </div>
+
+                <div class="w-full h-20 pt-1">
+                    ${renderStockSparkline(history, 300, 70, true)}
+                </div>
+
+                <div class="flex items-end justify-between gap-1.5 h-20 pt-2 border-t border-slate-800">
                     ${history.map(p => {
-                        const heightPct = Math.max(15, Math.min(100, ((p - minPrice * 0.8) / (maxPrice * 1.1 - minPrice * 0.8)) * 100));
+                        const pct = Math.max(15, Math.min(100, Math.round(((p - minPrice) / range) * 75 + 25)));
                         return `
-                            <div class="flex-1 flex flex-col items-center gap-1 group">
-                                <div class="w-full bg-purple-500/60 group-hover:bg-purple-400 rounded-t transition-all" style="height: ${heightPct}%"></div>
-                                <span class="text-[9px] text-slate-500 font-mono">${Utils.formatMoney(p)}</span>
+                            <div class="flex-1 h-full flex flex-col justify-end items-center gap-1 group">
+                                <div class="w-full h-12 flex items-end justify-center">
+                                    <div class="w-full ${isOverallUp ? 'bg-emerald-500/70 group-hover:bg-emerald-400' : 'bg-purple-500/70 group-hover:bg-purple-400'} rounded-t transition-all" style="height: ${pct}%"></div>
+                                </div>
+                                <span class="text-[9px] text-slate-400 font-mono">${Utils.formatMoney(p)}</span>
                             </div>
                         `;
                     }).join('')}
                 </div>
-                <div class="flex justify-between text-[11px] text-slate-400 pt-1">
-                    <span>Low: <strong class="text-red-400">${Utils.formatMoney(minPrice)}</strong></span>
-                    <span>High: <strong class="text-emerald-400">${Utils.formatMoney(maxPrice)}</strong></span>
+
+                <div class="flex justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-800/60">
+                    <span>Period Low: <strong class="text-red-400">${Utils.formatMoney(minPrice)}</strong></span>
+                    <span>Period High: <strong class="text-emerald-400">${Utils.formatMoney(maxPrice)}</strong></span>
                 </div>
             </div>
 
@@ -530,14 +602,14 @@ export function openDepositSavingsModal() {
     const modalHTML = `
         <div class="space-y-4 text-left">
             <div>
-                <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Deposit Amount ($)</label>
+                <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Deposit Amount</label>
                 <input type="number" id="inp-deposit-amt" value="1000" min="100" max="${user.money}" class="w-full bg-slate-900 border border-slate-600 rounded-xl p-3 text-white text-center font-bold text-lg outline-none focus:border-emerald-500">
             </div>
 
             <div class="grid grid-cols-4 gap-1.5">
-                <button onclick="document.getElementById('inp-deposit-amt').value = 500" class="bg-slate-800 hover:bg-slate-750 text-slate-300 text-xs py-1.5 rounded-lg font-bold border border-slate-700">$500</button>
-                <button onclick="document.getElementById('inp-deposit-amt').value = 2500" class="bg-slate-800 hover:bg-slate-750 text-slate-300 text-xs py-1.5 rounded-lg font-bold border border-slate-700">$2.5k</button>
-                <button onclick="document.getElementById('inp-deposit-amt').value = 10000" class="bg-slate-800 hover:bg-slate-750 text-slate-300 text-xs py-1.5 rounded-lg font-bold border border-slate-700">$10k</button>
+                <button onclick="document.getElementById('inp-deposit-amt').value = 500" class="bg-slate-800 hover:bg-slate-750 text-slate-300 text-xs py-1.5 rounded-lg font-bold border border-slate-700">${Utils.formatMoney(500)}</button>
+                <button onclick="document.getElementById('inp-deposit-amt').value = 2500" class="bg-slate-800 hover:bg-slate-750 text-slate-300 text-xs py-1.5 rounded-lg font-bold border border-slate-700">${Utils.formatMoney(2500)}</button>
+                <button onclick="document.getElementById('inp-deposit-amt').value = 10000" class="bg-slate-800 hover:bg-slate-750 text-slate-300 text-xs py-1.5 rounded-lg font-bold border border-slate-700">${Utils.formatMoney(10000)}</button>
                 <button onclick="document.getElementById('inp-deposit-amt').value = ${user.money}" class="bg-slate-800 hover:bg-slate-750 text-emerald-400 text-xs py-1.5 rounded-lg font-bold border border-slate-700">Max</button>
             </div>
 
@@ -581,14 +653,14 @@ export function openWithdrawSavingsModal() {
     const modalHTML = `
         <div class="space-y-4 text-left">
             <div>
-                <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Withdraw Amount ($)</label>
+                <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Withdraw Amount</label>
                 <input type="number" id="inp-withdraw-amt" value="${Math.min(1000, savings)}" min="100" max="${savings}" class="w-full bg-slate-900 border border-slate-600 rounded-xl p-3 text-white text-center font-bold text-lg outline-none focus:border-cyan-500">
             </div>
 
             <div class="grid grid-cols-4 gap-1.5">
-                <button onclick="document.getElementById('inp-withdraw-amt').value = 500" class="bg-slate-800 hover:bg-slate-750 text-slate-300 text-xs py-1.5 rounded-lg font-bold border border-slate-700">$500</button>
-                <button onclick="document.getElementById('inp-withdraw-amt').value = 2500" class="bg-slate-800 hover:bg-slate-750 text-slate-300 text-xs py-1.5 rounded-lg font-bold border border-slate-700">$2.5k</button>
-                <button onclick="document.getElementById('inp-withdraw-amt').value = 10000" class="bg-slate-800 hover:bg-slate-750 text-slate-300 text-xs py-1.5 rounded-lg font-bold border border-slate-700">$10k</button>
+                <button onclick="document.getElementById('inp-withdraw-amt').value = 500" class="bg-slate-800 hover:bg-slate-750 text-slate-300 text-xs py-1.5 rounded-lg font-bold border border-slate-700">${Utils.formatMoney(500)}</button>
+                <button onclick="document.getElementById('inp-withdraw-amt').value = 2500" class="bg-slate-800 hover:bg-slate-750 text-slate-300 text-xs py-1.5 rounded-lg font-bold border border-slate-700">${Utils.formatMoney(2500)}</button>
+                <button onclick="document.getElementById('inp-withdraw-amt').value = 10000" class="bg-slate-800 hover:bg-slate-750 text-slate-300 text-xs py-1.5 rounded-lg font-bold border border-slate-700">${Utils.formatMoney(10000)}</button>
                 <button onclick="document.getElementById('inp-withdraw-amt').value = ${savings}" class="bg-slate-800 hover:bg-slate-750 text-cyan-400 text-xs py-1.5 rounded-lg font-bold border border-slate-700">Withdraw All</button>
             </div>
 

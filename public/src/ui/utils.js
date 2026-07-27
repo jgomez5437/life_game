@@ -192,15 +192,13 @@ export const Utils = {
     formatMoney: (num, customCity = null) => {
         const city = customCity || (state.gameState && state.gameState.user && (state.gameState.user.city || state.gameState.user.country));
         const info = getCurrencyInfo(city);
-        try {
-            return new Intl.NumberFormat(info.locale, {
-                style: 'currency',
-                currency: info.currency,
-                maximumFractionDigits: 0
-            }).format(num || 0);
-        } catch (e) {
-            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(num || 0);
-        }
+        const amount = Math.round(num || 0);
+        const absFormatted = Math.abs(amount).toLocaleString('en-US');
+        const sign = amount < 0 ? '-' : '';
+        const symbol = info.symbol || '$';
+        
+        const formattedSymbol = /[A-Za-z]$/.test(symbol) ? `${symbol} ` : symbol;
+        return `${sign}${formattedSymbol}${absFormatted}`;
     },
     
     // random integer

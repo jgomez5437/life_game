@@ -42,7 +42,7 @@ export function renderJobMarket() {
                     </div>
                     <div>
                         <h3 class="font-bold text-white">${job.title}</h3>
-                        <div class="text-xs text-green-400">$${job.hourly}/hr <span class="text-slate-500">(${Utils.formatMoney(job.salary)}/yr)</span></div>
+                        <div class="text-xs text-green-400">${Utils.formatMoney(job.hourly)}/hr <span class="text-slate-500">(${Utils.formatMoney(job.salary)}/yr)</span></div>
                         ${reqHtml}
                     </div>
                 </div>

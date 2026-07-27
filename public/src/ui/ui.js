@@ -80,7 +80,7 @@ export const UI = {
             _elements.healthContainer.classList.add('text-green-400');
         }
         if (_elements.bank) {
-            _elements.bank.innerText = '$0';
+            _elements.bank.innerText = Utils.formatMoney(0);
             _elements.bank.classList.remove('text-red-400');
             _elements.bank.classList.add('text-green-400');
         }
