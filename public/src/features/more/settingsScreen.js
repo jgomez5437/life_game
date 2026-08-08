@@ -1,6 +1,7 @@
 import { state } from '../../core/state.js';
 import { UI } from '../../ui/ui.js';
 import { saveGame, resetGame } from '../../core/main.js';
+import { renderLifeDashboard } from '../player/mainScreen.js';
 
 export function openSettingsModal() {
     const isCloud = !!state.userAuthId;
@@ -9,6 +10,8 @@ export function openSettingsModal() {
     
     const sfxEnabled = localStorage.getItem('life_game_sfx') !== 'false';
     const compactMode = localStorage.getItem('life_game_compact') === 'true';
+    const currentTheme = localStorage.getItem('life_game_theme') || 'dark';
+    const isLightMode = currentTheme === 'light';
 
     const htmlContent = `
         <div class="space-y-4">
@@ -27,9 +30,21 @@ export function openSettingsModal() {
                         </div>
                     </div>
                     <button data-action="triggerManualSave" class="bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white font-bold text-xs px-3 py-2 rounded-lg transition flex items-center gap-1.5">
-                        <i class="fas fa-save"></i> Save Now
+                        <i class="fas fa-save"></i> ${isCloud ? 'Save Now' : 'Save Local'}
                     </button>
                 </div>
+                ${!isCloud ? `
+                <div class="mt-3 pt-2.5 border-t border-slate-700/70">
+                    <p class="text-xs text-slate-300 mb-2.5">
+                        <i class="fas fa-info-circle text-blue-400 mr-1"></i>
+                        Log in to save your current character to the cloud and sync across devices.
+                    </p>
+                    <button data-action="login" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-3 rounded-lg text-xs shadow-md shadow-blue-900/40 transition-all flex items-center justify-center gap-2">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <span>Log In & Save to Cloud</span>
+                    </button>
+                </div>
+                ` : ''}
             </div>
 
             <!-- Preferences -->
@@ -38,13 +53,28 @@ export function openSettingsModal() {
                     <i class="fas fa-sliders-h"></i> Preferences
                 </div>
                 
+                <!-- Theme Mode Option -->
                 <div class="flex justify-between items-center py-1">
+                    <div>
+                        <div class="font-bold text-white text-sm flex items-center gap-1.5">
+                            <i class="fas ${isLightMode ? 'fa-sun text-amber-400' : 'fa-moon text-blue-400'}"></i> Theme Mode
+                        </div>
+                        <div class="text-xs text-slate-400">Default: Dark Mode. Enable Light Mode appearance</div>
+                    </div>
+                    <button data-action="toggleSettingTheme" id="setting-theme-btn" class="toggle-switch w-11 h-6 rounded-full p-0.5 border cursor-pointer ${isLightMode ? 'bg-amber-500 border-amber-400/50 shadow-sm shadow-amber-500/40' : 'bg-slate-700/80 border-slate-600/60'} flex items-center" title="Toggle Light / Dark Mode">
+                        <div class="toggle-knob w-5 h-5 rounded-full bg-white shadow-md ${isLightMode ? 'translate-x-5' : 'translate-x-0'} flex items-center justify-center text-[10px]">
+                            <i class="fas ${isLightMode ? 'fa-sun text-amber-600' : 'fa-moon text-slate-600'}"></i>
+                        </div>
+                    </button>
+                </div>
+
+                <div class="flex justify-between items-center py-1 border-t border-slate-700/60 pt-2">
                     <div>
                         <div class="font-bold text-white text-sm">Sound Effects</div>
                         <div class="text-xs text-slate-400">Audio feedback on actions</div>
                     </div>
-                    <button data-action="toggleSettingSFX" id="setting-sfx-btn" class="w-12 h-6 rounded-full p-1 transition-colors ${sfxEnabled ? 'bg-emerald-600' : 'bg-slate-700'} flex items-center">
-                        <div class="w-4 h-4 rounded-full bg-white transition-transform ${sfxEnabled ? 'translate-x-6' : 'translate-x-0'}"></div>
+                    <button data-action="toggleSettingSFX" id="setting-sfx-btn" class="toggle-switch w-11 h-6 rounded-full p-0.5 border cursor-pointer ${sfxEnabled ? 'bg-emerald-500 border-emerald-400/50 shadow-sm shadow-emerald-500/40' : 'bg-slate-700/80 border-slate-600/60'} flex items-center">
+                        <div class="toggle-knob w-5 h-5 rounded-full bg-white shadow-md ${sfxEnabled ? 'translate-x-5' : 'translate-x-0'}"></div>
                     </button>
                 </div>
 
@@ -53,8 +83,8 @@ export function openSettingsModal() {
                         <div class="font-bold text-white text-sm">Compact View</div>
                         <div class="text-xs text-slate-400">Reduce spacing in dashboard history</div>
                     </div>
-                    <button data-action="toggleSettingCompact" id="setting-compact-btn" class="w-12 h-6 rounded-full p-1 transition-colors ${compactMode ? 'bg-emerald-600' : 'bg-slate-700'} flex items-center">
-                        <div class="w-4 h-4 rounded-full bg-white transition-transform ${compactMode ? 'translate-x-6' : 'translate-x-0'}"></div>
+                    <button data-action="toggleSettingCompact" id="setting-compact-btn" class="toggle-switch w-11 h-6 rounded-full p-0.5 border cursor-pointer ${compactMode ? 'bg-emerald-500 border-emerald-400/50 shadow-sm shadow-emerald-500/40' : 'bg-slate-700/80 border-slate-600/60'} flex items-center">
+                        <div class="toggle-knob w-5 h-5 rounded-full bg-white shadow-md ${compactMode ? 'translate-x-5' : 'translate-x-0'}"></div>
                     </button>
                 </div>
             </div>
@@ -83,6 +113,55 @@ export function openSettingsModal() {
     UI.showCustomModal("Settings", htmlContent);
 }
 
+export function applyTheme(theme) {
+    const activeTheme = theme || localStorage.getItem('life_game_theme') || 'dark';
+    if (activeTheme === 'light') {
+        document.body.classList.add('light-mode');
+    } else {
+        document.body.classList.remove('light-mode');
+    }
+}
+
+export function toggleSettingTheme() {
+    const currentTheme = localStorage.getItem('life_game_theme') || 'dark';
+    const nextTheme = currentTheme === 'light' ? 'dark' : 'light';
+    localStorage.setItem('life_game_theme', nextTheme);
+    applyTheme(nextTheme);
+    
+    const btn = document.getElementById('setting-theme-btn');
+    if (btn) {
+        const knob = btn.querySelector('.toggle-knob');
+        const isLight = nextTheme === 'light';
+        if (isLight) {
+            btn.classList.remove('bg-slate-700/80', 'border-slate-600/60');
+            btn.classList.add('bg-amber-500', 'border-amber-400/50', 'shadow-sm', 'shadow-amber-500/40');
+            if (knob) {
+                knob.classList.remove('translate-x-0');
+                knob.classList.add('translate-x-5');
+                knob.innerHTML = '<i class="fas fa-sun text-amber-600"></i>';
+            }
+        } else {
+            btn.classList.remove('bg-amber-500', 'border-amber-400/50', 'shadow-sm', 'shadow-amber-500/40');
+            btn.classList.add('bg-slate-700/80', 'border-slate-600/60');
+            if (knob) {
+                knob.classList.remove('translate-x-5');
+                knob.classList.add('translate-x-0');
+                knob.innerHTML = '<i class="fas fa-moon text-slate-600"></i>';
+            }
+        }
+    } else {
+        openSettingsModal();
+    }
+
+    // Refresh active life dashboard if open behind modal to ensure smooth rerender
+    if (state.gameState && state.gameState.user && typeof renderLifeDashboard === 'function') {
+        const dashboard = document.querySelector('[data-action="ageUp"]');
+        if (dashboard) {
+            renderLifeDashboard();
+        }
+    }
+}
+
 export function triggerManualSave() {
     if (typeof saveGame === 'function') {
         saveGame();
@@ -105,12 +184,65 @@ export function promptResetGame() {
 
 export function toggleSettingSFX() {
     const current = localStorage.getItem('life_game_sfx') !== 'false';
-    localStorage.setItem('life_game_sfx', (!current).toString());
-    openSettingsModal();
+    const next = !current;
+    localStorage.setItem('life_game_sfx', next.toString());
+    
+    const btn = document.getElementById('setting-sfx-btn');
+    if (btn) {
+        const knob = btn.querySelector('.toggle-knob');
+        if (next) {
+            btn.classList.remove('bg-slate-700/80', 'border-slate-600/60');
+            btn.classList.add('bg-emerald-500', 'border-emerald-400/50', 'shadow-sm', 'shadow-emerald-500/40');
+            if (knob) {
+                knob.classList.remove('translate-x-0');
+                knob.classList.add('translate-x-5');
+            }
+        } else {
+            btn.classList.remove('bg-emerald-500', 'border-emerald-400/50', 'shadow-sm', 'shadow-emerald-500/40');
+            btn.classList.add('bg-slate-700/80', 'border-slate-600/60');
+            if (knob) {
+                knob.classList.remove('translate-x-5');
+                knob.classList.add('translate-x-0');
+            }
+        }
+    } else {
+        openSettingsModal();
+    }
 }
 
 export function toggleSettingCompact() {
     const current = localStorage.getItem('life_game_compact') === 'true';
-    localStorage.setItem('life_game_compact', (!current).toString());
-    openSettingsModal();
+    const next = !current;
+    localStorage.setItem('life_game_compact', next.toString());
+    
+    const btn = document.getElementById('setting-compact-btn');
+    if (btn) {
+        const knob = btn.querySelector('.toggle-knob');
+        if (next) {
+            btn.classList.remove('bg-slate-700/80', 'border-slate-600/60');
+            btn.classList.add('bg-emerald-500', 'border-emerald-400/50', 'shadow-sm', 'shadow-emerald-500/40');
+            if (knob) {
+                knob.classList.remove('translate-x-0');
+                knob.classList.add('translate-x-5');
+            }
+        } else {
+            btn.classList.remove('bg-emerald-500', 'border-emerald-400/50', 'shadow-sm', 'shadow-emerald-500/40');
+            btn.classList.add('bg-slate-700/80', 'border-slate-600/60');
+            if (knob) {
+                knob.classList.remove('translate-x-5');
+                knob.classList.add('translate-x-0');
+            }
+        }
+    } else {
+        openSettingsModal();
+    }
+
+    // Refresh active life dashboard if open behind modal
+    if (state.gameState && state.gameState.user && typeof renderLifeDashboard === 'function') {
+        const dashboard = document.querySelector('[data-action="ageUp"]');
+        if (dashboard) {
+            renderLifeDashboard();
+        }
+    }
 }
+

@@ -5,7 +5,7 @@ import { Utils } from '../../ui/utils.js';
 import { UI } from '../../ui/ui.js';
 
 const get = id => document.getElementById(id);
-let activeTab = 'stocks'; // 'stocks' | 'savings' | 'blogs'
+let activeTab = 'hub'; // 'hub' | 'portfolio' | 'stocks' | 'savings' | 'blogs'
 let stockFilter = 'all'; // 'all' | 'owned'
 
 export function renderStockSparkline(history, width = 120, height = 36, showDots = false) {
@@ -56,6 +56,12 @@ export function renderStockSparkline(history, width = 120, height = 36, showDots
 
 export function renderInvestmentsScreen(tabName, filterName) {
     const user = state.gameState.user;
+
+    if (user && user.age < 14) {
+        UI.showModal("Investments Locked 🔒", "You must be at least 14 years old to manage investments, open a High-Yield Savings Account, or trade stocks on the financial markets.");
+        return;
+    }
+
     if (tabName && typeof tabName === 'string') {
         activeTab = tabName;
     }
@@ -72,6 +78,7 @@ export function renderInvestmentsScreen(tabName, filterName) {
     let totalStockValue = 0;
     let totalStockCost = 0;
     let ownedCompaniesCount = 0;
+    let totalDividendsEarned = 0;
 
     user.investments.stockMarket.forEach(stock => {
         const holding = user.investments.stocks[stock.symbol];
@@ -79,70 +86,33 @@ export function renderInvestmentsScreen(tabName, filterName) {
             totalStockValue += Math.round(holding.shares * stock.price);
             totalStockCost += holding.totalCost || 0;
             ownedCompaniesCount++;
+            if (stock.dividendYield > 0) {
+                totalDividendsEarned += Math.round(holding.shares * stock.price * stock.dividendYield);
+            }
         }
     });
 
     const netPortfolioValue = savingsBalance + totalStockValue;
     const totalProfitLoss = totalStockValue - totalStockCost;
     const isProfitable = totalProfitLoss >= 0;
+    const blogCount = (user.investments.blogPosts || []).length;
+
+    let contentHtml = '';
+    if (activeTab === 'hub') {
+        contentHtml = renderHubView(user, savingsBalance, totalStockValue, totalStockCost, ownedCompaniesCount, netPortfolioValue, totalProfitLoss, isProfitable, blogCount);
+    } else if (activeTab === 'portfolio') {
+        contentHtml = renderPortfolioSection(user, ownedCompaniesCount, totalStockValue, totalStockCost, totalDividendsEarned);
+    } else if (activeTab === 'stocks') {
+        contentHtml = renderStockMarketSection(user, ownedCompaniesCount, totalStockValue, totalStockCost);
+    } else if (activeTab === 'savings') {
+        contentHtml = renderSavingsSection(user);
+    } else if (activeTab === 'blogs') {
+        contentHtml = renderMarketBlogsSection(user);
+    }
 
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
-            <!-- Header Nav -->
-            <div class="mb-4 flex items-center justify-between">
-                <button data-action="renderAssets" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
-                    <i class="fas fa-arrow-left"></i> Back to Assets
-                </button>
-                <span class="text-xs text-slate-500 font-bold uppercase tracking-wider">Financial Markets</span>
-            </div>
-
-            <!-- Portfolio Overview Card -->
-            <div class="bg-gradient-to-br from-slate-800 to-slate-900 p-5 rounded-2xl border border-slate-700 shadow-xl mb-5">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Total Portfolio Value</span>
-                    <span class="text-xs px-2 py-0.5 rounded-full font-bold ${isProfitable ? 'bg-emerald-900/60 text-emerald-300 border border-emerald-700' : 'bg-red-900/60 text-red-300 border border-red-700'}">
-                        ${isProfitable ? '+' : ''}${Utils.formatMoney(totalProfitLoss)} P&L
-                    </span>
-                </div>
-                <div class="text-3xl font-extrabold text-white mb-4">${Utils.formatMoney(netPortfolioValue)}</div>
-
-                <div class="grid grid-cols-3 gap-2 pt-3 border-t border-slate-700/80 text-center">
-                    <div>
-                        <div class="text-[10px] text-slate-400 uppercase font-semibold">Cash Liquid</div>
-                        <div class="text-emerald-400 font-bold text-xs mt-0.5">${Utils.formatMoney(user.money)}</div>
-                    </div>
-                    <div class="border-x border-slate-700 px-1">
-                        <div class="text-[10px] text-slate-400 uppercase font-semibold">High-Yield Savings</div>
-                        <div class="text-cyan-400 font-bold text-xs mt-0.5">${Utils.formatMoney(savingsBalance)}</div>
-                    </div>
-                    <div data-action="setStockFilter" data-args="'owned'" class="cursor-pointer hover:bg-slate-750/80 rounded p-0.5 transition group" title="Click to view owned companies">
-                        <div class="text-[10px] text-slate-400 uppercase font-semibold group-hover:text-purple-300 flex items-center justify-center gap-1">
-                            Stock Holdings <i class="fas fa-chevron-right text-[8px]"></i>
-                        </div>
-                        <div class="text-purple-400 font-bold text-xs mt-0.5">${Utils.formatMoney(totalStockValue)}</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Navigation Tabs -->
-            <div class="flex bg-slate-900 p-1 rounded-xl mb-4 border border-slate-700 text-xs gap-1">
-                <button data-action="switchInvestmentTab" data-args="'stocks'" class="flex-1 py-2 rounded-lg font-bold text-center transition ${activeTab === 'stocks' ? 'bg-slate-800 text-emerald-400 border border-slate-600 shadow' : 'text-slate-400 hover:text-white'}">
-                    <i class="fas fa-chart-line mr-1"></i> Stock Market
-                </button>
-                <button data-action="switchInvestmentTab" data-args="'savings'" class="flex-1 py-2 rounded-lg font-bold text-center transition ${activeTab === 'savings' ? 'bg-slate-800 text-cyan-400 border border-slate-600 shadow' : 'text-slate-400 hover:text-white'}">
-                    <i class="fas fa-piggy-bank mr-1"></i> Savings (3.5%)
-                </button>
-                <button data-action="switchInvestmentTab" data-args="'blogs'" class="flex-1 py-2 rounded-lg font-bold text-center transition ${activeTab === 'blogs' ? 'bg-slate-800 text-amber-400 border border-slate-600 shadow' : 'text-slate-400 hover:text-white'}">
-                    <i class="fas fa-newspaper mr-1"></i> Market Blogs
-                </button>
-            </div>
-
-            <!-- Tab Content Area -->
-            <div class="flex-1 overflow-y-auto pb-6">
-                ${activeTab === 'stocks' ? renderStocksTab(user, ownedCompaniesCount, totalStockValue, totalStockCost) : ''}
-                ${activeTab === 'savings' ? renderSavingsTab(user) : ''}
-                ${activeTab === 'blogs' ? renderBlogsTab(user) : ''}
-            </div>
+            ${contentHtml}
         </div>
     `;
 }
@@ -158,7 +128,227 @@ export function setStockFilter(filter) {
     renderInvestmentsScreen();
 }
 
-// --- TAB 1: STOCK MARKET ---
+// --- MAIN HUB VIEW ---
+function renderHubView(user, savingsBalance, totalStockValue, totalStockCost, ownedCompaniesCount, netPortfolioValue, totalProfitLoss, isProfitable, blogCount) {
+    return `
+        <!-- Top Nav -->
+        <div class="mb-4 flex items-center justify-between">
+            <button data-action="renderAssets" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+                <i class="fas fa-arrow-left"></i> Back to Assets
+            </button>
+            <span class="text-xs text-slate-500 font-bold uppercase tracking-wider">Investments Hub</span>
+        </div>
+
+        <!-- Portfolio Overview Card -->
+        <div class="bg-gradient-to-br from-slate-800 to-slate-900 p-5 rounded-2xl border border-slate-700 shadow-xl mb-5">
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Total Portfolio Value</span>
+                <span class="text-xs px-2.5 py-0.5 rounded-full font-bold ${isProfitable ? 'bg-emerald-900/60 text-emerald-300 border border-emerald-700' : 'bg-red-900/60 text-red-300 border border-red-700'}">
+                    ${isProfitable ? '+' : ''}${Utils.formatMoney(totalProfitLoss)} P&L
+                </span>
+            </div>
+            <div class="text-3xl font-extrabold text-white mb-4">${Utils.formatMoney(netPortfolioValue)}</div>
+
+            <div class="grid grid-cols-3 gap-2 pt-3 border-t border-slate-700/80 text-center">
+                <div>
+                    <div class="text-[10px] text-slate-400 uppercase font-semibold">Liquid Cash</div>
+                    <div class="text-emerald-400 font-bold text-xs mt-0.5">${Utils.formatMoney(user.money)}</div>
+                </div>
+                <div class="border-x border-slate-700 px-1">
+                    <div class="text-[10px] text-slate-400 uppercase font-semibold">Savings (3.5%)</div>
+                    <div class="text-cyan-400 font-bold text-xs mt-0.5">${Utils.formatMoney(savingsBalance)}</div>
+                </div>
+                <div>
+                    <div class="text-[10px] text-slate-400 uppercase font-semibold">Stock Holdings</div>
+                    <div class="text-purple-400 font-bold text-xs mt-0.5">${Utils.formatMoney(totalStockValue)}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Category Grid Menu -->
+        <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 px-1">Financial Options</div>
+
+        <div class="space-y-3 flex-1 overflow-y-auto pb-4">
+            <!-- Option 1: My Portfolio -->
+            <button data-action="switchInvestmentTab" data-args="'portfolio'" class="w-full bg-slate-800/90 hover:bg-slate-750 p-4 rounded-2xl border border-slate-700 flex items-center justify-between transition text-left group shadow-sm">
+                <div class="flex items-center gap-3.5">
+                    <div class="w-12 h-12 rounded-xl bg-purple-950/60 border border-purple-800/60 flex items-center justify-center text-purple-400 text-xl group-hover:scale-105 transition-transform">
+                        <i class="fas fa-briefcase"></i>
+                    </div>
+                    <div>
+                        <div class="font-bold text-white text-base group-hover:text-purple-300 transition">My Portfolio</div>
+                        <div class="text-xs text-slate-400 mt-0.5">${ownedCompaniesCount} Companies • ${Utils.formatMoney(totalStockValue)}</div>
+                    </div>
+                </div>
+                <i class="fas fa-chevron-right text-slate-500 group-hover:text-white transition"></i>
+            </button>
+
+            <!-- Option 2: Stock Market -->
+            <button data-action="switchInvestmentTab" data-args="'stocks'" class="w-full bg-slate-800/90 hover:bg-slate-750 p-4 rounded-2xl border border-slate-700 flex items-center justify-between transition text-left group shadow-sm">
+                <div class="flex items-center gap-3.5">
+                    <div class="w-12 h-12 rounded-xl bg-emerald-950/60 border border-emerald-800/60 flex items-center justify-center text-emerald-400 text-xl group-hover:scale-105 transition-transform">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div>
+                        <div class="font-bold text-white text-base group-hover:text-emerald-300 transition">Stock Market</div>
+                        <div class="text-xs text-slate-400 mt-0.5">Browse ${user.investments.stockMarket.length} Companies across 9 Sectors</div>
+                    </div>
+                </div>
+                <i class="fas fa-chevron-right text-slate-500 group-hover:text-white transition"></i>
+            </button>
+
+            <!-- Option 3: Savings Account -->
+            <button data-action="switchInvestmentTab" data-args="'savings'" class="w-full bg-slate-800/90 hover:bg-slate-750 p-4 rounded-2xl border border-slate-700 flex items-center justify-between transition text-left group shadow-sm">
+                <div class="flex items-center gap-3.5">
+                    <div class="w-12 h-12 rounded-xl bg-cyan-950/60 border border-cyan-800/60 flex items-center justify-center text-cyan-400 text-xl group-hover:scale-105 transition-transform">
+                        <i class="fas fa-piggy-bank"></i>
+                    </div>
+                    <div>
+                        <div class="font-bold text-white text-base group-hover:text-cyan-300 transition">Savings Account</div>
+                        <div class="text-xs text-slate-400 mt-0.5">3.5% Guaranteed APY • ${Utils.formatMoney(savingsBalance)} Balance</div>
+                    </div>
+                </div>
+                <i class="fas fa-chevron-right text-slate-500 group-hover:text-white transition"></i>
+            </button>
+
+            <!-- Option 4: Market Blogs -->
+            <button data-action="switchInvestmentTab" data-args="'blogs'" class="w-full bg-slate-800/90 hover:bg-slate-750 p-4 rounded-2xl border border-slate-700 flex items-center justify-between transition text-left group shadow-sm">
+                <div class="flex items-center gap-3.5">
+                    <div class="w-12 h-12 rounded-xl bg-amber-950/60 border border-amber-800/60 flex items-center justify-center text-amber-400 text-xl group-hover:scale-105 transition-transform">
+                        <i class="fas fa-newspaper"></i>
+                    </div>
+                    <div>
+                        <div class="font-bold text-white text-base group-hover:text-amber-300 transition">Market Blogs</div>
+                        <div class="text-xs text-slate-400 mt-0.5">${blogCount} Articles • Market Intel & Trends</div>
+                    </div>
+                </div>
+                <i class="fas fa-chevron-right text-slate-500 group-hover:text-white transition"></i>
+            </button>
+        </div>
+    `;
+}
+
+// --- SECTION 1: MY PORTFOLIO ---
+function renderPortfolioSection(user, ownedCompaniesCount, totalStockValue, totalStockCost, totalDividendsEarned) {
+    const market = user.investments.stockMarket || [];
+    const ownedStocks = market.filter(s => (user.investments.stocks[s.symbol]?.shares || 0) > 0);
+    const totalProfitLoss = totalStockValue - totalStockCost;
+    const isProfitable = totalProfitLoss >= 0;
+
+    return `
+        <!-- Section Nav -->
+        <div class="mb-4 flex items-center justify-between">
+            <button data-action="switchInvestmentTab" data-args="'hub'" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+                <i class="fas fa-arrow-left"></i> Investments Hub
+            </button>
+            <span class="text-xs text-purple-400 font-bold uppercase tracking-wider"><i class="fas fa-briefcase mr-1"></i> My Portfolio</span>
+        </div>
+
+        <!-- Summary Banner -->
+        <div class="bg-gradient-to-r from-purple-950/70 to-slate-900 p-4 rounded-2xl border border-purple-800/60 mb-4 shadow-md">
+            <div class="flex items-center justify-between mb-2">
+                <div>
+                    <span class="text-[10px] text-purple-300 font-bold uppercase tracking-wider">Active Stock Holdings</span>
+                    <h3 class="text-2xl font-extrabold text-white">${Utils.formatMoney(totalStockValue)}</h3>
+                </div>
+                <div class="text-right">
+                    <span class="text-xs px-2.5 py-0.5 rounded-full font-bold ${isProfitable ? 'bg-emerald-900/60 text-emerald-300 border border-emerald-700' : 'bg-red-900/60 text-red-300 border border-red-700'}">
+                        ${isProfitable ? '+' : ''}${Utils.formatMoney(totalProfitLoss)} Total Return
+                    </span>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-3 gap-2 pt-2.5 border-t border-purple-900/60 text-center text-xs">
+                <div>
+                    <div class="text-[10px] text-slate-400 uppercase font-semibold">Companies</div>
+                    <div class="text-white font-bold mt-0.5">${ownedCompaniesCount}</div>
+                </div>
+                <div class="border-x border-purple-900/60 px-1">
+                    <div class="text-[10px] text-slate-400 uppercase font-semibold">Cost Basis</div>
+                    <div class="text-slate-300 font-bold mt-0.5">${Utils.formatMoney(totalStockCost)}</div>
+                </div>
+                <div>
+                    <div class="text-[10px] text-slate-400 uppercase font-semibold">Est. Dividends</div>
+                    <div class="text-emerald-400 font-bold mt-0.5">${Utils.formatMoney(totalDividendsEarned)}/yr</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Owned Holdings List -->
+        <div class="flex-1 overflow-y-auto pb-6">
+            ${ownedStocks.length === 0 ? `
+                <div class="bg-slate-800 p-8 rounded-2xl border border-slate-700 text-center text-slate-400 my-4 shadow-lg">
+                    <div class="w-14 h-14 rounded-full bg-purple-900/30 border border-purple-700/50 flex items-center justify-center text-purple-400 text-2xl mx-auto mb-3">
+                        <i class="fas fa-briefcase"></i>
+                    </div>
+                    <h4 class="font-bold text-white text-base mb-1">No Active Stock Holdings</h4>
+                    <p class="text-xs text-slate-400 mb-4 max-w-xs mx-auto">You haven't purchased any stock shares yet. Explore the market to start investing!</p>
+                    <button data-action="switchInvestmentTab" data-args="'stocks'" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition shadow">
+                        Browse Stock Market
+                    </button>
+                </div>
+            ` : `
+                <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 px-1">Your Stock Holdings (${ownedStocks.length})</div>
+                <div class="space-y-2.5">
+                    ${ownedStocks.map(stock => {
+                        const holding = user.investments.stocks[stock.symbol] || { shares: 0, totalCost: 0 };
+                        const ownedShares = holding.shares;
+                        const ownedValue = Math.round(ownedShares * stock.price);
+                        const avgCost = ownedShares > 0 ? Math.round(holding.totalCost / ownedShares) : 0;
+                        const returnAmt = ownedValue - holding.totalCost;
+                        const returnUp = returnAmt >= 0;
+
+                        return `
+                            <div class="bg-slate-800 p-3.5 rounded-2xl border border-slate-700 flex flex-col gap-2.5 shadow-sm">
+                                <div class="flex items-center justify-between gap-2">
+                                    <div class="flex items-center gap-2.5 min-w-0">
+                                        <div class="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-base border border-slate-700 shrink-0">
+                                            <i class="fas ${stock.icon} ${stock.color}"></i>
+                                        </div>
+                                        <div class="truncate">
+                                            <div class="flex items-center gap-1.5">
+                                                <span class="font-bold text-white text-sm truncate">${stock.name}</span>
+                                                <span class="bg-slate-900 text-slate-400 text-[10px] font-mono px-1.5 py-0.5 rounded border border-slate-700 font-bold">${stock.symbol}</span>
+                                            </div>
+                                            <div class="text-xs text-slate-400 mt-0.5">
+                                                ${ownedShares} shares @ avg ${Utils.formatMoney(avgCost)}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="text-right shrink-0">
+                                        <div class="text-white font-extrabold text-sm">${Utils.formatMoney(ownedValue)}</div>
+                                        <div class="text-[11px] font-bold ${returnUp ? 'text-emerald-400' : 'text-red-400'}">
+                                            ${returnUp ? '+' : ''}${Utils.formatMoney(returnAmt)}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center justify-between pt-2 border-t border-slate-700/60 text-xs">
+                                    <div class="text-slate-400 text-[11px]">
+                                        Market Price: <strong class="text-white">${Utils.formatMoney(stock.price)}</strong>
+                                    </div>
+                                    <div class="flex items-center gap-1.5">
+                                        <button data-action="openStockDetailsModal" data-args="'${stock.symbol}'" title="Chart & Info" class="bg-slate-900 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg text-xs border border-slate-700 transition">
+                                            <i class="fas fa-chart-line text-blue-400 mr-1"></i> Chart
+                                        </button>
+                                        <button data-action="openBuyStockModal" data-args="'${stock.symbol}'" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-lg transition">
+                                            Buy More
+                                        </button>
+                                        <button data-action="openSellStockModal" data-args="'${stock.symbol}'" class="bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold px-3 py-1 rounded-lg transition">
+                                            Sell
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `}
+        </div>
+    `;
+}
+
+// --- SECTION 2: STOCK MARKET ---
 const SECTORS_ORDER = [
     { name: 'Technology', icon: 'fa-microchip', color: 'text-cyan-400' },
     { name: 'Cybersecurity', icon: 'fa-shield-halved', color: 'text-indigo-400' },
@@ -171,57 +361,11 @@ const SECTORS_ORDER = [
     { name: 'Entertainment', icon: 'fa-gamepad', color: 'text-pink-400' }
 ];
 
-function renderStocksTab(user, ownedCompaniesCount, totalStockValue, totalStockCost) {
+function renderStockMarketSection(user, ownedCompaniesCount, totalStockValue, totalStockCost) {
     const market = user.investments.stockMarket || [];
 
-    const filterToolbar = `
-        <div class="flex items-center justify-between mb-4 px-1">
-            <div class="flex items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-700 text-xs w-full">
-                <button data-action="setStockFilter" data-args="'all'" class="flex-1 py-1.5 rounded-lg font-bold text-center transition ${stockFilter === 'all' ? 'bg-slate-800 text-white shadow border border-slate-600' : 'text-slate-400 hover:text-white'}">
-                    <i class="fas fa-globe mr-1 text-cyan-400"></i> All Companies (${market.length})
-                </button>
-                <button data-action="setStockFilter" data-args="'owned'" class="flex-1 py-1.5 rounded-lg font-bold text-center transition flex items-center justify-center gap-1.5 ${stockFilter === 'owned' ? 'bg-purple-900/80 text-purple-200 border border-purple-700 shadow' : 'text-slate-400 hover:text-white'}">
-                    <i class="fas fa-briefcase text-purple-400"></i> My Portfolio (${ownedCompaniesCount})
-                </button>
-            </div>
-        </div>
-    `;
-
-    if (stockFilter === 'owned' && ownedCompaniesCount === 0) {
-        return filterToolbar + `
-            <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 text-center text-slate-400 my-4 shadow-lg">
-                <div class="w-14 h-14 rounded-full bg-purple-900/30 border border-purple-700/50 flex items-center justify-center text-purple-400 text-2xl mx-auto mb-3">
-                    <i class="fas fa-briefcase"></i>
-                </div>
-                <h4 class="font-bold text-white text-base mb-1">No Active Stock Holdings</h4>
-                <p class="text-xs text-slate-400 mb-4 max-w-xs mx-auto">You haven't invested in any companies yet. Explore the market sectors below to build your stock portfolio!</p>
-                <button data-action="setStockFilter" data-args="'all'" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2 rounded-xl transition shadow">
-                    Browse All Market Companies
-                </button>
-            </div>
-        `;
-    }
-
-    const portfolioHeader = (stockFilter === 'owned' && ownedCompaniesCount > 0) ? `
-        <div class="bg-gradient-to-r from-purple-950/60 to-slate-900 p-3.5 rounded-xl border border-purple-800/60 mb-4 flex items-center justify-between text-xs shadow-md">
-            <div>
-                <div class="text-purple-300 font-extrabold uppercase tracking-wider text-[10px]">Active Portfolio Breakdown</div>
-                <div class="text-slate-300 text-xs mt-0.5">Holding <strong class="text-white">${ownedCompaniesCount} Companies</strong> • Cost Basis: <strong>${Utils.formatMoney(totalStockCost)}</strong></div>
-            </div>
-            <div class="text-right font-extrabold">
-                <div class="text-purple-200">Value: ${Utils.formatMoney(totalStockValue)}</div>
-                <div class="${totalStockValue >= totalStockCost ? 'text-emerald-400' : 'text-red-400'} text-[11px]">
-                    ${totalStockValue >= totalStockCost ? '+' : ''}${Utils.formatMoney(totalStockValue - totalStockCost)} Return
-                </div>
-            </div>
-        </div>
-    ` : '';
-
     const sectorsHtml = SECTORS_ORDER.map(sectorInfo => {
-        let sectorStocks = market.filter(s => s.sector === sectorInfo.name);
-        if (stockFilter === 'owned') {
-            sectorStocks = sectorStocks.filter(s => (user.investments.stocks[s.symbol]?.shares || 0) > 0);
-        }
+        const sectorStocks = market.filter(s => s.sector === sectorInfo.name);
         if (sectorStocks.length === 0) return '';
 
         const stocksHtml = sectorStocks.map(stock => {
@@ -235,7 +379,7 @@ function renderStocksTab(user, ownedCompaniesCount, totalStockValue, totalStockC
             const isUp = changeAmt >= 0;
 
             return `
-                <div class="bg-slate-800 hover:bg-slate-750 p-2.5 rounded-xl border border-slate-700/80 flex items-center justify-between gap-2 mb-2 transition shadow-sm">
+                <div class="bg-slate-800 hover:bg-slate-750 p-3 rounded-xl border border-slate-700/80 flex items-center justify-between gap-2 mb-2 transition shadow-sm">
                     <div class="flex items-center gap-2.5 min-w-0 flex-1">
                         <div class="w-9 h-9 rounded-full bg-slate-900 flex items-center justify-center text-sm border border-slate-700 shrink-0">
                             <i class="fas ${stock.icon} ${stock.color}"></i>
@@ -248,7 +392,7 @@ function renderStocksTab(user, ownedCompaniesCount, totalStockValue, totalStockC
                             </div>
                             <div class="text-[10px] text-slate-400 truncate mt-0.5">
                                 ${stock.dividendYield > 0 ? (stock.dividendYield * 100).toFixed(1) + '% Yield' : 'No Dividend'}
-                                ${ownedShares > 0 ? ` • <span class="text-purple-300 font-semibold">Valued ${Utils.formatMoney(ownedValue)}</span>` : ''}
+                                ${ownedShares > 0 ? ` • <span class="text-purple-300 font-semibold">${Utils.formatMoney(ownedValue)}</span>` : ''}
                             </div>
                         </div>
                     </div>
@@ -292,93 +436,121 @@ function renderStocksTab(user, ownedCompaniesCount, totalStockValue, totalStockC
         `;
     }).join('');
 
-    return filterToolbar + portfolioHeader + sectorsHtml;
+    return `
+        <!-- Section Nav -->
+        <div class="mb-4 flex items-center justify-between">
+            <button data-action="switchInvestmentTab" data-args="'hub'" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+                <i class="fas fa-arrow-left"></i> Investments Hub
+            </button>
+            <span class="text-xs text-emerald-400 font-bold uppercase tracking-wider"><i class="fas fa-chart-line mr-1"></i> Stock Market</span>
+        </div>
+
+        <div class="flex-1 overflow-y-auto pb-6">
+            ${sectorsHtml}
+        </div>
+    `;
 }
 
-// --- TAB 2: HIGH-YIELD SAVINGS ACCOUNT ---
-function renderSavingsTab(user) {
+// --- SECTION 3: SAVINGS ACCOUNT ---
+function renderSavingsSection(user) {
     const savings = user.investments.savings || 0;
     const estAnnualInterest = Math.floor(savings * 0.035);
 
     return `
-        <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 text-center mb-6">
-            <div class="w-16 h-16 rounded-full bg-cyan-900/40 border border-cyan-500/30 flex items-center justify-center text-cyan-400 mx-auto mb-3 text-2xl shadow-lg">
-                <i class="fas fa-piggy-bank"></i>
-            </div>
-            <h3 class="text-xl font-bold text-white mb-1">Standard High-Yield Savings</h3>
-            <p class="text-slate-400 text-xs max-w-xs mx-auto mb-4">Risk-free guaranteed compound return backed by global banking reserve regulations.</p>
+        <!-- Section Nav -->
+        <div class="mb-4 flex items-center justify-between">
+            <button data-action="switchInvestmentTab" data-args="'hub'" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+                <i class="fas fa-arrow-left"></i> Investments Hub
+            </button>
+            <span class="text-xs text-cyan-400 font-bold uppercase tracking-wider"><i class="fas fa-piggy-bank mr-1"></i> Savings Account</span>
+        </div>
 
-            <div class="inline-block bg-cyan-900/40 border border-cyan-500/40 rounded-full px-4 py-1 text-cyan-300 font-extrabold text-sm mb-6">
-                ⚡ 3.5% APY Annual Interest
-            </div>
-
-            <div class="bg-slate-900 p-4 rounded-xl border border-slate-700 max-w-sm mx-auto mb-6 text-left space-y-3">
-                <div class="flex justify-between items-center text-sm">
-                    <span class="text-slate-400 font-medium">Current Balance</span>
-                    <span class="text-white font-extrabold text-lg">${Utils.formatMoney(savings)}</span>
+        <div class="flex-1 overflow-y-auto pb-6">
+            <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 text-center mb-6 shadow-xl">
+                <div class="w-16 h-16 rounded-full bg-cyan-900/40 border border-cyan-500/30 flex items-center justify-center text-cyan-400 mx-auto mb-3 text-2xl shadow-lg">
+                    <i class="fas fa-piggy-bank"></i>
                 </div>
-                <div class="flex justify-between items-center text-xs pt-2 border-t border-slate-800">
-                    <span class="text-slate-400">Est. Next Year Payout (3.5%)</span>
-                    <span class="text-emerald-400 font-bold">+${Utils.formatMoney(estAnnualInterest)}</span>
-                </div>
-            </div>
+                <h3 class="text-xl font-bold text-white mb-1">High-Yield Savings Account</h3>
+                <p class="text-slate-400 text-xs max-w-xs mx-auto mb-4">Risk-free guaranteed compound return backed by global banking reserve regulations.</p>
 
-            <div class="flex items-center justify-center gap-3 max-w-sm mx-auto">
-                <button data-action="openDepositSavingsModal" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 shadow">
-                    <i class="fas fa-plus-circle"></i> Deposit Funds
-                </button>
-                <button data-action="openWithdrawSavingsModal" ${savings > 0 ? '' : 'disabled'} class="flex-1 ${savings > 0 ? 'bg-cyan-600 hover:bg-cyan-500 text-white' : 'bg-slate-700 text-slate-500 cursor-not-allowed'} font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 shadow">
-                    <i class="fas fa-minus-circle"></i> Withdraw Funds
-                </button>
+                <div class="inline-block bg-cyan-900/40 border border-cyan-500/40 rounded-full px-4 py-1 text-cyan-300 font-extrabold text-sm mb-6">
+                    ⚡ 3.5% APY Annual Interest
+                </div>
+
+                <div class="bg-slate-900 p-4 rounded-xl border border-slate-700 max-w-sm mx-auto mb-6 text-left space-y-3">
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-slate-400 font-medium">Current Balance</span>
+                        <span class="text-white font-extrabold text-lg">${Utils.formatMoney(savings)}</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs pt-2 border-t border-slate-800">
+                        <span class="text-slate-400">Est. Next Year Payout (3.5%)</span>
+                        <span class="text-emerald-400 font-bold">+${Utils.formatMoney(estAnnualInterest)}</span>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-center gap-3 max-w-sm mx-auto">
+                    <button data-action="openDepositSavingsModal" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 shadow">
+                        <i class="fas fa-plus-circle"></i> Deposit Funds
+                    </button>
+                    <button data-action="openWithdrawSavingsModal" ${savings > 0 ? '' : 'disabled'} class="flex-1 ${savings > 0 ? 'bg-cyan-600 hover:bg-cyan-500 text-white' : 'bg-slate-700 text-slate-500 cursor-not-allowed'} font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 shadow">
+                        <i class="fas fa-minus-circle"></i> Withdraw Funds
+                    </button>
+                </div>
             </div>
         </div>
     `;
 }
 
-// --- TAB 3: INVESTMENT BLOGS & NEWS ---
-function renderBlogsTab(user) {
+// --- SECTION 4: MARKET BLOGS & NEWS ---
+function renderMarketBlogsSection(user) {
     const blogs = user.investments.blogPosts || [];
 
-    if (blogs.length === 0) {
-        return `
-            <div class="bg-slate-800 p-8 rounded-xl border border-slate-700 text-center text-slate-400">
-                <i class="fas fa-newspaper text-3xl text-slate-600 mb-2"></i>
-                <p class="text-sm">No investment blog posts available right now. Check back next year!</p>
-            </div>
-        `;
-    }
-
     return `
-        <div class="mb-3 flex items-center justify-between px-1">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Market Insider Blogs</span>
-            <span class="text-[11px] text-amber-400 font-semibold"><i class="fas fa-lightbulb mr-1"></i> Read for future market hints</span>
+        <!-- Section Nav -->
+        <div class="mb-4 flex items-center justify-between">
+            <button data-action="switchInvestmentTab" data-args="'hub'" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+                <i class="fas fa-arrow-left"></i> Investments Hub
+            </button>
+            <span class="text-xs text-amber-400 font-bold uppercase tracking-wider"><i class="fas fa-newspaper mr-1"></i> Market Blogs</span>
         </div>
 
-        <div class="space-y-4">
-            ${blogs.map(post => {
-                return `
-                    <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-md">
-                        <div class="flex items-center justify-between mb-2">
-                            <div class="flex items-center gap-2">
-                                <span class="text-xs font-bold text-purple-400">${post.author}</span>
-                                <span class="text-slate-500 text-[10px]">• ${post.sector}</span>
+        <div class="flex-1 overflow-y-auto pb-6">
+            ${blogs.length === 0 ? `
+                <div class="bg-slate-800 p-8 rounded-2xl border border-slate-700 text-center text-slate-400 shadow-lg">
+                    <i class="fas fa-newspaper text-3xl text-slate-600 mb-2"></i>
+                    <p class="text-sm">No investment blog posts available right now. Check back next year!</p>
+                </div>
+            ` : `
+                <div class="mb-3 flex items-center justify-between px-1">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Market Insider Articles (${blogs.length})</span>
+                    <span class="text-[11px] text-amber-400 font-semibold"><i class="fas fa-lightbulb mr-1"></i> Read for future market hints</span>
+                </div>
+
+                <div class="space-y-4">
+                    ${blogs.map(post => `
+                        <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-md">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs font-bold text-purple-400">${post.author}</span>
+                                    <span class="text-slate-500 text-[10px]">• ${post.sector}</span>
+                                </div>
+                            </div>
+
+                            <h4 class="font-bold text-white text-base mb-1.5 leading-snug">${post.title}</h4>
+                            <p class="text-slate-300 text-xs leading-relaxed mb-3">${post.excerpt}</p>
+
+                            <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-750 flex items-center justify-between text-xs">
+                                <div class="text-slate-400">
+                                    Hinted Target: <strong class="text-amber-300 font-bold">${post.stockName} (${post.symbol})</strong>
+                                </div>
+                                <button data-action="openBuyStockModal" data-args="'${post.symbol}'" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-600 px-2.5 py-1 rounded-lg font-bold transition">
+                                    Trade ${post.symbol}
+                                </button>
                             </div>
                         </div>
-
-                        <h4 class="font-bold text-white text-base mb-1.5 leading-snug">${post.title}</h4>
-                        <p class="text-slate-300 text-xs leading-relaxed mb-3">${post.excerpt}</p>
-
-                        <div class="bg-slate-900 p-2.5 rounded-lg border border-slate-750 flex items-center justify-between text-xs">
-                            <div class="text-slate-400">
-                                Hinted Target: <strong class="text-amber-300 font-bold">${post.stockName} (${post.symbol})</strong>
-                            </div>
-                            <button data-action="openBuyStockModal" data-args="'${post.symbol}'" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-600 px-2.5 py-1 rounded font-bold transition">
-                                Trade ${post.symbol}
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }).join('')}
+                    `).join('')}
+                </div>
+            `}
         </div>
     `;
 }

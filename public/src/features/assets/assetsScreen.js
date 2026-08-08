@@ -193,18 +193,28 @@ export function renderAssets() {
                         </div>
                     </div>
 
-                    <div data-action="renderInvestmentsScreen" class="bg-slate-800 p-4 rounded-xl border border-slate-700 cursor-pointer hover:bg-slate-750 hover:border-emerald-500/50 transition">
-                        <div class="flex items-center gap-3 mb-2">
-                             <div class="w-8 h-8 rounded-full bg-emerald-600/30 flex items-center justify-center text-emerald-400">
-                                <i class="fas fa-chart-line"></i>
+                    ${(() => {
+                        const isLocked = user.age < 14;
+                        return `
+                            <div data-action="renderInvestmentsScreen" class="bg-slate-800 p-4 rounded-xl border border-slate-700 cursor-pointer hover:bg-slate-750 ${isLocked ? 'hover:border-amber-500/50 opacity-80' : 'hover:border-emerald-500/50'} transition">
+                                <div class="flex items-center justify-between mb-2">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 rounded-full ${isLocked ? 'bg-amber-900/40 text-amber-400' : 'bg-emerald-600/30 text-emerald-400'} flex items-center justify-center">
+                                            <i class="fas ${isLocked ? 'fa-lock' : 'fa-chart-line'}"></i>
+                                        </div>
+                                        <h3 class="font-bold text-white">Investments</h3>
+                                    </div>
+                                    ${isLocked ? `<span class="bg-amber-950/80 text-amber-300 border border-amber-700/60 text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1"><i class="fas fa-lock text-[9px]"></i> Unlocks at Age 14</span>` : ''}
+                                </div>
+                                <div class="bg-slate-900 p-3 rounded border border-slate-700 flex justify-between items-center">
+                                    <div class="text-sm ${isLocked ? 'text-slate-400' : 'text-white'} font-bold">
+                                        ${isLocked ? 'Locked until age 14' : 'Manage Savings & Stock Market'}
+                                    </div>
+                                    <i class="fas ${isLocked ? 'fa-lock text-amber-400' : 'fa-chevron-right text-slate-600'}"></i>
+                                </div>
                             </div>
-                            <h3 class="font-bold text-white">Investments</h3>
-                        </div>
-                        <div class="bg-slate-900 p-3 rounded border border-slate-700 flex justify-between items-center">
-                             <div class="text-sm text-white font-bold">Manage Savings & Stock Market</div>
-                             <i class="fas fa-chevron-right text-slate-600"></i>
-                        </div>
-                    </div>
+                        `;
+                    })()}
                 </div>
 
                 <div class="mb-6">

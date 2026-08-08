@@ -531,6 +531,93 @@ function glasses(style, colorHex) {
     }
 }
 
+// --- LAYER 8.5: BABY & CHILD STAGE RENDERERS ----------------------------------
+
+function babyHeadShape(skinHex) {
+    return `
+        <g fill="${skinHex}" stroke="${OUTLINE}" stroke-width="2">
+            <ellipse cx="18" cy="54" rx="4.5" ry="6.5"/>
+            <ellipse cx="82" cy="54" rx="4.5" ry="6.5"/>
+            <ellipse cx="50" cy="54" rx="32" ry="34"/>
+            <circle cx="30" cy="62" r="8" fill="${skinHex}" opacity="0.3"/>
+            <circle cx="70" cy="62" r="8" fill="${skinHex}" opacity="0.3"/>
+        </g>
+    `;
+}
+
+function babyBlush() {
+    return `<g fill="#FF99AA" opacity="0.45">
+        <ellipse cx="30" cy="62" rx="7" ry="5"/>
+        <ellipse cx="70" cy="62" rx="7" ry="5"/>
+    </g>`;
+}
+
+function babyEyes(eyeHex) {
+    return `
+        <g>
+            <circle cx="36" cy="50" r="7.5" fill="white" stroke="${OUTLINE}" stroke-width="1.3"/>
+            <circle cx="36" cy="50" r="4.8" fill="${eyeHex}"/>
+            <circle cx="36" cy="50" r="2.2" fill="#1b1b1b"/>
+            <circle cx="34.2" cy="48.2" r="1.4" fill="white"/>
+        </g>
+        <g>
+            <circle cx="64" cy="50" r="7.5" fill="white" stroke="${OUTLINE}" stroke-width="1.3"/>
+            <circle cx="64" cy="50" r="4.8" fill="${eyeHex}"/>
+            <circle cx="64" cy="50" r="2.2" fill="#1b1b1b"/>
+            <circle cx="62.2" cy="48.2" r="1.4" fill="white"/>
+        </g>
+        <path d="M 29 41 Q 36 38 42 41" fill="none" stroke="${OUTLINE}" stroke-width="1.2" opacity="0.5"/>
+        <path d="M 58 41 Q 64 38 71 41" fill="none" stroke="${OUTLINE}" stroke-width="1.2" opacity="0.5"/>
+    `;
+}
+
+function babyMouth() {
+    return `
+        <ellipse cx="50" cy="58" rx="1.8" ry="1.2" fill="${OUTLINE}" opacity="0.5"/>
+        <path d="M 43 67 Q 50 74 57 67" fill="#E8735A" stroke="${OUTLINE}" stroke-width="1.5"/>
+    `;
+}
+
+function babyHair(hairPaint) {
+    const { url: fill, hex } = hairPaint;
+    const dark = shadeColor(hex, -25);
+    return `
+        <g fill="${fill}" stroke="${OUTLINE}" stroke-width="1.4">
+            <path d="M 45 22 Q 42 12 50 10 Q 58 12 55 22 Q 50 18 45 22 Z"/>
+            <path d="M 48 21 Q 42 24 38 27 Q 45 26 50 22 Z"/>
+        </g>
+        <path d="M 47 13 Q 50 11 54 13" fill="none" stroke="${dark}" stroke-width="0.8" stroke-opacity="0.6"/>
+    `;
+}
+
+function childHeadShape(faceShape, skinHex) {
+    let head;
+    switch (faceShape) {
+        case 'round':
+            head = `<ellipse cx="50" cy="53" rx="31" ry="32"/>`;
+            break;
+        case 'square':
+            head = `<rect x="21" y="21" width="58" height="62" rx="14"/>`;
+            break;
+        case 'heart':
+            head = `<path d="M 50 18 C 66 18 78 31 76 46 C 74 61 63 69 50 85 C 37 69 26 61 24 46 C 22 31 34 18 50 18 Z"/>`;
+            break;
+        case 'long':
+            head = `<ellipse cx="50" cy="54" rx="25" ry="37"/>`;
+            break;
+        case 'oval':
+        default:
+            head = `<ellipse cx="50" cy="53" rx="28" ry="33"/>`;
+    }
+    return `
+        <g fill="${skinHex}" stroke="${OUTLINE}" stroke-width="2">
+            <ellipse cx="18" cy="53" rx="4.8" ry="7.5"/>
+            <ellipse cx="82" cy="53" rx="4.8" ry="7.5"/>
+            ${head}
+        </g>
+    `;
+}
+
 // --- ASSEMBLY -------------------------------------------------------------------
 
 function resolveHairFeatureColor(appearance, age) {
@@ -543,12 +630,11 @@ function resolveFacialHairColor(appearance, age) {
 }
 
 function buildSvg(appearance, age, idSeed) {
+    const stage = AvatarLogic.getAgeStage(age);
     const skinHex = AvatarLogic.SKIN_TONE_HEX[appearance.skinTone] || AvatarLogic.SKIN_TONE_HEX.tone4;
     const eyeHex = AvatarLogic.EYE_COLOR_HEX[appearance.eyeColor] || AvatarLogic.EYE_COLOR_HEX.brown;
     const glassesHex = AvatarLogic.GLASSES_COLOR_HEX[appearance.glassesColor] || AvatarLogic.GLASSES_COLOR_HEX.black;
     const hairHex = resolveHairFeatureColor(appearance, age);
-    const facialHairHex = resolveFacialHairColor(appearance, age);
-    const wrinkleOpacity = AvatarLogic.getWrinkleOpacity(age);
 
     // Gradient id is namespaced per-character (idSeed) since several avatars
     // can be inlined into the DOM at once and SVG ids are document-global.
@@ -560,19 +646,45 @@ function buildSvg(appearance, age, idSeed) {
     </linearGradient>`;
     const hairPaint = { url: `url(#${hairGradId})`, hex: hairHex };
 
-    const layers = [
-        `<defs>${hairDefs}</defs>`,
-        headShape(appearance.faceShape, skinHex),
-        blush(appearance.blushColor),
-        eyebrows(appearance.eyebrowStyle, hairHex),
-        eyes(appearance.eyeShape, eyeHex, skinHex),
-        mouth(appearance.lipstickColor),
-        facialHair(appearance.facialHairStyle, facialHairHex),
-        wrinkles(wrinkleOpacity),
-        hairBack(appearance.hairStyle, hairPaint, appearance.faceShape),
-        glasses(appearance.glassesStyle, glassesHex),
-        hairFront(appearance.hairStyle, hairPaint, appearance.faceShape)
-    ].join('');
+    let layers;
+
+    if (stage === 'baby') {
+        layers = [
+            `<defs>${hairDefs}</defs>`,
+            babyHeadShape(skinHex),
+            babyBlush(),
+            babyEyes(eyeHex),
+            babyMouth(),
+            babyHair(hairPaint)
+        ].join('');
+    } else if (stage === 'child') {
+        layers = [
+            `<defs>${hairDefs}</defs>`,
+            childHeadShape(appearance.faceShape, skinHex),
+            eyebrows(appearance.eyebrowStyle, hairHex),
+            eyes(appearance.eyeShape, eyeHex, skinHex),
+            mouth('none'),
+            hairBack(appearance.hairStyle, hairPaint, appearance.faceShape),
+            glasses(appearance.glassesStyle, glassesHex),
+            hairFront(appearance.hairStyle, hairPaint, appearance.faceShape)
+        ].join('');
+    } else {
+        const facialHairHex = resolveFacialHairColor(appearance, age);
+        const wrinkleOpacity = AvatarLogic.getWrinkleOpacity(age);
+        layers = [
+            `<defs>${hairDefs}</defs>`,
+            headShape(appearance.faceShape, skinHex),
+            blush(appearance.blushColor),
+            eyebrows(appearance.eyebrowStyle, hairHex),
+            eyes(appearance.eyeShape, eyeHex, skinHex),
+            mouth(appearance.lipstickColor),
+            facialHair(appearance.facialHairStyle, facialHairHex),
+            wrinkles(wrinkleOpacity),
+            hairBack(appearance.hairStyle, hairPaint, appearance.faceShape),
+            glasses(appearance.glassesStyle, glassesHex),
+            hairFront(appearance.hairStyle, hairPaint, appearance.faceShape)
+        ].join('');
+    }
 
     return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">${layers}</svg>`;
 }
@@ -588,7 +700,8 @@ function buildSvg(appearance, age, idSeed) {
 export function renderAvatar(character) {
     const appearance = AvatarLogic.ensureAppearance(character);
     const age = typeof character.age === 'number' ? character.age : 30;
-    const cacheKey = `${character.id || character.name || 'unknown'}::${character.avatarVersion || 0}`;
+    const stage = AvatarLogic.getAgeStage(age);
+    const cacheKey = `${character.id || character.name || 'unknown'}::${stage}::${age}::${character.avatarVersion || 0}`;
 
     const cached = _cache.get(cacheKey);
     if (cached) return cached;

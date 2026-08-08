@@ -1,6 +1,6 @@
 import { login, configureAuth } from '../auth/auth.js';
 import { startGuestMode, renderLoginScreen } from '../auth/loginScreen.js';
-import { processQuarter, enterBusinessMode, hireEmployee, layoffEmployee, sellBusiness, purchaseUpgrade } from '../features/business/businessDashboard.js';
+import { processQuarter, enterBusinessMode, hireEmployee, layoffEmployee, sellBusiness, purchaseUpgrade, setBusinessTab, selectSupplierDashboard, upgradeHQTier, upgradeMarketingChannel, adjustRoleCount, acceptVCPitch, chooseEventChoice } from '../features/business/businessDashboard.js';
 import { selectIndustry, selectSupplier, renderBusinessSetup, initBusiness } from '../features/business/createBusinessScreen.js';
 import { renderCareerMarket, applyForJob, applyForCareerTrack, answerInterview, retryInterview } from '../features/career/careerJobsScreen.js';
 import { confirmQuitCareer, quitCareer, renderCareerManager, workHarderJob, slackOffJob } from '../features/career/jobCareerManagerScreen.js';
@@ -21,7 +21,8 @@ import { chooseFuneralType, cancelFuneralPlan, confirmFuneralPlan, donateBody, l
 import { openWeddingPlanner, confirmWeddingPlan, openNameChangeChoice, chooseNameChange } from '../features/relationships/romanceScreen.js';
 import { renderMoreDashboard, buyGymMembership, cancelGymMembership, visitGymOneTime, startBetterDiet, cancelBetterDiet, visitDoctor, openBlackjackBetting, startBlackjackGame, blackjackHit, blackjackStand, openTravelModal, bookTrip, openDietSelectionModal, selectDiet, openLotteryModal, buyLotteryTicket, openSuggestionsModal, openMoveCountryModal, updateRelocateCityDropdown, confirmMoveCountry, askPartnerToMove, confirmMoveAlone } from '../features/more/moreScreen.js';
 import { renderCasinoHub, openRouletteModal, confirmRouletteBet, confirmRouletteSingleNumberBet, openSlotsModal, confirmSlotsSpin } from '../features/more/casinoScreen.js';
-import { openSettingsModal, triggerManualSave, promptResetGame, toggleSettingSFX, toggleSettingCompact } from '../features/more/settingsScreen.js';
+import { openSettingsModal, triggerManualSave, promptResetGame, toggleSettingSFX, toggleSettingCompact, toggleSettingTheme, applyTheme } from '../features/more/settingsScreen.js';
+import { renderStoreScreen, filterStoreCategory, previewPackDetails, buyPack, restorePurchases } from '../features/store/storeScreen.js';
 import { Utils } from '../ui/utils.js';
 import { UI } from '../ui/ui.js';
 
@@ -526,6 +527,15 @@ export const loadAndRenderGame = (userData) => {
             sellingPrice:        userData.sellingPrice         || 0,
             salaryOffer:         userData.salaryOffer          || 0,
             supplierId:          userData.supplierId           || null,
+            hqTier:              userData.hqTier               || 'garage',
+            marketingLevels:     userData.marketingLevels      || { social_ads: 0, seo_content: 0, influencers: 0, b2b_sales: 0 },
+            teamRoles:           userData.teamRoles            || { engineering: 2, sales: 1, operations: 1, marketing: 1 },
+            equityOwned:         userData.equityOwned          ?? 1.0,
+            investorShares:      userData.investorShares       || [],
+            corporateDebt:       userData.corporateDebt        || { principal: 0, interestRate: 0.08, monthlyPayment: 0 },
+            customerSatisfaction:userData.customerSatisfaction ?? 75,
+            employeeMorale:      userData.employeeMorale       ?? 80,
+            activeResearch:      userData.activeResearch       || [],
             businessHistory:     userData.businessHistory      || [],
             businessUpgrades:    userData.businessUpgrades     || [],
             lastCompletedFiscalYearAge: userData.lastCompletedFiscalYearAge ?? null,
@@ -640,23 +650,103 @@ async function initGame() {
         state.userAuthId = user.sub;
         state.userEmail = user.email;
 
+        // Check for active guest save
+        const guestSave = Utils.guestStorage.loadGame();
+        const hasGuestSave = guestSave && guestSave.user && guestSave.user.lifeStatus !== "Deceased";
+
+        // Try to load existing cloud save first
+        let dbUser = null;
         try {
             const response = await fetch(`/api/load?auth0_id=${user.sub}`);
-
             if (response.ok) {
-                const dbUser = await response.json();
-                if (!dbUser.game_data || Object.keys(dbUser.game_data).length === 0) {
-                    console.log("Save file empty (player wiped). Starting Character Creation.");
-                    renderCharCreation();
-                } else {
-                    updateGameInfo(dbUser);
+                const data = await response.json();
+                if (data && data.game_data && Object.keys(data.game_data).length > 0 && (data.game_data.user || data.game_data.stats)) {
+                    dbUser = data;
                 }
-            } else {
-                console.log("No save file found. Starting Character Creation.");
-                renderCharCreation();
             }
         } catch (e) {
-            console.error("Error loading save:", e);
+            console.error("Error checking cloud save:", e);
+        }
+
+        // SCENARIO 1: Both Guest Save AND Cloud Save exist -> CONFLICT RESOLUTION MODAL
+        if (hasGuestSave && dbUser) {
+            console.log("Conflict detected: Active guest character AND existing cloud save found.");
+            
+            const cloudUser = dbUser.game_data.user || dbUser.game_data;
+            const cloudName = cloudUser.username || cloudUser.name || "Account Character";
+            const cloudAge = dbUser.game_data.stats?.age || cloudUser.age || 0;
+            
+            const guestName = guestSave.user.username || guestSave.user.name || "Guest Character";
+            const guestAge = guestSave.user.age || 0;
+
+            const modalMsg = `
+                <div class="space-y-3 text-left text-sm">
+                    <p class="text-slate-300">An existing character was found on your account, as well as an active guest character.</p>
+                    
+                    <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-700 space-y-1">
+                        <div class="font-bold text-blue-400 text-xs uppercase tracking-wider">Cloud Save</div>
+                        <div class="text-white font-semibold">${cloudName} (Age ${cloudAge})</div>
+                    </div>
+                    
+                    <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-700 space-y-1">
+                        <div class="font-bold text-amber-400 text-xs uppercase tracking-wider">Current Guest Character</div>
+                        <div class="text-white font-semibold">${guestName} (Age ${guestAge})</div>
+                    </div>
+                    
+                    <p class="text-xs text-slate-400">Which character would you like to keep?</p>
+                </div>
+            `;
+
+            UI.showConfirm(
+                "Save Conflict Detected",
+                modalMsg,
+                "Use Guest Character",
+                async () => {
+                    console.log("User chose Guest Character. Overwriting Cloud save...");
+                    state.gameState = guestSave;
+                    GameLogic.backfillRelationshipGender(state.gameState.user?.relationships);
+                    await saveGame();
+                    Utils.guestStorage.clearSave();
+                    renderLifeDashboard();
+                    UI.showModal("Character Saved!", `Your guest character (${guestName}) has been saved to your account.`);
+                }
+            );
+
+            const cancelBtn = document.getElementById('modal-cancel');
+            if (cancelBtn) {
+                cancelBtn.innerText = "Keep Cloud Character";
+                cancelBtn.onclick = () => {
+                    console.log("User chose Account Character. Loading Cloud save...");
+                    Utils.guestStorage.clearSave();
+                    UI.hideModal();
+                    updateGameInfo(dbUser);
+                    UI.showModal("Cloud Save Loaded", `Welcome back! Loaded your account character (${cloudName}).`);
+                };
+            }
+            return;
+        }
+
+        // SCENARIO 2: Guest Save exists, but NO Cloud Save exists -> Auto Migration
+        if (hasGuestSave) {
+            console.log("Migrating active guest character to logged-in cloud account...");
+            state.gameState = guestSave;
+            GameLogic.backfillRelationshipGender(state.gameState.user?.relationships);
+            
+            await saveGame();
+            Utils.guestStorage.clearSave();
+
+            if (typeof renderLifeDashboard === "function") {
+                renderLifeDashboard();
+                UI.showModal("Character Saved!", `Welcome ${user.nickname || 'Player'}! Your character has been saved to your account.`);
+            }
+            return;
+        }
+
+        // SCENARIO 3: No Guest Save -> Load Cloud Save or Start Character Creation
+        if (dbUser) {
+            updateGameInfo(dbUser);
+        } else {
+            console.log("No save file found. Starting Character Creation.");
             renderCharCreation();
         }
 
@@ -820,6 +910,13 @@ const routeHandlers = {
   declineLeaseRenewal,
   renderActivities,
   processQuarter,
+  setBusinessTab,
+  selectSupplierDashboard,
+  upgradeHQTier,
+  upgradeMarketingChannel,
+  adjustRoleCount,
+  acceptVCPitch,
+  chooseEventChoice,
   selectIndustry,
   selectSupplier,
   initBusiness,
@@ -916,7 +1013,13 @@ const routeHandlers = {
   promptResetGame,
   toggleSettingSFX,
   toggleSettingCompact,
-  openPlayerOverviewModal
+  toggleSettingTheme,
+  openPlayerOverviewModal,
+  renderStoreScreen,
+  filterStoreCategory,
+  previewPackDetails,
+  buyPack,
+  restorePurchases
 };
 
 document.addEventListener('click', (e) => {
@@ -958,4 +1061,6 @@ document.addEventListener('change', (e) => {
     }
 });
 
+applyTheme();
 onload();
+

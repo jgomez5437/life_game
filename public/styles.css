@@ -88,3 +88,202 @@
             background-repeat: no-repeat;
             background-size: 1.5em 1.5em;
         }
+
+        /* Smooth Toggle Switches */
+        .toggle-switch {
+            transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
+        }
+        .toggle-knob {
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+/* ==========================================================================
+   LIGHT MODE THEME SYSTEM
+   ========================================================================== */
+
+body.light-mode {
+    background-color: #f8fafc; /* Slate 50 */
+    color: #0f172a; /* Slate 900 */
+}
+
+/* Custom Scrollbar in Light Mode */
+body.light-mode ::-webkit-scrollbar-track { background: #f1f5f9; }
+body.light-mode ::-webkit-scrollbar-thumb { background: #cbd5e1; }
+
+/* Structural Background Overrides */
+body.light-mode #game-container {
+    background-color: #f1f5f9 !important; /* Slate 100 */
+}
+
+body.light-mode header {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+}
+
+body.light-mode #header-brand {
+    color: #0f172a !important;
+}
+
+body.light-mode #header-name {
+    color: #0f172a !important;
+}
+
+body.light-mode #header-settings-btn {
+    background-color: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
+    color: #475569 !important;
+}
+
+body.light-mode #header-settings-btn:hover {
+    background-color: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
+body.light-mode #header-store-btn {
+    background-color: #fef3c7 !important;
+    border-color: #fde68a !important;
+    color: #b45309 !important;
+}
+
+body.light-mode #header-store-btn:hover {
+    background-color: #fde68a !important;
+    color: #92400e !important;
+}
+
+/* Modal Overlay & Card in Light Mode */
+body.light-mode #modal-overlay {
+    background-color: rgba(15, 23, 42, 0.4) !important;
+}
+
+body.light-mode #modal-overlay > div {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15) !important;
+}
+
+body.light-mode #modal-title {
+    color: #0f172a !important;
+}
+
+body.light-mode #modal-content {
+    color: #334155 !important;
+}
+
+/* Generic Card & Container Classes in Light Mode */
+body.light-mode .bg-slate-800,
+body.light-mode .bg-slate-800\/90,
+body.light-mode .bg-slate-800\/80,
+body.light-mode .bg-slate-800\/50 {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
+body.light-mode .bg-slate-900,
+body.light-mode .bg-slate-900\/80,
+body.light-mode .bg-slate-900\/50,
+body.light-mode .bg-slate-700,
+body.light-mode .bg-slate-700\/80,
+body.light-mode .bg-slate-700\/70,
+body.light-mode .bg-slate-700\/60,
+body.light-mode .bg-slate-700\/50,
+body.light-mode .bg-slate-700\/40,
+body.light-mode .bg-slate-700\/30 {
+    background-color: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
+}
+
+/* Navigation Buttons in Light Mode */
+body.light-mode .btn-nav {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #1e293b !important;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+body.light-mode .btn-nav:hover {
+    background: #f1f5f9 !important;
+}
+
+/* Form Controls & Inputs in Light Mode */
+body.light-mode .num-input {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+body.light-mode .num-input:focus {
+    border-color: #2563eb !important;
+}
+
+body.light-mode input[type=range]::-webkit-slider-runnable-track {
+    background: #cbd5e1 !important;
+}
+
+/* Base Text Color Overrides in Light Mode (preserving buttons/accent tags) */
+body.light-mode .text-white:not(.btn-primary *):not(.btn-life *):not(.bg-blue-600 *):not(.bg-emerald-600 *):not(.bg-red-600 *):not(.bg-purple-600 *) {
+    color: #0f172a !important;
+}
+
+body.light-mode .text-slate-100,
+body.light-mode .text-slate-200 {
+    color: #0f172a !important;
+}
+
+body.light-mode .text-slate-300 {
+    color: #334155 !important;
+}
+
+body.light-mode .text-slate-400 {
+    color: #475569 !important;
+}
+
+body.light-mode .text-slate-500 {
+    color: #64748b !important;
+}
+
+body.light-mode .border-slate-700,
+body.light-mode .border-slate-600 {
+    border-color: #e2e8f0 !important;
+}
+
+/* High Contrast Accent & Status Text in Light Mode */
+body.light-mode .text-green-400,
+body.light-mode .text-emerald-400 {
+    color: #059669 !important; /* Emerald 600 */
+}
+
+body.light-mode .text-red-400,
+body.light-mode .text-red-500 {
+    color: #dc2626 !important; /* Red 600 */
+}
+
+body.light-mode .text-yellow-400,
+body.light-mode .text-amber-400 {
+    color: #d97706 !important; /* Amber 600 */
+}
+
+body.light-mode .text-amber-300 {
+    color: #b45309 !important; /* Amber 700 */
+}
+
+body.light-mode .text-blue-400,
+body.light-mode .text-blue-300 {
+    color: #2563eb !important; /* Blue 600 */
+}
+
+body.light-mode .text-pink-400 {
+    color: #db2777 !important; /* Pink 600 */
+}
+
+body.light-mode .text-purple-400 {
+    color: #9333ea !important; /* Purple 600 */
+}
+
+/* Off State Toggle Switch background in Light Mode */
+body.light-mode .toggle-switch.bg-slate-700\/80 {
+    background-color: #cbd5e1 !important;
+    border-color: #94a3b8 !important;
+}
+

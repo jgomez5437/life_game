@@ -1,4 +1,5 @@
 import { state } from '../core/state.js';
+import { Utils } from '../ui/utils.js';
 
 let auth0Client = null;
 
@@ -24,6 +25,10 @@ export async function configureAuth() {
 };
 
 export async function login() {
+    if (state.gameState && state.gameState.user) {
+        console.log("Saving active guest character before login redirect...");
+        Utils.guestStorage.saveGame();
+    }
     await state.auth0Client.loginWithRedirect();
 };
 
