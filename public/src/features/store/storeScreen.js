@@ -388,10 +388,19 @@ export async function buyPack(packId) {
             if (data.url) {
                 window.location.href = data.url;
                 return;
+            } else if (data.sandbox) {
+                console.warn("Stripe key not detected on backend. Running sandbox fallback.");
+            }
+        } else {
+            const errData = await response.json().catch(() => ({}));
+            console.error("Stripe API Error:", errData);
+            if (errData.error) {
+                UI.showModal("Stripe Error", `Failed to start checkout: ${errData.error}`);
+                return;
             }
         }
     } catch (err) {
-        console.warn("Stripe Checkout API offline or not configured yet. Falling back to Sandbox Mode execution:", err);
+        console.warn("Stripe Checkout API offline or network error. Falling back to Sandbox Mode execution:", err);
     }
 
     // Fallback Sandbox Mode for instant testing/demo execution before live keys are configured

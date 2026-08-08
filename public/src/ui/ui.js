@@ -184,19 +184,31 @@ export const UI = {
         let title, content, confirmText, cancelText, onConfirm, onClose;
 
         if (typeof titleOrOptions === 'object' && titleOrOptions !== null) {
-            title = titleOrOptions.title || 'Notice';
+            title = titleOrOptions.title || '';
             content = titleOrOptions.content || titleOrOptions.htmlContent || '';
             confirmText = titleOrOptions.confirmText;
             cancelText = titleOrOptions.cancelText;
             onConfirm = titleOrOptions.onConfirm;
             onClose = titleOrOptions.onClose;
+        } else if (typeof titleOrOptions === 'string' && titleOrOptions.trim().startsWith('<') && !htmlContent) {
+            title = '';
+            content = titleOrOptions;
         } else {
-            title = titleOrOptions || 'Notice';
+            title = titleOrOptions || '';
             content = htmlContent || '';
         }
 
-        _elements.modalTitle.innerText = title;
-        _elements.modalContent.innerHTML = content;
+        if (_elements.modalTitle) {
+            _elements.modalTitle.innerText = title;
+            if (!title) {
+                _elements.modalTitle.classList.add('hidden');
+            } else {
+                _elements.modalTitle.classList.remove('hidden');
+            }
+        }
+        if (_elements.modalContent) {
+            _elements.modalContent.innerHTML = content;
+        }
 
         if (confirmText || onConfirm) {
             _elements.modalActions.innerHTML = `
