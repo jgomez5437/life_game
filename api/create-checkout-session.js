@@ -1,3 +1,5 @@
+import Stripe from 'stripe';
+
 export default async function handler(request, response) {
   if (request.method !== 'POST') {
     return response.status(405).json({ error: 'Method Not Allowed' });
@@ -12,16 +14,14 @@ export default async function handler(request, response) {
   const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 
   if (!stripeSecretKey) {
-    // Return sandbox notice if Stripe credentials are not configured yet
     return response.status(200).json({
       sandbox: true,
       url: null,
-      message: 'Stripe keys not configured. Falling back to sandbox purchase simulation.'
+      message: 'STRIPE_SECRET_KEY environment variable is missing on Vercel backend.'
     });
   }
 
   try {
-    const Stripe = (await import('stripe')).default;
     const stripe = new Stripe(stripeSecretKey);
 
     const priceMap = {
@@ -76,6 +76,6 @@ export default async function handler(request, response) {
     return response.status(200).json({ url: session.url });
   } catch (error) {
     console.error('Stripe Checkout Error:', error);
-    return response.status(500).json({ error: 'Failed to create checkout session' });
+    return response.status(500).json({ error: error.message || 'Failed to create checkout session' });
   }
 }

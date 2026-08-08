@@ -801,21 +801,18 @@ function showDecisionEventModal(eventObj, onComplete) {
         </button>
     `).join('');
 
-    UI.showCustomModal(`
-        <div class="p-2 space-y-4">
-            <div class="flex items-center gap-3">
-                <div class="w-12 h-12 rounded-xl bg-yellow-900/50 border border-yellow-500/40 flex items-center justify-center text-yellow-400 text-2xl">
-                    <i class="fas ${eventObj.icon}"></i>
+    UI.showCustomModal({
+        title: eventObj.name,
+        content: `
+            <div class="space-y-4">
+                <div class="text-xs text-yellow-300 font-bold flex items-center gap-2 mb-1">
+                    <i class="fas ${eventObj.icon}"></i> Executive Decision Required
                 </div>
-                <div>
-                    <h3 class="text-xl font-bold text-white">${eventObj.name}</h3>
-                    <div class="text-xs text-yellow-300">Executive Decision Required</div>
-                </div>
+                <p class="text-sm text-slate-300 mb-4">${eventObj.description}</p>
+                <div class="space-y-2 pt-1">${choicesHtml}</div>
             </div>
-            <p class="text-sm text-slate-300">${eventObj.description}</p>
-            <div class="space-y-2 pt-2">${choicesHtml}</div>
-        </div>
-    `);
+        `
+    });
 
     // Attach temporary choice handler
     window._activeEventChoices = eventObj.choices;
@@ -838,7 +835,7 @@ export function chooseEventChoice(indexStr) {
         addLog(`Company Decision: ${choice.logText}`, choice.repDelta < 0 ? 'bad' : 'good');
     }
 
-    UI.closeModal();
+    UI.hideModal();
     if (onComplete) onComplete();
 }
 

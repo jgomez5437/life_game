@@ -1,4 +1,5 @@
 import { sql } from '@vercel/postgres';
+import Stripe from 'stripe';
 
 export default async function handler(request, response) {
   if (request.method !== 'POST') {
@@ -13,7 +14,6 @@ export default async function handler(request, response) {
   }
 
   try {
-    const Stripe = (await import('stripe')).default;
     const stripe = new Stripe(stripeSecretKey);
 
     const sig = request.headers['stripe-signature'];
