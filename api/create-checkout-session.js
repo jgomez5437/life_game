@@ -50,12 +50,14 @@ export default async function handler(request, response) {
     const origin = request.headers.origin || request.headers.referer || 'http://localhost:3000';
 
     const session = await stripe.checkout.sessions.create({
+      managed_payments: { enabled: false },
       line_items: [
         {
           price_data: {
             currency: 'usd',
             product_data: {
               name: name,
+              tax_code: 'txcd_10000000',
               metadata: { pack_id: packId }
             },
             unit_amount: amount
