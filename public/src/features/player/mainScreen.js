@@ -617,6 +617,7 @@ function handleRelationships(user) {
     // Reset global interaction flags
     user.hasSpentTimeWithAll = false;
     user.hasMetSomeoneThisYear = false;
+    user.socialOutingsCountThisYear = 0;
 }
 
 function handlePregnancy(user) {
@@ -670,7 +671,8 @@ export function renderLifeDashboard(maybeGameState) {
     //Update the Header Bar using the UI Manager
     //    We assume 'game' holds the key stats needed for the header.
     UI.updateHeader(user);
-    if (user.username) get('avatar-container').innerHTML = renderAvatar(user);
+    const avatarElem = get('avatar-container');
+    if (user.username && avatarElem) avatarElem.innerHTML = renderAvatar(user);
     const isCompact = localStorage.getItem('life_game_compact') === 'true';
 
 // Generate the Life Log HTML 
@@ -695,11 +697,26 @@ export function renderLifeDashboard(maybeGameState) {
 
     //Define Action Variables
     const ageUpText = "Age Up +";
+    const userPurchases = user.purchases || [];
+    const isVip = Array.isArray(userPurchases) && userPurchases.includes('vip_supporter');
+    const vipBannerHtml = isVip ? `
+        <div data-action="renderVipLoungeModal" class="bg-slate-800/80 hover:bg-slate-800 p-2.5 rounded-xl border border-amber-500/30 mb-3 flex items-center justify-between cursor-pointer transition shadow-sm">
+            <div class="flex items-center gap-2">
+                <span class="bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-black text-[10px] uppercase px-2 py-0.5 rounded-full border border-amber-300 shadow-sm flex items-center gap-1">
+                    <i class="fas fa-crown text-[9px]"></i> VIP
+                </span>
+                <span class="text-xs font-bold text-slate-200">VIP Supporter</span>
+            </div>
+            <span class="text-[11px] font-bold text-amber-400 flex items-center gap-1">
+                Lounge <i class="fas fa-chevron-right text-[9px]"></i>
+            </span>
+        </div>
+    ` : '';
 
-    //Define the Final HTML String
     //Define the Final HTML String
     const dashboardHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
+            ${vipBannerHtml}
             <div class="flex-1 overflow-y-auto mb-4 bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
                 <h3 class="font-bold text-slate-300 mb-4 sticky top-0 bg-transparent backdrop-blur-md py-1 border-b border-slate-700/50">Life History</h3>
                 <div class="space-y-2">

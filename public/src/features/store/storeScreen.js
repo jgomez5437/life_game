@@ -35,7 +35,7 @@ export const STORE_PACKS = [
             'Instant University Major Enrollment & Graduation',
             'Graduate Law, Medical & Business School Degrees',
             'Skip Academic Requirements & Entrance Exams',
-            'Permanent Smarts Credential Boost'
+            'Zero Tuition Debt & Instant Fast-Track'
         ],
         status: 'available'
     },
@@ -292,15 +292,27 @@ function renderPackCard(pack) {
                     <button data-action="previewPackDetails" data-args="'${pack.id}'" class="px-3 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white bg-slate-700/60 hover:bg-slate-700 transition">
                         Details
                     </button>
-                    ${isOwned ? `
+                    ${isOwned ? (pack.id === 'instant_diplomas' ? `
+                        <button data-action="renderInstantDiplomaHub" class="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition flex items-center gap-1">
+                            <i class="fas fa-graduation-cap"></i> Use Perk
+                        </button>
+                    ` : pack.id === 'vip_supporter' ? `
+                        <button data-action="renderVipLoungeModal" class="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition flex items-center gap-1">
+                            <i class="fas fa-gem"></i> VIP Lounge
+                        </button>
+                    ` : `
                         <button class="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-950/60 text-emerald-400 border border-emerald-500/40 cursor-default">
                             Active
                         </button>
-                    ` : isComingSoon ? `
-                        <button data-action="buyPack" data-args="'${pack.id}'" class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white transition flex items-center gap-1.5">
-                            <i class="fas fa-bell"></i> Wishlist
+                    `) : isComingSoon ? (hasPurchasedPack('vip_supporter') ? `
+                        <button data-action="previewPackDetails" data-args="'${pack.id}'" class="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition flex items-center gap-1.5">
+                            <i class="fas fa-flask"></i> Beta Preview
                         </button>
                     ` : `
+                        <button data-action="buyPack" data-args="'${pack.id}'" class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700 transition flex items-center gap-1.5">
+                            <i class="fas fa-lock text-amber-400"></i> VIP Preview
+                        </button>
+                    `) : `
                         <button data-action="buyPack" data-args="'${pack.id}'" class="px-4 py-2 rounded-xl text-xs font-extrabold bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 shadow-md shadow-amber-500/20 transition flex items-center gap-1.5">
                             <i class="fas fa-shopping-cart"></i> Unlock
                         </button>
@@ -327,6 +339,12 @@ export function previewPackDetails(packId) {
 
     const isOwned = hasPurchasedPack(packId);
     const isComingSoon = pack.status === 'coming_soon';
+    const isVip = hasPurchasedPack('vip_supporter');
+
+    if (isComingSoon && !isVip) {
+        buyPack(packId);
+        return;
+    }
 
     const modalContent = `
         <div class="space-y-4">
@@ -336,7 +354,7 @@ export function previewPackDetails(packId) {
                 </div>
                 <div>
                     <h3 class="font-bold text-white text-base">${pack.title}</h3>
-                    <div class="text-xs font-bold text-amber-400 mt-0.5">${pack.price} • ${pack.category.toUpperCase()}</div>
+                    <div class="text-xs font-bold text-amber-400 mt-0.5">${pack.price} • ${pack.category.toUpperCase()} ${isComingSoon ? '• VIP BETA PREVIEW' : ''}</div>
                 </div>
             </div>
 
@@ -359,11 +377,15 @@ export function previewPackDetails(packId) {
     UI.showCustomModal({
         title: pack.title,
         content: modalContent,
-        confirmText: isOwned ? 'Already Unlocked' : isComingSoon ? 'Wishlist Pack' : `Unlock for ${pack.price}`,
+        confirmText: isOwned ? (pack.id === 'instant_diplomas' ? 'Open Instant Diploma Hub' : pack.id === 'vip_supporter' ? 'Open VIP Lounge' : 'Already Unlocked') : isComingSoon ? 'Close Preview' : `Unlock for ${pack.price}`,
         cancelText: 'Close',
         onConfirm: () => {
-            if (!isOwned) {
+            if (!isOwned && !isComingSoon) {
                 buyPack(packId);
+            } else if (pack.id === 'instant_diplomas') {
+                import('../education/instantDiploma.js').then(m => m.renderInstantDiplomaHub());
+            } else if (pack.id === 'vip_supporter') {
+                import('./vipLounge.js').then(m => m.renderVipLoungeModal());
             }
         }
     });
@@ -382,11 +404,35 @@ export async function buyPack(packId) {
     }
 
     if (pack.status === 'coming_soon') {
-        UI.showModal(
-            "Wishlisted!",
-            `You have wishlisted <strong>${pack.title}</strong>! You'll be notified as soon as this expansion releases in a future update.`
-        );
-        return;
+        const isVip = hasPurchasedPack('vip_supporter');
+        if (!isVip) {
+            UI.showCustomModal({
+                title: "VIP Beta Preview Required",
+                content: `
+                    <div class="space-y-3 text-left">
+                        <div class="bg-slate-900 p-3.5 rounded-xl border border-amber-500/40 flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-amber-950/60 text-amber-400 border border-amber-500/40 flex items-center justify-center text-lg shrink-0">
+                                <i class="fas fa-crown"></i>
+                            </div>
+                            <div>
+                                <div class="text-sm font-bold text-white">${pack.title} Early Beta</div>
+                                <div class="text-xs text-amber-400 font-semibold">VIP Supporter Feature</div>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-300 leading-relaxed">
+                            Early beta previews and feature roadmaps for <strong>${pack.title}</strong> are exclusively available to <strong>VIP Supporters</strong> in the VIP Lounge.
+                        </p>
+                    </div>
+                `,
+                confirmText: "Unlock VIP Supporter ($4.99)",
+                cancelText: "Cancel",
+                onConfirm: () => buyPack('vip_supporter')
+            });
+            return;
+        } else {
+            previewPackDetails(packId);
+            return;
+        }
     }
 
     // Attempt Stripe Checkout backend session initiation

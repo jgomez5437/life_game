@@ -3,6 +3,8 @@ import { state } from '../../core/state.js';
 import { renderLifeDashboard, addLog, refreshClassmates } from '../player/mainScreen.js';
 import { Utils } from '../../ui/utils.js';
 import { MAJORS, CAREER_TRACKS, PART_TIME_JOBS } from '../../core/main.js';
+import { UI } from '../../ui/ui.js';
+import { hasInstantDiplomaPerk, grantInstantUniversityDegree, grantInstantGradDegree, renderInstantDiplomaHub } from '../education/instantDiploma.js';
 
 const get = id => document.getElementById(id);
 
@@ -39,6 +41,10 @@ function renderUniversityModalContent(selectedMajor = null) {
     `;
     
     // Render Actions
+    const instantBtn = hasInstantDiplomaPerk() 
+        ? `<button data-action="attemptEnrollment" data-args="&apos;instant&apos;" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold py-2.5 rounded mb-2 flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/20"><i class="fas fa-graduation-cap"></i> Instant Graduation (Diploma Perk)</button>`
+        : '';
+
     const cashDisabled = user.money < 40000;
     const cashBtn = `<button data-action="attemptEnrollment" data-args="&apos;cash&apos;" ${cashDisabled ? 'disabled' : ''} class="w-full bg-green-600 hover:bg-green-500 disabled:bg-slate-700 disabled:opacity-50 text-white font-bold py-2 rounded mb-2">Pay Cash (${Utils.formatMoney(40000)})</button>`;
     
@@ -62,6 +68,7 @@ function renderUniversityModalContent(selectedMajor = null) {
     }
     get('modal-actions').innerHTML = `
         <div class="space-y-1">
+            ${instantBtn}
             ${cashBtn}
             ${loanBtn}
             ${scholarBtn}
@@ -76,6 +83,14 @@ export function attemptEnrollment(method) {
     const user = state.gameState.user;
     const major = get('major-select').value;
     
+    if (method === 'instant') {
+        const m = get('modal-overlay');
+        m.classList.add('hidden');
+        m.classList.remove('flex');
+        grantInstantUniversityDegree(major);
+        renderActivities();
+        return;
+    }
     if (method === 'cash') {
         user.money -= 40000;
         enrollSuccess(major, "paid with cash");
@@ -173,6 +188,10 @@ function renderGradModalContent(schoolType) {
     `;
     
     // Render Actions
+    const instantBtn = hasInstantDiplomaPerk() 
+        ? `<button data-action="attemptGradEnrollment" data-args="&apos;${schoolType}&apos;, &apos;instant&apos;" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold py-2.5 rounded mb-2 flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/20"><i class="fas fa-graduation-cap"></i> Instant Graduation (Diploma Perk)</button>`
+        : '';
+
     const cashDisabled = user.money < 100000;
     const cashBtn = `<button data-action="attemptGradEnrollment" data-args="&apos;${schoolType}&apos;, &apos;cash&apos;" ${cashDisabled ? 'disabled' : ''} class="w-full bg-green-600 hover:bg-green-500 disabled:bg-slate-700 disabled:opacity-50 text-white font-bold py-2 rounded mb-2">Pay Cash (${Utils.formatMoney(100000)})</button>`;
     
@@ -194,6 +213,7 @@ function renderGradModalContent(schoolType) {
     }
     get('modal-actions').innerHTML = `
         <div class="space-y-1">
+            ${instantBtn}
             ${cashBtn}
             ${loanBtn}
             ${scholarBtn}
@@ -206,6 +226,14 @@ function renderGradModalContent(schoolType) {
 }
 export function attemptGradEnrollment(schoolType, method) {
     const user = state.gameState.user;
+    if (method === 'instant') {
+        const m = get('modal-overlay');
+        m.classList.add('hidden');
+        m.classList.remove('flex');
+        grantInstantGradDegree(schoolType);
+        renderActivities();
+        return;
+    }
     if (method === 'cash') {
         user.money -= 100000;
         gradEnrollSuccess(schoolType, "paid with cash");
@@ -272,7 +300,7 @@ export function getSchoolName() {
 
 function isStudent() {
     const user = state.gameState.user;
-    return user.universityEnrolled || user.gradSchoolEnrolled || user.highSchoolRetained || (user.age < 18);
+    return user.universityEnrolled || user.gradSchoolEnrolled || user.highSchoolRetained || (user.age < 18 && !user.highSchoolGraduated);
 };
 
 function getStatus() {
@@ -389,7 +417,7 @@ export const renderActivities = () => {
                 <i class="fas fa-lock text-slate-500"></i>
             </div>
         `;
-    } else if (user.age < 18 || user.highSchoolRetained) {
+    } else if ((user.age < 18 && !user.highSchoolGraduated) || user.highSchoolRetained) {
          content += `
             <div data-action="renderEducation" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">
                 <div class="flex items-center justify-between mb-2">
@@ -412,7 +440,7 @@ export const renderActivities = () => {
                 </div>
             </div>
         `;
-    } else if (user.age >= 18 && !user.highSchoolRetained) {
+    } else if ((user.age >= 18 || user.highSchoolGraduated) && !user.highSchoolRetained) {
         if (user.universityEnrolled) {
              content += `
                 <div data-action="renderEducation" class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition">

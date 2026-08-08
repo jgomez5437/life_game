@@ -301,6 +301,35 @@ describe('Relationship Logic', () => {
             const stranger = GameLogic.generateStranger(16, 'female', 0.0);
             expect(stranger.age).toBeGreaterThanOrEqual(18);
         });
+
+        test('determineNPCGender respects attractionPreference', () => {
+            expect(GameLogic.determineNPCGender('male', 'women')).toBe('female');
+            expect(GameLogic.determineNPCGender('male', 'men')).toBe('male');
+            expect(GameLogic.determineNPCGender('female', 'women')).toBe('female');
+            expect(GameLogic.determineNPCGender('female', 'men')).toBe('male');
+        });
+
+        test('generateDatingProfiles returns requested count of profiles with bios and hobbies', () => {
+            const user = { age: 24, gender: 'male', attractionPreference: 'women' };
+            const profiles = GameLogic.generateDatingProfiles(user, 3);
+            expect(profiles.length).toBe(3);
+            profiles.forEach(p => {
+                expect(p.gender).toBe('female');
+                expect(p.age).toBeGreaterThanOrEqual(18);
+                expect(p.bio).toBeDefined();
+                expect(p.hobbies.length).toBe(2);
+            });
+        });
+
+        test('generateTargetedStranger handles romantic and platonic preferences', () => {
+            const user = { age: 22, gender: 'female', attractionPreference: 'men' };
+            const dateStr = GameLogic.generateTargetedStranger(user, 'romantic');
+            expect(dateStr.gender).toBe('male');
+            expect(dateStr.type).toBe('Crush');
+
+            const friendStr = GameLogic.generateTargetedStranger(user, 'friend');
+            expect(friendStr.type).toBe('Friend');
+        });
     });
 
     describe('Romance interactions (Chunk 1)', () => {

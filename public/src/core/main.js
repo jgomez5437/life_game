@@ -16,13 +16,15 @@ import { renderAssets, renderVehicleManager, repairVehicle, sellVehicle, renderP
 import { renderShoppingHub, renderVehicleDealer, buyVehicle, buyVehicleCash, buyVehicleLoan, renderRealEstateDealer, buyPropertyCash, buyPropertyMortgage, renderJewelryDealer, buyJewelry } from '../features/assets/goShoppingScreen.js';
 import { renderInvestmentsScreen, switchInvestmentTab, setStockFilter, openStockDetailsModal, openBuyStockModal, confirmBuyStock, openSellStockModal, confirmSellStock, openDepositSavingsModal, confirmDepositSavings, openWithdrawSavingsModal, confirmWithdrawSavings } from '../features/assets/investmentsScreen.js';
 import { renderActivities } from '../features/career/occupationScreen.js';
-import { renderRelationships, renderPersonInteraction, openRelationshipConfirm, spendTimeWithAll, goOutMeetSomeone, handleProposeAction, openRingSelectionModal, proposeWithRing } from '../features/relationships/relationshipScreen.js';
+import { renderRelationships, renderPersonInteraction, openRelationshipConfirm, spendTimeWithAll, goOutMeetSomeone, openMeetPeopleModal, setAttractionPreference, handleBlindDate, handleDatingApp, renderDatingAppModal, selectDatingAppMatch, handleMeetFriend, handleNightOut, handleProposeAction, openRingSelectionModal, proposeWithRing } from '../features/relationships/relationshipScreen.js';
 import { chooseFuneralType, cancelFuneralPlan, confirmFuneralPlan, donateBody, lookTheOtherWay, goToFuneral, skipFuneral, respondNewTeacher, processNextTeacherReplacement } from '../features/relationships/funeralScreen.js';
 import { openWeddingPlanner, confirmWeddingPlan, openNameChangeChoice, chooseNameChange } from '../features/relationships/romanceScreen.js';
 import { renderMoreDashboard, buyGymMembership, cancelGymMembership, visitGymOneTime, startBetterDiet, cancelBetterDiet, visitDoctor, openBlackjackBetting, startBlackjackGame, blackjackHit, blackjackStand, openTravelModal, bookTrip, openDietSelectionModal, selectDiet, openLotteryModal, buyLotteryTicket, openSuggestionsModal, openMoveCountryModal, updateRelocateCityDropdown, confirmMoveCountry, askPartnerToMove, confirmMoveAlone } from '../features/more/moreScreen.js';
 import { renderCasinoHub, openRouletteModal, confirmRouletteBet, confirmRouletteSingleNumberBet, openSlotsModal, confirmSlotsSpin } from '../features/more/casinoScreen.js';
 import { openSettingsModal, triggerManualSave, promptResetGame, toggleSettingSFX, toggleSettingCompact, toggleSettingTheme, applyTheme } from '../features/more/settingsScreen.js';
 import { renderStoreScreen, filterStoreCategory, previewPackDetails, buyPack, restorePurchases } from '../features/store/storeScreen.js';
+import { grantInstantHighSchool, grantInstantUniversityDegree, grantInstantGradDegree, renderInstantDiplomaHub, claimInstantUniversityMajor } from '../features/education/instantDiploma.js';
+import { renderVipLoungeModal, selectTheme, isVipSupporter } from '../features/store/vipLounge.js';
 import { Utils } from '../ui/utils.js';
 import { UI } from '../ui/ui.js';
 
@@ -947,6 +949,14 @@ const routeHandlers = {
   openRelationshipConfirm,
   spendTimeWithAll,
   goOutMeetSomeone,
+  openMeetPeopleModal,
+  setAttractionPreference,
+  handleBlindDate,
+  handleDatingApp,
+  renderDatingAppModal,
+  selectDatingAppMatch,
+  handleMeetFriend,
+  handleNightOut,
   openWeddingPlanner,
   confirmWeddingPlan,
   openNameChangeChoice,
@@ -1019,7 +1029,14 @@ const routeHandlers = {
   filterStoreCategory,
   previewPackDetails,
   buyPack,
-  restorePurchases
+  restorePurchases,
+  grantInstantHighSchool,
+  grantInstantUniversityDegree,
+  grantInstantGradDegree,
+  renderInstantDiplomaHub,
+  claimInstantUniversityMajor,
+  renderVipLoungeModal,
+  selectTheme
 };
 
 document.addEventListener('click', (e) => {

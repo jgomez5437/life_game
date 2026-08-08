@@ -28,7 +28,6 @@ export const UI = {
         if (_elements.headerBrand) _elements.headerBrand.classList.add('hidden');
         if (_elements.userInfo) _elements.userInfo.classList.remove('hidden');
         if (_elements.bankWrapper) _elements.bankWrapper.classList.remove('hidden');
-        if (_elements.storeBtn) _elements.storeBtn.classList.remove('hidden');
         if (_elements.settingsBtn) _elements.settingsBtn.classList.remove('hidden');
 
         // 1. NAME & FLAG UPDATE

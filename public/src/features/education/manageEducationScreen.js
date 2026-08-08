@@ -2,6 +2,7 @@ import { state } from '../../core/state.js';
 import { renderActivities, getSchoolName } from '../career/occupationScreen.js';
 import { renderLifeDashboard, addLog, refreshClassmates } from '../player/mainScreen.js';
 import { renderAvatar } from '../../ui/avatarRenderer.js';
+import { hasInstantDiplomaPerk, renderInstantDiplomaHub } from './instantDiploma.js';
 
 const get = id => document.getElementById(id);
 
@@ -40,12 +41,19 @@ export function renderEducation() {
         majorDisplay = `<div class="text-sm text-blue-300 mt-1">Major: ${user.major}</div>`;
     }
 
+    const perkActive = hasInstantDiplomaPerk();
+
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
-            <div class="mb-4">
+            <div class="mb-4 flex items-center justify-between">
                 <button data-action="renderActivities" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
                     <i class="fas fa-arrow-left"></i> Back to Occupation
                 </button>
+                ${perkActive ? `
+                    <button data-action="renderInstantDiplomaHub" class="text-xs font-bold text-amber-400 hover:text-amber-300 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 shadow">
+                        <i class="fas fa-graduation-cap"></i> Instant Diploma Hub
+                    </button>
+                ` : ''}
             </div>
             <div class="text-center mb-6">
                 <div class="w-16 h-16 rounded-full bg-green-900/50 flex items-center justify-center text-green-400 mx-auto mb-3 text-2xl">
