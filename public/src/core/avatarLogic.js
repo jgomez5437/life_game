@@ -233,6 +233,18 @@ function ensureAppearance(character) {
     return character.appearance;
 }
 
+/**
+ * Determines the age stage for avatar rendering.
+ * @param {number} age
+ * @returns {'baby' | 'child' | 'adult'}
+ */
+function getAgeStage(age) {
+    const numericAge = typeof age === 'number' ? age : 30;
+    if (numericAge <= 2) return 'baby';
+    if (numericAge <= 12) return 'child';
+    return 'adult';
+}
+
 export const AvatarLogic = {
     SKIN_TONES, SKIN_TONE_HEX,
     FACE_SHAPES,
@@ -251,5 +263,6 @@ export const AvatarLogic = {
     generateGrayStartAge,
     getAgedHairColor,
     getWrinkleOpacity,
-    ensureAppearance
+    ensureAppearance,
+    getAgeStage
 };

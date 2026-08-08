@@ -671,19 +671,21 @@ export function renderLifeDashboard(maybeGameState) {
     //    We assume 'game' holds the key stats needed for the header.
     UI.updateHeader(user);
     if (user.username) get('avatar-container').innerHTML = renderAvatar(user);
+    const isCompact = localStorage.getItem('life_game_compact') === 'true';
+
 // Generate the Life Log HTML 
     const logHtml = currentState.lifeLog.map(l => `
-        <div class="mb-5 group">
-            <div class="flex items-center mb-2">
-                <div class="bg-slate-800 text-blue-100 text-[10px] uppercase font-bold px-3 py-1 rounded-full border border-slate-600 shadow-sm z-10">
+        <div class="${isCompact ? 'mb-2.5' : 'mb-5'} group">
+            <div class="flex items-center ${isCompact ? 'mb-1' : 'mb-2'}">
+                <div class="bg-slate-800 text-blue-100 ${isCompact ? 'text-[9px] px-2 py-0.5' : 'text-[10px] px-3 py-1'} uppercase font-bold rounded-full border border-slate-600 shadow-sm z-10">
                     Age ${l.age}
                 </div>
                 <div class="h-px bg-gradient-to-r from-slate-700 to-transparent flex-grow ml-2"></div>
             </div>
 
-            <div class="pl-4 border-l border-slate-700/50 ml-4 space-y-2 pb-1">
+            <div class="${isCompact ? 'pl-3 border-l border-slate-700/50 ml-3 space-y-0.5 pb-0' : 'pl-4 border-l border-slate-700/50 ml-4 space-y-2 pb-1'}">
                 ${l.events.map(e => `
-                    <div class="${e.color} text-sm py-0.5 transition-transform duration-200 hover:translate-x-1">
+                    <div class="${e.color} ${isCompact ? 'text-xs py-0 leading-snug' : 'text-sm py-0.5'} transition-transform duration-200 hover:translate-x-1">
                         ${e.msg}
                     </div>
                 `).join('')}

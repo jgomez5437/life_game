@@ -55,6 +55,29 @@ export function renderMoreDashboard() {
             
             <div class="flex-1 overflow-y-auto pb-6 space-y-4">
 
+                <!-- SECTION 0: STORE & EXPANSIONS -->
+                <div class="text-xs font-bold uppercase tracking-wider text-amber-400 px-1 flex items-center gap-1.5">
+                    <i class="fas fa-gem"></i> Premium & Expansions
+                </div>
+
+                <div class="bg-gradient-to-r from-amber-950/60 to-purple-950/60 p-3.5 rounded-xl border border-amber-500/40 shadow-lg relative overflow-hidden">
+                    <div class="flex justify-between items-center mb-2">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-9 h-9 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-300 border border-amber-500/50">
+                                <i class="fas fa-store text-sm"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-white text-sm">The Spot • Packs & Features Store</h3>
+                                <div class="text-xs text-amber-300 font-semibold">Browse God Mode, Expansions & Cosmetics</div>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-300 mb-3 leading-relaxed">Check out future purchasable packs, feature cheats, custom avatar studios, and expansion packs.</p>
+                    <button data-action="renderStoreScreen" class="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold w-full py-2 rounded-lg text-sm transition shadow-md shadow-amber-500/20 flex items-center justify-center gap-2">
+                        <i class="fas fa-shopping-bag"></i> Open Packs Store
+                    </button>
+                </div>
+
                 <!-- SECTION 1: HEALTH & WELLNESS -->
                 <div class="text-xs font-bold uppercase tracking-wider text-emerald-400 px-1 flex items-center gap-1.5">
                     <i class="fas fa-heartbeat"></i> Health & Wellness

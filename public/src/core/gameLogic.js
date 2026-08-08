@@ -2,6 +2,7 @@ import { addLog } from '../features/player/mainScreen.js';
 import { UI } from '../ui/ui.js';
 import { Utils } from '../ui/utils.js';
 import { AvatarLogic } from './avatarLogic.js';
+import { HQ_TIERS, BUSINESS_INDUSTRIES, VC_INVESTOR_TYPES } from '../features/business/businessTypes.js';
 
 function sanitizeName(rawInput) {
     if (!rawInput || typeof rawInput !== 'string') {
@@ -3578,6 +3579,131 @@ function calculateSpousalIncomeContribution(user) {
     return { amount: 0, spouseName: spouse.name, spouseJob: spouse.occupation };
 }
 
+function ensureBusinessState(user) {
+    if (!user || !user.hasBusiness) return;
+
+    if (!user.hqTier) user.hqTier = 'garage';
+    if (!user.marketingLevels) user.marketingLevels = { social_ads: 0, seo_content: 0, influencers: 0, b2b_sales: 0 };
+    if (!user.teamRoles) {
+        const empCount = user.employees || 5;
+        user.teamRoles = {
+            engineering: Math.max(1, Math.ceil(empCount * 0.4)),
+            sales: Math.max(1, Math.ceil(empCount * 0.2)),
+            operations: Math.max(1, Math.ceil(empCount * 0.2)),
+            marketing: Math.max(1, Math.ceil(empCount * 0.2))
+        };
+    }
+    if (typeof user.equityOwned !== 'number') user.equityOwned = 1.0;
+    if (!Array.isArray(user.investorShares)) user.investorShares = [];
+    if (!user.corporateDebt) user.corporateDebt = { principal: 0, interestRate: 0.08, monthlyPayment: 0 };
+    if (typeof user.customerSatisfaction !== 'number') user.customerSatisfaction = 75;
+    if (typeof user.employeeMorale !== 'number') user.employeeMorale = 80;
+    if (!Array.isArray(user.activeResearch)) user.activeResearch = [];
+    if (!Array.isArray(user.businessHistory)) user.businessHistory = [];
+    if (!Array.isArray(user.businessUpgrades)) user.businessUpgrades = [];
+}
+
+function calculateCompanyValuation(user) {
+    if (!user || !user.hasBusiness) return 0;
+    ensureBusinessState(user);
+
+    const indKey = user.industry || 'tech';
+    const ind = BUSINESS_INDUSTRIES[indKey] || BUSINESS_INDUSTRIES.tech_saas || { valuationMultiple: 3.0, startupCost: 50000, unitCost: 10 };
+
+    const recentQuarters = (user.businessHistory || []).slice(-4);
+    const annualRevenue = recentQuarters.reduce((sum, q) => sum + (q.revenue || 0), 0);
+    const annualProfit = recentQuarters.reduce((sum, q) => sum + (q.profit || 0), 0);
+
+    const cashValue = user.compCash || 0;
+    const inventoryValue = (user.inventory || 0) * (ind.unitCost || 10);
+    const baseAssetValue = cashValue + inventoryValue;
+
+    let revenueValuation = annualRevenue * (ind.valuationMultiple || 3.0);
+    if (annualProfit > 0) {
+        revenueValuation += annualProfit * 2.0;
+    }
+
+    const reputationBonus = 1 + ((user.businessReputation || 50) - 50) / 200;
+    const finalValuation = Math.max(
+        (ind.startupCost || 50000) * 1.5,
+        Math.floor((baseAssetValue + revenueValuation) * reputationBonus)
+    );
+
+    return finalValuation;
+}
+
+function calculateBusinessOverhead(user) {
+    if (!user || !user.hasBusiness) return { fixedRent: 0, empAdminOverhead: 0, debtInterest: 0, totalQuarterly: 0 };
+    ensureBusinessState(user);
+
+    const hq = HQ_TIERS.find(h => h.id === user.hqTier) || HQ_TIERS[0];
+    const quarterlyRent = (hq.monthlyRent || 0) * 3;
+    const empCount = user.employees || 1;
+    const empAdminOverhead = empCount * 300 * 3;
+
+    const debtInterest = Math.floor(((user.corporateDebt?.principal || 0) * (user.corporateDebt?.interestRate || 0.08)) / 4);
+
+    const totalQuarterly = quarterlyRent + empAdminOverhead + debtInterest;
+
+    return {
+        quarterlyRent,
+        empAdminOverhead,
+        debtInterest,
+        totalQuarterly
+    };
+}
+
+function calculateVCInvestorOffers(user) {
+    if (!user || !user.hasBusiness) return [];
+    ensureBusinessState(user);
+
+    const valuation = calculateCompanyValuation(user);
+
+    return VC_INVESTOR_TYPES.filter(vc => valuation >= vc.minValuation).map(vc => {
+        const investmentAmount = Math.min(vc.maxInvestment, Math.floor(valuation * vc.equityTarget));
+        const postMoneyValuation = valuation + investmentAmount;
+        const actualEquityOffered = Math.round((investmentAmount / postMoneyValuation) * 100) / 100;
+
+        return {
+            ...vc,
+            offeredAmount: investmentAmount,
+            equityRequired: actualEquityOffered,
+            postMoneyValuation
+        };
+    });
+}
+
+function acceptVCOffer(user, investorId) {
+    if (!user || !user.hasBusiness) return { success: false, msg: 'No active business.' };
+    ensureBusinessState(user);
+
+    const offers = calculateVCInvestorOffers(user);
+    const offer = offers.find(o => o.id === investorId);
+    if (!offer) return { success: false, msg: 'Investment offer no longer valid.' };
+
+    const equityPct = offer.equityRequired;
+    if (user.equityOwned < equityPct) {
+        return { success: false, msg: `You do not own enough remaining equity (${Math.round(user.equityOwned * 100)}%) to fulfill this offer.` };
+    }
+
+    user.equityOwned = Math.round((user.equityOwned - equityPct) * 100) / 100;
+    user.compCash += offer.offeredAmount;
+    user.investorShares.push({
+        investorId: offer.id,
+        name: offer.name,
+        equity: equityPct,
+        amountInvested: offer.offeredAmount,
+        year: user.companyYear || 1
+    });
+
+    return {
+        success: true,
+        amount: offer.offeredAmount,
+        equity: equityPct,
+        msg: `Successfully accepted ${Utils.formatMoney(offer.offeredAmount)} investment from ${offer.name} in exchange for ${Math.round(equityPct * 100)}% equity!`
+    };
+}
+
 export const GameLogic = {
     generateNPCOccupation,
     progressNPCOccupation,
@@ -3627,6 +3753,11 @@ export const GameLogic = {
     getRemainingQuartersForAge,
     calculateAutoQuarterCount,
     resetBusinessQuarterTracking,
+    ensureBusinessState,
+    calculateCompanyValuation,
+    calculateBusinessOverhead,
+    calculateVCInvestorOffers,
+    acceptVCOffer,
     inheritFamilyRelationships,
     CITY_COST_OF_LIVING,
     PROPERTIES_FOR_SALE,

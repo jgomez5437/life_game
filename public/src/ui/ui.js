@@ -1,26 +1,36 @@
 import { Utils } from './utils.js';
 
 const _elements = {
-    name: document.getElementById('header-name'),
-    age: document.getElementById('header-age'),
-    bank: document.getElementById('header-bank'),
-    healthText: document.getElementById('ui-health'),
-    healthContainer: document.getElementById('health-container'),
-    //Main container for pages
-    gameContainer: document.getElementById('game-container'),
-    //Modal Elements
-    modalOverlay: document.getElementById('modal-overlay'),
-    modalTitle: document.getElementById('modal-title'),
-    modalContent: document.getElementById('modal-content'),
-    modalBtn: document.getElementById('modal-btn'),
-    modalActions: document.getElementById('modal-actions')
-}
+    get name() { return document.getElementById('header-name'); },
+    get age() { return document.getElementById('header-age'); },
+    get bank() { return document.getElementById('header-bank'); },
+    get healthText() { return document.getElementById('ui-health'); },
+    get healthContainer() { return document.getElementById('health-container'); },
+    get headerBrand() { return document.getElementById('header-brand'); },
+    get userInfo() { return document.getElementById('header-user-info'); },
+    get bankWrapper() { return document.getElementById('header-bank-wrapper'); },
+    get storeBtn() { return document.getElementById('header-store-btn'); },
+    get settingsBtn() { return document.getElementById('header-settings-btn'); },
+    get gameContainer() { return document.getElementById('game-container'); },
+    get modalOverlay() { return document.getElementById('modal-overlay'); },
+    get modalTitle() { return document.getElementById('modal-title'); },
+    get modalContent() { return document.getElementById('modal-content'); },
+    get modalBtn() { return document.getElementById('modal-btn'); },
+    get modalActions() { return document.getElementById('modal-actions'); }
+};
 
 //Global UI object
 export const UI = {
     /** * @param {Object} stats - { username, age, money, city, health }
      */
     updateHeader: (stats) => {
+        // Toggle header element visibility for in-game stats view
+        if (_elements.headerBrand) _elements.headerBrand.classList.add('hidden');
+        if (_elements.userInfo) _elements.userInfo.classList.remove('hidden');
+        if (_elements.bankWrapper) _elements.bankWrapper.classList.remove('hidden');
+        if (_elements.storeBtn) _elements.storeBtn.classList.remove('hidden');
+        if (_elements.settingsBtn) _elements.settingsBtn.classList.remove('hidden');
+
         // 1. NAME & FLAG UPDATE
         const displayName = stats.username || stats.name || "Player";
         const countryCode = Utils.getCountryCode(stats.city);
@@ -36,10 +46,10 @@ export const UI = {
                              style="vertical-align: text-bottom;">`;
         }
 
-        _elements.name.innerHTML = `${displayName} ${flagHtml}`;
+        if (_elements.name) _elements.name.innerHTML = `${displayName} ${flagHtml}`;
 
         // 2. AGE UPDATE
-        if (stats.age !== undefined) _elements.age.innerText = stats.age;
+        if (stats.age !== undefined && _elements.age) _elements.age.innerText = stats.age;
 
         // 3. HEALTH UPDATE
         if (stats.health !== undefined && _elements.healthText && _elements.healthContainer) {
@@ -56,7 +66,7 @@ export const UI = {
         }
 
         // 4. BANK UPDATE
-        if (stats.money !== undefined) {
+        if (stats.money !== undefined && _elements.bank) {
             _elements.bank.innerText = Utils.formatMoney(stats.money);
             
             _elements.bank.classList.remove('text-green-400', 'text-red-400');
@@ -69,9 +79,15 @@ export const UI = {
     },
 
     /**
-     * Resets header to modern standard placeholders for a new life.
+     * Resets header to clean login branding for login screen and character creation.
      */
     resetHeader: () => {
+        if (_elements.headerBrand) _elements.headerBrand.classList.remove('hidden');
+        if (_elements.userInfo) _elements.userInfo.classList.add('hidden');
+        if (_elements.bankWrapper) _elements.bankWrapper.classList.add('hidden');
+        if (_elements.storeBtn) _elements.storeBtn.classList.add('hidden');
+        if (_elements.settingsBtn) _elements.settingsBtn.classList.add('hidden');
+
         if (_elements.name) _elements.name.innerText = '—';
         if (_elements.age) _elements.age.innerText = '—';
         if (_elements.healthText) _elements.healthText.innerText = '100%';
@@ -94,7 +110,8 @@ export const UI = {
      * @param {string} htmlContent
      */
     renderScreen: (htmlContent) => {
-        _elements.gameContainer.innerHTML = htmlContent;
+        const container = _elements.gameContainer || document.getElementById('game-container');
+        if (container) container.innerHTML = htmlContent;
     },
 
     /**
@@ -109,6 +126,7 @@ export const UI = {
         _elements.modalActions.innerHTML = `
             <button id="modal-btn" class="w-full btn-primary text-white font-bold py-3 rounded-lg">Dismiss</button>
         `;
+        _elements.modalActions.classList.remove('hidden');
 
         const newDismissBtn = document.getElementById('modal-btn');
         
@@ -138,6 +156,7 @@ export const UI = {
                 <button id="modal-cancel" class="w-full border border-slate-700 text-slate-300 font-bold py-3 rounded-lg bg-slate-800">Cancel</button>
             </div>
         `;
+        _elements.modalActions.classList.remove('hidden');
 
         const confirmBtn = document.getElementById('modal-confirm');
         const cancelBtn = document.getElementById('modal-cancel');
@@ -158,14 +177,56 @@ export const UI = {
     },
 
     /**
-     * @param {string} title
-     * @param {string} htmlContent 
+     * @param {string|Object} titleOrOptions
+     * @param {string} [htmlContent]
      */
-    showCustomModal: (title, htmlContent) => {
+    showCustomModal: (titleOrOptions, htmlContent) => {
+        let title, content, confirmText, cancelText, onConfirm, onClose;
+
+        if (typeof titleOrOptions === 'object' && titleOrOptions !== null) {
+            title = titleOrOptions.title || 'Notice';
+            content = titleOrOptions.content || titleOrOptions.htmlContent || '';
+            confirmText = titleOrOptions.confirmText;
+            cancelText = titleOrOptions.cancelText;
+            onConfirm = titleOrOptions.onConfirm;
+            onClose = titleOrOptions.onClose;
+        } else {
+            title = titleOrOptions || 'Notice';
+            content = htmlContent || '';
+        }
+
         _elements.modalTitle.innerText = title;
-        _elements.modalContent.innerHTML = htmlContent;
-        _elements.modalActions.innerHTML = ''; // Actions handled inside htmlContent
-        
+        _elements.modalContent.innerHTML = content;
+
+        if (confirmText || onConfirm) {
+            _elements.modalActions.innerHTML = `
+                <div class="w-full grid ${cancelText ? 'grid-cols-2' : 'grid-cols-1'} gap-2">
+                    ${cancelText ? `<button id="custom-modal-cancel" class="w-full border border-slate-700 text-slate-300 font-bold py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 transition text-sm">${cancelText}</button>` : ''}
+                    <button id="custom-modal-confirm" class="w-full btn-primary text-white font-bold py-2.5 rounded-xl text-sm">${confirmText || 'Confirm'}</button>
+                </div>
+            `;
+            _elements.modalActions.classList.remove('hidden');
+
+            const confirmBtn = document.getElementById('custom-modal-confirm');
+            const cancelBtn = document.getElementById('custom-modal-cancel');
+
+            if (confirmBtn) {
+                confirmBtn.onclick = () => {
+                    UI.hideModal();
+                    if (onConfirm) onConfirm();
+                };
+            }
+            if (cancelBtn) {
+                cancelBtn.onclick = () => {
+                    UI.hideModal();
+                    if (onClose) onClose();
+                };
+            }
+        } else {
+            _elements.modalActions.innerHTML = '';
+            _elements.modalActions.classList.add('hidden');
+        }
+
         _elements.modalOverlay.classList.remove('hidden');
         _elements.modalOverlay.classList.add('flex');
     },
