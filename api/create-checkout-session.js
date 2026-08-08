@@ -50,7 +50,6 @@ export default async function handler(request, response) {
     const origin = request.headers.origin || request.headers.referer || 'http://localhost:3000';
 
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
       line_items: [
         {
           price_data: {
