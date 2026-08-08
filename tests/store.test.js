@@ -31,7 +31,7 @@ describe('Packs & Features Store Catalog & Entitlements', () => {
 
         state.gameState.user.purchases.push('god_mode');
         expect(hasPurchasedPack('god_mode')).toBe(true);
-        expect(hasPurchasedPack('royalty_expansion')).toBe(false);
+        expect(hasPurchasedPack('instant_diplomas')).toBe(false);
     });
 
     test('hasPurchasedPack initializes empty purchases array if missing on user object', () => {

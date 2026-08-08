@@ -26,22 +26,24 @@ export default async function handler(request, response) {
 
     const priceMap = {
       god_mode: 299,
-      royalty_expansion: 499,
-      mafia_expansion: 399,
-      business_tycoon: 399,
+      instant_diplomas: 199,
       time_machine: 199,
-      custom_avatar_studio: 199,
-      vip_supporter: 499
+      vip_supporter: 499,
+      mafia_expansion: 399,
+      artist_pack: 399,
+      athlete_pack: 399,
+      politician_pack: 399
     };
 
     const nameMap = {
       god_mode: 'God Mode & Stat Editor',
-      royalty_expansion: 'Royalty & Nobility Expansion',
-      mafia_expansion: 'Underworld & Crime Syndicate',
-      business_tycoon: 'Business Tycoon Empire',
+      instant_diplomas: 'Instant Diplomas',
       time_machine: 'Time Machine & Multi-Save Slots',
-      custom_avatar_studio: 'Custom Avatar Studio',
-      vip_supporter: 'VIP Supporter & Luxury Dark Theme'
+      vip_supporter: 'VIP Supporter & Unique Theme',
+      mafia_expansion: 'Mafia / Crime Syndicate',
+      artist_pack: 'Artist & Creative Industry',
+      athlete_pack: 'Athlete & Pro Sports',
+      politician_pack: 'Politician & Head of State'
     };
 
     const amount = priceMap[packId] || 299;

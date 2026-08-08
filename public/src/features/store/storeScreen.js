@@ -17,61 +17,27 @@ export const STORE_PACKS = [
         features: [
             'Instant Stat Maxing (Health, Happiness, Smarts, Looks)',
             'Parent Wealth & Karma Modifiers',
-            'Custom Relationship Status Controls',
+            'Custom Relationship Controls',
             'Unlocked Cheats & Custom Life Events Menu'
         ],
         status: 'available'
     },
     {
-        id: 'royalty_expansion',
-        title: 'Royalty & Nobility Expansion',
-        category: 'expansion',
-        price: '$4.99',
-        badge: 'Featured',
-        badgeColor: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40',
-        icon: 'fa-crown text-yellow-400',
-        desc: 'Start as Prince or Princess of 12 real-world monarchies. Rule, pass decrees, and inherit royal palaces.',
+        id: 'instant_diplomas',
+        title: 'Instant Diplomas',
+        category: 'perk',
+        price: '$1.99',
+        badge: 'New',
+        badgeColor: 'bg-blue-500/20 text-blue-300 border-blue-500/40',
+        icon: 'fa-graduation-cap text-blue-400',
+        desc: 'Bypass years of study and instantly obtain High School, University, and Graduate degrees.',
         features: [
-            '12 Royal Dynasties (UK, Monaco, Japan, Spain, UAE, etc.)',
-            'Royal Decrees & Public Approval Rating System',
-            'Inherit Palaces, Castles & Crown Jewels',
-            'Diplomatic State Visits & Royal Marriages'
+            'Instant University Major Enrollment & Graduation',
+            'Graduate Law, Medical & Business School Degrees',
+            'Skip Academic Requirements & Entrance Exams',
+            'Permanent Smarts Credential Boost'
         ],
         status: 'available'
-    },
-    {
-        id: 'mafia_expansion',
-        title: 'Underworld & Crime Syndicate',
-        category: 'expansion',
-        price: '$3.99',
-        badge: 'Coming Soon',
-        badgeColor: 'bg-red-500/20 text-red-300 border-red-500/40',
-        icon: 'fa-user-ninja text-red-400',
-        desc: 'Climb the ranks from street associate to Godfather. Manage rackets, extort businesses, and evade federal agents.',
-        features: [
-            '5 International Crime Families (Italian, Yakuza, Cartel, Triad, Bratva)',
-            'Extortion, Heists & Bootlegging Operations',
-            'Bribe Judges & Hire Defense Lawyers',
-            'Custom Hideouts, Armories & Loyalty Meters'
-        ],
-        status: 'coming_soon'
-    },
-    {
-        id: 'business_tycoon',
-        title: 'Business Tycoon Empire',
-        category: 'expansion',
-        price: '$3.99',
-        badge: 'Coming Soon',
-        badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
-        icon: 'fa-building text-emerald-400',
-        desc: 'Take your companies public with IPOs, execute hostile corporate takeovers, and build global conglomerates.',
-        features: [
-            'Public Stock Market IPOs & Board Meetings',
-            'Hostile Takeovers & Subsidiary Mergers',
-            'Venture Capital & Private Equity Investing',
-            'Global Monopoly Industry Dominance'
-        ],
-        status: 'coming_soon'
     },
     {
         id: 'time_machine',
@@ -91,38 +57,89 @@ export const STORE_PACKS = [
         status: 'available'
     },
     {
-        id: 'custom_avatar_studio',
-        title: 'Custom Avatar Studio',
-        category: 'cosmetic',
-        price: '$1.99',
-        badge: 'New',
-        badgeColor: 'bg-purple-500/20 text-purple-300 border-purple-500/40',
-        icon: 'fa-paint-brush text-purple-400',
-        desc: 'Unlock exclusive designer clothing, premium hairstyles, custom tattoos, and glowing avatar frames.',
-        features: [
-            '50+ Premium Hairstyles & Facial Hair Styles',
-            'Designer Fashion & Accessories',
-            'Gold & Neon Glowing Profile Frames',
-            'Custom Background Environments'
-        ],
-        status: 'available'
-    },
-    {
         id: 'vip_supporter',
-        title: 'VIP Supporter & Luxury Dark Theme',
+        title: 'VIP Supporter & Unique Theme',
         category: 'cosmetic',
         price: '$4.99',
         badge: 'VIP',
         badgeColor: 'bg-amber-400/20 text-amber-200 border-amber-400/40',
         icon: 'fa-gem text-amber-300',
-        desc: 'Support ongoing game development and unlock VIP perks across all your lives.',
+        desc: 'Support ongoing game development and unlock exclusive UI themes and VIP perks.',
         features: [
             '100% Ad-Free Experience',
             'Golden VIP Supporter Profile Badge',
-            'Exclusive Onyx Luxury UI Theme',
+            'Exclusive Onyx & Gold Luxury UI Themes',
             'Priority Access to New Expansion Betas'
         ],
         status: 'available'
+    },
+    {
+        id: 'mafia_expansion',
+        title: 'Mafia / Crime Syndicate',
+        category: 'career',
+        price: '$3.99',
+        badge: 'Career Pack',
+        badgeColor: 'bg-red-500/20 text-red-300 border-red-500/40',
+        icon: 'fa-user-ninja text-red-400',
+        desc: 'Climb the criminal ranks from street associate to Godfather. Manage syndicates, rackets, and evade law enforcement.',
+        features: [
+            '5 International Crime Families (Italian, Yakuza, Cartel, Triad, Bratva)',
+            'Extortion, Heists & Bootlegging Operations',
+            'Bribe Judges & Hire Defense Lawyers',
+            'Custom Hideouts, Armories & Loyalty Meters'
+        ],
+        status: 'coming_soon'
+    },
+    {
+        id: 'artist_pack',
+        title: 'Artist & Creative Industry',
+        category: 'career',
+        price: '$3.99',
+        badge: 'Career Pack',
+        badgeColor: 'bg-purple-500/20 text-purple-300 border-purple-500/40',
+        icon: 'fa-paint-brush text-purple-400',
+        desc: 'Become a world-renowned painter, sculptor, or digital artist. Showcase masterpieces in galleries and host auctions.',
+        features: [
+            'Paint & Sculpt Famous Masterpieces',
+            'Host Art Gallery Exhibitions & Auctions',
+            'Sell Prints & Collect Lifelong Royalties',
+            'Build Creative Fame & Art Critic Reputation'
+        ],
+        status: 'coming_soon'
+    },
+    {
+        id: 'athlete_pack',
+        title: 'Athlete & Pro Sports',
+        category: 'career',
+        price: '$3.99',
+        badge: 'Career Pack',
+        badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+        icon: 'fa-football-ball text-emerald-400',
+        desc: 'Draft into professional sports leagues. Win championship rings, sign multi-million dollar contracts, and enter the Hall of Fame.',
+        features: [
+            'Pro Football, Basketball, Soccer & Baseball Leagues',
+            'Draft Combine & Mega Contract Negotiations',
+            'Championship Rings & MVP Trophies',
+            'Endorsement Deals & Sports Hall of Fame'
+        ],
+        status: 'coming_soon'
+    },
+    {
+        id: 'politician_pack',
+        title: 'Politician & Head of State',
+        category: 'career',
+        price: '$3.99',
+        badge: 'Career Pack',
+        badgeColor: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40',
+        icon: 'fa-landmark text-yellow-400',
+        desc: 'Campaign from School Board to Governor and President. Pass legislation, debate rivals, and lead your nation.',
+        features: [
+            'Campaign Rallies, Speeches & Live Debates',
+            'Run for Mayor, Governor, Senator & President',
+            'Pass Laws & Manage Public Approval Ratings',
+            'Diplomatic Summits & State Dinners'
+        ],
+        status: 'coming_soon'
     }
 ];
 
@@ -188,8 +205,8 @@ export function renderStoreScreen(activeCategory = null) {
             <!-- Tab Filters -->
             <div class="flex gap-1.5 overflow-x-auto pb-2 mb-3 scrollbar-none">
                 ${renderTabButton('all', 'All Items', 'fa-border-all')}
-                ${renderTabButton('expansion', 'Expansions', 'fa-map-marked-alt')}
                 ${renderTabButton('perk', 'Perks', 'fa-bolt')}
+                ${renderTabButton('career', 'Career Packs', 'fa-briefcase')}
                 ${renderTabButton('cosmetic', 'Cosmetics', 'fa-palette')}
                 ${renderTabButton('coming_soon', 'Coming Soon', 'fa-clock')}
             </div>
