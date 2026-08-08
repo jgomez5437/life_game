@@ -68,6 +68,14 @@ export function openPlayerOverviewModal() {
     const currentHealth = user.health ?? 100;
     const healthBadgeColor = currentHealth > 70 ? 'text-green-400' : currentHealth > 30 ? 'text-yellow-400' : 'text-red-500';
 
+    const userPurchases = user.purchases || [];
+    const isVip = Array.isArray(userPurchases) && userPurchases.includes('vip_supporter');
+    const vipBadgeTag = isVip ? `
+        <div data-action="renderVipLoungeModal" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-black text-[10px] uppercase shadow border border-amber-300 mt-1 cursor-pointer" title="Open VIP Lounge">
+            <i class="fas fa-crown text-[9px]"></i> VIP Supporter
+        </div>
+    ` : '';
+
     const modalHtml = `
         <div class="space-y-4">
             <!-- Header Identity Banner -->
@@ -78,6 +86,7 @@ export function openPlayerOverviewModal() {
                 <h3 class="text-white font-bold text-xl flex items-center justify-center gap-1">
                     ${displayName} ${flagHtml}
                 </h3>
+                ${vipBadgeTag}
                 <div class="text-xs text-blue-400 font-semibold uppercase tracking-wider mt-0.5">${statusText}</div>
                 <div class="text-xs text-slate-400 mt-1">Based in <span class="text-white font-bold">${city}</span></div>
             </div>

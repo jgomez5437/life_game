@@ -11,7 +11,9 @@ export function openSettingsModal() {
     const sfxEnabled = localStorage.getItem('life_game_sfx') !== 'false';
     const compactMode = localStorage.getItem('life_game_compact') === 'true';
     const currentTheme = localStorage.getItem('life_game_theme') || 'dark';
-    const isLightMode = currentTheme === 'light';
+    
+    const purchases = state.gameState?.user?.purchases || [];
+    const isVip = Array.isArray(purchases) && purchases.includes('vip_supporter');
 
     const htmlContent = `
         <div class="space-y-4">
@@ -54,18 +56,28 @@ export function openSettingsModal() {
                 </div>
                 
                 <!-- Theme Mode Option -->
-                <div class="flex justify-between items-center py-1">
-                    <div>
-                        <div class="font-bold text-white text-sm flex items-center gap-1.5">
-                            <i class="fas ${isLightMode ? 'fa-sun text-amber-400' : 'fa-moon text-blue-400'}"></i> Theme Mode
-                        </div>
-                        <div class="text-xs text-slate-400">Default: Dark Mode. Enable Light Mode appearance</div>
+                <div class="space-y-1.5">
+                    <div class="font-bold text-white text-sm flex items-center justify-between">
+                        <span class="flex items-center gap-1.5"><i class="fas fa-palette text-amber-400"></i> UI Theme Appearance</span>
+                        ${isVip ? '<span class="text-[10px] font-black text-amber-400 uppercase tracking-wider"><i class="fas fa-crown mr-0.5"></i> VIP Unlocked</span>' : ''}
                     </div>
-                    <button data-action="toggleSettingTheme" id="setting-theme-btn" class="toggle-switch w-11 h-6 rounded-full p-0.5 border cursor-pointer ${isLightMode ? 'bg-amber-500 border-amber-400/50 shadow-sm shadow-amber-500/40' : 'bg-slate-700/80 border-slate-600/60'} flex items-center" title="Toggle Light / Dark Mode">
-                        <div class="toggle-knob w-5 h-5 rounded-full bg-white shadow-md ${isLightMode ? 'translate-x-5' : 'translate-x-0'} flex items-center justify-center text-[10px]">
-                            <i class="fas ${isLightMode ? 'fa-sun text-amber-600' : 'fa-moon text-slate-600'}"></i>
-                        </div>
-                    </button>
+                    
+                    <div class="grid grid-cols-3 gap-1.5 pt-1">
+                        <button data-action="selectTheme" data-args="'dark'" class="py-2 px-1.5 rounded-xl text-xs font-bold transition flex flex-col items-center gap-1 ${currentTheme === 'dark' ? 'bg-slate-700 text-white border-2 border-blue-500' : 'bg-slate-900 text-slate-400 border border-slate-700 hover:bg-slate-800'}">
+                            <i class="fas fa-moon text-blue-400"></i>
+                            <span>Dark</span>
+                        </button>
+
+                        <button data-action="selectTheme" data-args="'light'" class="py-2 px-1.5 rounded-xl text-xs font-bold transition flex flex-col items-center gap-1 ${currentTheme === 'light' ? 'bg-amber-100 text-slate-950 border-2 border-amber-500' : 'bg-slate-900 text-slate-400 border border-slate-700 hover:bg-slate-800'}">
+                            <i class="fas fa-sun text-amber-500"></i>
+                            <span>Light</span>
+                        </button>
+
+                        <button data-action="selectTheme" data-args="'onyx-gold'" class="py-2 px-1.5 rounded-xl text-xs font-bold transition flex flex-col items-center gap-1 ${currentTheme === 'onyx-gold' ? 'bg-gradient-to-r from-amber-600 to-yellow-600 text-slate-950 border-2 border-amber-300' : 'bg-slate-900 text-amber-300 border border-amber-500/40 hover:bg-amber-950/40'}">
+                            <i class="fas ${isVip ? 'fa-gem text-amber-300' : 'fa-lock text-slate-500'}"></i>
+                            <span>Onyx & Gold</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="flex justify-between items-center py-1 border-t border-slate-700/60 pt-2">
@@ -115,10 +127,11 @@ export function openSettingsModal() {
 
 export function applyTheme(theme) {
     const activeTheme = theme || localStorage.getItem('life_game_theme') || 'dark';
+    document.body.classList.remove('light-mode', 'onyx-gold-mode');
     if (activeTheme === 'light') {
         document.body.classList.add('light-mode');
-    } else {
-        document.body.classList.remove('light-mode');
+    } else if (activeTheme === 'onyx-gold') {
+        document.body.classList.add('onyx-gold-mode');
     }
 }
 
@@ -128,32 +141,7 @@ export function toggleSettingTheme() {
     localStorage.setItem('life_game_theme', nextTheme);
     applyTheme(nextTheme);
     
-    const btn = document.getElementById('setting-theme-btn');
-    if (btn) {
-        const knob = btn.querySelector('.toggle-knob');
-        const isLight = nextTheme === 'light';
-        if (isLight) {
-            btn.classList.remove('bg-slate-700/80', 'border-slate-600/60');
-            btn.classList.add('bg-amber-500', 'border-amber-400/50', 'shadow-sm', 'shadow-amber-500/40');
-            if (knob) {
-                knob.classList.remove('translate-x-0');
-                knob.classList.add('translate-x-5');
-                knob.innerHTML = '<i class="fas fa-sun text-amber-600"></i>';
-            }
-        } else {
-            btn.classList.remove('bg-amber-500', 'border-amber-400/50', 'shadow-sm', 'shadow-amber-500/40');
-            btn.classList.add('bg-slate-700/80', 'border-slate-600/60');
-            if (knob) {
-                knob.classList.remove('translate-x-5');
-                knob.classList.add('translate-x-0');
-                knob.innerHTML = '<i class="fas fa-moon text-slate-600"></i>';
-            }
-        }
-    } else {
-        openSettingsModal();
-    }
-
-    // Refresh active life dashboard if open behind modal to ensure smooth rerender
+    // Refresh active life dashboard if open behind modal
     if (state.gameState && state.gameState.user && typeof renderLifeDashboard === 'function') {
         const dashboard = document.querySelector('[data-action="ageUp"]');
         if (dashboard) {
@@ -245,4 +233,3 @@ export function toggleSettingCompact() {
         }
     }
 }
-

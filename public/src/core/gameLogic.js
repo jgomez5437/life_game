@@ -118,6 +118,8 @@ function checkLifeStatus(user) {
        return `${user.gradSchoolDegree} Graduate`;
     } else if (user.universityGraduated) {
        return "University Graduate";
+    } else if (user.highSchoolGraduated) {
+       return "High School Graduate";
     } else if (user.age > 17 && user.highSchoolRetained) {
        return "Student (Retaking)";
     } else if (user.age > 17 && !user.jobTitle) {
@@ -126,8 +128,10 @@ function checkLifeStatus(user) {
        return "Baby";
     } else if (user.age < 5) {
        return "Toddler";
-    } else if (user.age < 18) {
+    } else if (user.age < 18 && !user.highSchoolGraduated) {
        return "Student";
+    } else if (user.age < 18 && user.highSchoolGraduated) {
+       return "High School Graduate";
     }
 }
 
@@ -1463,6 +1467,100 @@ function generateReplacementTeacher(userAge) {
  * @param {number} [roll=Math.random()] - Injected randomness for the age roll, for pure unit testing.
  * @returns {object} A relationship object
  */
+function determineNPCGender(userGender, attractionPreference) {
+    if (attractionPreference === 'men' || attractionPreference === 'male') return 'male';
+    if (attractionPreference === 'women' || attractionPreference === 'female') return 'female';
+    if (attractionPreference === 'everyone' || attractionPreference === 'all') return Math.random() < 0.5 ? 'male' : 'female';
+    return userGender === 'male' ? 'female' : 'male';
+}
+
+const DATING_APP_BIOS = [
+    "Looking for someone to explore local coffee spots with ☕",
+    "Passionate traveler, foodie, and dog lover ✈️🐶",
+    "Fitness enthusiast by day, movie buff by night 🎬💪",
+    "Always looking for good music, banter, and road trips 🎵🚗",
+    "Self-proclaimed chef & professional amateur photographer 🎨📷",
+    "Looking for a partner in crime for weekend adventures 🌟",
+    "Hobbyist gamer, coffee addict, and bookworm 📖☕",
+    "Life is short - let's grab drinks and see where it goes 🥂"
+];
+
+const DATING_APP_HOBBIES = [
+    "Coffee", "Travel", "Fitness", "Hiking", "Photography", "Gaming",
+    "Cooking", "Movies", "Music", "Art", "Reading", "Dogs", "Cats", "Concerts"
+];
+
+function generateDatingProfiles(user, count = 3) {
+    const userAge = user.age || 18;
+    const userGender = user.gender || 'male';
+    const preference = user.attractionPreference || (userGender === 'male' ? 'women' : 'men');
+
+    const profiles = [];
+    for (let i = 0; i < count; i++) {
+        const gender = determineNPCGender(userGender, preference);
+        const minAge = Math.max(18, userAge - 3);
+        const maxAge = userAge + 4;
+        const age = minAge + Math.floor(Math.random() * (maxAge - minAge + 1));
+        const first = getRandomFirstName(gender);
+        const last = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
+        const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'date_profile_' + Date.now() + '_' + i + '_' + Math.random().toString(36).substring(2, 6);
+        const occInfo = generateNPCOccupation(age);
+
+        const shuffledHobbies = [...DATING_APP_HOBBIES].sort(() => Math.random() - 0.5);
+        const hobbies = shuffledHobbies.slice(0, 2);
+        const bio = DATING_APP_BIOS[Math.floor(Math.random() * DATING_APP_BIOS.length)];
+
+        profiles.push({
+            id,
+            name: `${first} ${last}`,
+            age,
+            gender,
+            occupation: occInfo.occupation || 'Single',
+            appearance: AvatarLogic.generateRandomAppearance(id, gender),
+            bio,
+            hobbies,
+            matchChance: 0.75
+        });
+    }
+    return profiles;
+}
+
+function generateTargetedStranger(user, categoryPreference = 'friend') {
+    const userAge = typeof user === 'number' ? user : (user.age || 18);
+    const userGender = typeof user === 'number' ? 'male' : (user.gender || 'male');
+    const attractionPref = typeof user === 'object' ? user.attractionPreference : null;
+
+    let gender;
+    if (categoryPreference === 'romantic' || categoryPreference === 'date') {
+        gender = determineNPCGender(userGender, attractionPref);
+    } else {
+        gender = Math.random() < 0.5 ? 'male' : 'female';
+    }
+
+    const minAge = Math.max(16, userAge - 3);
+    const maxAge = Math.max(minAge, userAge + 4);
+    const age = minAge + Math.floor(Math.random() * (maxAge - minAge + 1));
+
+    const first = getRandomFirstName(gender);
+    const last = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
+    const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'rel_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+    const occupationInfo = generateNPCOccupation(age);
+
+    const isRomantic = categoryPreference === 'romantic' || categoryPreference === 'date';
+    return {
+        id,
+        name: `${first} ${last}`,
+        age,
+        type: isRomantic ? 'Crush' : 'Friend',
+        gender,
+        status: isRomantic ? Math.floor(Math.random() * 21) + 40 : Math.floor(Math.random() * 21) + 30,
+        category: 'friend',
+        interactedThisYear: false,
+        appearance: AvatarLogic.generateRandomAppearance(id, gender),
+        ...occupationInfo
+    };
+}
+
 function generateStranger(userAge, userGender, roll = Math.random()) {
     const gender = userGender === 'male' ? 'female' : 'male';
     const minAge = Math.max(18, userAge - 3);
@@ -3739,6 +3837,9 @@ export const GameLogic = {
     generateSchoolCohort,
     generateReplacementTeacher,
     generateStranger,
+    determineNPCGender,
+    generateTargetedStranger,
+    generateDatingProfiles,
     backfillRelationshipGender,
     attemptBefriend,
     calculateProposalAcceptance,
