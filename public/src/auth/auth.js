@@ -1,5 +1,6 @@
 import { state } from '../core/state.js';
 import { Utils } from '../ui/utils.js';
+import { UI } from '../ui/ui.js';
 
 let auth0Client = null;
 
@@ -19,12 +20,18 @@ export async function configureAuth() {
     });
     const query = window.location.search;
     if (query.includes("code=") && query.includes("state=")) {
+        if (typeof UI !== 'undefined' && UI.renderLoadingScreen) {
+            UI.renderLoadingScreen("Authenticating Account...", "Processing secure login...");
+        }
         await state.auth0Client.handleRedirectCallback();
         window.history.replaceState({}, document.title, "/");
     }
 };
 
 export async function login() {
+    if (typeof UI !== 'undefined' && UI.renderLoadingScreen) {
+        UI.renderLoadingScreen("Connecting to Auth0...", "Redirecting to secure login portal...");
+    }
     if (state.gameState && state.gameState.user) {
         console.log("Saving active guest character before login redirect...");
         Utils.guestStorage.saveGame();

@@ -36,6 +36,8 @@ export function ageUp() {
 
     // 3. Run The Sub-Systems
     handleHealth(user);
+    handleSmarts(user);
+    handleLooks(user);
     handleFinances(user);
     handleEducation(user);
     handleMarket(user);
@@ -244,6 +246,15 @@ export const continueAsChild = (childIndex, inheritedMoney) => {
     const updatedPastLives = [ancestor, ...existingPastLives];
     const newGeneration = parentGen + 1;
 
+    const childStats = GameLogic.generateRandomStats ? GameLogic.generateRandomStats() : {
+        health: 100,
+        happiness: 100,
+        smarts: Math.floor(Math.random() * 56) + 40,
+        looks: Math.floor(Math.random() * 56) + 40
+    };
+    if (parentState.smarts) childStats.smarts = Math.min(100, Math.max(10, Math.floor(parentState.smarts * 0.7 + Math.random() * 30)));
+    if (parentState.looks) childStats.looks = Math.min(100, Math.max(10, Math.floor(parentState.looks * 0.7 + Math.random() * 30)));
+
     // 1. Deep wipe and reconstruct user state
     const newUserState = {
         username: selectedChild.name,
@@ -252,6 +263,9 @@ export const continueAsChild = (childIndex, inheritedMoney) => {
         age: selectedChild.age,
         money: inheritedMoney,
         health: 100,
+        happiness: 100,
+        smarts: childStats.smarts,
+        looks: childStats.looks,
         generation: newGeneration,
         pastLives: updatedPastLives,
         purchases: parentState.purchases || [],
@@ -306,6 +320,22 @@ function handleHealth(user) {
     // Execute UI side-effects
     if (user.health < 30 && (user.health + decay - benefits) >= 30) {
         addLog("Your health has reached a critical low. Your risk of death is severely elevated.", "major");
+    }
+}
+
+function handleSmarts(user) {
+    if (typeof user.smarts !== 'number') user.smarts = 50;
+    const delta = GameLogic.calculateSmartsDelta(user.age, user.isStudent);
+    if (delta !== 0) {
+        user.smarts = Math.min(100, Math.max(0, user.smarts + delta));
+    }
+}
+
+function handleLooks(user) {
+    if (typeof user.looks !== 'number') user.looks = 50;
+    const delta = GameLogic.calculateLooksDelta(user.age);
+    if (delta !== 0) {
+        user.looks = Math.min(100, Math.max(0, user.looks + delta));
     }
 }
 

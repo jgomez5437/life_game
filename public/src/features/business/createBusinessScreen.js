@@ -28,7 +28,7 @@ export function renderBusinessSetup() {
 
     get('game-container').innerHTML = `
         <div class="fade-in max-w-xl mx-auto pb-10">
-            <button data-action="renderActivities" class="mb-4 text-slate-400 hover:text-white text-sm flex items-center gap-2">
+            <button data-action="renderActivities" class="mb-4 text-slate-400 hover:text-white text-xs flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition border border-slate-700/50">
                 <i class="fas fa-arrow-left"></i> Cancel
             </button>
 

@@ -46,7 +46,7 @@ export function renderEducation() {
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4 flex items-center justify-between">
-                <button data-action="renderActivities" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+                <button data-action="renderActivities" class="text-slate-400 hover:text-white text-xs flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition border border-slate-700/50">
                     <i class="fas fa-arrow-left"></i> Back to Occupation
                 </button>
                 ${perkActive ? `
@@ -130,7 +130,9 @@ export function workHarder() {
     if(user.schoolActions >= 2) return;
     user.schoolActions++;
     user.schoolPerformance = Math.min(100, user.schoolPerformance + 20);
-    addLog("Studied hard and improved your grades.", 'good');
+    const smartsGain = Math.floor(Math.random() * 3) + 2;
+    user.smarts = Math.min(100, (user.smarts || 50) + smartsGain);
+    addLog(`Studied hard! Improved grades (+20%) and gained +${smartsGain} Smarts.`, 'good');
     renderLifeDashboard(state.gameState);
 }
 export function skipSchool() {
@@ -193,7 +195,7 @@ export function renderClassmates() {
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">
-                <button data-action="renderEducation" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+                <button data-action="renderEducation" class="text-slate-400 hover:text-white text-xs flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition border border-slate-700/50">
                     <i class="fas fa-arrow-left"></i> Back to Education
                 </button>
             </div>

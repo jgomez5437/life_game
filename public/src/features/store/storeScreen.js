@@ -13,11 +13,11 @@ export const STORE_PACKS = [
         badge: 'Popular',
         badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
         icon: 'fa-bolt text-amber-400',
-        desc: 'Take complete control of your life. Edit stats, parent wealth, and relationship levels on demand.',
+        desc: 'Take complete control of your life. Edit stats, avatar appearances for yourself & social circle, and stats on demand.',
         features: [
-            'Instant Stat Maxing (Health, Happiness, Smarts, Looks)',
-            'Parent Wealth & Karma Modifiers',
-            'Custom Relationship Controls',
+            'Instant Stat Maxing & Tuning (Health, Happiness, Smarts, Looks)',
+            'Full Avatar Appearance Editor for Yourself & Social Circle',
+            'Edit Hair, Skin, Eyes, Face & Accessories for Family & Partners',
             'Unlocked Cheats & Custom Life Events Menu'
         ],
         status: 'available'
@@ -150,9 +150,17 @@ let currentActiveTab = 'all';
  */
 export function hasPurchasedPack(packId) {
     const user = state.gameState?.user;
-    if (!user) return false;
-    if (!user.purchases) user.purchases = [];
-    return user.purchases.includes(packId);
+    if (user && !user.purchases) {
+        user.purchases = [];
+    }
+    let purchases = user?.purchases || [];
+    if (purchases.length === 0) {
+        try {
+            const stored = localStorage.getItem('life_game_purchases');
+            if (stored) purchases = JSON.parse(stored);
+        } catch (e) {}
+    }
+    return Array.isArray(purchases) && purchases.includes(packId);
 }
 
 /**
@@ -178,7 +186,7 @@ export function renderStoreScreen(activeCategory = null) {
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <!-- Top Navigation Header -->
             <div class="mb-3 flex items-center justify-between">
-                <button data-action="renderLifeDashboard" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-slate-800 transition">
+                <button data-action="renderLifeDashboard" class="text-slate-400 hover:text-white text-xs flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition border border-slate-700/50">
                     <i class="fas fa-arrow-left"></i> Back to Life
                 </button>
                 <button data-action="restorePurchases" class="text-xs text-amber-400 hover:text-amber-300 font-semibold px-2.5 py-1.5 rounded-lg border border-amber-500/30 hover:bg-amber-500/10 transition">
@@ -295,6 +303,10 @@ function renderPackCard(pack) {
                     ${isOwned ? (pack.id === 'instant_diplomas' ? `
                         <button data-action="renderInstantDiplomaHub" class="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition flex items-center gap-1">
                             <i class="fas fa-graduation-cap"></i> Use Perk
+                        </button>
+                    ` : pack.id === 'god_mode' ? `
+                        <button data-action="renderGodModeModal" class="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition flex items-center gap-1">
+                            <i class="fas fa-bolt"></i> Stat Editor
                         </button>
                     ` : pack.id === 'vip_supporter' ? `
                         <button data-action="renderVipLoungeModal" class="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition flex items-center gap-1">
@@ -540,3 +552,103 @@ export async function restorePurchases() {
         : "No active purchases found for this save session."
     );
 }
+
+/**
+ * Renders the God Mode Stat Editor Modal
+ */
+export function renderGodModeModal() {
+    const user = state.gameState?.user;
+    if (!user) return;
+
+    const h = user.health ?? 100;
+    const hap = user.happiness ?? 100;
+    const sm = user.smarts ?? 50;
+    const lk = user.looks ?? 50;
+
+    const html = `
+        <div class="space-y-4">
+            <p class="text-xs text-slate-300">God Mode allows you to edit your core stats on demand.</p>
+            
+            <div class="space-y-3 bg-slate-900/80 p-3.5 rounded-xl border border-slate-700">
+                <div>
+                    <div class="flex justify-between text-xs font-bold text-slate-300 mb-1">
+                        <span><i class="fas fa-heart text-emerald-400 mr-1"></i> Health</span>
+                        <span id="god-health-val" class="text-emerald-400">${h}%</span>
+                    </div>
+                    <input type="range" id="god-health" min="0" max="100" value="${h}" oninput="document.getElementById('god-health-val').innerText = this.value + '%'" class="w-full accent-emerald-500">
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-xs font-bold text-slate-300 mb-1">
+                        <span><i class="fas fa-smile text-amber-400 mr-1"></i> Happiness</span>
+                        <span id="god-happiness-val" class="text-amber-400">${hap}%</span>
+                    </div>
+                    <input type="range" id="god-happiness" min="0" max="100" value="${hap}" oninput="document.getElementById('god-happiness-val').innerText = this.value + '%'" class="w-full accent-amber-400">
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-xs font-bold text-slate-300 mb-1">
+                        <span><i class="fas fa-brain text-blue-400 mr-1"></i> Smarts</span>
+                        <span id="god-smarts-val" class="text-blue-400">${sm}%</span>
+                    </div>
+                    <input type="range" id="god-smarts" min="0" max="100" value="${sm}" oninput="document.getElementById('god-smarts-val').innerText = this.value + '%'" class="w-full accent-blue-500">
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-xs font-bold text-slate-300 mb-1">
+                        <span><i class="fas fa-sparkles text-pink-400 mr-1"></i> Looks</span>
+                        <span id="god-looks-val" class="text-pink-400">${lk}%</span>
+                    </div>
+                    <input type="range" id="god-looks" min="0" max="100" value="${lk}" oninput="document.getElementById('god-looks-val').innerText = this.value + '%'" class="w-full accent-pink-500">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+                <button data-action="maxGodModeStats" class="py-2.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-xl font-bold text-xs transition flex items-center justify-center gap-1">
+                    <i class="fas fa-bolt"></i> Max All (100%)
+                </button>
+                <button data-action="applyGodModeStats" class="py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-xs transition flex items-center justify-center gap-1">
+                    <i class="fas fa-save"></i> Save Changes
+                </button>
+            </div>
+        </div>
+    `;
+
+    UI.showCustomModal({
+        title: "God Mode Stat Editor",
+        content: html,
+        confirmText: "Close",
+        onConfirm: () => {}
+    });
+}
+
+export function maxGodModeStats() {
+    const user = state.gameState?.user;
+    if (!user) return;
+    user.health = 100;
+    user.happiness = 100;
+    user.smarts = 100;
+    user.looks = 100;
+    saveGame();
+    UI.updateHeader(user);
+    UI.showModal("God Mode", "All stats maxed out to 100%!");
+}
+
+export function applyGodModeStats() {
+    const user = state.gameState?.user;
+    if (!user) return;
+    const h = document.getElementById('god-health');
+    const hap = document.getElementById('god-happiness');
+    const sm = document.getElementById('god-smarts');
+    const lk = document.getElementById('god-looks');
+
+    if (h) user.health = parseInt(h.value, 10);
+    if (hap) user.happiness = parseInt(hap.value, 10);
+    if (sm) user.smarts = parseInt(sm.value, 10);
+    if (lk) user.looks = parseInt(lk.value, 10);
+
+    saveGame();
+    UI.updateHeader(user);
+    UI.showModal("Stats Updated", "Character stats have been updated via God Mode.");
+}
+

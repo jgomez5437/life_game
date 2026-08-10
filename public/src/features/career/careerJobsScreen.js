@@ -142,8 +142,17 @@ let _pendingInterview = null;
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
+const HIGH_TRUST_TRACKS = ['law_enforcement', 'banking', 'medicine', 'law', 'education_track', 'corp_finance'];
+
+function hasFelonyRecord(user) {
+    if (!Array.isArray(user.criminalRecord)) return false;
+    return user.criminalRecord.some(r => r.severity === 'felony' && r.verdict === 'guilty');
+}
+
 function getTrackWarnings(track, user) {
     const warnings = [];
+    if (hasFelonyRecord(user) && HIGH_TRUST_TRACKS.includes(track.key))
+        warnings.push('Background Check Failed (Felony Record)');
     if (track.reqGrad && user.gradSchoolDegree !== track.reqGrad)
         warnings.push(`Requires ${track.reqGrad}`);
     if (track.reqDegree && !user.universityGraduated)
@@ -154,6 +163,7 @@ function getTrackWarnings(track, user) {
 }
 
 function isTrackLocked(track, user) {
+    if (hasFelonyRecord(user) && HIGH_TRUST_TRACKS.includes(track.key)) return true;
     if (track.reqGrad && user.gradSchoolDegree !== track.reqGrad) return true;
     if (track.reqDegree && !user.universityGraduated) return true;
     if (track.reqMajors && user.universityGraduated && !track.reqMajors.includes(user.major)) return true;
@@ -293,7 +303,7 @@ export function renderCareerMarket() {
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">
-                <button data-action="renderActivities" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+                <button data-action="renderActivities" class="text-slate-400 hover:text-white text-xs flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition border border-slate-700/50">
                     <i class="fas fa-arrow-left"></i> Back to Occupation
                 </button>
             </div>

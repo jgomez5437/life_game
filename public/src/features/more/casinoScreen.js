@@ -20,7 +20,7 @@ export function renderCasinoHub() {
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <!-- Header Nav -->
             <div class="mb-4 flex items-center justify-between">
-                <button data-action="renderMoreDashboard" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+                <button data-action="renderMoreDashboard" class="text-slate-400 hover:text-white text-xs flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition border border-slate-700/50">
                     <i class="fas fa-arrow-left"></i> Back to More Options
                 </button>
                 <span class="text-xs text-amber-400 font-bold uppercase tracking-wider"><i class="fas fa-gem mr-1"></i> High Stakes Floor</span>

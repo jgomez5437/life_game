@@ -29,6 +29,29 @@ function sanitizeName(rawInput) {
     return { isValid: true, cleanedName };
 }
 
+function generateRandomStats() {
+    return {
+        health: 100,
+        happiness: 100,
+        smarts: Math.floor(Math.random() * 56) + 40,
+        looks: Math.floor(Math.random() * 56) + 40
+    };
+}
+
+function calculateSmartsDelta(age, isStudent) {
+    if (isStudent && age <= 18) {
+        return Math.floor(Math.random() * 3) + 1;
+    }
+    return 0;
+}
+
+function calculateLooksDelta(age) {
+    if (age > 45) {
+        return Math.random() < 0.6 ? -(Math.floor(Math.random() * 2) + 1) : 0;
+    }
+    return 0;
+}
+
 const CITY_COST_OF_LIVING = {
     'San Francisco': 33000,
     'New York': 30000,
@@ -572,6 +595,10 @@ const LOTTERY_TYPES = {
 
 function playLotteryTicket(ticketTypeId, user) {
     if (!user) return { success: false, message: 'Invalid user state.' };
+
+    if (typeof user.age === 'number' && user.age < 18) {
+        return { success: false, message: 'You must be at least 18 years old to play the lottery.' };
+    }
 
     const type = LOTTERY_TYPES[ticketTypeId] || LOTTERY_TYPES.scratch;
     const boughtCount = user.lotteryTicketsBoughtThisYear || 0;
@@ -1203,6 +1230,9 @@ function isHostile(person) {
 function getAvailableInteractions(person, user) {
     const hasPartnerOrSpouse = (user.relationships || []).some(r => r.category === 'partner' || r.category === 'spouse');
     return RELATIONSHIP_INTERACTIONS.filter(it => {
+        if ((user.age <= 17 && person.age >= 18) || (user.age >= 18 && person.age <= 17)) {
+            if (['make_a_move', 'make_love', 'ask_out', 'flirt', 'go_on_date', 'propose', 'get_married'].includes(it.key)) return false;
+        }
         if (person.type === 'Ex-Lover' && (it.key === 'make_a_move' || it.key === 'make_love')) return false;
         if (it.key === 'make_love' && person.type === 'Secret Affair') return true;
         if (it.categories && !it.categories.includes(person.category)) return false;
@@ -1273,6 +1303,13 @@ function isInteractionBlocked(interactionKey, person, user) {
 
     let blocked = false;
     let reason = '';
+
+    if (['make_a_move', 'make_love', 'ask_out', 'flirt', 'go_on_date', 'propose', 'get_married'].includes(interactionKey)) {
+        if ((user.age <= 17 && person.age >= 18) || (user.age >= 18 && person.age <= 17)) {
+            blocked = true;
+            if (!reason) reason = 'Age Gap (Minor & Adult)';
+        }
+    }
 
     if (it.blockedIfAgeLte !== undefined && user.age <= it.blockedIfAgeLte) {
         blocked = true;
@@ -1886,10 +1923,14 @@ function calculatePregnancyChance(femaleAge, maleAgeOrRoll = undefined, roll = M
  * @param {number} performance - Job performance (0–100)
  * @returns {number} Probability of promotion (0.0 to 0.80); 0 means ineligible
  */
-function calculatePromotionChance(performance) {
-    if (performance >= 95) return 0.80;
-    if (performance >= 85) return 0.50;
-    if (performance >= 75) return 0.25;
+function calculatePromotionChance(performance, smarts = 50) {
+    let bonus = 0;
+    if (smarts >= 80) bonus = 0.10;
+    else if (smarts >= 65) bonus = 0.05;
+
+    if (performance >= 95) return Math.min(0.95, 0.80 + bonus);
+    if (performance >= 85) return Math.min(0.85, 0.50 + bonus);
+    if (performance >= 75) return Math.min(0.75, 0.25 + bonus);
     return 0;
 }
 
@@ -3938,7 +3979,271 @@ function acceptVCOffer(user, investorId) {
     };
 }
 
+const CRIMES = {
+    // --- JUVENILE MISCHIEF (Ages 12-17) ---
+    prank_call: { id: 'prank_call', name: 'Prank Call', minAge: 12, maxAge: 17, category: 'juvenile', baseSuccessRate: 0.85, payoutMin: 0, payoutMax: 0, happinessCost: 5, risk: 'low', desc: 'Call random numbers and talk nonsense.' },
+    egging_house: { id: 'egging_house', name: 'Egg a House', minAge: 12, maxAge: 17, category: 'juvenile', baseSuccessRate: 0.75, payoutMin: 0, payoutMax: 0, happinessCost: 10, risk: 'low', desc: 'Throw eggs at your rival teacher or neighbor\'s house.' },
+    porch_pirate: { id: 'porch_pirate', name: 'Porch Pirating', minAge: 12, maxAge: 17, category: 'juvenile', baseSuccessRate: 0.65, payoutMin: 20, payoutMax: 150, happinessCost: 15, risk: 'medium', desc: 'Snatch Amazon packages from neighborhood front porches.' },
+    shoplift_minor: { id: 'shoplift_minor', name: 'Shoplift Snacks', minAge: 12, maxAge: 17, category: 'juvenile', baseSuccessRate: 0.70, payoutMin: 10, payoutMax: 50, happinessCost: 10, risk: 'low', desc: 'Swipe energy drinks and candy from the corner store.' },
+
+    // --- PETTY & STREET CRIMES (Ages 18+) ---
+    pickpocket: { id: 'pickpocket', name: 'Pickpocket', minAge: 18, category: 'petty', baseSuccessRate: 0.65, payoutMin: 50, payoutMax: 350, happinessCost: 15, risk: 'low', desc: 'Lift wallets and watches in crowded subway stations.' },
+    shoplift: { id: 'shoplift', name: 'Shoplifting', minAge: 18, category: 'petty', baseSuccessRate: 0.60, payoutMin: 100, payoutMax: 800, happinessCost: 15, risk: 'medium', desc: 'Steal high-end electronics or clothing from retail stores.' },
+    vandalism: { id: 'vandalism', name: 'Vandalism', minAge: 18, category: 'petty', baseSuccessRate: 0.80, payoutMin: 0, payoutMax: 0, happinessCost: 10, risk: 'low', desc: 'Spray paint subway cars and city buildings.' },
+
+    // --- VIOLENT CRIMES (Ages 18+) ---
+    assault: { id: 'assault', name: 'Aggravated Assault', minAge: 18, category: 'violent', baseSuccessRate: 0.55, payoutMin: 0, payoutMax: 200, happinessCost: 30, risk: 'high', desc: 'Attack someone in an alley behind a bar.' },
+    attempted_murder: { id: 'attempted_murder', name: 'Attempted Murder', minAge: 18, category: 'violent', baseSuccessRate: 0.40, payoutMin: 0, payoutMax: 0, happinessCost: 45, risk: 'severe', desc: 'Hired hit or severe ambush on an enemy.' },
+    murder: { id: 'murder', name: 'Homicide / Murder', minAge: 18, category: 'violent', baseSuccessRate: 0.30, payoutMin: 0, payoutMax: 5000, happinessCost: 60, risk: 'critical', desc: 'Eliminate a rival or target in cold blood.' },
+
+    // --- HIGH-STAKES PROPERTY & HEISTS (Ages 18+) ---
+    burglary: { id: 'burglary', name: 'Residential Burglary', minAge: 18, category: 'heist', baseSuccessRate: 0.50, payoutMin: 1500, payoutMax: 12000, happinessCost: 20, risk: 'high', desc: 'Break into upscale suburban homes at night.' },
+    gta: { id: 'gta', name: 'Grand Theft Auto', minAge: 18, category: 'heist', baseSuccessRate: 0.45, payoutMin: 4000, payoutMax: 35000, happinessCost: 25, risk: 'high', desc: 'Hotwire and steal sports cars or luxury SUVs.' },
+    bank_robbery: { id: 'bank_robbery', name: 'Bank Robbery', minAge: 18, category: 'heist', baseSuccessRate: 0.25, payoutMin: 25000, payoutMax: 250000, happinessCost: 50, risk: 'critical', desc: 'Storm a downtown bank vault with an armed crew.' }
+};
+
+function attemptCrime(crimeId, user, targetPersonId = null) {
+    const crime = CRIMES[crimeId];
+    if (!crime) return { success: false, message: "Invalid crime requested." };
+
+    if (!Array.isArray(user.criminalRecord)) user.criminalRecord = [];
+
+    const priorConvictions = user.criminalRecord.filter(r => r.verdict === 'guilty').length;
+    const smartsBonus = ((user.smarts || 50) - 50) * 0.003;
+    const priorPenalty = priorConvictions * 0.05;
+
+    const finalChance = Math.min(0.92, Math.max(0.10, crime.baseSuccessRate + smartsBonus - priorPenalty));
+    const roll = Math.random();
+    const isSuccess = roll < finalChance;
+
+    let targetPerson = null;
+    if (targetPersonId && Array.isArray(user.relationships)) {
+        targetPerson = user.relationships.find(r => String(r.id) === String(targetPersonId));
+    }
+
+    const targetName = targetPerson ? targetPerson.name : (crime.category === 'juvenile' ? 'a classmate' : 'a stranger');
+
+    if (isSuccess) {
+        let payout = 0;
+        if (crime.payoutMax > 0) {
+            payout = Math.floor(Math.random() * (crime.payoutMax - crime.payoutMin + 1)) + crime.payoutMin;
+            user.money = (user.money || 0) + payout;
+        }
+
+        if (crimeId === 'murder') {
+            if (targetPerson) {
+                user.relationships = user.relationships.filter(r => String(r.id) !== String(targetPersonId));
+                if (user.partner && String(user.partner.id) === String(targetPersonId)) user.partner = null;
+                if (user.spouse && String(user.spouse.id) === String(targetPersonId)) user.spouse = null;
+            }
+            return {
+                success: true,
+                isMurder: true,
+                crime,
+                victimName: targetName,
+                payout,
+                message: `You committed homicide against ${targetName}. Detectives have found no leads and the case remains cold.`
+            };
+        }
+
+        if (targetPerson && crimeId !== 'murder') {
+            targetPerson.status = 0;
+            targetPerson.category = 'enemy';
+            targetPerson.type = 'Enemy';
+        }
+
+        return {
+            success: true,
+            isMurder: false,
+            crime,
+            targetName,
+            payout,
+            message: `Successfully executed ${crime.name}! ${payout > 0 ? `Scored ${Utils.formatMoney(payout)}.` : ''}`
+        };
+    } else {
+        if (crime.category === 'juvenile') {
+            let msg = `You were caught performing ${crime.name}! Your parents grounded you and you lost 15 Happiness.`;
+            user.happiness = Math.max(0, (user.happiness || 50) - 15);
+
+            if (crime.id === 'prank_call') {
+                msg = `Your prank call was traced by an angry recipient who complained to your parents! You were grounded and lost 10 Happiness.`;
+                user.happiness = Math.max(0, (user.happiness || 50) - 10);
+            } else if (crime.id === 'egging_house') {
+                msg = `The homeowner caught you with an egg in hand and made you scrub their front driveway! You lost 15 Happiness.`;
+            } else if (crime.id === 'porch_pirate') {
+                msg = `A neighbor caught you taking a package and alerted your school principal. You received 3 days of detention and lost 15 Happiness.`;
+            } else if (crime.id === 'shoplift_minor') {
+                msg = `The store manager caught you swiping snacks, confiscated the items, and banned you from the store. You lost 15 Happiness.`;
+            }
+
+            return {
+                success: false,
+                arrested: false,
+                juvenileMischiefFailed: true,
+                crime,
+                targetName,
+                message: msg
+            };
+        }
+
+        user.pendingTrial = {
+            crime,
+            targetName,
+            evidenceRating: Math.floor(Math.random() * 40) + 50,
+            extraCharges: []
+        };
+
+        if (targetPerson && crimeId !== 'murder') {
+            targetPerson.status = 0;
+            targetPerson.category = 'enemy';
+            targetPerson.type = 'Enemy';
+        }
+
+        return {
+            success: false,
+            arrested: true,
+            crime,
+            targetName,
+            message: `Police apprehended you while committing ${crime.name}!`
+        };
+    }
+}
+
+function handleArrestAction(user, actionType, bribeAmount = 0) {
+    if (!user.pendingTrial) return { success: false, message: "No active arrest." };
+
+    const pending = user.pendingTrial;
+
+    if (actionType === 'comply') {
+        return { success: true, outcome: 'court', message: "You surrendered peacefully to law enforcement." };
+    }
+
+    if (actionType === 'bribe') {
+        if (user.money < bribeAmount) {
+            return { success: false, message: "You don't have enough cash for that bribe!" };
+        }
+        user.money -= bribeAmount;
+
+        const looksBonus = ((user.looks || 50) - 50) * 0.003;
+        const bribeRatio = Math.min(1.0, bribeAmount / 10000);
+        const bribeChance = Math.min(0.85, (bribeRatio * 0.50) + looksBonus + 0.10);
+
+        if (Math.random() < bribeChance) {
+            user.pendingTrial = null;
+            return { success: true, outcome: 'escaped', message: `The officer took your ${Utils.formatMoney(bribeAmount)} bribe and let you walk away!` };
+        } else {
+            pending.extraCharges.push("Bribery of a Law Enforcement Officer");
+            return { success: true, outcome: 'bribe_failed', message: `The officer rejected your bribe and added felony bribery charges!` };
+        }
+    }
+
+    if (actionType === 'flee') {
+        const healthChance = ((user.health || 50) / 100) * 0.55;
+        if (Math.random() < healthChance) {
+            user.pendingTrial = null;
+            return { success: true, outcome: 'escaped', message: "You sprinted down an alley, lost the sirens, and escaped police custody!" };
+        } else {
+            pending.extraCharges.push("Resisting Arrest & Evading Officers");
+            return { success: true, outcome: 'flee_failed', message: "Officers tackled you to the ground and added resisting arrest charges!" };
+        }
+    }
+
+    return { success: false, message: "Invalid arrest choice." };
+}
+
+function calculateTrialVerdict(user, lawyerTier) {
+    if (!user.pendingTrial) return null;
+
+    const pending = user.pendingTrial;
+    const crime = pending.crime;
+    const extraChargesCount = (pending.extraCharges || []).length;
+
+    let baseWinRate = 0.25;
+    let lawyerCost = 0;
+    let lawyerName = "Public Defender";
+
+    if (lawyerTier === 'private_attorney') {
+        baseWinRate = 0.55;
+        lawyerCost = 2500;
+        lawyerName = "Criminal Defense Attorney";
+    } else if (lawyerTier === 'top_lawyer') {
+        baseWinRate = 0.85;
+        lawyerCost = 25000;
+        lawyerName = "High-Powered Defense Firm";
+    }
+
+    if (user.money < lawyerCost) {
+        return { error: `Insufficient funds for ${lawyerName}. You need ${Utils.formatMoney(lawyerCost)}.` };
+    }
+
+    user.money -= lawyerCost;
+
+    const smartsBonus = ((user.smarts || 50) - 50) * 0.002;
+    const evidencePenalty = (pending.evidenceRating / 100) * 0.30;
+    const extraChargePenalty = extraChargesCount * 0.15;
+
+    const winChance = Math.min(0.95, Math.max(0.05, baseWinRate + smartsBonus - evidencePenalty - extraChargePenalty));
+    const acquitted = Math.random() < winChance;
+
+    if (acquitted) {
+        user.pendingTrial = null;
+        return {
+            verdict: 'not_guilty',
+            crime,
+            lawyerName,
+            lawyerCost,
+            message: `JURY VERDICT: NOT GUILTY! You were acquitted of all charges.`
+        };
+    } else {
+        const baseFine = crime.category === 'juvenile' ? 250 : (crime.category === 'heist' ? 15000 : (crime.category === 'violent' ? 25000 : 2500));
+        const fine = baseFine + (extraChargesCount * 5000);
+        const sentenceYears = crime.category === 'juvenile' ? 0 : (crime.category === 'heist' ? 3 : (crime.id === 'murder' ? 25 : 2));
+
+        const result = {
+            verdict: 'guilty',
+            crime,
+            lawyerName,
+            lawyerCost,
+            fine,
+            sentenceYears,
+            extraCharges: pending.extraCharges,
+            message: `JURY VERDICT: GUILTY! Sentenced to ${sentenceYears > 0 ? `${sentenceYears} years` : 'probation'} and ${Utils.formatMoney(fine)} in court fines/restitution.`
+        };
+
+        applySentencing(user, result);
+        user.pendingTrial = null;
+        return result;
+    }
+}
+
+function applySentencing(user, verdictResult) {
+    if (!Array.isArray(user.criminalRecord)) user.criminalRecord = [];
+
+    user.money = Math.max(0, (user.money || 0) - verdictResult.fine);
+
+    user.criminalRecord.push({
+        year: user.age || 20,
+        age: user.age || 20,
+        crimeId: verdictResult.crime.id,
+        crimeName: verdictResult.crime.name,
+        severity: verdictResult.crime.category === 'juvenile' ? 'misdemeanor' : 'felony',
+        verdict: 'guilty',
+        finePaid: verdictResult.fine,
+        sentenceYears: verdictResult.sentenceYears
+    });
+
+    if (verdictResult.crime.category !== 'juvenile' && user.jobTitle) {
+        user.jobTitle = null;
+        user.salary = 0;
+    }
+
+    user.happiness = Math.max(0, (user.happiness || 50) - 35);
+}
+
 export const GameLogic = {
+    generateRandomStats,
+    calculateSmartsDelta,
+    calculateLooksDelta,
     generateNPCOccupation,
     progressNPCOccupation,
     calculateSpousalIncomeContribution,
@@ -4058,7 +4363,12 @@ export const GameLogic = {
     playRoulette,
     spinSlotMachine,
     ROULETTE_RED_NUMBERS,
-    SLOT_SYMBOLS
+    SLOT_SYMBOLS,
+    CRIMES,
+    attemptCrime,
+    handleArrestAction,
+    calculateTrialVerdict,
+    applySentencing
 };
 
 

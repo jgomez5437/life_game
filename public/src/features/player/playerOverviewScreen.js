@@ -3,10 +3,12 @@ import { UI } from '../../ui/ui.js';
 import { Utils } from '../../ui/utils.js';
 import { GameLogic } from '../../core/gameLogic.js';
 import { renderAvatar } from '../../ui/avatarRenderer.js';
+import { hasPurchasedPack } from '../store/storeScreen.js';
 
 export function openPlayerOverviewModal() {
     if (!state.gameState || !state.gameState.user) return;
     const user = state.gameState.user;
+    const isGodMode = hasPurchasedPack('god_mode');
 
     // 1. Identity & Flag
     const displayName = user.username || user.name || "Player";
@@ -64,8 +66,11 @@ export function openPlayerOverviewModal() {
         romanceIcon = 'fa-heart text-pink-400';
     }
 
-    // Health color badge
-    const currentHealth = user.health ?? 100;
+    // Health & Stats badges
+    const currentHealth = user.health ?? user.stats?.health ?? 100;
+    const currentHappiness = user.happiness ?? user.stats?.happiness ?? 100;
+    const currentSmarts = user.smarts ?? user.stats?.smarts ?? 50;
+    const currentLooks = user.looks ?? user.stats?.looks ?? 50;
     const healthBadgeColor = currentHealth > 70 ? 'text-green-400' : currentHealth > 30 ? 'text-yellow-400' : 'text-red-500';
 
     const userPurchases = user.purchases || [];
@@ -113,40 +118,93 @@ export function openPlayerOverviewModal() {
                 </div>
             </div>
 
-            <!-- Stats Grid -->
-            <div class="grid grid-cols-2 gap-2.5">
-                <div class="bg-slate-800 p-3 rounded-xl border border-slate-700">
-                    <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1">
-                        <i class="fas fa-calendar-alt text-blue-400"></i> Age & Health
+            <!-- Core Character Stats Bars -->
+            <div class="bg-slate-800 p-3.5 rounded-xl border border-slate-700 space-y-2.5">
+                <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center justify-between">
+                    <span><i class="fas fa-chart-bar text-blue-400 mr-1"></i> Core Life Stats</span>
+                    ${isGodMode ? `
+                        <div class="flex items-center gap-1.5">
+                            <button data-action="renderGodModeModal" class="px-2 py-0.5 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-bold text-[10px] transition flex items-center gap-1">
+                                <i class="fas fa-bolt text-[9px]"></i> Edit Stats
+                            </button>
+                            <button data-action="renderGodModeAvatarModal" data-args="&apos;self&apos;" class="px-2 py-0.5 rounded bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 font-bold text-[10px] transition flex items-center gap-1">
+                                <i class="fas fa-user-edit text-[9px]"></i> Edit Avatar
+                            </button>
+                        </div>
+                    ` : `
+                        <span class="text-xs text-white font-bold">${user.age} yrs old</span>
+                    `}
+                </div>
+                
+                <!-- Health Bar -->
+                <div>
+                    <div class="flex justify-between text-xs font-bold mb-1">
+                        <span class="text-emerald-400 flex items-center gap-1"><i class="fas fa-heart text-[10px]"></i> Health</span>
+                        <span class="${healthBadgeColor}">${currentHealth}%</span>
                     </div>
-                    <div class="text-base font-bold text-white">${user.age} <span class="text-xs text-slate-400 font-normal">yrs old</span></div>
-                    <div class="text-xs ${healthBadgeColor} font-bold mt-0.5 flex items-center gap-1">
-                        <i class="fas fa-heart text-[10px]"></i> ${currentHealth}% Health
+                    <div class="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
+                        <div class="h-full bg-emerald-500 transition-all duration-300" style="width: ${currentHealth}%"></div>
                     </div>
                 </div>
 
+                <!-- Happiness Bar -->
+                <div>
+                    <div class="flex justify-between text-xs font-bold mb-1">
+                        <span class="text-amber-400 flex items-center gap-1"><i class="fas fa-smile text-[10px]"></i> Happiness</span>
+                        <span class="text-amber-400">${currentHappiness}%</span>
+                    </div>
+                    <div class="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
+                        <div class="h-full bg-amber-400 transition-all duration-300" style="width: ${currentHappiness}%"></div>
+                    </div>
+                </div>
+
+                <!-- Smarts Bar -->
+                <div>
+                    <div class="flex justify-between text-xs font-bold mb-1">
+                        <span class="text-blue-400 flex items-center gap-1"><i class="fas fa-brain text-[10px]"></i> Smarts</span>
+                        <span class="text-blue-400">${currentSmarts}%</span>
+                    </div>
+                    <div class="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
+                        <div class="h-full bg-blue-500 transition-all duration-300" style="width: ${currentSmarts}%"></div>
+                    </div>
+                </div>
+
+                <!-- Looks Bar -->
+                <div>
+                    <div class="flex justify-between text-xs font-bold mb-1">
+                        <span class="text-pink-400 flex items-center gap-1"><i class="fas fa-sparkles text-[10px]"></i> Looks</span>
+                        <span class="text-pink-400">${currentLooks}%</span>
+                    </div>
+                    <div class="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
+                        <div class="h-full bg-pink-500 transition-all duration-300" style="width: ${currentLooks}%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Financial Summary Grid -->
+            <div class="grid grid-cols-3 gap-2.5">
                 <div class="bg-slate-800 p-3 rounded-xl border border-slate-700">
                     <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1">
                         <i class="fas fa-wallet text-amber-400"></i> Net Worth
                     </div>
-                    <div class="text-base font-bold ${netWorthClass}">${Utils.formatMoney(netWorth)}</div>
-                    <div class="text-[11px] text-slate-400 mt-0.5">Cash: <span class="text-emerald-400 font-semibold">${Utils.formatMoney(cash)}</span></div>
+                    <div class="text-sm font-bold ${netWorthClass}">${Utils.formatMoney(netWorth)}</div>
+                    <div class="text-[10px] text-slate-400 mt-0.5">Cash: <span class="text-emerald-400 font-semibold">${Utils.formatMoney(cash)}</span></div>
                 </div>
 
                 <div class="bg-slate-800 p-3 rounded-xl border border-slate-700">
                     <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1">
-                        <i class="fas fa-arrow-down text-emerald-400"></i> Monthly Income
+                        <i class="fas fa-arrow-down text-emerald-400"></i> Income
                     </div>
-                    <div class="text-base font-bold text-emerald-400">+${Utils.formatMoney(monthlyIncome)}<span class="text-[10px] text-slate-400 font-normal">/mo</span></div>
-                    <div class="text-[11px] text-slate-400 mt-0.5">${Utils.formatMoney(totalAnnualIncome)}<span class="text-[10px] text-slate-500">/yr</span></div>
+                    <div class="text-sm font-bold text-emerald-400">+${Utils.formatMoney(monthlyIncome)}<span class="text-[9px] text-slate-400 font-normal">/mo</span></div>
+                    <div class="text-[10px] text-slate-400 mt-0.5">${Utils.formatMoney(totalAnnualIncome)}<span class="text-[9px] text-slate-500">/yr</span></div>
                 </div>
 
                 <div class="bg-slate-800 p-3 rounded-xl border border-slate-700">
                     <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1">
-                        <i class="fas fa-arrow-up text-rose-400"></i> Monthly Outflow
+                        <i class="fas fa-arrow-up text-rose-400"></i> Outflow
                     </div>
-                    <div class="text-base font-bold text-rose-400">-${Utils.formatMoney(totalMonthlyOutflow)}<span class="text-[10px] text-slate-400 font-normal">/mo</span></div>
-                    <div class="text-[11px] text-slate-400 mt-0.5">${Utils.formatMoney(totalMonthlyOutflow * 12)}<span class="text-[10px] text-slate-500">/yr</span></div>
+                    <div class="text-sm font-bold text-rose-400">-${Utils.formatMoney(totalMonthlyOutflow)}<span class="text-[9px] text-slate-400 font-normal">/mo</span></div>
+                    <div class="text-[10px] text-slate-400 mt-0.5">${Utils.formatMoney(totalMonthlyOutflow * 12)}<span class="text-[9px] text-slate-500">/yr</span></div>
                 </div>
             </div>
 

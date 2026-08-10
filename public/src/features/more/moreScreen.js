@@ -34,242 +34,253 @@ export {
 
 const get = id => document.getElementById(id);
 
+function renderSlimOptionRow({ icon, iconBg, iconColor, title, subtitle, badgeText, badgeColor, action, buttonText, buttonStyle, isLocked, lockText }) {
+    return `
+        <div class="bg-slate-800/90 hover:bg-slate-800 px-3 py-2.5 rounded-xl border border-slate-700/80 hover:border-slate-600 transition flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                <div class="w-8 h-8 rounded-lg ${iconBg} ${iconColor} border ${badgeColor || 'border-slate-700'} flex items-center justify-center text-sm shrink-0">
+                    <i class="fas ${icon}"></i>
+                </div>
+                <div class="min-w-0 flex-1 text-left">
+                    <div class="font-bold text-white text-xs truncate flex items-center gap-1.5">
+                        ${title}
+                        ${badgeText ? `<span class="text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded border ${badgeColor}">${badgeText}</span>` : ''}
+                    </div>
+                    <div class="text-[11px] text-slate-400 truncate">${subtitle}</div>
+                </div>
+            </div>
+            ${isLocked ? `
+                <span class="text-[10px] font-bold text-red-400 bg-red-950/40 border border-red-800/40 px-2 py-1 rounded-lg shrink-0 flex items-center gap-1">
+                    <i class="fas fa-lock text-[9px]"></i> ${lockText || 'Locked'}
+                </span>
+            ` : `
+                <button data-action="${action}" class="${buttonStyle || 'bg-slate-700 hover:bg-slate-600 text-white'} font-bold text-xs px-2.5 py-1 rounded-lg transition shrink-0">
+                    ${buttonText}
+                </button>
+            `}
+        </div>
+    `;
+}
+
+export function openSkillsModal() {
+    UI.showModal("Skill Workshops & Education", `
+        <div class="text-center space-y-3 py-2">
+            <div class="text-4xl text-indigo-400">📚</div>
+            <h3 class="text-lg font-bold text-white">Skills & Workshops</h3>
+            <p class="text-xs text-slate-300">
+                Enroll in specialized skill programs to boost your Smarts and open high-paying career paths.
+            </p>
+            <div class="bg-slate-900 p-3 rounded-xl border border-slate-800 text-left text-xs space-y-1.5">
+                <div class="text-slate-300 font-semibold">• Computer Programming & Software</div>
+                <div class="text-slate-300 font-semibold">• Public Speaking & Leadership</div>
+                <div class="text-slate-300 font-semibold">• Martial Arts & Physical Defense</div>
+                <div class="text-slate-300 font-semibold">• Culinary Arts & Gastronomy</div>
+            </div>
+            <p class="text-[11px] text-indigo-400 italic font-semibold">Skill workshop enrollment will be active in the upcoming expansion!</p>
+        </div>
+    `);
+}
+
 export function renderMoreDashboard() {
     const user = state.gameState.user;
-    const gymLocked = user.age < 12;
-    const casinoLocked = user.age < 21;
+    const gymLocked = (user.age || 0) < 12;
+    const dietLocked = (user.age || 0) <= 12;
+    const lotteryLocked = (user.age || 0) < 18;
+    const casinoLocked = (user.age || 0) < 18;
+    const travelLocked = (user.age || 0) < 16;
     const currentDiet = GameLogic.getDietPlan(user.diet || (user.hasBetterDiet ? 'balanced' : 'junk'));
     const ticketsBought = user.lotteryTicketsBoughtThisYear || 0;
     const ticketsLeft = 10 - ticketsBought;
 
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
-            <div class="mb-4 flex items-center justify-between">
-                <button data-action="renderLifeDashboard" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+            <div class="mb-3 flex items-center justify-between">
+                <button data-action="renderLifeDashboard" class="text-slate-400 hover:text-white text-xs flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition">
                     <i class="fas fa-arrow-left"></i> Back to Dashboard
                 </button>
             </div>
             
-            <h2 class="text-2xl font-bold mb-1 px-1 text-white">More Options</h2>
-            <p class="text-slate-400 text-sm mb-4 px-1">Improve your health, try your luck, or get personal life advice.</p>
+            <div class="mb-3 px-1 text-left">
+                <h2 class="text-xl font-extrabold text-white">More Options</h2>
+                <p class="text-slate-400 text-xs">Activities, health, entertainment & criminal endeavors.</p>
+            </div>
             
             <div class="flex-1 overflow-y-auto pb-6 space-y-4">
 
-                <!-- SECTION 0: STORE & EXPANSIONS -->
-                <div class="bg-slate-800 p-3 rounded-xl border border-slate-700 hover:border-amber-500/40 transition flex items-center justify-between cursor-pointer group" data-action="renderStoreScreen">
-                    <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
-                            <i class="fas fa-gem text-sm"></i>
-                        </div>
-                        <div>
-                            <h3 class="font-bold text-white text-sm group-hover:text-amber-300 transition flex items-center gap-1.5">
-                                Packs & Features Store
-                                <span class="bg-amber-500/20 text-amber-300 text-[10px] uppercase tracking-wider font-extrabold px-1.5 py-0.5 rounded border border-amber-500/30">The Spot</span>
-                            </h3>
-                            <div class="text-[11px] text-slate-400">God Mode, Career Packs, Perks & Cosmetics</div>
-                        </div>
+                <!-- CATEGORY 0: STORE & SPECIAL FEATURES -->
+                <div class="space-y-1.5 text-left">
+                    <div class="text-[11px] font-extrabold uppercase tracking-wider text-amber-400 px-1 flex items-center gap-1.5">
+                        <i class="fas fa-gem"></i> Store & Special Features
                     </div>
-                    <button data-action="renderStoreScreen" class="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1 shrink-0 ml-2">
-                        <span>Store</span>
-                        <i class="fas fa-chevron-right text-[10px]"></i>
-                    </button>
+                    ${renderSlimOptionRow({
+                        icon: 'fa-store',
+                        iconBg: 'bg-amber-500/15',
+                        iconColor: 'text-amber-400',
+                        badgeColor: 'border-amber-500/40 text-amber-300',
+                        title: 'Packs & Features Store',
+                        subtitle: 'God Mode, Expansion Packs & Perks',
+                        action: 'renderStoreScreen',
+                        buttonText: 'Open Store',
+                        buttonStyle: 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40'
+                    })}
                 </div>
 
-                <!-- SECTION 1: HEALTH & WELLNESS -->
-                <div class="text-xs font-bold uppercase tracking-wider text-emerald-400 px-1 flex items-center gap-1.5">
-                    <i class="fas fa-heartbeat"></i> Health & Wellness
-                </div>
-
-                <!-- Custom Diet Selection -->
-                <div class="bg-slate-800 p-3.5 rounded-xl border border-slate-700">
-                    <div class="flex justify-between items-center mb-2">
-                        <div class="flex items-center gap-2.5">
-                            <div class="w-9 h-9 rounded-full bg-green-900/40 flex items-center justify-center text-green-400 border border-green-500/50">
-                                <i class="fas fa-apple-alt text-sm"></i>
-                            </div>
-                            <div>
-                                <h3 class="font-bold text-white text-sm">Diet Plan</h3>
-                                <div class="text-xs text-emerald-400 font-semibold">${currentDiet.name}</div>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <div class="text-xs font-bold text-white">${currentDiet.monthlyCost > 0 ? `${Utils.formatMoney(currentDiet.monthlyCost)}/mo` : 'Free'}</div>
-                        </div>
+                <!-- CATEGORY 1: HEALTH & WELLNESS -->
+                <div class="space-y-1.5 text-left">
+                    <div class="text-[11px] font-extrabold uppercase tracking-wider text-emerald-400 px-1 flex items-center gap-1.5">
+                        <i class="fas fa-heartbeat"></i> Health & Wellness
                     </div>
-                    <p class="text-xs text-slate-400 mb-3">${currentDiet.desc}</p>
-                    <button data-action="openDietSelectionModal" class="bg-emerald-600 hover:bg-emerald-500 w-full py-2 rounded-lg text-sm text-white font-bold transition">
-                        Change Diet Plan
-                    </button>
-                </div>
+                    <div class="grid grid-cols-1 gap-1.5">
+                        ${renderSlimOptionRow({
+                            icon: 'fa-apple-alt',
+                            iconBg: 'bg-emerald-950/60',
+                            iconColor: 'text-emerald-400',
+                            badgeColor: 'border-emerald-800/60 text-emerald-300 bg-emerald-950/40',
+                            title: 'Diet Plan',
+                            subtitle: `${currentDiet.name} (${currentDiet.monthlyCost > 0 ? `${Utils.formatMoney(currentDiet.monthlyCost)}/mo` : 'Free'})`,
+                            action: 'openDietSelectionModal',
+                            buttonText: 'Change',
+                            buttonStyle: 'bg-emerald-700 hover:bg-emerald-600 text-white',
+                            isLocked: dietLocked,
+                            lockText: 'Age 13+'
+                        })}
 
-                <!-- Gym Membership -->
-                <div class="bg-slate-800 p-3.5 rounded-xl border border-slate-700">
-                    <div class="flex justify-between items-center mb-2">
-                        <div class="flex items-center gap-2.5">
-                            <div class="w-9 h-9 rounded-full bg-blue-900/40 flex items-center justify-center text-blue-400 border border-blue-500/50">
-                                <i class="fas fa-dumbbell text-sm"></i>
-                            </div>
-                            <div>
-                                <h3 class="font-bold text-white text-sm">Gym Membership</h3>
-                                <div class="text-xs ${user.gymMembership ? 'text-blue-400 font-semibold' : 'text-slate-400'}">
-                                    ${user.gymMembership ? `Active Member (${Utils.formatMoney(50)}/mo)` : 'Not a member'}
-                                </div>
-                            </div>
-                        </div>
+                        ${renderSlimOptionRow({
+                            icon: 'fa-dumbbell',
+                            iconBg: 'bg-blue-950/60',
+                            iconColor: 'text-blue-400',
+                            badgeColor: 'border-blue-800/60 text-blue-300 bg-blue-950/40',
+                            title: 'Gym Membership',
+                            subtitle: user.gymMembership ? `Active Member ($50/mo)` : `Not a member`,
+                            action: user.gymMembership ? 'visitGymOneTime' : 'buyGymMembership',
+                            buttonText: user.gymMembership ? 'Workout Day' : `Join ($50/mo)`,
+                            buttonStyle: user.gymMembership ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-slate-700 hover:bg-slate-600 text-white',
+                            isLocked: gymLocked,
+                            lockText: 'Age 12+'
+                        })}
+
+                        ${renderSlimOptionRow({
+                            icon: 'fa-stethoscope',
+                            iconBg: 'bg-red-950/60',
+                            iconColor: 'text-red-400',
+                            badgeColor: 'border-red-800/60 text-red-300',
+                            title: 'Medical Checkup',
+                            subtitle: `Visit Doctor (+10 Health)`,
+                            action: 'visitDoctor',
+                            buttonText: `Visit ($1,000)`,
+                            buttonStyle: 'bg-red-700 hover:bg-red-600 text-white'
+                        })}
                     </div>
-                    ${gymLocked ? `
-                        <div class="text-xs font-bold text-red-400 uppercase tracking-wide text-center py-2 border border-dashed border-slate-700 rounded-lg">
-                            <i class="fas fa-lock mr-1"></i>Must be 12 or older
-                        </div>
-                    ` : `
-                    <div class="grid grid-cols-2 gap-2 mt-2">
-                        <button data-action="visitGymOneTime" class="bg-slate-700 hover:bg-slate-600 p-2 rounded-lg text-xs text-white font-bold transition">
-                            ${user.gymMembership ? 'Workout Day' : `Visit Once (${Utils.formatMoney(20)})`}
-                        </button>
-                        ${user.gymMembership ? `
-                            <button data-action="cancelGymMembership" class="bg-red-900/40 hover:bg-red-900/60 border border-red-800/50 p-2 rounded-lg text-xs text-white font-bold transition">
-                                Cancel Membership
-                            </button>
-                        ` : `
-                            <button data-action="buyGymMembership" class="bg-blue-600 hover:bg-blue-500 p-2 rounded-lg text-xs text-white font-bold transition">
-                                Join (${Utils.formatMoney(50)}/mo)
-                            </button>
-                        `}
+                </div>
+
+                <!-- CATEGORY 2: EDUCATION & SKILLS -->
+                <div class="space-y-1.5 text-left">
+                    <div class="text-[11px] font-extrabold uppercase tracking-wider text-indigo-400 px-1 flex items-center gap-1.5">
+                        <i class="fas fa-graduation-cap"></i> Education & Skills
                     </div>
-                    `}
-                </div>
-
-                <!-- Medical Visit -->
-                <div class="bg-slate-800 p-3.5 rounded-xl border border-slate-700">
-                    <div class="flex justify-between items-center mb-2">
-                        <div class="flex items-center gap-2.5">
-                            <div class="w-9 h-9 rounded-full bg-red-900/40 flex items-center justify-center text-red-400 border border-red-500/50">
-                                <i class="fas fa-stethoscope text-sm"></i>
-                            </div>
-                            <div>
-                                <h3 class="font-bold text-white text-sm">Medical Checkup</h3>
-                                <div class="text-xs text-slate-400">Restore your health</div>
-                            </div>
-                        </div>
-                        <span class="text-xs font-bold text-white">${Utils.formatMoney(1000)}</span>
+                    <div class="grid grid-cols-1 gap-1.5">
+                        ${renderSlimOptionRow({
+                            icon: 'fa-book-open',
+                            iconBg: 'bg-indigo-950/60',
+                            iconColor: 'text-indigo-400',
+                            badgeColor: 'border-indigo-800/60 text-indigo-300 bg-indigo-950/40',
+                            title: 'Skill Workshops & Courses',
+                            subtitle: 'Coding, Fitness, Cooking & Speaking',
+                            action: 'openSkillsModal',
+                            buttonText: 'Explore',
+                            buttonStyle: 'bg-indigo-700 hover:bg-indigo-600 text-white'
+                        })}
                     </div>
-                    <p class="text-xs text-slate-400 mb-3">A full physical catches illnesses early and boosts health (+10 Health).</p>
-                    <button data-action="visitDoctor" class="bg-red-600 hover:bg-red-500 w-full py-2 rounded-lg text-sm text-white font-bold transition">
-                        Visit Doctor (${Utils.formatMoney(1000)})
-                    </button>
                 </div>
 
-                <!-- SECTION 2: ENTERTAINMENT & LUCK -->
-                <div class="text-xs font-bold uppercase tracking-wider text-amber-400 px-1 pt-2 flex items-center gap-1.5">
-                    <i class="fas fa-clover"></i> Entertainment & Luck
-                </div>
-
-                <!-- Lottery Tickets -->
-                <div class="bg-slate-800 p-3.5 rounded-xl border border-slate-700">
-                    <div class="flex justify-between items-center mb-2">
-                        <div class="flex items-center gap-2.5">
-                            <div class="w-9 h-9 rounded-full bg-amber-900/40 flex items-center justify-center text-amber-400 border border-amber-500/50">
-                                <i class="fas fa-ticket-alt text-sm"></i>
-                            </div>
-                            <div>
-                                <h3 class="font-bold text-white text-sm">Lottery Tickets</h3>
-                                <div class="text-xs ${ticketsLeft > 0 ? 'text-amber-400 font-semibold' : 'text-red-400'}">
-                                    ${ticketsLeft} / 10 remaining this year
-                                </div>
-                            </div>
-                        </div>
+                <!-- CATEGORY 3: TRAVEL & LIFESTYLE -->
+                <div class="space-y-1.5 text-left">
+                    <div class="text-[11px] font-extrabold uppercase tracking-wider text-cyan-400 px-1 flex items-center gap-1.5">
+                        <i class="fas fa-plane"></i> Travel & Lifestyle
                     </div>
-                    <p class="text-xs text-slate-400 mb-3">Buy instant scratch-offs, daily draws, or mega multi-million powerball tickets.</p>
-                    <button data-action="openLotteryModal" class="bg-amber-600 hover:bg-amber-500 w-full py-2 rounded-lg text-sm text-white font-bold transition">
-                        Play Lottery
-                    </button>
-                </div>
+                    <div class="grid grid-cols-1 gap-1.5">
+                        ${renderSlimOptionRow({
+                            icon: 'fa-plane-departure',
+                            iconBg: 'bg-cyan-950/60',
+                            iconColor: 'text-cyan-400',
+                            badgeColor: 'border-cyan-800/60 text-cyan-300 bg-cyan-950/40',
+                            title: 'Travel & Vacations',
+                            subtitle: 'Local Getaways & Luxury Tours',
+                            action: 'openTravelModal',
+                            buttonText: 'Book Trip',
+                            buttonStyle: 'bg-cyan-700 hover:bg-cyan-600 text-white',
+                            isLocked: travelLocked,
+                            lockText: 'Age 16+'
+                        })}
 
-                <!-- Royal Palm Casino -->
-                <div class="bg-gradient-to-br from-amber-950/60 via-slate-800 to-purple-950/60 p-3.5 rounded-xl border border-amber-700/60">
-                    <div class="flex justify-between items-center mb-2">
-                        <div class="flex items-center gap-2.5">
-                            <div class="w-9 h-9 rounded-full bg-amber-900/40 flex items-center justify-center text-amber-300 border border-amber-500/50 shadow">
-                                <i class="fas fa-dice text-sm"></i>
-                            </div>
-                            <div>
-                                <h3 class="font-bold text-white text-sm">Royal Palm Casino</h3>
-                                <div class="text-xs text-amber-400 font-semibold">3 High-Stakes Games</div>
-                            </div>
-                        </div>
+                        ${renderSlimOptionRow({
+                            icon: 'fa-globe-americas',
+                            iconBg: 'bg-emerald-950/60',
+                            iconColor: 'text-emerald-400',
+                            badgeColor: 'border-emerald-800/60 text-emerald-300 bg-emerald-950/40',
+                            title: 'Relocate Country',
+                            subtitle: `Current: ${user.country || 'United States'} (${Utils.formatMoney(2000)})`,
+                            action: 'openMoveCountryModal',
+                            buttonText: 'Move',
+                            buttonStyle: 'bg-emerald-700 hover:bg-emerald-600 text-white'
+                        })}
                     </div>
-                    <p class="text-xs text-slate-300 mb-3">Step onto the high-stakes floor: Blackjack 21, European Roulette, and Mega Jackpot Slots!</p>
-                    ${casinoLocked ? `
-                        <div class="text-xs font-bold text-red-400 uppercase tracking-wide text-center py-2 border border-dashed border-slate-700 rounded-lg">
-                            <i class="fas fa-lock mr-1"></i>Must be 18 or older
-                        </div>
-                    ` : `
-                    <button data-action="renderCasinoHub" class="bg-gradient-to-r from-amber-600 to-purple-600 hover:from-amber-500 hover:to-purple-500 w-full py-2 rounded-lg text-sm text-white font-bold transition shadow">
-                        Enter Casino Floor
-                    </button>
-                    `}
                 </div>
 
-                <!-- Travel & Vacations -->
-                <div class="bg-slate-800 p-3.5 rounded-xl border border-slate-700">
-                    <div class="flex justify-between items-center mb-2">
-                        <div class="flex items-center gap-2.5">
-                            <div class="w-9 h-9 rounded-full bg-cyan-900/40 flex items-center justify-center text-cyan-400 border border-cyan-500/50">
-                                <i class="fas fa-plane text-sm"></i>
-                            </div>
-                            <div>
-                                <h3 class="font-bold text-white text-sm">Travel & Vacations</h3>
-                                <div class="text-xs text-slate-400">Restore health & happiness</div>
-                            </div>
-                        </div>
+                <!-- CATEGORY 4: ENTERTAINMENT & GAMBLING -->
+                <div class="space-y-1.5 text-left">
+                    <div class="text-[11px] font-extrabold uppercase tracking-wider text-purple-400 px-1 flex items-center gap-1.5">
+                        <i class="fas fa-dice"></i> Entertainment & Gambling
                     </div>
-                    <p class="text-xs text-slate-400 mb-3">Escape daily stress with local getaways or international luxury tours.</p>
-                    <button data-action="openTravelModal" class="bg-cyan-600 hover:bg-cyan-500 w-full py-2 rounded-lg text-sm text-white font-bold transition">
-                        Book Vacation
-                    </button>
-                </div>
+                    <div class="grid grid-cols-1 gap-1.5">
+                        ${renderSlimOptionRow({
+                            icon: 'fa-ticket-alt',
+                            iconBg: 'bg-amber-950/60',
+                            iconColor: 'text-amber-400',
+                            badgeColor: 'border-amber-800/60 text-amber-300 bg-amber-950/40',
+                            title: 'Lottery Station',
+                            subtitle: `${ticketsLeft} / 10 tickets left this year`,
+                            action: 'openLotteryModal',
+                            buttonText: 'Play Lottery',
+                            buttonStyle: 'bg-amber-600 hover:bg-amber-500 text-white',
+                            isLocked: lotteryLocked,
+                            lockText: 'Age 18+'
+                        })}
 
-                <!-- Relocate to a New Country -->
-                <div class="bg-slate-800 p-3.5 rounded-xl border border-slate-700">
-                    <div class="flex justify-between items-center mb-2">
-                        <div class="flex items-center gap-2.5">
-                            <div class="w-9 h-9 rounded-full bg-emerald-900/40 flex items-center justify-center text-emerald-400 border border-emerald-500/50">
-                                <i class="fas fa-globe text-sm"></i>
-                            </div>
-                            <div>
-                                <h3 class="font-bold text-white text-sm">Relocate Country</h3>
-                                <div class="text-xs text-slate-400">Current: <span class="text-emerald-400 font-semibold">${user.country || 'United States'} (${user.city || 'New York'})</span></div>
-                            </div>
-                        </div>
+                        ${renderSlimOptionRow({
+                            icon: 'fa-dice-five',
+                            iconBg: 'bg-purple-950/60',
+                            iconColor: 'text-purple-300',
+                            badgeColor: 'border-purple-800/60 text-purple-300 bg-purple-950/40',
+                            title: 'Royal Palm Casino',
+                            subtitle: 'Blackjack 21, Roulette & Slots',
+                            action: 'renderCasinoHub',
+                            buttonText: 'Casino Floor',
+                            buttonStyle: 'bg-gradient-to-r from-amber-600 to-purple-600 hover:from-amber-500 hover:to-purple-500 text-white shadow',
+                            isLocked: casinoLocked,
+                            lockText: 'Age 18+'
+                        })}
                     </div>
-                    <p class="text-xs text-slate-400 mb-3">Move to a new country and start fresh in a new city (${Utils.formatMoney(2000)}).</p>
-                    <button data-action="openMoveCountryModal" class="bg-emerald-600 hover:bg-emerald-500 w-full py-2 rounded-lg text-sm text-white font-bold transition">
-                        Move to New Country (${Utils.formatMoney(2000)})
-                    </button>
                 </div>
 
-                <!-- SECTION 3: PERSONAL GROWTH -->
-                <div class="text-xs font-bold uppercase tracking-wider text-indigo-400 px-1 pt-2 flex items-center gap-1.5">
-                    <i class="fas fa-lightbulb"></i> Personal Growth & Guidance
-                </div>
-
-                <!-- Life Suggestions Box -->
-                <div class="bg-slate-800 p-3.5 rounded-xl border border-slate-700">
-                    <div class="flex justify-between items-center mb-2">
-                        <div class="flex items-center gap-2.5">
-                            <div class="w-9 h-9 rounded-full bg-indigo-900/40 flex items-center justify-center text-indigo-400 border border-indigo-500/50">
-                                <i class="fas fa-compass text-sm"></i>
-                            </div>
-                            <div>
-                                <h3 class="font-bold text-white text-sm">Life Suggestions</h3>
-                                <div class="text-xs text-slate-400">Personalized advisor</div>
-                            </div>
-                        </div>
+                <!-- CATEGORY 5: UNDERWORLD & CRIME -->
+                <div class="space-y-1.5 text-left">
+                    <div class="text-[11px] font-extrabold uppercase tracking-wider text-red-400 px-1 flex items-center gap-1.5">
+                        <i class="fas fa-user-ninja"></i> Underworld & Crime
                     </div>
-                    <p class="text-xs text-slate-400 mb-3">Receive tailored recommendations for your career, health, finances, and relationships.</p>
-                    <button data-action="openSuggestionsModal" class="bg-indigo-600 hover:bg-indigo-500 w-full py-2 rounded-lg text-sm text-white font-bold transition">
-                        Get Suggestions
-                    </button>
+                    <div class="grid grid-cols-1 gap-1.5">
+                        ${renderSlimOptionRow({
+                            icon: 'fa-mask',
+                            iconBg: 'bg-red-950/60',
+                            iconColor: 'text-red-400',
+                            badgeColor: 'border-red-800/60 text-red-300 bg-red-950/40',
+                            title: 'Underworld & Crime Hub',
+                            subtitle: 'Teen Mischief, Theft & Bank Heists',
+                            action: 'renderCrimeDashboard',
+                            buttonText: 'Crime Hub',
+                            buttonStyle: 'bg-red-700 hover:bg-red-600 text-white shadow'
+                        })}
+                    </div>
                 </div>
 
             </div>
@@ -288,8 +299,11 @@ export function visitGymOneTime() {
     
     if (user.money >= actualCost) {
         user.money -= actualCost;
-        user.health = Math.min(100, user.health + boost);
-        addLog("You worked out at the gym for a day.", 'good');
+        const healthGain = boost;
+        const looksGain = Math.floor(Math.random() * 4) + 2;
+        user.health = Math.min(100, (user.health || 50) + healthGain);
+        user.looks = Math.min(100, (user.looks || 50) + looksGain);
+        addLog(`Worked out at the gym! Restored +${healthGain}% Health and gained +${looksGain} Looks.`, 'good');
         UI.updateHeader(user);
         renderMoreDashboard();
     } else {
@@ -325,6 +339,10 @@ export function cancelBetterDiet() {
 
 export function openDietSelectionModal() {
     const user = state.gameState.user;
+    if ((user.age || 0) <= 12) {
+        UI.showModal("Too Young", "You must be at least 13 years old to manage your diet plan.");
+        return;
+    }
     const currentDietId = user.diet || (user.hasBetterDiet ? 'balanced' : 'junk');
     const plans = Object.values(GameLogic.DIET_PLANS);
 
@@ -395,6 +413,10 @@ export function selectDiet(dietId) {
 
 export function openLotteryModal() {
     const user = state.gameState.user;
+    if ((user.age || 0) < 18) {
+        UI.showModal("Too Young", "You must be at least 18 years old to play the lottery.");
+        return;
+    }
     const boughtCount = user.lotteryTicketsBoughtThisYear || 0;
     const ticketsLeft = 10 - boughtCount;
     const types = Object.values(GameLogic.LOTTERY_TYPES);
@@ -486,33 +508,6 @@ export function buyLotteryTicket(ticketTypeId) {
     renderMoreDashboard();
 }
 
-export function openSuggestionsModal() {
-    const user = state.gameState.user;
-    const suggestions = GameLogic.generateLifeSuggestions(user);
-
-    const html = `
-        <div class="space-y-3">
-            <p class="text-xs text-slate-300">Based on your character's current age, career, health, finances, and relationships:</p>
-            <div class="max-h-80 overflow-y-auto space-y-2 pr-1">
-                ${suggestions.map(s => `
-                    <div class="bg-slate-800 p-3 rounded-xl border border-slate-700">
-                        <div class="flex items-center gap-2 mb-1">
-                            <i class="fas ${s.icon} text-sm"></i>
-                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">${s.category}</span>
-                        </div>
-                        <h4 class="font-bold text-white text-sm mb-1">${s.title}</h4>
-                        <p class="text-xs text-slate-300">${s.desc}</p>
-                    </div>
-                `).join('')}
-            </div>
-            <div class="text-right pt-2 border-t border-slate-700">
-                <button data-action="hideModal" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-lg transition">Got It!</button>
-            </div>
-        </div>
-    `;
-
-    UI.showCustomModal("Personalized Life Suggestions", html);
-}
 
 export function visitDoctor() {
     const user = state.gameState.user;
@@ -531,6 +526,12 @@ export function visitDoctor() {
 
 
 export function openTravelModal() {
+    const user = state.gameState.user;
+    if ((user.age || 0) < 16) {
+        UI.showModal("Too Young", "You must be at least 16 years old to travel.");
+        return;
+    }
+
     const htmlContent = `
         <div class="flex flex-col gap-3">
             <button data-action="bookTrip" data-args="1" class="bg-slate-700 hover:bg-slate-600 p-4 rounded-xl text-left border border-slate-600 transition">
@@ -555,6 +556,10 @@ export function openTravelModal() {
 
 export function bookTrip(tier) {
     const user = state.gameState.user;
+    if ((user.age || 0) < 16) {
+        UI.showModal("Too Young", "You must be at least 16 years old to travel.");
+        return;
+    }
     
     const dummyOutcome = GameLogic.calculateTripOutcome(tier);
     if (user.money < dummyOutcome.cost) {

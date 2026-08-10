@@ -5,6 +5,7 @@ import { Utils } from '../../ui/utils.js';
 import { UI } from '../../ui/ui.js';
 import { AvatarLogic } from '../../core/avatarLogic.js';
 import { renderAvatar } from '../../ui/avatarRenderer.js';
+import { hasPurchasedPack } from '../store/storeScreen.js';
 
 // --- ADD NEW RELATIONSHIP GLOBAL METHOD ---
 // Call this function when befriending someone at school, work, etc.
@@ -153,7 +154,7 @@ export const renderRelationships = () => {
     container.innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">
-                <button data-action="renderLifeDashboard" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+                <button data-action="renderLifeDashboard" class="text-slate-400 hover:text-white text-xs flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition border border-slate-700/50">
                     <i class="fas fa-arrow-left"></i> Back to Dashboard
                 </button>
             </div>
@@ -209,7 +210,7 @@ export const openMeetPeopleModal = () => {
     const html = `
         <div class="fade-in max-w-lg mx-auto min-h-full py-6 px-4 flex flex-col justify-center">
             <div class="flex items-center justify-between mb-4">
-                <button data-action="renderRelationships" class="text-slate-400 hover:text-white text-sm flex items-center gap-2">
+                <button data-action="renderRelationships" class="text-slate-400 hover:text-white text-xs flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition border border-slate-700/50">
                     <i class="fas fa-arrow-left"></i> Back to Relationships
                 </button>
             </div>
@@ -387,7 +388,7 @@ export const renderLuxeMatchModal = () => {
     const html = `
         <div class="fade-in max-w-md mx-auto min-h-full py-6 px-4 flex flex-col justify-center">
             <div class="flex items-center justify-between mb-4">
-                <button data-action="openMeetPeopleModal" class="text-slate-400 hover:text-white text-sm flex items-center gap-2">
+                <button data-action="openMeetPeopleModal" class="text-slate-400 hover:text-white text-xs flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition border border-slate-700/50">
                     <i class="fas fa-arrow-left"></i> Back to Social Hub
                 </button>
                 <span class="text-xs text-amber-400 font-bold tracking-wider uppercase flex items-center gap-1">
@@ -576,7 +577,7 @@ export const renderDatingAppModal = (profiles) => {
     const html = `
         <div class="fade-in max-w-md mx-auto min-h-full py-6 px-4 flex flex-col justify-center">
             <div class="flex items-center justify-between mb-4">
-                <button data-action="openMeetPeopleModal" class="text-slate-400 hover:text-white text-sm flex items-center gap-2">
+                <button data-action="openMeetPeopleModal" class="text-slate-400 hover:text-white text-xs flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition border border-slate-700/50">
                     <i class="fas fa-arrow-left"></i> Back to Social Hub
                 </button>
                 <span class="text-xs text-pink-400 font-bold tracking-wider uppercase"><i class="fas fa-fire mr-1"></i> LoveSync App</span>
@@ -809,7 +810,7 @@ export const renderPersonInteraction = (id, backAction = null) => {
     container.innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">
-                <button data-action="${targetBackAction}" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+                <button data-action="${targetBackAction}" class="text-slate-400 hover:text-white text-xs flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition border border-slate-700/50">
                     <i class="fas fa-arrow-left"></i> ${backLabel}
                 </button>
             </div>
@@ -837,6 +838,12 @@ export const renderPersonInteraction = (id, backAction = null) => {
                 </div>
                 <div class="text-sm font-bold text-white">${person.status}%</div>
             </div>
+
+            ${hasPurchasedPack('god_mode') ? `
+                <button data-action="renderGodModeAvatarModal" data-args="&apos;person&apos;, &apos;${person.id}&apos;" class="w-full py-2.5 mb-4 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-xl font-bold text-xs transition flex items-center justify-center gap-1.5 shadow">
+                    <i class="fas fa-user-edit text-amber-400"></i> Edit Appearance (God Mode)
+                </button>
+            ` : ''}
 
             <div class="text-xs text-slate-400 font-bold mb-3 uppercase tracking-widest px-1">Choose an Action</div>
             <div class="flex-1 overflow-y-auto pb-4 custom-scrollbar">
@@ -1219,6 +1226,12 @@ export const handleMakeAMove = (personId) => {
     const user = state.gameState.user;
     const person = (user.relationships || []).find(r => r.id === personId);
     if (!person) return;
+
+    const { blocked, reason } = GameLogic.isInteractionBlocked('make_a_move', person, user);
+    if (blocked) {
+        UI.showModal('Action Blocked', `You cannot make a move on ${person.name} (${reason}).`);
+        return;
+    }
 
     person.interactedThisYear = true;
 
