@@ -7,7 +7,7 @@ import { confirmQuitCareer, quitCareer, renderCareerManager, workHarderJob, slac
 import { renderJobMarket } from '../features/career/partTimeJobsScreen.js';
 import { renderEducation, workHarder, skipSchool, renderClassmates } from '../features/education/manageEducationScreen.js';
 import { attemptEnrollment, openGradEnrollmentModal, attemptGradEnrollment, renderGradSchoolMarket, openUniversityModal } from '../features/career/occupationScreen.js';
-import { selectGender, submitCharacter, renderCharCreation, cycleTrait, randomizeSection, randomizeAllTraits, updateCityDropdown } from '../features/player/charCreationScreen.js';
+import { selectGender, submitCharacter, renderCharCreation, cycleTrait, randomizeSection, randomizeAllTraits, updateCityDropdown, maxCreationGodStats } from '../features/player/charCreationScreen.js';
 import { ageUp, continueAsChild, renderLifeDashboard, addLog, renderDeathScreen, showFullEulogy } from '../features/player/mainScreen.js';
 import { openPlayerOverviewModal } from '../features/player/playerOverviewScreen.js';
 import { state } from './state.js';
@@ -19,10 +19,12 @@ import { renderActivities } from '../features/career/occupationScreen.js';
 import { renderRelationships, renderPersonInteraction, openRelationshipConfirm, spendTimeWithAll, goOutMeetSomeone, openMeetPeopleModal, setAttractionPreference, handleBlindDate, handleDatingApp, renderDatingAppModal, selectDatingAppMatch, handleMeetFriend, handleNightOut, renderLuxeMatchModal, selectLuxeAgePreset, selectLuxeWealthTier, confirmLuxeMatch, handleMakeAMove, confirmHookupChoice, handleEndAffair, handleCheatingConfrontationChoice, handleProposeAction, openRingSelectionModal, proposeWithRing } from '../features/relationships/relationshipScreen.js';
 import { chooseFuneralType, cancelFuneralPlan, confirmFuneralPlan, donateBody, lookTheOtherWay, goToFuneral, skipFuneral, respondNewTeacher, processNextTeacherReplacement } from '../features/relationships/funeralScreen.js';
 import { openWeddingPlanner, confirmWeddingPlan, openNameChangeChoice, chooseNameChange } from '../features/relationships/romanceScreen.js';
-import { renderMoreDashboard, buyGymMembership, cancelGymMembership, visitGymOneTime, startBetterDiet, cancelBetterDiet, visitDoctor, openBlackjackBetting, startBlackjackGame, blackjackHit, blackjackStand, openTravelModal, bookTrip, openDietSelectionModal, selectDiet, openLotteryModal, buyLotteryTicket, openSuggestionsModal, openMoveCountryModal, updateRelocateCityDropdown, confirmMoveCountry, askPartnerToMove, confirmMoveAlone } from '../features/more/moreScreen.js';
+import { renderMoreDashboard, buyGymMembership, cancelGymMembership, visitGymOneTime, startBetterDiet, cancelBetterDiet, visitDoctor, openBlackjackBetting, startBlackjackGame, blackjackHit, blackjackStand, openTravelModal, bookTrip, openDietSelectionModal, selectDiet, openLotteryModal, buyLotteryTicket, openMoveCountryModal, updateRelocateCityDropdown, confirmMoveCountry, askPartnerToMove, confirmMoveAlone, openSkillsModal } from '../features/more/moreScreen.js';
+import { renderCrimeDashboard, openCrimeModal, commitCrimeAction, showArrestModal, openBribeModal, submitBribeAction, handleArrestChoice, showCourtArraignmentModal, selectLegalCounsel } from '../features/more/crimeScreen.js';
 import { renderCasinoHub, openRouletteModal, confirmRouletteBet, confirmRouletteSingleNumberBet, openSlotsModal, confirmSlotsSpin } from '../features/more/casinoScreen.js';
 import { openSettingsModal, triggerManualSave, promptResetGame, toggleSettingSFX, toggleSettingCompact, toggleSettingTheme, applyTheme } from '../features/more/settingsScreen.js';
-import { renderStoreScreen, filterStoreCategory, previewPackDetails, buyPack, restorePurchases } from '../features/store/storeScreen.js';
+import { renderStoreScreen, filterStoreCategory, previewPackDetails, buyPack, restorePurchases, renderGodModeModal, maxGodModeStats, applyGodModeStats } from '../features/store/storeScreen.js';
+import { renderGodModeAvatarModal, cycleGodModeTrait, randomizeGodModeAvatarTraits, saveGodModeAvatar } from '../features/store/godModeAvatarEditor.js';
 import { grantInstantHighSchool, grantInstantUniversityDegree, grantInstantGradDegree, renderInstantDiplomaHub, claimInstantUniversityMajor } from '../features/education/instantDiploma.js';
 import { renderVipLoungeModal, selectTheme, isVipSupporter } from '../features/store/vipLounge.js';
 import { renderGraveyardModal, showAncestorEulogy } from '../features/player/graveyardScreen.js';
@@ -378,6 +380,9 @@ export function updateGameInfo(dbUser) {
             // --- CORE STATS ---
             age: data.stats?.age || savedUser.age || 0,
             health: data.stats?.health || savedUser.health || 100,
+            happiness: data.stats?.happiness || savedUser.happiness || 100,
+            smarts: data.stats?.smarts || savedUser.smarts || Math.floor(Math.random() * 41) + 40,
+            looks: data.stats?.looks || savedUser.looks || Math.floor(Math.random() * 41) + 40,
             money: data.money || savedUser.money || 0,
             lifeStatus: savedUser.lifeStatus || "Baby",
             isDead: savedUser.isDead || false,
@@ -490,7 +495,10 @@ export const loadAndRenderGame = (userData) => {
             ...userData,
             money: userData.money || 0,
             age: userData.age || 0,
-            health: userData.health || 100,
+            health: userData.health ?? userData.stats?.health ?? 100,
+            happiness: userData.happiness ?? userData.stats?.happiness ?? 100,
+            smarts: userData.smarts ?? userData.stats?.smarts ?? Math.floor(Math.random() * 41) + 40,
+            looks: userData.looks ?? userData.stats?.looks ?? Math.floor(Math.random() * 41) + 40,
             gender: userData.gender || 'male',
             city: userData.city || "New York",
             appearance: userData.appearance || null,
@@ -611,7 +619,10 @@ export async function saveGame() {
             },
             stats: {
                 age: state.gameState.user.age,
-                health: state.gameState.user.health
+                health: state.gameState.user.health ?? 100,
+                happiness: state.gameState.user.happiness ?? 100,
+                smarts: state.gameState.user.smarts ?? 50,
+                looks: state.gameState.user.looks ?? 50
             }
         }
     };
@@ -660,6 +671,11 @@ async function initGame() {
     const isAuthenticated = state.auth0Client ? await state.auth0Client.isAuthenticated() : false;
 
     if (isAuthenticated) {
+        // Render Loading Screen while user details and cloud save are being fetched
+        if (typeof UI !== 'undefined' && UI.renderLoadingScreen) {
+            UI.renderLoadingScreen("Syncing Account...", "Fetching your cloud save data...");
+        }
+
         // User is logged in! 
         const user = await state.auth0Client.getUser();
         console.log(`Welcome back, ${user.nickname} (${user.sub})`);
@@ -1036,9 +1052,9 @@ const routeHandlers = {
   confirmGiftVehicle,
   openDietSelectionModal,
   selectDiet,
+  openSkillsModal,
   openLotteryModal,
   buyLotteryTicket,
-  openSuggestionsModal,
   openMoveCountryModal,
   updateRelocateCityDropdown,
   confirmMoveCountry,
@@ -1056,6 +1072,14 @@ const routeHandlers = {
   previewPackDetails,
   buyPack,
   restorePurchases,
+  renderGodModeModal,
+  maxGodModeStats,
+  applyGodModeStats,
+  renderGodModeAvatarModal,
+  cycleGodModeTrait,
+  randomizeGodModeAvatarTraits,
+  saveGodModeAvatar,
+  maxCreationGodStats,
   grantInstantHighSchool,
   grantInstantUniversityDegree,
   grantInstantGradDegree,
@@ -1064,7 +1088,16 @@ const routeHandlers = {
   renderVipLoungeModal,
   selectTheme,
   renderGraveyardModal,
-  showAncestorEulogy
+  showAncestorEulogy,
+  renderCrimeDashboard,
+  openCrimeModal,
+  commitCrimeAction,
+  showArrestModal,
+  openBribeModal,
+  submitBribeAction,
+  handleArrestChoice,
+  showCourtArraignmentModal,
+  selectLegalCounsel
 };
 
 document.addEventListener('click', (e) => {

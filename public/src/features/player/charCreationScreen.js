@@ -7,6 +7,7 @@ import { UI } from '../../ui/ui.js';
 import { Utils, COUNTRIES_DATA } from '../../ui/utils.js';
 import { AvatarLogic } from '../../core/avatarLogic.js';
 import { renderAvatar } from '../../ui/avatarRenderer.js';
+import { hasPurchasedPack } from '../store/storeScreen.js';
 
 //Character creation screen
 const get = id => document.getElementById(id);
@@ -176,6 +177,49 @@ export const renderCharCreation = () => {
                             <label class="block text-sm text-slate-400 mb-2">Appearance</label>
                             <div id="appearance-panel"></div>
                         </div>
+
+                        ${hasPurchasedPack('god_mode') ? `
+                            <!-- God Mode Stat Tuning (Paid Entitlement Only) -->
+                            <div class="bg-slate-900/90 border border-amber-500/40 p-4 rounded-xl space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-bold text-amber-300 flex items-center gap-1 uppercase tracking-wider">
+                                        <i class="fas fa-bolt"></i> God Mode Stat Tuning
+                                    </span>
+                                    <button type="button" data-action="maxCreationGodStats" class="text-[10px] bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded font-bold transition">
+                                        Max All (100%)
+                                    </button>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between text-xs text-slate-300 font-bold mb-1">
+                                        <span>Health</span>
+                                        <span id="god-create-health-val" class="text-emerald-400">100%</span>
+                                    </div>
+                                    <input type="range" id="god-create-health" min="0" max="100" value="100" oninput="document.getElementById('god-create-health-val').innerText = this.value + '%'" class="w-full accent-emerald-500">
+                                </div>
+                                <div>
+                                    <div class="flex justify-between text-xs text-slate-300 font-bold mb-1">
+                                        <span>Happiness</span>
+                                        <span id="god-create-happiness-val" class="text-amber-400">100%</span>
+                                    </div>
+                                    <input type="range" id="god-create-happiness" min="0" max="100" value="100" oninput="document.getElementById('god-create-happiness-val').innerText = this.value + '%'" class="w-full accent-amber-400">
+                                </div>
+                                <div>
+                                    <div class="flex justify-between text-xs text-slate-300 font-bold mb-1">
+                                        <span>Smarts</span>
+                                        <span id="god-create-smarts-val" class="text-blue-400">100%</span>
+                                    </div>
+                                    <input type="range" id="god-create-smarts" min="0" max="100" value="100" oninput="document.getElementById('god-create-smarts-val').innerText = this.value + '%'" class="w-full accent-blue-500">
+                                </div>
+                                <div>
+                                    <div class="flex justify-between text-xs text-slate-300 font-bold mb-1">
+                                        <span>Looks</span>
+                                        <span id="god-create-looks-val" class="text-pink-400">100%</span>
+                                    </div>
+                                    <input type="range" id="god-create-looks" min="0" max="100" value="100" oninput="document.getElementById('god-create-looks-val').innerText = this.value + '%'" class="w-full accent-pink-500">
+                                </div>
+                            </div>
+                        ` : ''}
+
                         <button data-action="submitCharacter" class="w-full btn-life text-white font-bold py-4 rounded-xl text-lg mt-4">
                             Start Life
                         </button>
@@ -272,15 +316,36 @@ export async function submitCharacter() {
         }
         // === IF GUEST ===
         else {
+            let initialStats;
+            if (hasPurchasedPack('god_mode') && get('god-create-health')) {
+                initialStats = {
+                    health: parseInt(get('god-create-health').value, 10),
+                    happiness: parseInt(get('god-create-happiness').value, 10),
+                    smarts: parseInt(get('god-create-smarts').value, 10),
+                    looks: parseInt(get('god-create-looks').value, 10)
+                };
+            } else {
+                initialStats = GameLogic.generateRandomStats ? GameLogic.generateRandomStats() : {
+                    health: 100,
+                    happiness: 100,
+                    smarts: Math.floor(Math.random() * 56) + 40,
+                    looks: Math.floor(Math.random() * 56) + 40
+                };
+            }
             userData = {
                 username: finalName,
                 gender: gender,
                 country: country,
                 city: city,
                 stats: {
-                    health: 100,
+                    ...initialStats,
                     money: 0
                 },
+                health: initialStats.health,
+                happiness: initialStats.happiness,
+                smarts: initialStats.smarts,
+                looks: initialStats.looks,
+                money: 0,
                 is_guest: true,
                 appearance: draftAppearance,
                 relationships: startingFamily // Inject before load
@@ -317,4 +382,13 @@ export async function submitCharacter() {
         console.error("Creation failed", error);
         UI.showModal("Error", "Failed to create character.");
     }
+}
+
+export function maxCreationGodStats() {
+    ['health', 'happiness', 'smarts', 'looks'].forEach(stat => {
+        const input = get(`god-create-${stat}`);
+        const val = get(`god-create-${stat}-val`);
+        if (input) input.value = 100;
+        if (val) val.innerText = '100%';
+    });
 }

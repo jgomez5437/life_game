@@ -13,10 +13,15 @@ const get = id => document.getElementById(id);
 export const renderShoppingHub = () => {
     const user = state.gameState.user;
 
+    if ((user.age || 0) <= 12) {
+        UI.showModal("Too Young", "You must be at least 13 years old to go shopping (Age 13+ required).");
+        return;
+    }
+
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">
-                <button data-action="renderLifeDashboard" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+                <button data-action="renderLifeDashboard" class="text-slate-400 hover:text-white text-xs flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition border border-slate-700/50">
                     <i class="fas fa-arrow-left"></i> Back to Life
                 </button>
             </div>
@@ -77,6 +82,11 @@ let currentVehicleShowroom = 'used';
 export const renderVehicleDealer = (showroomCategory) => {
     const user = state.gameState.user;
     UI.hideModal();
+
+    if ((user.age || 0) < 16) {
+        UI.showModal("Too Young", "You must be at least 16 years old to visit the car dealership.");
+        return;
+    }
 
     if (showroomCategory) {
         currentVehicleShowroom = showroomCategory;
@@ -141,7 +151,7 @@ export const renderVehicleDealer = (showroomCategory) => {
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">
-                <button data-action="renderShoppingHub" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+                <button data-action="renderShoppingHub" class="text-slate-400 hover:text-white text-xs flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition border border-slate-700/50">
                     <i class="fas fa-arrow-left"></i> Back to Market
                 </button>
             </div>
@@ -177,6 +187,12 @@ export const renderVehicleDealer = (showroomCategory) => {
 // Real Estate Screen
 export const renderRealEstateDealer = () => {
     const user = state.gameState.user;
+
+    if ((user.age || 0) < 18) {
+        UI.showModal("Too Young", "You must be at least 18 years old to buy real estate.");
+        return;
+    }
+
     const monthlyIncome = GameLogic.calculateUserMonthlyIncome(user);
     const properties = GameLogic.PROPERTIES_FOR_SALE || [];
 
@@ -224,7 +240,7 @@ export const renderRealEstateDealer = () => {
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">
-                <button data-action="renderShoppingHub" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+                <button data-action="renderShoppingHub" class="text-slate-400 hover:text-white text-xs flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition border border-slate-700/50">
                     <i class="fas fa-arrow-left"></i> Back to Market
                 </button>
             </div>
@@ -420,6 +436,12 @@ export const buyPropertyMortgage = (propertyId) => {
 export const renderJewelryDealer = (selectedCategory = 'all') => {
     UI.hideModal();
     const user = state.gameState.user;
+
+    if ((user.age || 0) <= 12) {
+        UI.showModal("Too Young", "You must be at least 13 years old to buy fine jewelry.");
+        return;
+    }
+
     const items = GameLogic.JEWELRY_FOR_SALE || [];
 
     const categories = [
@@ -484,7 +506,7 @@ export const renderJewelryDealer = (selectedCategory = 'all') => {
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">
-                <button data-action="renderShoppingHub" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+                <button data-action="renderShoppingHub" class="text-slate-400 hover:text-white text-xs flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition border border-slate-700/50">
                     <i class="fas fa-arrow-left"></i> Back to Marketplace
                 </button>
             </div>

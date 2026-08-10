@@ -245,5 +245,26 @@ export const UI = {
     hideModal: () => {
         _elements.modalOverlay.classList.add('hidden');
         _elements.modalOverlay.classList.remove('flex');
+    },
+
+    /**
+     * Renders a centered loading screen with animated spinner and custom messages.
+     * @param {string} [title="Loading..."]
+     * @param {string} [subtitle="Please wait a moment..."]
+     */
+    renderLoadingScreen: (title = "Loading...", subtitle = "Please wait a moment...") => {
+        UI.resetHeader();
+        const html = `
+        <div class="h-full flex flex-col items-center justify-center fade-in text-center p-6 select-none">
+            <div class="mb-6 relative">
+                <div class="absolute inset-0 bg-blue-500 blur-2xl opacity-25 rounded-full"></div>
+                <i class="fas fa-globe-americas text-7xl text-blue-400 relative z-10 animate-pulse"></i>
+            </div>
+            <i class="fas fa-circle-notch fa-spin text-4xl text-blue-400 mb-4"></i>
+            <h2 class="text-xl font-bold text-white mb-1 tracking-wide">${title}</h2>
+            <p class="text-slate-400 text-sm max-w-xs leading-relaxed">${subtitle}</p>
+        </div>
+        `;
+        UI.renderScreen(html);
     }
 };

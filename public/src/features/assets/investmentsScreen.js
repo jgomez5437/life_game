@@ -133,7 +133,7 @@ function renderHubView(user, savingsBalance, totalStockValue, totalStockCost, ow
     return `
         <!-- Top Nav -->
         <div class="mb-4 flex items-center justify-between">
-            <button data-action="renderAssets" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+            <button data-action="renderAssets" class="text-slate-400 hover:text-white text-xs flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition border border-slate-700/50">
                 <i class="fas fa-arrow-left"></i> Back to Assets
             </button>
             <span class="text-xs text-slate-500 font-bold uppercase tracking-wider">Investments Hub</span>
@@ -238,7 +238,7 @@ function renderPortfolioSection(user, ownedCompaniesCount, totalStockValue, tota
     return `
         <!-- Section Nav -->
         <div class="mb-4 flex items-center justify-between">
-            <button data-action="switchInvestmentTab" data-args="'hub'" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+            <button data-action="switchInvestmentTab" data-args="'hub'" class="text-slate-400 hover:text-white text-xs flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition border border-slate-700/50">
                 <i class="fas fa-arrow-left"></i> Investments Hub
             </button>
             <span class="text-xs text-purple-400 font-bold uppercase tracking-wider"><i class="fas fa-briefcase mr-1"></i> My Portfolio</span>
@@ -439,7 +439,7 @@ function renderStockMarketSection(user, ownedCompaniesCount, totalStockValue, to
     return `
         <!-- Section Nav -->
         <div class="mb-4 flex items-center justify-between">
-            <button data-action="switchInvestmentTab" data-args="'hub'" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+            <button data-action="switchInvestmentTab" data-args="'hub'" class="text-slate-400 hover:text-white text-xs flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition border border-slate-700/50">
                 <i class="fas fa-arrow-left"></i> Investments Hub
             </button>
             <span class="text-xs text-emerald-400 font-bold uppercase tracking-wider"><i class="fas fa-chart-line mr-1"></i> Stock Market</span>
@@ -459,7 +459,7 @@ function renderSavingsSection(user) {
     return `
         <!-- Section Nav -->
         <div class="mb-4 flex items-center justify-between">
-            <button data-action="switchInvestmentTab" data-args="'hub'" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+            <button data-action="switchInvestmentTab" data-args="'hub'" class="text-slate-400 hover:text-white text-xs flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition border border-slate-700/50">
                 <i class="fas fa-arrow-left"></i> Investments Hub
             </button>
             <span class="text-xs text-cyan-400 font-bold uppercase tracking-wider"><i class="fas fa-piggy-bank mr-1"></i> Savings Account</span>
@@ -508,7 +508,7 @@ function renderMarketBlogsSection(user) {
     return `
         <!-- Section Nav -->
         <div class="mb-4 flex items-center justify-between">
-            <button data-action="switchInvestmentTab" data-args="'hub'" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 transition">
+            <button data-action="switchInvestmentTab" data-args="'hub'" class="text-slate-400 hover:text-white text-xs flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition border border-slate-700/50">
                 <i class="fas fa-arrow-left"></i> Investments Hub
             </button>
             <span class="text-xs text-amber-400 font-bold uppercase tracking-wider"><i class="fas fa-newspaper mr-1"></i> Market Blogs</span>

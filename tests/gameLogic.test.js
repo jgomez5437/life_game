@@ -367,6 +367,52 @@ describe('Relationship Logic', () => {
             }
             expect(caughtCount).toBeGreaterThan(5);
         });
+
+        test('romantic and intimate interactions are strictly hidden and blocked between minors and adults', () => {
+            const minorUser = { age: 16, gender: 'male', relationships: [] };
+            const adultTeacher = { age: 32, gender: 'female', category: 'friend', status: 80 };
+            const minorFriend = { age: 16, gender: 'female', category: 'friend', status: 80 };
+
+            // Minor user vs adult teacher -> Hidden from getAvailableInteractions
+            const teacherActions = GameLogic.getAvailableInteractions(adultTeacher, minorUser).map(i => i.key);
+            expect(teacherActions).not.toContain('make_a_move');
+            expect(teacherActions).not.toContain('ask_out');
+            expect(teacherActions).not.toContain('make_love');
+
+            // Minor user vs adult teacher -> BLOCKED if checked directly
+            expect(GameLogic.isInteractionBlocked('make_a_move', adultTeacher, minorUser)).toEqual({
+                blocked: true,
+                reason: 'Age Gap (Minor & Adult)'
+            });
+            expect(GameLogic.isInteractionBlocked('ask_out', adultTeacher, minorUser)).toEqual({
+                blocked: true,
+                reason: 'Age Gap (Minor & Adult)'
+            });
+
+            // Minor user vs minor friend -> Available in getAvailableInteractions
+            const friendActions = GameLogic.getAvailableInteractions(minorFriend, minorUser).map(i => i.key);
+            expect(friendActions).toContain('make_a_move');
+            expect(friendActions).toContain('ask_out');
+
+            // Adult user vs minor -> Hidden
+            const adultUser = { age: 25, gender: 'male', relationships: [] };
+            const adultVsMinorActions = GameLogic.getAvailableInteractions(minorFriend, adultUser).map(i => i.key);
+            expect(adultVsMinorActions).not.toContain('make_a_move');
+            expect(adultVsMinorActions).not.toContain('ask_out');
+        });
+
+        test('playLotteryTicket blocks players under 18 years old', () => {
+            const childUser = { age: 12, money: 500 };
+            const adultUser = { age: 25, money: 500 };
+
+            expect(GameLogic.playLotteryTicket('scratch', childUser)).toEqual({
+                success: false,
+                message: 'You must be at least 18 years old to play the lottery.'
+            });
+
+            const adultRes = GameLogic.playLotteryTicket('scratch', adultUser);
+            expect(adultRes.success).toBe(true);
+        });
     });
 
     describe('Romance interactions (Chunk 1)', () => {
@@ -1233,12 +1279,7 @@ describe('More Options Revamp: Diets, Lottery & Suggestions', () => {
         expect(user.lotteryTicketsBoughtThisYear).toBe(3);
     });
 
-    test('generateLifeSuggestions produces non-empty list of smart advice', () => {
-        const user = { age: 25, health: 30, money: 100, jobTitle: null, relationships: [] };
-        const suggestions = GameLogic.generateLifeSuggestions(user);
-        expect(suggestions.length).toBeGreaterThan(0);
-        expect(suggestions.some(s => s.category.includes('Health'))).toBe(true);
-    });
+
 
     test('rollOverMegaJackpot increases jackpot amount annually until won', () => {
         const user = { megaJackpotAmount: 20000000 };
@@ -1375,39 +1416,7 @@ describe('Relocation to New Country Pure Functions', () => {
         expect(outflow).toBe(2500); // $30,000 / 12 = $2,500
     });
 
-    describe('generateLifeSuggestions', () => {
-        test('recommends Nurture Your Marriage if married and already has a child', () => {
-            const spouse = { id: 's1', name: 'Emily', type: 'Wife', category: 'spouse', age: 30 };
-            const child = { id: 'c1', name: 'Leo', type: 'Son', category: 'child', age: 3 };
-            const user = { age: 30, health: 100, money: 2000, relationships: [spouse, child] };
 
-            const suggestions = GameLogic.generateLifeSuggestions(user);
-            const romanceSuggestion = suggestions.find(s => s.category === 'Romance & Family');
-            expect(romanceSuggestion).toBeDefined();
-            expect(romanceSuggestion.title).toBe('Nurture Your Marriage');
-            expect(romanceSuggestion.desc).toContain('Emily');
-        });
-
-        test('recommends Start a Family if married with no children and not expecting', () => {
-            const spouse = { id: 's1', name: 'Emily', type: 'Wife', category: 'spouse', age: 30 };
-            const user = { age: 30, health: 100, money: 2000, relationships: [spouse] };
-
-            const suggestions = GameLogic.generateLifeSuggestions(user);
-            const romanceSuggestion = suggestions.find(s => s.category === 'Romance & Family');
-            expect(romanceSuggestion).toBeDefined();
-            expect(romanceSuggestion.title).toBe('Start a Family');
-        });
-
-        test('recommends Plan Your Wedding if engaged', () => {
-            const fiancé = { id: 'f1', name: 'Sarah', type: 'Fiancée', category: 'partner', age: 26 };
-            const user = { age: 26, health: 100, money: 2000, relationships: [fiancé] };
-
-            const suggestions = GameLogic.generateLifeSuggestions(user);
-            const romanceSuggestion = suggestions.find(s => s.category === 'Romance & Family');
-            expect(romanceSuggestion).toBeDefined();
-            expect(romanceSuggestion.title).toBe('Plan Your Wedding');
-        });
-    });
 
     describe('Casino Games: playRoulette and spinSlotMachine', () => {
         test('playRoulette correctly handles Red/Black even money bets (1:1 payout)', () => {

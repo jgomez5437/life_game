@@ -93,7 +93,7 @@ export function renderBusinessDashboard() {
             <!-- Header Top Bar -->
             <div class="flex flex-wrap sm:flex-nowrap justify-between items-center gap-3 mb-4 bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-md">
                 <div class="flex items-center gap-3 min-w-0">
-                    <button data-action="renderActivities" class="text-slate-400 hover:text-white text-sm p-2 rounded-lg bg-slate-700/50 hover:bg-slate-700 transition flex-shrink-0">
+                    <button data-action="renderActivities" class="text-slate-400 hover:text-white text-xs flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition border border-slate-700/50 flex-shrink-0">
                         <i class="fas fa-arrow-left"></i> Exit Office
                     </button>
                     <div class="min-w-0">
