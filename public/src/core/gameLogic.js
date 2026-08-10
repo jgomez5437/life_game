@@ -90,6 +90,17 @@ function addLivingExpenses(age, currentlyStudent, city) {
     return 0;
 }
 
+function getCityCostMultiplier(city) {
+    const livingCost = CITY_COST_OF_LIVING[city] || 24000;
+    return livingCost / 24000;
+}
+
+function calculateScaledSalary(baseSalary, city) {
+    if (!baseSalary || typeof baseSalary !== 'number') return 0;
+    const mult = getCityCostMultiplier(city);
+    return Math.round(baseSalary * mult);
+}
+
 function calculateBirthdayMoney() {
     return Math.floor(Math.random() * 71) + 10;
 }
@@ -1157,6 +1168,8 @@ const RELATIONSHIP_INTERACTIONS = [
     { key: 'flirt', name: 'Flirt', icon: 'fa-kiss-wink-heart', desc: 'Say something flirty', cost: 0, statusChange: 10, categories: ['partner'], blockedIfAgeLte: 15, blockedIfTargetAgeLte: 15 },
     { key: 'go_on_date', name: 'Go on a Date', icon: 'fa-utensils', desc: 'Take them out for a night together', cost: 100, statusChange: 15, categories: ['partner'], blockedIfAgeLte: 15, blockedIfTargetAgeLte: 15 },
     { key: 'make_love', name: 'Make Love', icon: 'fa-heart-circle-check', desc: 'Spend an intimate night together', cost: 0, statusChange: 10, categories: ['partner', 'spouse'], blockedIfAgeLte: 17, blockedIfTargetAgeLte: 17 },
+    { key: 'make_a_move', name: 'Make a Move', icon: 'fa-fire-flame-curved', desc: 'Try to initiate something intimate', cost: 0, statusChange: 0, categories: ['friend', 'classmate'], directAction: 'handleMakeAMove', blockedIfAgeLte: 15, blockedIfTargetAgeLte: 15 },
+    { key: 'end_affair', name: 'End the Affair', icon: 'fa-heart-crack', desc: 'Break off the secret affair', cost: 0, statusChange: -10, requiredTypes: ['Secret Affair'], directAction: 'handleEndAffair' },
     { key: 'break_up', name: 'Break Up', icon: 'fa-heart-crack', desc: 'End the relationship', cost: 0, statusChange: 0, categories: ['partner'] },
 
     // --- Marriage & Divorce (Chunk 2) ---
@@ -1190,12 +1203,59 @@ function isHostile(person) {
 function getAvailableInteractions(person, user) {
     const hasPartnerOrSpouse = (user.relationships || []).some(r => r.category === 'partner' || r.category === 'spouse');
     return RELATIONSHIP_INTERACTIONS.filter(it => {
+        if (person.type === 'Ex-Lover' && (it.key === 'make_a_move' || it.key === 'make_love')) return false;
+        if (it.key === 'make_love' && person.type === 'Secret Affair') return true;
         if (it.categories && !it.categories.includes(person.category)) return false;
         if (it.requiredTypes && !it.requiredTypes.includes(person.type)) return false;
         if (it.requiresOppositeGender && (!person.gender || !user.gender || person.gender === user.gender)) return false;
         if (it.monogamyGate && hasPartnerOrSpouse) return false;
         return true;
     });
+}
+
+const HOOKUP_SCENARIOS = [
+    "Things are getting steamy with {name}...",
+    "One thing leads to another, and the chemistry between you and {name} becomes undeniable...",
+    "You lean in close to {name}. After a moment of hesitation, they pull you in...",
+    "Sparked by late night drinks, {name} looks at you with a seductive grin...",
+    "Away from prying eyes, {name} whispers that they've been wanting this for a long time..."
+];
+
+function getRandomHookupScenario(name) {
+    const template = HOOKUP_SCENARIOS[Math.floor(Math.random() * HOOKUP_SCENARIOS.length)];
+    return template.replace('{name}', name);
+}
+
+function calculateMakeAMoveSuccess(person, user) {
+    const status = person.status || 0;
+    const chance = Math.min(0.90, Math.max(0.15, status / 100));
+    return Math.random() < chance;
+}
+
+function checkAgeUpInfidelityDiscovery(user) {
+    if (!user || !user.relationships) return null;
+
+    const partner = user.relationships.find(r => r.category === 'spouse' || r.category === 'partner');
+    if (!partner) return null;
+
+    const affairs = user.relationships.filter(r => r.type === 'Secret Affair');
+    if (affairs.length === 0 && !user.hadUnfaithfulHookupThisYear) return null;
+
+    const discovered = Math.random() < 0.25;
+    if (discovered) {
+        const affairTarget = affairs.length > 0 ? affairs[Math.floor(Math.random() * affairs.length)] : null;
+        const affairName = affairTarget ? affairTarget.name : "someone else";
+
+        user.hadUnfaithfulHookupThisYear = false;
+
+        return {
+            partnerId: partner.id,
+            partnerName: partner.name,
+            affairName: affairName
+        };
+    }
+
+    return null;
 }
 
 /**
@@ -1523,6 +1583,78 @@ function generateDatingProfiles(user, count = 3) {
         });
     }
     return profiles;
+}
+
+const LUXURY_AGE_PRESETS = {
+    '18-25': { min: 18, max: 25 },
+    '26-35': { min: 26, max: 35 },
+    '36-45': { min: 36, max: 45 },
+    '46-60': { min: 46, max: 60 },
+    '60+':   { min: 61, max: 80 }
+};
+
+const LUXURY_CAREERS = {
+    high_earner: [
+        { title: 'Senior Software Engineer', salaryRange: [120000, 180000] },
+        { title: 'Attending Physician', salaryRange: [180000, 240000] },
+        { title: 'Associate Attorney', salaryRange: [130000, 200000] },
+        { title: 'VP of Banking', salaryRange: [150000, 250000] },
+        { title: 'Creative Director', salaryRange: [130000, 210000] },
+        { title: 'Director of Nursing', salaryRange: [120000, 170000] }
+    ],
+    wealthy: [
+        { title: 'Managing Partner (Law)', salaryRange: [280000, 450000] },
+        { title: 'Chief of Medicine', salaryRange: [320000, 500000] },
+        { title: 'Chief Banking Officer', salaryRange: [300000, 480000] },
+        { title: 'Engineering Director', salaryRange: [250000, 420000] },
+        { title: 'Executive VP of Logistics', salaryRange: [260000, 400000] }
+    ],
+    ultra_wealthy: [
+        { title: 'Hedge Fund Manager', salaryRange: [750000, 2500000] },
+        { title: 'Tech Founder & CEO', salaryRange: [800000, 3000000] },
+        { title: 'Private Equity Managing Director', salaryRange: [900000, 2200000] },
+        { title: 'Commercial Real Estate Tycoon', salaryRange: [650000, 1800000] },
+        { title: 'Supermodel & Fashion Icon', salaryRange: [600000, 1500000] },
+        { title: 'A-List Movie Producer', salaryRange: [850000, 2800000] }
+    ]
+};
+
+function generateLuxuryMatch(user, { agePreset = '26-35', wealthTier = 'wealthy', genderPreference = null } = {}) {
+    const userGender = user.gender || 'male';
+    const preference = genderPreference || user.attractionPreference || (userGender === 'male' ? 'women' : 'men');
+    const gender = determineNPCGender(userGender, preference);
+
+    const preset = LUXURY_AGE_PRESETS[agePreset] || LUXURY_AGE_PRESETS['26-35'];
+    const age = preset.min + Math.floor(Math.random() * (preset.max - preset.min + 1));
+
+    const tierKey = LUXURY_CAREERS[wealthTier] ? wealthTier : 'wealthy';
+    const careerPool = LUXURY_CAREERS[tierKey];
+    const chosenCareer = careerPool[Math.floor(Math.random() * careerPool.length)];
+
+    let baseSalary = Math.floor(Math.random() * (chosenCareer.salaryRange[1] - chosenCareer.salaryRange[0] + 1)) + chosenCareer.salaryRange[0];
+    if (user.city) {
+        baseSalary = calculateScaledSalary(baseSalary, user.city);
+    }
+
+    const first = getRandomFirstName(gender);
+    const last = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
+    const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'luxe_rel_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+
+    return {
+        id,
+        name: `${first} ${last}`,
+        age,
+        gender,
+        type: 'Crush',
+        status: Math.floor(Math.random() * 21) + 65, // 65 to 85 starting status (high chemistry guaranteed)
+        category: 'friend',
+        occupation: chosenCareer.title,
+        occupationType: 'job',
+        income: baseSalary,
+        educationLevel: 'University',
+        interactedThisYear: false,
+        appearance: AvatarLogic.generateRandomAppearance(id, gender)
+    };
 }
 
 function generateTargetedStranger(user, categoryPreference = 'friend') {
@@ -3435,7 +3567,7 @@ const NPC_CAREER_TRACKS = [
     }
 ];
 
-function generateNPCOccupation(age) {
+function generateNPCOccupation(age, city = null) {
     if (age === undefined || age === null) age = 18;
 
     if (age < 5) {
@@ -3487,12 +3619,13 @@ function generateNPCOccupation(age) {
             const entryTracks = NPC_CAREER_TRACKS.filter(t => ['retail', 'food_service', 'trades', 'logistics'].includes(t.key));
             const track = entryTracks[Math.floor(Math.random() * entryTracks.length)];
             const lvl = track.levels[0];
+            const income = city ? calculateScaledSalary(lvl.salary, city) : lvl.salary;
             return {
                 occupation: lvl.title,
                 occupationType: 'job',
                 careerTrack: track.key,
                 careerLevel: 0,
-                income: lvl.salary,
+                income,
                 educationLevel: 'High School'
             };
         } else {
@@ -3520,13 +3653,14 @@ function generateNPCOccupation(age) {
             const lvl = track.levels[level];
             const hasDegree = ['software_eng', 'graphic_design', 'education_track', 'nursing', 'banking', 'law', 'medicine'].includes(track.key);
             const major = track.majors.length > 0 ? track.majors[0] : (hasDegree ? NPC_MAJORS[Math.floor(Math.random() * NPC_MAJORS.length)] : null);
+            const income = city ? calculateScaledSalary(lvl.salary, city) : lvl.salary;
 
             return {
                 occupation: lvl.title,
                 occupationType: 'job',
                 careerTrack: track.key,
                 careerLevel: level,
-                income: lvl.salary,
+                income,
                 educationLevel: hasDegree ? 'University' : 'High School',
                 schoolMajor: major
             };
@@ -3540,11 +3674,13 @@ function generateNPCOccupation(age) {
         }
     }
     // age >= 65
+    const baseRetirement = Math.floor(Math.random() * 20000) + 18000;
+    const income = city ? calculateScaledSalary(baseRetirement, city) : baseRetirement;
     return {
         occupation: "Retired",
         occupationType: 'retired',
         educationLevel: 'High School',
-        income: Math.floor(Math.random() * 20000) + 18000
+        income
     };
 }
 
@@ -3840,6 +3976,12 @@ export const GameLogic = {
     determineNPCGender,
     generateTargetedStranger,
     generateDatingProfiles,
+    generateLuxuryMatch,
+    LUXURY_AGE_PRESETS,
+    LUXURY_CAREERS,
+    getRandomHookupScenario,
+    calculateMakeAMoveSuccess,
+    checkAgeUpInfidelityDiscovery,
     backfillRelationshipGender,
     attemptBefriend,
     calculateProposalAcceptance,
@@ -3861,6 +4003,8 @@ export const GameLogic = {
     acceptVCOffer,
     inheritFamilyRelationships,
     CITY_COST_OF_LIVING,
+    getCityCostMultiplier,
+    calculateScaledSalary,
     PROPERTIES_FOR_SALE,
     getPropertyIcon,
     calculateMonthlyMortgage,

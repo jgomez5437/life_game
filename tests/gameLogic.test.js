@@ -330,6 +330,43 @@ describe('Relationship Logic', () => {
             const friendStr = GameLogic.generateTargetedStranger(user, 'friend');
             expect(friendStr.type).toBe('Friend');
         });
+
+        test('generateLuxuryMatch respects age presets, wealth tiers, and high status floor', () => {
+            const user = { age: 30, gender: 'male', attractionPreference: 'women' };
+            const match = GameLogic.generateLuxuryMatch(user, { agePreset: '26-35', wealthTier: 'ultra_wealthy' });
+            expect(match.gender).toBe('female');
+            expect(match.age).toBeGreaterThanOrEqual(26);
+            expect(match.age).toBeLessThanOrEqual(35);
+            expect(match.status).toBeGreaterThanOrEqual(65);
+            expect(match.income).toBeGreaterThanOrEqual(500000);
+            expect(match.type).toBe('Crush');
+        });
+
+        test('make_a_move is available for friends/classmates, blocked for Ex-Lover', () => {
+            const user = { age: 25, gender: 'male', relationships: [] };
+            const friend = { category: 'friend', type: 'Friend', status: 60 };
+            const exLover = { category: 'friend', type: 'Ex-Lover', status: 60 };
+            const secretAffair = { category: 'friend', type: 'Secret Affair', status: 70 };
+
+            expect(GameLogic.getAvailableInteractions(friend, user).map(i => i.key)).toContain('make_a_move');
+            expect(GameLogic.getAvailableInteractions(exLover, user).map(i => i.key)).not.toContain('make_a_move');
+            expect(GameLogic.getAvailableInteractions(exLover, user).map(i => i.key)).not.toContain('make_love');
+            expect(GameLogic.getAvailableInteractions(secretAffair, user).map(i => i.key)).toContain('end_affair');
+            expect(GameLogic.getAvailableInteractions(secretAffair, user).map(i => i.key)).toContain('make_love');
+        });
+
+        test('checkAgeUpInfidelityDiscovery detects unfaithful hookups when partnered', () => {
+            const partner = { id: 'p1', name: 'Jane', category: 'spouse', type: 'Wife' };
+            const affair = { id: 'a1', name: 'Sarah', category: 'friend', type: 'Secret Affair' };
+            const user = { relationships: [partner, affair], hadUnfaithfulHookupThisYear: true };
+
+            let caughtCount = 0;
+            for (let i = 0; i < 100; i++) {
+                const res = GameLogic.checkAgeUpInfidelityDiscovery(user);
+                if (res) caughtCount++;
+            }
+            expect(caughtCount).toBeGreaterThan(5);
+        });
     });
 
     describe('Romance interactions (Chunk 1)', () => {

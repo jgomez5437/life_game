@@ -76,19 +76,41 @@ export function openPlayerOverviewModal() {
         </div>
     ` : '';
 
+    const pastLivesCount = (user.pastLives || state.gameState.pastLives || []).length;
+    const currentGen = user.generation || (pastLivesCount + 1);
+
     const modalHtml = `
         <div class="space-y-4">
-            <!-- Header Identity Banner -->
-            <div class="bg-slate-800/90 p-4 rounded-xl border border-slate-700 text-center flex flex-col items-center shadow-lg">
-                <div class="w-16 h-16 rounded-full bg-slate-900 overflow-hidden flex items-center justify-center border-2 border-blue-400 mb-2 shadow-md">
+            <!-- Header Identity Banner (Clickable -> Opens Family Graveyard) -->
+            <div data-action="renderGraveyardModal" class="bg-slate-800/90 hover:bg-slate-800 p-4 rounded-xl border border-slate-700 text-center flex flex-col items-center shadow-lg cursor-pointer transition group" title="Click to View Family Graveyard & Lineage">
+                <div class="w-16 h-16 rounded-full bg-slate-900 overflow-hidden flex items-center justify-center border-2 border-blue-400 mb-2 shadow-md group-hover:border-amber-400 transition">
                     ${renderAvatar(user)}
                 </div>
-                <h3 class="text-white font-bold text-xl flex items-center justify-center gap-1">
+                <h3 class="text-white font-bold text-xl flex items-center justify-center gap-1 group-hover:text-amber-200 transition">
                     ${displayName} ${flagHtml}
                 </h3>
                 ${vipBadgeTag}
                 <div class="text-xs text-blue-400 font-semibold uppercase tracking-wider mt-0.5">${statusText}</div>
                 <div class="text-xs text-slate-400 mt-1">Based in <span class="text-white font-bold">${city}</span></div>
+                <div class="text-[10px] text-amber-400 font-bold mt-2 px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center gap-1 group-hover:bg-amber-500/20 transition">
+                    <i class="fas fa-monument"></i> Generation ${currentGen} Lineage • ${pastLivesCount} Past ${pastLivesCount === 1 ? 'Life' : 'Lives'} &rarr;
+                </div>
+            </div>
+
+            <!-- Family Graveyard Quick Access Card -->
+            <div data-action="renderGraveyardModal" class="bg-slate-800 hover:bg-slate-700/80 p-3 rounded-xl border border-slate-700 flex items-center justify-between cursor-pointer transition">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center text-sm">
+                        <i class="fas fa-monument"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs font-bold text-white">Family Lineage & Graveyard</div>
+                        <div class="text-[10px] text-slate-400">Generation ${currentGen} • ${pastLivesCount} Ancestor ${pastLivesCount === 1 ? 'Record' : 'Records'}</div>
+                    </div>
+                </div>
+                <div class="text-xs font-bold text-amber-400 flex items-center gap-1">
+                    View <i class="fas fa-chevron-right text-[10px]"></i>
+                </div>
             </div>
 
             <!-- Stats Grid -->

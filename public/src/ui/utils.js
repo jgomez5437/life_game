@@ -200,6 +200,30 @@ export const Utils = {
         const formattedSymbol = /[A-Za-z]$/.test(symbol) ? `${symbol} ` : symbol;
         return `${sign}${formattedSymbol}${absFormatted}`;
     },
+
+    formatCompactMoney: (num, customCity = null) => {
+        const amount = Math.round(num || 0);
+        const absVal = Math.abs(amount);
+        const sign = amount < 0 ? '-' : '';
+        const city = customCity || (state.gameState && state.gameState.user && (state.gameState.user.city || state.gameState.user.country));
+        const info = getCurrencyInfo(city);
+        const symbol = info.symbol || '$';
+        const formattedSymbol = /[A-Za-z]$/.test(symbol) ? `${symbol} ` : symbol;
+
+        if (absVal >= 1000000000) {
+            const formatted = parseFloat((absVal / 1000000000).toFixed(2));
+            return `${sign}${formattedSymbol}${formatted}B`;
+        }
+        if (absVal >= 1000000) {
+            const formatted = parseFloat((absVal / 1000000).toFixed(2));
+            return `${sign}${formattedSymbol}${formatted}M`;
+        }
+        if (absVal >= 100000) {
+            const formatted = parseFloat((absVal / 1000).toFixed(1));
+            return `${sign}${formattedSymbol}${formatted}K`;
+        }
+        return Utils.formatMoney(num, customCity);
+    },
     
     // random integer
     getRandomInt: (min, max) => {

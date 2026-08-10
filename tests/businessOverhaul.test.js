@@ -18,6 +18,7 @@ jest.unstable_mockModule('../public/src/ui/ui.js', () => ({
 }));
 
 const { GameLogic } = await import('../public/src/core/gameLogic.js');
+const { Utils } = await import('../public/src/ui/utils.js');
 
 describe('Business Simulator Overhaul Logic', () => {
     let mockUser;
@@ -89,5 +90,12 @@ describe('Business Simulator Overhaul Logic', () => {
         expect(mockUser.compCash).toBe(initialCash + firstOffer.offeredAmount);
         expect(mockUser.equityOwned).toBeLessThan(1.0);
         expect(mockUser.investorShares.length).toBe(1);
+    });
+
+    test('Utils.formatCompactMoney formats large monetary amounts without text overflow', () => {
+        expect(Utils.formatCompactMoney(95000)).toBe('$95,000');
+        expect(Utils.formatCompactMoney(750000)).toBe('$750K');
+        expect(Utils.formatCompactMoney(45200000)).toBe('$45.2M');
+        expect(Utils.formatCompactMoney(1250000000)).toBe('$1.25B');
     });
 });

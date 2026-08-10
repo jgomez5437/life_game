@@ -16,7 +16,7 @@ import { renderAssets, renderVehicleManager, repairVehicle, sellVehicle, renderP
 import { renderShoppingHub, renderVehicleDealer, buyVehicle, buyVehicleCash, buyVehicleLoan, renderRealEstateDealer, buyPropertyCash, buyPropertyMortgage, renderJewelryDealer, buyJewelry } from '../features/assets/goShoppingScreen.js';
 import { renderInvestmentsScreen, switchInvestmentTab, setStockFilter, openStockDetailsModal, openBuyStockModal, confirmBuyStock, openSellStockModal, confirmSellStock, openDepositSavingsModal, confirmDepositSavings, openWithdrawSavingsModal, confirmWithdrawSavings } from '../features/assets/investmentsScreen.js';
 import { renderActivities } from '../features/career/occupationScreen.js';
-import { renderRelationships, renderPersonInteraction, openRelationshipConfirm, spendTimeWithAll, goOutMeetSomeone, openMeetPeopleModal, setAttractionPreference, handleBlindDate, handleDatingApp, renderDatingAppModal, selectDatingAppMatch, handleMeetFriend, handleNightOut, handleProposeAction, openRingSelectionModal, proposeWithRing } from '../features/relationships/relationshipScreen.js';
+import { renderRelationships, renderPersonInteraction, openRelationshipConfirm, spendTimeWithAll, goOutMeetSomeone, openMeetPeopleModal, setAttractionPreference, handleBlindDate, handleDatingApp, renderDatingAppModal, selectDatingAppMatch, handleMeetFriend, handleNightOut, renderLuxeMatchModal, selectLuxeAgePreset, selectLuxeWealthTier, confirmLuxeMatch, handleMakeAMove, confirmHookupChoice, handleEndAffair, handleCheatingConfrontationChoice, handleProposeAction, openRingSelectionModal, proposeWithRing } from '../features/relationships/relationshipScreen.js';
 import { chooseFuneralType, cancelFuneralPlan, confirmFuneralPlan, donateBody, lookTheOtherWay, goToFuneral, skipFuneral, respondNewTeacher, processNextTeacherReplacement } from '../features/relationships/funeralScreen.js';
 import { openWeddingPlanner, confirmWeddingPlan, openNameChangeChoice, chooseNameChange } from '../features/relationships/romanceScreen.js';
 import { renderMoreDashboard, buyGymMembership, cancelGymMembership, visitGymOneTime, startBetterDiet, cancelBetterDiet, visitDoctor, openBlackjackBetting, startBlackjackGame, blackjackHit, blackjackStand, openTravelModal, bookTrip, openDietSelectionModal, selectDiet, openLotteryModal, buyLotteryTicket, openSuggestionsModal, openMoveCountryModal, updateRelocateCityDropdown, confirmMoveCountry, askPartnerToMove, confirmMoveAlone } from '../features/more/moreScreen.js';
@@ -25,6 +25,7 @@ import { openSettingsModal, triggerManualSave, promptResetGame, toggleSettingSFX
 import { renderStoreScreen, filterStoreCategory, previewPackDetails, buyPack, restorePurchases } from '../features/store/storeScreen.js';
 import { grantInstantHighSchool, grantInstantUniversityDegree, grantInstantGradDegree, renderInstantDiplomaHub, claimInstantUniversityMajor } from '../features/education/instantDiploma.js';
 import { renderVipLoungeModal, selectTheme, isVipSupporter } from '../features/store/vipLounge.js';
+import { renderGraveyardModal, showAncestorEulogy } from '../features/player/graveyardScreen.js';
 import { Utils } from '../ui/utils.js';
 import { UI } from '../ui/ui.js';
 
@@ -366,6 +367,7 @@ export function updateGameInfo(dbUser) {
     //CONSTRUCT state.gameState
     state.gameState = {
         user: {
+            ...savedUser,
             // --- IDENTITY ---
             username: savedUser.username || savedUser.name || "Player",
             gender: savedUser.gender || "male",
@@ -396,7 +398,6 @@ export function updateGameInfo(dbUser) {
             gradSchoolYear: savedUser.gradSchoolYear || 0,
             gradSchoolDegree: savedUser.gradSchoolDegree || null,
             parentsTried: savedUser.parents_tried || false,
-            schoolActions: savedUser.schoolActions || 0,
 
             // --- CAREER & FINANCE ---
             jobTitle: savedUser.jobTitle || (data.job ? data.job.title : ""),
@@ -426,11 +427,23 @@ export function updateGameInfo(dbUser) {
             sellingPrice:        savedUser.sellingPrice        || 0,
             salaryOffer:         savedUser.salaryOffer         || 0,
             supplierId:          savedUser.supplierId          || null,
+            hqTier:              savedUser.hqTier               || 'garage',
+            marketingLevels:     savedUser.marketingLevels      || { social_ads: 0, seo_content: 0, influencers: 0, b2b_sales: 0 },
+            teamRoles:           savedUser.teamRoles            || { engineering: 2, sales: 1, operations: 1, marketing: 1 },
+            equityOwned:         savedUser.equityOwned          ?? 1.0,
+            investorShares:      savedUser.investorShares       || [],
+            corporateDebt:       savedUser.corporateDebt        || { principal: 0, interestRate: 0.08, monthlyPayment: 0 },
+            customerSatisfaction:savedUser.customerSatisfaction ?? 75,
+            employeeMorale:      savedUser.employeeMorale       ?? 80,
+            activeResearch:      savedUser.activeResearch       || [],
             businessHistory:     savedUser.businessHistory     || [],
             businessUpgrades:    savedUser.businessUpgrades    || [],
             lastCompletedFiscalYearAge: savedUser.lastCompletedFiscalYearAge ?? null,
             lastBusinessAge:      savedUser.lastBusinessAge      ?? null,
             quartersProcessedThisAge: savedUser.quartersProcessedThisAge || 0,
+            purchases:           savedUser.purchases           || [],
+            pastLives:           savedUser.pastLives           || [],
+            generation:          savedUser.generation          || 1,
 
             // --- FLAGS ---
             hasSeenExpenseMsg: savedUser.hasSeenExpenseMsg || false,
@@ -543,12 +556,15 @@ export const loadAndRenderGame = (userData) => {
             lastCompletedFiscalYearAge: userData.lastCompletedFiscalYearAge ?? null,
             lastBusinessAge:      userData.lastBusinessAge      ?? null,
             quartersProcessedThisAge: userData.quartersProcessedThisAge || 0,
+            pastLives:           userData.pastLives            || [],
+            generation:          userData.generation           || 1,
             lifeStatus: userData.life_status || "Baby",
             assets: userData.assets || [],
             investments: userData.investments || null,
 
             // --- RELATIONSHIPS ---
-            relationships: userData.relationships || []
+            relationships: userData.relationships || [],
+            hadUnfaithfulHookupThisYear: userData.hadUnfaithfulHookupThisYear || false
         },
         lifeLog: [{ age: 0, events: [{ msg: "Game Loaded.", color: "text-white" }] }]    
     };
@@ -910,7 +926,7 @@ const routeHandlers = {
   renewLeaseSameRate,
   renewLeaseWithIncrease,
   declineLeaseRenewal,
-  renderActivities,
+  get renderActivities() { return renderActivities; },
   processQuarter,
   setBusinessTab,
   selectSupplierDashboard,
@@ -942,8 +958,10 @@ const routeHandlers = {
   renderBusinessSetup,
   selectGender,
   submitCharacter,
-  continueAsChild,
-  ageUp,
+  get continueAsChild() { return continueAsChild; },
+  get ageUp() { return ageUp; },
+  get renderDeathScreen() { return renderDeathScreen; },
+  get showFullEulogy() { return showFullEulogy; },
   renderRelationships,
   renderPersonInteraction,
   openRelationshipConfirm,
@@ -957,6 +975,14 @@ const routeHandlers = {
   selectDatingAppMatch,
   handleMeetFriend,
   handleNightOut,
+  renderLuxeMatchModal,
+  selectLuxeAgePreset,
+  selectLuxeWealthTier,
+  confirmLuxeMatch,
+  handleMakeAMove,
+  confirmHookupChoice,
+  handleEndAffair,
+  handleCheatingConfrontationChoice,
   openWeddingPlanner,
   confirmWeddingPlan,
   openNameChangeChoice,
@@ -1036,7 +1062,9 @@ const routeHandlers = {
   renderInstantDiplomaHub,
   claimInstantUniversityMajor,
   renderVipLoungeModal,
-  selectTheme
+  selectTheme,
+  renderGraveyardModal,
+  showAncestorEulogy
 };
 
 document.addEventListener('click', (e) => {
@@ -1078,6 +1106,8 @@ document.addEventListener('change', (e) => {
     }
 });
 
-applyTheme();
-onload();
-
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => onload());
+} else {
+    onload();
+}

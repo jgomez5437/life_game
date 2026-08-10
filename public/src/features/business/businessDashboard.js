@@ -3,7 +3,7 @@ import { renderActivities } from '../career/occupationScreen.js';
 import { renderLifeDashboard, addLog } from '../player/mainScreen.js';
 import { UI } from '../../ui/ui.js';
 import { Utils } from '../../ui/utils.js';
-import { SUPPLIERS } from '../../core/main.js';
+import { SUPPLIERS, saveGame } from '../../core/main.js';
 import { HQ_TIERS, BUSINESS_INDUSTRIES, MARKETING_CHANNELS, SPECIALIZED_ROLES, VC_INVESTOR_TYPES, BUSINESS_DECISION_EVENTS } from './businessTypes.js';
 import { GameLogic } from '../../core/gameLogic.js';
 
@@ -91,29 +91,29 @@ export function renderBusinessDashboard() {
     UI.renderScreen(`
         <div class="fade-in pb-24 max-w-4xl mx-auto">
             <!-- Header Top Bar -->
-            <div class="flex justify-between items-center mb-4 bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-md">
-                <div class="flex items-center gap-3">
-                    <button data-action="renderActivities" class="text-slate-400 hover:text-white text-sm p-2 rounded-lg bg-slate-700/50 hover:bg-slate-700 transition">
+            <div class="flex flex-wrap sm:flex-nowrap justify-between items-center gap-3 mb-4 bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-md">
+                <div class="flex items-center gap-3 min-w-0">
+                    <button data-action="renderActivities" class="text-slate-400 hover:text-white text-sm p-2 rounded-lg bg-slate-700/50 hover:bg-slate-700 transition flex-shrink-0">
                         <i class="fas fa-arrow-left"></i> Exit Office
                     </button>
-                    <div>
-                        <h1 class="text-xl font-bold text-white flex items-center gap-2">
-                            ${user.companyName}
-                            <span class="text-xs font-normal px-2 py-0.5 rounded bg-indigo-900/60 text-indigo-300 border border-indigo-500/30">
+                    <div class="min-w-0">
+                        <h1 class="text-lg sm:text-xl font-bold text-white flex items-center gap-2 truncate">
+                            <span class="truncate">${user.companyName}</span>
+                            <span class="text-xs font-normal px-2 py-0.5 rounded bg-indigo-900/60 text-indigo-300 border border-indigo-500/30 flex-shrink-0">
                                 Y${user.companyYear} Q${user.companyQuarter}
                             </span>
                         </h1>
-                        <div class="text-xs text-slate-400">${ind.name} &bull; ${hq.name}</div>
+                        <div class="text-xs text-slate-400 truncate">${ind.name} &bull; ${hq.name}</div>
                     </div>
                 </div>
-                <div class="text-right flex items-center gap-4">
-                    <div>
+                <div class="flex items-center gap-4 flex-shrink-0 ml-auto">
+                    <div class="text-right">
                         <div class="text-[10px] uppercase text-slate-400 font-bold tracking-wider">Company Treasury</div>
-                        <div class="text-xl font-bold text-green-400 font-mono">${Utils.formatMoney(user.compCash)}</div>
+                        <div class="text-base sm:text-lg font-bold text-green-400 font-mono" title="${Utils.formatMoney(user.compCash)}">${Utils.formatCompactMoney(user.compCash)}</div>
                     </div>
-                    <div>
+                    <div class="text-right">
                         <div class="text-[10px] uppercase text-slate-400 font-bold tracking-wider">Est. Valuation</div>
-                        <div class="text-xl font-bold text-indigo-300 font-mono">${Utils.formatMoney(valuation)}</div>
+                        <div class="text-base sm:text-lg font-bold text-indigo-300 font-mono" title="${Utils.formatMoney(valuation)}">${Utils.formatCompactMoney(valuation)}</div>
                     </div>
                 </div>
             </div>
@@ -138,58 +138,63 @@ function renderTabOverview(user, ind, hq, valuation, overhead) {
     return `
         <div class="space-y-6">
             <!-- HQ Visual Hero Banner -->
-            <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-slate-700 rounded-2xl p-6 relative overflow-hidden shadow-xl">
-                <div class="absolute -right-6 -bottom-6 text-slate-800/40 text-9xl pointer-events-none">
+            <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-slate-700 rounded-2xl p-5 sm:p-6 relative overflow-hidden shadow-xl">
+                <div class="absolute -right-6 -bottom-6 text-slate-800/30 text-8xl sm:text-9xl pointer-events-none">
                     <i class="fas ${hq.icon}"></i>
                 </div>
-                <div class="relative z-10 flex justify-between items-start">
-                    <div>
-                        <div class="text-xs text-indigo-400 uppercase font-bold tracking-wider mb-1">HQ Headquarters</div>
-                        <h2 class="text-2xl font-bold text-white flex items-center gap-2">
-                            <i class="fas ${hq.icon} text-indigo-400"></i> ${hq.name}
+                <div class="relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div class="min-w-0 flex-1">
+                        <div class="text-[11px] text-indigo-400 uppercase font-bold tracking-wider mb-1 flex items-center gap-2">
+                            <i class="fas ${hq.icon}"></i> Corporate Headquarters
+                        </div>
+                        <h2 class="text-xl sm:text-2xl font-bold text-white truncate">
+                            ${hq.name}
                         </h2>
-                        <p class="text-xs text-slate-300 mt-1 max-w-md">${hq.description}</p>
-                        <div class="flex gap-4 mt-4 text-xs">
-                            <span class="bg-slate-800/80 text-slate-300 px-3 py-1 rounded-lg border border-slate-700">
-                                <i class="fas fa-users text-indigo-400 mr-1"></i> Capacity: ${user.employees}/${hq.maxEmployees}
+                        <p class="text-xs text-slate-300 mt-1 line-clamp-2 max-w-xl">${hq.description}</p>
+                        <div class="flex flex-wrap gap-2.5 mt-3 text-xs">
+                            <span class="bg-slate-800/90 text-slate-200 px-3 py-1 rounded-lg border border-slate-700/80 flex items-center gap-1.5">
+                                <i class="fas fa-users text-indigo-400"></i> Staff: <strong>${user.employees}/${hq.maxEmployees}</strong>
                             </span>
-                            <span class="bg-slate-800/80 text-slate-300 px-3 py-1 rounded-lg border border-slate-700">
-                                <i class="fas fa-percentage text-green-400 mr-1"></i> Equity Owned: ${Math.round(user.equityOwned * 100)}%
+                            <span class="bg-slate-800/90 text-slate-200 px-3 py-1 rounded-lg border border-slate-700/80 flex items-center gap-1.5">
+                                <i class="fas fa-pie-chart text-green-400"></i> Equity Owned: <strong>${Math.round(user.equityOwned * 100)}%</strong>
                             </span>
                         </div>
                     </div>
-                    <div class="text-right">
-                        <button data-action="processQuarter" class="bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-bold px-6 py-3 rounded-xl shadow-lg text-sm transition transform hover:-translate-y-0.5">
-                            End Quarter (Q${user.companyQuarter}) &rarr;
+                    <div class="w-full sm:w-auto text-right flex-shrink-0">
+                        <button data-action="processQuarter" class="w-full sm:w-auto bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-bold px-6 py-3 rounded-xl shadow-lg text-sm transition transform hover:-translate-y-0.5 flex items-center justify-center gap-2">
+                            <span>Process Quarter (Q${user.companyQuarter})</span>
+                            <i class="fas fa-arrow-right text-xs"></i>
                         </button>
                     </div>
                 </div>
             </div>
 
             <!-- Metric Grid -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div class="bg-slate-800 border border-slate-700 rounded-xl p-4">
-                    <div class="text-xs text-slate-400 mb-1">Trailing Annual Revenue</div>
-                    <div class="text-xl font-bold text-white font-mono">${Utils.formatMoney(annRev)}</div>
-                    <div class="text-[10px] text-slate-500 mt-1">Last 4 quarters</div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+                <div class="bg-slate-800 border border-slate-700/80 rounded-xl p-4 shadow-sm">
+                    <div class="text-[11px] text-slate-400 font-medium mb-1">Trailing 12M Revenue</div>
+                    <div class="text-lg sm:text-xl font-bold text-white font-mono truncate" title="${Utils.formatMoney(annRev)}">
+                        ${Utils.formatCompactMoney(annRev)}
+                    </div>
+                    <div class="text-[10px] text-slate-500 mt-1">Past 4 quarters total</div>
                 </div>
-                <div class="bg-slate-800 border border-slate-700 rounded-xl p-4">
-                    <div class="text-xs text-slate-400 mb-1">Trailing Annual Profit</div>
-                    <div class="text-xl font-bold ${annProfit >= 0 ? 'text-green-400' : 'text-red-400'} font-mono">
-                        ${annProfit >= 0 ? '+' : ''}${Utils.formatMoney(annProfit)}
+                <div class="bg-slate-800 border border-slate-700/80 rounded-xl p-4 shadow-sm">
+                    <div class="text-[11px] text-slate-400 font-medium mb-1">Trailing 12M Net Profit</div>
+                    <div class="text-lg sm:text-xl font-bold ${annProfit >= 0 ? 'text-green-400' : 'text-red-400'} font-mono truncate" title="${Utils.formatMoney(annProfit)}">
+                        ${annProfit >= 0 ? '+' : ''}${Utils.formatCompactMoney(annProfit)}
                     </div>
                     <div class="text-[10px] text-slate-500 mt-1">Net trailing cashflow</div>
                 </div>
-                <div class="bg-slate-800 border border-slate-700 rounded-xl p-4">
-                    <div class="text-xs text-slate-400 mb-1">Customer Satisfaction</div>
-                    <div class="text-xl font-bold text-blue-400">${user.customerSatisfaction}%</div>
+                <div class="bg-slate-800 border border-slate-700/80 rounded-xl p-4 shadow-sm">
+                    <div class="text-[11px] text-slate-400 font-medium mb-1">Customer Satisfaction</div>
+                    <div class="text-lg sm:text-xl font-bold text-blue-400">${user.customerSatisfaction}%</div>
                     <div class="w-full bg-slate-700 rounded-full h-1.5 mt-2">
                         <div class="bg-blue-400 h-1.5 rounded-full" style="width: ${user.customerSatisfaction}%"></div>
                     </div>
                 </div>
-                <div class="bg-slate-800 border border-slate-700 rounded-xl p-4">
-                    <div class="text-xs text-slate-400 mb-1">Employee Morale</div>
-                    <div class="text-xl font-bold text-amber-400">${user.employeeMorale}%</div>
+                <div class="bg-slate-800 border border-slate-700/80 rounded-xl p-4 shadow-sm">
+                    <div class="text-[11px] text-slate-400 font-medium mb-1">Employee Morale</div>
+                    <div class="text-lg sm:text-xl font-bold text-amber-400">${user.employeeMorale}%</div>
                     <div class="w-full bg-slate-700 rounded-full h-1.5 mt-2">
                         <div class="bg-amber-400 h-1.5 rounded-full" style="width: ${user.employeeMorale}%"></div>
                     </div>
@@ -197,51 +202,65 @@ function renderTabOverview(user, ind, hq, valuation, overhead) {
             </div>
 
             <!-- Quarterly Forecast Card -->
-            <div class="bg-slate-800 border border-slate-700 p-5 rounded-xl">
-                <h3 class="text-xs font-bold text-indigo-300 uppercase tracking-wider mb-4 border-b border-slate-700 pb-2 flex justify-between">
-                    <span><i class="fas fa-calculator mr-2"></i> Current Quarter Financial Forecast</span>
+            <div class="bg-slate-800 border border-slate-700/80 p-5 rounded-xl shadow-sm">
+                <div class="flex justify-between items-center mb-4 border-b border-slate-700/80 pb-3">
+                    <h3 class="text-xs font-bold text-indigo-300 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fas fa-calculator"></i> Current Quarter Forecast
+                    </h3>
                     <span id="proj-status-badge" class="text-xs normal-case font-normal text-slate-400"></span>
-                </h3>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-3">
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-4">
                     <div>
                         <div class="text-xs text-slate-400">Est. Revenue</div>
-                        <div id="proj-rev" class="text-lg font-bold text-green-400 font-mono">$0</div>
+                        <div id="proj-rev" class="text-base sm:text-lg font-bold text-green-400 font-mono">$0</div>
                     </div>
                     <div>
                         <div class="text-xs text-slate-400">Production / COGS</div>
-                        <div id="proj-cost" class="text-lg font-bold text-red-400 font-mono">-$0</div>
+                        <div id="proj-cost" class="text-base sm:text-lg font-bold text-red-400 font-mono">-$0</div>
                     </div>
                     <div>
                         <div class="text-xs text-slate-400">Payroll & CEO Pay</div>
-                        <div id="proj-wages" class="text-lg font-bold text-red-400 font-mono">-$0</div>
+                        <div id="proj-wages" class="text-base sm:text-lg font-bold text-red-400 font-mono">-$0</div>
                     </div>
                     <div>
-                        <div class="text-xs text-slate-400">Fixed Overhead (HQ)</div>
-                        <div class="text-lg font-bold text-red-400 font-mono">-${Utils.formatMoney(overhead.totalQuarterly)}</div>
+                        <div class="text-xs text-slate-400">Fixed HQ Overhead</div>
+                        <div class="text-base sm:text-lg font-bold text-red-400 font-mono" title="${Utils.formatMoney(overhead.totalQuarterly)}">-${Utils.formatCompactMoney(overhead.totalQuarterly)}</div>
                     </div>
                 </div>
-                <div class="border-t border-slate-700 pt-3 flex justify-between items-center font-bold">
-                    <span class="text-slate-300">Projected Net Quarterly Profit:</span>
-                    <span id="proj-profit" class="text-xl font-mono">$0</span>
+                <div class="border-t border-slate-700/80 pt-3 flex justify-between items-center font-bold">
+                    <span class="text-slate-300 text-sm">Projected Net Quarterly Profit:</span>
+                    <span id="proj-profit" class="text-lg sm:text-xl font-mono">$0</span>
                 </div>
             </div>
 
-            <!-- Quick Management Actions -->
-            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-                <button data-action="setBusinessTab" data-args="&apos;operations&apos;" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-4 rounded-xl text-left transition">
-                    <i class="fas fa-industry text-indigo-400 text-lg mb-2"></i>
-                    <div class="font-bold text-white text-sm">Operations & Tech</div>
-                    <div class="text-xs text-slate-400">Adjust capacity & suppliers</div>
+            <!-- Quick Department Navigation -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <button data-action="setBusinessTab" data-args="&apos;operations&apos;" class="bg-slate-800/90 hover:bg-slate-700 border border-slate-700/80 p-4 rounded-xl text-left transition flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg bg-indigo-900/40 flex items-center justify-center text-indigo-400 flex-shrink-0">
+                        <i class="fas fa-industry text-lg"></i>
+                    </div>
+                    <div>
+                        <div class="font-bold text-white text-sm">Operations</div>
+                        <div class="text-xs text-slate-400">Capacity & suppliers</div>
+                    </div>
                 </button>
-                <button data-action="setBusinessTab" data-args="&apos;marketing&apos;" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-4 rounded-xl text-left transition">
-                    <i class="fas fa-bullhorn text-blue-400 text-lg mb-2"></i>
-                    <div class="font-bold text-white text-sm">Pricing & Campaigns</div>
-                    <div class="text-xs text-slate-400">Set prices & ad channels</div>
+                <button data-action="setBusinessTab" data-args="&apos;marketing&apos;" class="bg-slate-800/90 hover:bg-slate-700 border border-slate-700/80 p-4 rounded-xl text-left transition flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg bg-blue-900/40 flex items-center justify-center text-blue-400 flex-shrink-0">
+                        <i class="fas fa-bullhorn text-lg"></i>
+                    </div>
+                    <div>
+                        <div class="font-bold text-white text-sm">Sales & Growth</div>
+                        <div class="text-xs text-slate-400">Pricing & marketing</div>
+                    </div>
                 </button>
-                <button data-action="setBusinessTab" data-args="&apos;finance&apos;" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-4 rounded-xl text-left transition col-span-2 md:col-span-1">
-                    <i class="fas fa-coins text-yellow-400 text-lg mb-2"></i>
-                    <div class="font-bold text-white text-sm">Raise VC / Corporate Debt</div>
-                    <div class="text-xs text-slate-400">Pitch investors & check P&L</div>
+                <button data-action="setBusinessTab" data-args="&apos;finance&apos;" class="bg-slate-800/90 hover:bg-slate-700 border border-slate-700/80 p-4 rounded-xl text-left transition flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg bg-yellow-900/40 flex items-center justify-center text-yellow-400 flex-shrink-0">
+                        <i class="fas fa-coins text-lg"></i>
+                    </div>
+                    <div>
+                        <div class="font-bold text-white text-sm">Finance & VC</div>
+                        <div class="text-xs text-slate-400">Pitch investors & P&L</div>
+                    </div>
                 </button>
             </div>
         </div>
@@ -833,6 +852,7 @@ export function chooseEventChoice(indexStr) {
         if (choice.revenueBonus) user.compCash += choice.revenueBonus;
 
         addLog(`Company Decision: ${choice.logText}`, choice.repDelta < 0 ? 'bad' : 'good');
+        if (typeof saveGame === 'function') saveGame();
     }
 
     UI.hideModal();
@@ -845,6 +865,7 @@ export function selectSupplierDashboard(supplierId) {
     const user = state.gameState.user;
     user.supplierId = supplierId;
     addLog(`Switched company logistics supplier to ${supplierId}.`, 'good');
+    if (typeof saveGame === 'function') saveGame();
     renderBusinessDashboard();
 }
 
@@ -862,6 +883,7 @@ export function upgradeHQTier(hqId) {
     user.hqTier = hqId;
     user.employeeMorale = Math.min(100, user.employeeMorale + hq.moraleBonus);
     addLog(`Relocated ${user.companyName} headquarters to ${hq.name}!`, 'major');
+    if (typeof saveGame === 'function') saveGame();
     renderBusinessDashboard();
 }
 
@@ -884,6 +906,7 @@ export function upgradeMarketingChannel(channelId) {
     user.marketingLevels[channelId] = currentLvl + 1;
     user.businessReputation = Math.min(100, user.businessReputation + 5);
     addLog(`Boosted ${ch.name} marketing campaign to Level ${currentLvl + 1}!`, 'good');
+    if (typeof saveGame === 'function') saveGame();
     renderBusinessDashboard();
 }
 
@@ -896,6 +919,7 @@ export function adjustRoleCount(roleId, deltaStr) {
     if (current + delta < 0) return;
 
     user.teamRoles[roleId] = current + delta;
+    if (typeof saveGame === 'function') saveGame();
     renderBusinessDashboard();
 }
 
@@ -904,6 +928,7 @@ export function acceptVCPitch(investorId) {
     const res = GameLogic.acceptVCOffer(user, investorId);
     if (res.success) {
         addLog(res.msg, 'major');
+        if (typeof saveGame === 'function') saveGame();
         UI.showModal('Investment Secured!', res.msg);
     } else {
         UI.showModal('Offer Failed', res.msg);
@@ -931,6 +956,7 @@ export function hireEmployee() {
     user.compCash -= cost;
     user.employees++;
     addLog(`Recruited new staff at ${user.companyName}. Total headcount: ${user.employees}.`, 'good');
+    if (typeof saveGame === 'function') saveGame();
     renderBusinessDashboard();
 }
 
@@ -949,6 +975,7 @@ export function layoffEmployee() {
     user.employees--;
     user.employeeMorale = Math.max(0, user.employeeMorale - 10);
     addLog(`Laid off staff member. Severance paid: ${Utils.formatMoney(severance)}.`, 'bad');
+    if (typeof saveGame === 'function') saveGame();
     renderBusinessDashboard();
 }
 
@@ -987,6 +1014,7 @@ export function sellBusiness() {
             user.businessHistory    = [];
             user.businessUpgrades   = [];
             GameLogic.resetBusinessQuarterTracking(user);
+            if (typeof saveGame === 'function') saveGame();
             renderActivities();
         }
     );
@@ -1020,6 +1048,7 @@ export function purchaseUpgrade(upgradeId) {
     }
 
     addLog(`${user.companyName} purchased corporate upgrade: ${upgrade.name}.`, 'good');
+    if (typeof saveGame === 'function') saveGame();
     renderBusinessDashboard();
 }
 

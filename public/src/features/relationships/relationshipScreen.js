@@ -299,11 +299,190 @@ export const openMeetPeopleModal = () => {
                         <p class="text-xs text-slate-400 mt-0.5">Enjoy a fun outing on the town. Dynamic outcomes!</p>
                     </div>
                 </button>
+
+                <!-- Option 5: LuxeMatch Matchmaking -->
+                ${user.age >= 18 ? `
+                <button data-action="renderLuxeMatchModal" class="w-full bg-gradient-to-r from-slate-800 to-amber-950/40 hover:to-amber-900/60 border border-amber-500/40 hover:border-amber-400 p-4 rounded-xl text-left transition flex items-center gap-4 group shadow-lg">
+                    <div class="w-12 h-12 rounded-xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-xl text-amber-300 group-hover:scale-105 transition shadow-sm">
+                        <i class="fas fa-crown"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-amber-200 text-base flex items-center gap-1.5">
+                                LuxeMatch Matchmaking
+                                <span class="text-[9px] bg-amber-400 text-slate-950 font-black px-1.5 py-0.5 rounded uppercase tracking-wider">VIP</span>
+                            </span>
+                            <span class="text-xs font-bold text-amber-400">$100,000</span>
+                        </div>
+                        <p class="text-xs text-slate-300 mt-0.5">Elite concierge service. Choose exact age preset & wealth tier!</p>
+                    </div>
+                </button>
+                ` : ''}
             </div>
         </div>
     `;
 
     UI.renderScreen(html);
+};
+
+let selectedLuxeAgePreset = '26-35';
+let selectedLuxeWealthTier = 'wealthy';
+
+export const selectLuxeAgePreset = (preset) => {
+    selectedLuxeAgePreset = preset;
+    renderLuxeMatchModal();
+};
+
+export const selectLuxeWealthTier = (tier) => {
+    selectedLuxeWealthTier = tier;
+    renderLuxeMatchModal();
+};
+
+export const renderLuxeMatchModal = () => {
+    const user = state.gameState.user;
+    if (user.age < 18) {
+        UI.showModal('Age Limit', "You must be at least 18 to access LuxeMatch Matchmaking.");
+        return;
+    }
+
+    const currentPref = user.attractionPreference || (user.gender === 'male' ? 'women' : 'men');
+
+    const agePresets = ['18-25', '26-35', '36-45', '46-60', '60+'];
+    const ageButtonsHtml = agePresets.map(preset => {
+        const active = selectedLuxeAgePreset === preset;
+        const btnBg = active ? 'bg-amber-500 text-slate-950 font-black border-amber-300 shadow-md scale-105' : 'bg-slate-800 text-slate-300 border-slate-700 hover:border-amber-500/50 hover:text-white';
+        return `<button data-action="selectLuxeAgePreset" data-args="&apos;${preset}&apos;" class="px-3 py-2 rounded-xl text-xs font-bold border transition ${btnBg}">${preset}</button>`;
+    }).join('');
+
+    const wealthTiers = [
+        { key: 'high_earner', title: 'High Earner', desc: '$100,000 – $250,000 / yr', icon: 'fa-gem text-blue-400' },
+        { key: 'wealthy', title: 'Wealthy Executive', desc: '$250,000 – $500,000 / yr', icon: 'fa-crown text-amber-400' },
+        { key: 'ultra_wealthy', title: 'Ultra-Elite', desc: '$500,000 – $2,500,000+ / yr', icon: 'fa-sack-dollar text-emerald-400' }
+    ];
+
+    const wealthHtml = wealthTiers.map(t => {
+        const active = selectedLuxeWealthTier === t.key;
+        const borderClass = active ? 'border-amber-400 bg-amber-500/10 shadow-md' : 'border-slate-700 bg-slate-800/80 hover:border-slate-600';
+        return `
+            <div data-action="selectLuxeWealthTier" data-args="&apos;${t.key}&apos;" class="p-3.5 rounded-xl border ${borderClass} cursor-pointer transition flex items-center justify-between group">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-lg bg-slate-900 flex items-center justify-center text-base border border-slate-700">
+                        <i class="fas ${t.icon}"></i>
+                    </div>
+                    <div>
+                        <div class="font-bold text-white text-sm">${t.title}</div>
+                        <div class="text-xs text-slate-400 font-medium">${t.desc}</div>
+                    </div>
+                </div>
+                <div class="w-5 h-5 rounded-full border border-amber-400/60 flex items-center justify-center">
+                    ${active ? '<div class="w-3 h-3 rounded-full bg-amber-400 shadow-sm"></div>' : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    const canAfford = (user.money || 0) >= 100000;
+    const btnDisabled = !canAfford ? 'disabled opacity-50 cursor-not-allowed' : 'hover:bg-amber-400 hover:scale-[1.02] shadow-amber-900/30';
+
+    const html = `
+        <div class="fade-in max-w-md mx-auto min-h-full py-6 px-4 flex flex-col justify-center">
+            <div class="flex items-center justify-between mb-4">
+                <button data-action="openMeetPeopleModal" class="text-slate-400 hover:text-white text-sm flex items-center gap-2">
+                    <i class="fas fa-arrow-left"></i> Back to Social Hub
+                </button>
+                <span class="text-xs text-amber-400 font-bold tracking-wider uppercase flex items-center gap-1">
+                    <i class="fas fa-crown text-xs"></i> LuxeMatch
+                </span>
+            </div>
+
+            <div class="text-center mb-5">
+                <h1 class="text-2xl font-bold text-white flex items-center justify-center gap-2">
+                    <i class="fas fa-gem text-amber-400"></i> Elite Matchmaking
+                </h1>
+                <p class="text-xs text-slate-400 mt-1">Specify your preferences for a guaranteed high-status match</p>
+
+                <!-- Preference selector -->
+                <div class="mt-3 inline-flex bg-slate-800 p-1 rounded-xl border border-slate-700 text-xs items-center gap-1">
+                    <span class="text-slate-400 font-medium px-2">Interested In:</span>
+                    <button data-action="setAttractionPreference" data-args="&apos;women&apos;" class="px-2.5 py-1 rounded-lg font-bold transition ${currentPref === 'women' ? 'bg-pink-600 text-white shadow' : 'text-slate-400 hover:text-white'}">Women</button>
+                    <button data-action="setAttractionPreference" data-args="&apos;men&apos;" class="px-2.5 py-1 rounded-lg font-bold transition ${currentPref === 'men' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}">Men</button>
+                    <button data-action="setAttractionPreference" data-args="&apos;everyone&apos;" class="px-2.5 py-1 rounded-lg font-bold transition ${currentPref === 'everyone' ? 'bg-purple-600 text-white shadow' : 'text-slate-400 hover:text-white'}">Everyone</button>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <!-- Age Preset Chips -->
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Target Age Preset</label>
+                    <div class="flex flex-wrap gap-2 justify-center">
+                        ${ageButtonsHtml}
+                    </div>
+                </div>
+
+                <!-- Wealth Tiers -->
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Wealth & Status Tier</label>
+                    <div class="space-y-2">
+                        ${wealthHtml}
+                    </div>
+                </div>
+
+                <!-- Pricing & Action -->
+                <div class="bg-slate-900/80 p-4 rounded-xl border border-amber-500/30 text-center mt-2">
+                    <div class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Concierge Match Fee</div>
+                    <div class="text-2xl font-bold text-amber-400">${Utils.formatMoney(100000)}</div>
+                    ${!canAfford ? '<div class="text-xs text-red-400 font-bold mt-1">Insufficient Funds (You need $100,000)</div>' : ''}
+                </div>
+
+                <button data-action="confirmLuxeMatch" ${!canAfford ? 'disabled' : ''} class="w-full btn-primary bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black py-3.5 px-4 rounded-xl text-sm flex items-center justify-center gap-2 shadow-lg transition ${btnDisabled}">
+                    <i class="fas fa-crown text-base"></i> Find Luxury Match (-${Utils.formatMoney(100000)})
+                </button>
+            </div>
+        </div>
+    `;
+
+    UI.renderScreen(html);
+};
+
+export const confirmLuxeMatch = () => {
+    const user = state.gameState.user;
+    if ((user.money || 0) < 100000) {
+        UI.showModal('Insufficient Funds', "You need $100,000 for LuxeMatch concierge service.");
+        return;
+    }
+
+    if (!checkAndIncrementOutings(user)) return;
+
+    user.money -= 100000;
+
+    const match = GameLogic.generateLuxuryMatch(user, {
+        agePreset: selectedLuxeAgePreset,
+        wealthTier: selectedLuxeWealthTier,
+        genderPreference: user.attractionPreference
+    });
+
+    if (!user.relationships) user.relationships = [];
+    user.relationships.push(match);
+
+    addLog(`You paid ${Utils.formatMoney(100000)} to LuxeMatch and was introduced to ${match.name} (${match.occupation}, ${Utils.formatMoney(match.income)}/yr).`, 'major');
+    UI.updateHeader(user);
+
+    const matchModalHtml = `
+        <div class="text-center py-2">
+            <div class="w-20 h-20 mx-auto rounded-full bg-slate-700 border-2 border-amber-400 overflow-hidden mb-3 shadow-lg flex items-center justify-center">
+                ${renderAvatar(match)}
+            </div>
+            <h3 class="text-xl font-bold text-white mb-0.5">${match.name}, <span class="text-amber-400">${match.age}</span></h3>
+            <div class="text-xs font-bold text-slate-300 mb-2">${match.occupation}</div>
+            <div class="inline-block bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold px-3 py-1 rounded-full mb-4">
+                Annual Income: ${Utils.formatMoney(match.income)}/yr
+            </div>
+            <p class="text-xs text-slate-400 mb-2">You exchanged contacts and hit it off immediately with incredible chemistry!</p>
+        </div>
+    `;
+
+    UI.showModal('💎 LuxeMatch Match Found!', matchModalHtml);
+    renderRelationships();
 };
 
 export const setAttractionPreference = (pref) => {
@@ -1030,4 +1209,305 @@ export const proposeWithRing = (personId, ringAssetId) => {
 
     UI.updateHeader(user);
     setTimeout(() => renderPersonInteraction(personId), 300);
+};
+
+// --- MAKE A MOVE & HOOKUP / AFFAIR DYNAMICS ---
+let currentHookupPersonId = null;
+let currentCheatingPartnerId = null;
+
+export const handleMakeAMove = (personId) => {
+    const user = state.gameState.user;
+    const person = (user.relationships || []).find(r => r.id === personId);
+    if (!person) return;
+
+    person.interactedThisYear = true;
+
+    const success = GameLogic.calculateMakeAMoveSuccess(person, user);
+    if (!success) {
+        person.status = Math.max(0, (person.status || 0) - 15);
+        addLog(`You made a move on ${person.name}, but they turned you down.`, 'bad');
+        UI.showModal('Not Tonight 😬', `<p class="text-slate-300 text-sm">${person.name} turned down your move. Things are a bit awkward between you now. (-15 Relationship Status)</p>`);
+        UI.updateHeader(user);
+        if (typeof window.saveGame === 'function') window.saveGame();
+        renderPersonInteraction(personId);
+        return;
+    }
+
+    currentHookupPersonId = personId;
+    const scenarioText = GameLogic.getRandomHookupScenario(person.name);
+    renderSteamyHookupModal(person, scenarioText);
+};
+
+export const renderSteamyHookupModal = (person, scenarioText) => {
+    const user = state.gameState.user;
+    const partner = (user.relationships || []).find(r => r.category === 'spouse' || r.category === 'partner');
+    const isUnfaithful = !!partner && partner.id !== person.id;
+
+    const html = `
+        <div class="text-center py-2 fade-in max-w-sm mx-auto">
+            <div class="w-20 h-20 mx-auto rounded-full bg-pink-500/10 border-2 border-pink-400 overflow-hidden mb-3 shadow-lg flex items-center justify-center">
+                ${renderAvatar(person)}
+            </div>
+            <h3 class="text-xl font-bold text-white mb-1 flex items-center justify-center gap-2">
+                <i class="fas fa-fire-flame-curved text-pink-400"></i> Intimate Moment
+            </h3>
+            <p class="text-sm italic text-pink-200 bg-pink-950/40 p-3 rounded-xl border border-pink-500/30 mb-4">
+                "${scenarioText}"
+            </p>
+
+            ${isUnfaithful ? `
+            <div class="bg-amber-950/50 border border-amber-500/40 p-2.5 rounded-xl text-left mb-4 flex items-start gap-2.5">
+                <i class="fas fa-triangle-exclamation text-amber-400 text-base mt-0.5"></i>
+                <div class="text-xs">
+                    <span class="font-bold text-amber-300 block">Infidelity Warning</span>
+                    <span class="text-amber-200/80">You are currently in a relationship with <strong class="text-white">${partner.name}</strong>. Hooking up will initiate a Secret Affair and carries a risk of getting caught!</span>
+                </div>
+            </div>
+            ` : ''}
+
+            <div class="space-y-2 text-left">
+                <button data-action="confirmHookupChoice" data-args="&apos;protection&apos;" class="w-full bg-slate-800 hover:bg-slate-700 border border-emerald-500/50 hover:border-emerald-400 p-3 rounded-xl transition flex items-center gap-3 group">
+                    <div class="w-9 h-9 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-base font-bold group-hover:scale-105 transition">
+                        <i class="fas fa-shield-halved"></i>
+                    </div>
+                    <div>
+                        <div class="font-bold text-white text-xs">Use Protection</div>
+                        <div class="text-[11px] text-emerald-400">Safe hookup (Tiny ~2% pregnancy chance)</div>
+                    </div>
+                </button>
+
+                <button data-action="confirmHookupChoice" data-args="&apos;risk&apos;" class="w-full bg-slate-800 hover:bg-slate-700 border border-amber-500/50 hover:border-amber-400 p-3 rounded-xl transition flex items-center gap-3 group">
+                    <div class="w-9 h-9 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center text-base font-bold group-hover:scale-105 transition">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <div>
+                        <div class="font-bold text-white text-xs">Take a Risk (No Protection)</div>
+                        <div class="text-[11px] text-amber-400">High thrill (High ~45% pregnancy chance)</div>
+                    </div>
+                </button>
+
+                <button data-action="confirmHookupChoice" data-args="&apos;end&apos;" class="w-full bg-slate-800/80 hover:bg-slate-750 border border-slate-700 p-3 rounded-xl transition flex items-center gap-3 text-slate-400 hover:text-white">
+                    <div class="w-9 h-9 rounded-lg bg-slate-700/50 flex items-center justify-center text-base">
+                        <i class="fas fa-hand"></i>
+                    </div>
+                    <div>
+                        <div class="font-bold text-xs">End the Night</div>
+                        <div class="text-[11px] text-slate-400">Excuse yourself and leave safely</div>
+                    </div>
+                </button>
+            </div>
+        </div>
+    `;
+
+    UI.showModal('Steamy Opportunity', html);
+};
+
+export const confirmHookupChoice = (choice) => {
+    const user = state.gameState.user;
+    if (!currentHookupPersonId) return;
+
+    const person = (user.relationships || []).find(r => r.id === currentHookupPersonId);
+    if (!person) return;
+
+    if (choice === 'end') {
+        UI.showModal('Night Ended', `<p class="text-slate-300 text-sm">You decided not to take things further and excused yourself for the night.</p>`);
+        renderPersonInteraction(person.id);
+        return;
+    }
+
+    const partner = (user.relationships || []).find(r => r.category === 'spouse' || r.category === 'partner');
+    const isUnfaithful = !!partner && partner.id !== person.id;
+
+    if (isUnfaithful) {
+        user.hadUnfaithfulHookupThisYear = true;
+        person.type = 'Secret Affair';
+        person.category = 'friend';
+    }
+
+    const isProtection = choice === 'protection';
+    const statusDelta = isProtection ? 15 : 25;
+    person.status = Math.min(100, (person.status || 0) + statusDelta);
+
+    let pregnancyText = '';
+    if (!user.isExpecting) {
+        const femaleAge = user.gender === 'female' ? user.age : person.age;
+        const maleAge = user.gender === 'male' ? user.age : person.age;
+        const pregnancyChance = isProtection ? 0.025 : 0.45;
+
+        if (femaleAge <= 45 && maleAge <= 65 && Math.random() < pregnancyChance) {
+            user.isExpecting = true;
+            user.expectingWithId = person.id;
+            pregnancyText = `You conceived a baby with ${person.name}!`;
+            addLog(`You and ${person.name} are expecting a baby from your hookup!`, 'good');
+        }
+    }
+
+    addLog(`You hooked up with ${person.name}! ${isUnfaithful ? '(Initiated a Secret Affair)' : ''}`, 'good');
+    UI.updateHeader(user);
+    if (typeof window.saveGame === 'function') window.saveGame();
+
+    const title = pregnancyText ? '🔥 Steamy Night (Expecting!)' : '🔥 Steamy Encounter!';
+    const modalContent = `
+        <div class="text-center py-2">
+            <div class="w-16 h-16 mx-auto rounded-full bg-pink-500/20 border-2 border-pink-400 overflow-hidden mb-3 shadow-lg flex items-center justify-center">
+                ${renderAvatar(person)}
+            </div>
+            <h4 class="text-lg font-bold text-white mb-1">Passion in the Air</h4>
+            <p class="text-xs text-slate-300 mb-3">You spent a passionate night with <strong class="text-pink-300">${person.name}</strong>.</p>
+            ${isUnfaithful ? `<div class="text-xs text-amber-400 bg-amber-950/40 p-2 rounded-lg border border-amber-500/30 mb-3 font-semibold">🤫 ${person.name} is now designated as your Secret Affair.</div>` : ''}
+            ${pregnancyText ? `<div class="text-xs text-emerald-400 bg-emerald-950/40 p-2 rounded-lg border border-emerald-500/30 font-semibold">${pregnancyText}</div>` : ''}
+        </div>
+    `;
+
+    UI.showModal(title, modalContent);
+    renderPersonInteraction(person.id);
+};
+
+export const handleEndAffair = (personId) => {
+    const user = state.gameState.user;
+    const person = (user.relationships || []).find(r => r.id === personId);
+    if (!person) return;
+
+    person.type = 'Ex-Lover';
+    person.status = Math.max(0, (person.status || 0) - 10);
+    person.interactedThisYear = true;
+
+    addLog(`You ended your secret affair with ${person.name}.`, 'neutral');
+    UI.showModal('Affair Ended', `<p class="text-slate-300 text-sm">You broke off your secret affair with <strong>${person.name}</strong>. They are now an Ex-Lover and intimate options have been disabled.</p>`);
+    UI.updateHeader(user);
+    if (typeof window.saveGame === 'function') window.saveGame();
+    renderPersonInteraction(personId);
+};
+
+export const renderAgeUpCheatingDiscoveredModal = (discoveryInfo) => {
+    const user = state.gameState.user;
+    const partner = (user.relationships || []).find(r => r.id === discoveryInfo.partnerId);
+    if (!partner) return;
+
+    currentCheatingPartnerId = partner.id;
+    partner.status = Math.max(0, (partner.status || 0) - 60);
+
+    const canAffordGift = (user.money || 0) >= 5000;
+
+    const html = `
+        <div class="text-center py-2 fade-in max-w-sm mx-auto">
+            <div class="w-20 h-20 mx-auto rounded-full bg-red-500/20 border-2 border-red-500 overflow-hidden mb-3 shadow-lg flex items-center justify-center">
+                ${renderAvatar(partner)}
+            </div>
+            <h3 class="text-xl font-bold text-red-400 mb-1 flex items-center justify-center gap-2">
+                <i class="fas fa-heart-crack"></i> Cheating Discovered!
+            </h3>
+            <p class="text-xs text-slate-300 mb-3">
+                Your ${partner.type} <strong class="text-white">${partner.name}</strong> found out about your secret affair with <strong class="text-pink-300">${discoveryInfo.affairName}</strong>!
+            </p>
+            <div class="bg-red-950/40 border border-red-500/40 text-red-300 text-xs font-bold p-2.5 rounded-xl mb-4">
+                Relationship Status Dropped by -60 (Current Status: ${partner.status})
+            </div>
+
+            <div class="space-y-2 text-left">
+                <!-- Option 1: Beg Forgiveness -->
+                <button data-action="handleCheatingConfrontationChoice" data-args="&apos;beg&apos;" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-pink-500 p-3 rounded-xl transition flex items-center gap-3 group">
+                    <div class="w-9 h-9 rounded-lg bg-pink-500/20 text-pink-400 flex items-center justify-center text-base group-hover:scale-105 transition">
+                        <i class="fas fa-hands-praying"></i>
+                    </div>
+                    <div>
+                        <div class="font-bold text-white text-xs">Beg for Forgiveness & Offer Counseling</div>
+                        <div class="text-[11px] text-slate-400">50% chance they agree to stay and work through it</div>
+                    </div>
+                </button>
+
+                <!-- Option 2: Buy Expensive Gift -->
+                <button data-action="handleCheatingConfrontationChoice" data-args="&apos;gift&apos;" ${!canAffordGift ? 'disabled' : ''} class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-amber-500 p-3 rounded-xl transition flex items-center gap-3 group ${!canAffordGift ? 'opacity-50 cursor-not-allowed' : ''}">
+                    <div class="w-9 h-9 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center text-base group-hover:scale-105 transition">
+                        <i class="fas fa-gift"></i>
+                    </div>
+                    <div>
+                        <div class="font-bold text-white text-xs">Buy Expensive Peace Offering Gift (-$5,000)</div>
+                        <div class="text-[11px] text-amber-400">65% chance they accept gift and stay</div>
+                    </div>
+                </button>
+
+                <!-- Option 3: Blame Spouse (Make it worse!) -->
+                <button data-action="handleCheatingConfrontationChoice" data-args="&apos;blame&apos;" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-red-500 p-3 rounded-xl transition flex items-center gap-3 group">
+                    <div class="w-9 h-9 rounded-lg bg-red-500/20 text-red-400 flex items-center justify-center text-base group-hover:scale-105 transition">
+                        <i class="fas fa-bolt-lightning"></i>
+                    </div>
+                    <div>
+                        <div class="font-bold text-red-300 text-xs">Blame Them / Deflect (Make it worse!)</div>
+                        <div class="text-[11px] text-red-400">"You weren't giving me attention anyway!" (Status to 0)</div>
+                    </div>
+                </button>
+
+                <!-- Option 4: Walk Away -->
+                <button data-action="handleCheatingConfrontationChoice" data-args="&apos;walk_away&apos;" class="w-full bg-slate-800/80 hover:bg-slate-750 border border-slate-700 p-3 rounded-xl transition flex items-center gap-3 text-slate-400 hover:text-white">
+                    <div class="w-9 h-9 rounded-lg bg-slate-700/50 flex items-center justify-center text-base">
+                        <i class="fas fa-door-open"></i>
+                    </div>
+                    <div>
+                        <div class="font-bold text-xs">Walk Away & End Relationship</div>
+                        <div class="text-[11px] text-slate-400">Accept consequences and break up / divorce</div>
+                    </div>
+                </button>
+            </div>
+        </div>
+    `;
+
+    UI.showModal('Cheating Discovered!', html);
+};
+
+export const handleCheatingConfrontationChoice = (choice) => {
+    const user = state.gameState.user;
+    if (!currentCheatingPartnerId) return;
+
+    const partnerIndex = (user.relationships || []).findIndex(r => r.id === currentCheatingPartnerId);
+    if (partnerIndex === -1) return;
+    const partner = user.relationships[partnerIndex];
+
+    if (choice === 'beg') {
+        const forgives = Math.random() < 0.50;
+        if (forgives) {
+            partner.status = Math.min(100, partner.status + 20);
+            addLog(`You begged ${partner.name} for forgiveness. They reluctantly agreed to stay and attend counseling.`, 'neutral');
+            UI.showModal('Forgiven (For Now)', `<p class="text-slate-300 text-sm">${partner.name} agreed to try couples counseling, but trust will take a long time to rebuild. (+20 Relationship Status)</p>`);
+        } else {
+            addLog(`${partner.name} refused your apology and broke off the relationship!`, 'bad');
+            UI.showModal('Relationship Over 💔', `<p class="text-slate-300 text-sm">${partner.name} could not forgive your betrayal and ended the relationship immediately!</p>`);
+            user.relationships.splice(partnerIndex, 1);
+        }
+    } else if (choice === 'gift') {
+        if ((user.money || 0) < 5000) {
+            UI.showModal('Insufficient Funds', 'You need $5,000 to purchase a luxury peace offering gift.');
+            return;
+        }
+        user.money -= 5000;
+        const acceptsGift = Math.random() < 0.65;
+        if (acceptsGift) {
+            partner.status = Math.min(100, partner.status + 15);
+            addLog(`You bought ${partner.name} a $5,000 peace offering gift. They accepted it and agreed to stay.`, 'good');
+            UI.showModal('Gift Accepted 🎁', `<p class="text-slate-300 text-sm">${partner.name} accepted the expensive gift and agreed to stay together for now.</p>`);
+        } else {
+            addLog(`${partner.name} threw your $5,000 gift back at you and ended the relationship!`, 'bad');
+            UI.showModal('Gift Rejected 💔', `<p class="text-slate-300 text-sm">${partner.name} threw your gift back at you in anger and ended the relationship!</p>`);
+            user.relationships.splice(partnerIndex, 1);
+        }
+    } else if (choice === 'blame') {
+        partner.status = 0;
+        const breaksUp = Math.random() < 0.90;
+        if (breaksUp) {
+            addLog(`You blamed ${partner.name} for your affair. Furious, they immediately divorced/broke up with you!`, 'bad');
+            UI.showModal('Bitter Breakup 💥', `<p class="text-slate-300 text-sm">You blamed ${partner.name}. Outraged by your reaction, they immediately packed their bags and left!</p>`);
+            user.relationships.splice(partnerIndex, 1);
+        } else {
+            addLog(`You argued with ${partner.name}. The fight was explosive, but you remain together with 0 status.`, 'bad');
+            UI.showModal('Explosive Argument 💥', `<p class="text-slate-300 text-sm">You blamed ${partner.name}. You had a massive fight, and your relationship is at rock bottom (Status: 0).</p>`);
+        }
+    } else if (choice === 'walk_away') {
+        addLog(`You walked away from your relationship with ${partner.name}.`, 'bad');
+        UI.showModal('Separated 🚪', `<p class="text-slate-300 text-sm">You walked away and ended your relationship with ${partner.name}.</p>`);
+        user.relationships.splice(partnerIndex, 1);
+    }
+
+    UI.updateHeader(user);
+    if (typeof window.saveGame === 'function') window.saveGame();
+    renderRelationships();
 };
