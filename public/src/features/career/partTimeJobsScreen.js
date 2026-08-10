@@ -2,6 +2,7 @@ import { state } from '../../core/state.js';
 import { renderActivities } from './occupationScreen.js';
 import { Utils } from '../../ui/utils.js';
 import { PART_TIME_JOBS } from '../../core/main.js';
+import { GameLogic } from '../../core/gameLogic.js';
 
 const get = id => document.getElementById(id);
 
@@ -9,10 +10,13 @@ const get = id => document.getElementById(id);
 
 export function renderJobMarket() {
     const user = state.gameState.user;
-    
+    const mult = GameLogic.getCityCostMultiplier(user.city);
+
     // Sort jobs by hourly pay
     const sortedJobs = [...PART_TIME_JOBS].sort((a, b) => b.hourly - a.hourly);
     const listHtml = sortedJobs.map(job => {
+        const scaledHourly = Math.round(job.hourly * mult);
+        const scaledSalary = Math.round(job.salary * mult);
         const isCurrent = user.jobTitle === job.title;
         const meetsUniversityReq = !job.reqUniversity || user.universityEnrolled || user.universityGraduated;
         const meetsAgeReq = !job.minAge || user.age >= job.minAge;
@@ -24,7 +28,7 @@ export function renderJobMarket() {
         } else if (locked) {
             btn = `<span class="text-xs font-bold py-2 px-4 rounded-lg bg-slate-700 text-slate-500 cursor-not-allowed">Locked</span>`;
         } else {
-            btn = `<button data-action="applyForJob" data-args="&apos;${job.title}&apos;, ${job.salary}" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-2 px-4 rounded-lg transition">Apply</button>`;
+            btn = `<button data-action="applyForJob" data-args="&apos;${job.title}&apos;, ${scaledSalary}" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-2 px-4 rounded-lg transition">Apply</button>`;
         }
 
         const reqHtml = !meetsAgeReq
@@ -42,7 +46,7 @@ export function renderJobMarket() {
                     </div>
                     <div>
                         <h3 class="font-bold text-white">${job.title}</h3>
-                        <div class="text-xs text-green-400">${Utils.formatMoney(job.hourly)}/hr <span class="text-slate-500">(${Utils.formatMoney(job.salary)}/yr)</span></div>
+                        <div class="text-xs text-green-400">${Utils.formatMoney(scaledHourly)}/hr <span class="text-slate-500">(${Utils.formatMoney(scaledSalary)}/yr)</span></div>
                         ${reqHtml}
                     </div>
                 </div>

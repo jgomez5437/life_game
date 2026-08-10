@@ -4,6 +4,7 @@ import { addLog } from '../player/mainScreen.js';
 import { Utils } from '../../ui/utils.js';
 import { UI } from '../../ui/ui.js';
 import { CAREER_TRACKS, PART_TIME_JOBS } from '../../core/main.js';
+import { GameLogic } from '../../core/gameLogic.js';
 
 const get = id => document.getElementById(id);
 
@@ -198,16 +199,17 @@ function _hireCareer(trackKey) {
     const user = state.gameState.user;
     const track = CAREER_TRACKS.find(t => t.key === trackKey);
     const entry = track.levels[0];
+    const scaledSalary = GameLogic.calculateScaledSalary(entry.salary, user.city);
     user.careerTrack          = trackKey;
     user.careerLevel          = 0;
     user.yearsInRole          = 0;
     user.consecutivePoorYears = 0;
     user.jobTitle             = entry.title;
-    user.jobSalary            = entry.salary;
+    user.jobSalary            = scaledSalary;
     user.jobPerformance       = 50;
     user.careerActionTaken    = false;
     user.hasSeenJobSalary     = true;
-    addLog(`Hired as ${entry.title} in ${track.label}! Starting salary: ${Utils.formatMoney(entry.salary)}/yr.`, 'good');
+    addLog(`Hired as ${entry.title} in ${track.label}! Starting salary: ${Utils.formatMoney(scaledSalary)}/yr.`, 'good');
 }
 
 function _hirePartTime(title, salary) {
@@ -248,6 +250,7 @@ export function renderCareerMarket() {
             const locked = !isCurrent && isTrackLocked(track, user);
             const warnings = getTrackWarnings(track, user);
             const entry = track.levels[0];
+            const scaledSalary = GameLogic.calculateScaledSalary(entry.salary, user.city);
 
             const warningHtml = warnings.length
                 ? `<div class="text-[10px] text-red-400 mt-1"><i class="fas fa-lock mr-1"></i>${warnings.join(', ')}</div>`
@@ -271,7 +274,7 @@ export function renderCareerMarket() {
                             </div>
                             <div>
                                 <h3 class="font-bold text-white">${track.label}</h3>
-                                <div class="text-xs text-green-400">Starting: ${Utils.formatMoney(entry.salary)}/yr</div>
+                                <div class="text-xs text-green-400">Starting: ${Utils.formatMoney(scaledSalary)}/yr</div>
                                 <div class="text-[10px] text-slate-500">${track.levels.length} levels · ${entry.title}</div>
                                 ${warningHtml}
                             </div>

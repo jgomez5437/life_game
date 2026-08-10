@@ -1,7 +1,7 @@
 import { GameLogic } from '../../core/gameLogic.js';
 import { state } from '../../core/state.js';
 import { renderActivities, GRAD_SCHOOLS } from '../career/occupationScreen.js';
-import { renderRelationships } from '../relationships/relationshipScreen.js';
+import { renderRelationships, renderAgeUpCheatingDiscoveredModal } from '../relationships/relationshipScreen.js';
 import { processNextFuneral } from '../relationships/funeralScreen.js';
 import { Utils } from '../../ui/utils.js';
 import { UI } from '../../ui/ui.js';
@@ -44,6 +44,11 @@ export function ageUp() {
     handlePregnancy(user);
     handleAppearanceAging(user);
 
+    const infidelityDiscovery = GameLogic.checkAgeUpInfidelityDiscovery(user);
+    if (infidelityDiscovery) {
+        renderAgeUpCheatingDiscoveredModal(infidelityDiscovery);
+    }
+
     // 4. Empty Year Validation (The Fix)
     const currentAgeLog = currentState.lifeLog.find(l => l.age === user.age);
     if (!currentAgeLog || currentAgeLog.events.length === 0) {
@@ -64,6 +69,7 @@ export function ageUp() {
 
 function handleDeath(user, cause) {
     user.lifeStatus = "Deceased";
+    user.deathCause = cause;
     addLog(`You died at age ${user.age} from ${cause}`, 'bad');
     
     // Auto-save the death state before transitioning
@@ -213,6 +219,31 @@ export const continueAsChild = (childIndex, inheritedMoney) => {
 
     const inheritedRelationships = GameLogic.inheritFamilyRelationships(parentState.relationships, selectedChild.id);
 
+    // Calculate parent estate value
+    const parentAssetVal = parentState.assets ? parentState.assets.reduce((sum, a) => sum + (a.value || 0), 0) : 0;
+    const parentCompanyCash = (parentState.hasBusiness && parentState.compCash > 0) ? parentState.compCash : 0;
+    const parentTotalEstate = (parentState.money || 0) + parentAssetVal + parentCompanyCash;
+
+    // Create ancestor entry for graveyard
+    const parentGen = parentState.generation || 1;
+    const ancestor = {
+        id: `ancestor_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+        name: parentState.username || parentState.name || 'Ancestor',
+        gender: parentState.gender || 'male',
+        ageAtDeath: parentState.age || 0,
+        causeOfDeath: parentState.deathCause || 'Natural Causes',
+        occupation: parentState.jobTitle || (parentState.hasBusiness ? `Founder of ${parentState.companyName}` : 'Unemployed'),
+        finalNetWorth: parentTotalEstate,
+        inheritedMoney: inheritedMoney,
+        appearance: parentState.appearance || null,
+        eulogy: state.gameState.currentEulogy || null,
+        generation: parentGen
+    };
+
+    const existingPastLives = state.gameState.pastLives || parentState.pastLives || [];
+    const updatedPastLives = [ancestor, ...existingPastLives];
+    const newGeneration = parentGen + 1;
+
     // 1. Deep wipe and reconstruct user state
     const newUserState = {
         username: selectedChild.name,
@@ -221,6 +252,9 @@ export const continueAsChild = (childIndex, inheritedMoney) => {
         age: selectedChild.age,
         money: inheritedMoney,
         health: 100,
+        generation: newGeneration,
+        pastLives: updatedPastLives,
+        purchases: parentState.purchases || [],
         
         // Reset dynamic flags
         isStudent: selectedChild.age >= 5 && selectedChild.age <= 18,
@@ -243,6 +277,7 @@ export const continueAsChild = (childIndex, inheritedMoney) => {
 
     // 2. Overwrite Single Source of Truth
     state.gameState.user = newUserState;
+    state.gameState.pastLives = updatedPastLives;
     
     // 3. Purge and restart Life Log at child's chronological age
     state.gameState.lifeLog = [{
@@ -309,8 +344,9 @@ function handleFinances(user) {
                         if (lvlIdx > 0) {
                             user.careerLevel--;
                             const demoted = track.levels[user.careerLevel];
+                            const demotedSalary = GameLogic.calculateScaledSalary(demoted.salary, user.city);
                             user.jobTitle  = demoted.title;
-                            user.jobSalary = demoted.salary;
+                            user.jobSalary = demotedSalary;
                             user.consecutivePoorYears = 0;
                             user.yearsInRole = 0;
                             addLog(`Demoted to ${demoted.title} due to sustained poor performance. New salary: ${Utils.formatMoney(user.jobSalary)}/yr.`, 'bad');
@@ -332,8 +368,9 @@ function handleFinances(user) {
                         const promoChance = user.jobPerformance >= 95 ? 0.80 : user.jobPerformance >= 85 ? 0.50 : 0.25;
                         if (Math.random() < promoChance) {
                             user.careerLevel++;
+                            const nextSalary = GameLogic.calculateScaledSalary(nextLevel.salary, user.city);
                             user.jobTitle  = nextLevel.title;
-                            user.jobSalary = Math.max(user.jobSalary, nextLevel.salary);
+                            user.jobSalary = Math.max(user.jobSalary, nextSalary);
                             user.yearsInRole = 0;
                             user.jobPerformance = 60;
                             addLog(`Promoted to ${nextLevel.title}! New salary: ${Utils.formatMoney(user.jobSalary)}/yr.`, 'major');
