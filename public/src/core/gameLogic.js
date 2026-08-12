@@ -140,7 +140,9 @@ function checkSchoolGraduated(currentSchoolYear, enrolledSchoolYears) {
 }
 
 function checkLifeStatus(user) {
-    if (user.gradSchoolEnrolled) {
+    if (user.inPrison) {
+        return user.facilityName ? `Inmate (${user.facilityName})` : "Inmate";
+    } else if (user.gradSchoolEnrolled) {
        return `${user.gradSchoolType} Student`;
     } else if (user.universityEnrolled) {
        return "University Student";
@@ -1168,8 +1170,11 @@ function calculateRelationshipDecay(currentStatus, interactedThisYear, category,
  * @param {number} status 
  * @returns {string|null} The new category if shifted, otherwise null
  */
-function checkRelationshipCategoryShift(category, status) {
-    if (['family', 'spouse', 'child', 'classmate', 'partner', 'ex'].includes(category)) return null;
+function checkRelationshipCategoryShift(category, status, type) {
+    const familyTypes = ['Mother', 'Father', 'Brother', 'Sister', 'Son', 'Daughter', 'Child', 'Parent', 'Grandmother', 'Grandfather', 'Uncle', 'Aunt', 'Cousin', 'Niece', 'Nephew'];
+    if (['family', 'spouse', 'child', 'classmate', 'partner', 'ex'].includes(category) || (type && familyTypes.includes(type))) {
+        return null;
+    }
 
     if (status < 30 && category !== 'enemy') return 'enemy';
     if (status >= 30 && category === 'enemy') return 'friend';
@@ -3980,23 +3985,23 @@ function acceptVCOffer(user, investorId) {
 }
 
 const CRIMES = {
-    // --- JUVENILE MISCHIEF (Ages 12-17) ---
+    // --- MISCHIEF ---
     prank_call: { id: 'prank_call', name: 'Prank Call', minAge: 12, maxAge: 17, category: 'juvenile', baseSuccessRate: 0.85, payoutMin: 0, payoutMax: 0, happinessCost: 5, risk: 'low', desc: 'Call random numbers and talk nonsense.' },
     egging_house: { id: 'egging_house', name: 'Egg a House', minAge: 12, maxAge: 17, category: 'juvenile', baseSuccessRate: 0.75, payoutMin: 0, payoutMax: 0, happinessCost: 10, risk: 'low', desc: 'Throw eggs at your rival teacher or neighbor\'s house.' },
     porch_pirate: { id: 'porch_pirate', name: 'Porch Pirating', minAge: 12, maxAge: 17, category: 'juvenile', baseSuccessRate: 0.65, payoutMin: 20, payoutMax: 150, happinessCost: 15, risk: 'medium', desc: 'Snatch Amazon packages from neighborhood front porches.' },
     shoplift_minor: { id: 'shoplift_minor', name: 'Shoplift Snacks', minAge: 12, maxAge: 17, category: 'juvenile', baseSuccessRate: 0.70, payoutMin: 10, payoutMax: 50, happinessCost: 10, risk: 'low', desc: 'Swipe energy drinks and candy from the corner store.' },
 
-    // --- PETTY & STREET CRIMES (Ages 18+) ---
+    // --- PETTY & STREET CRIMES ---
     pickpocket: { id: 'pickpocket', name: 'Pickpocket', minAge: 18, category: 'petty', baseSuccessRate: 0.65, payoutMin: 50, payoutMax: 350, happinessCost: 15, risk: 'low', desc: 'Lift wallets and watches in crowded subway stations.' },
     shoplift: { id: 'shoplift', name: 'Shoplifting', minAge: 18, category: 'petty', baseSuccessRate: 0.60, payoutMin: 100, payoutMax: 800, happinessCost: 15, risk: 'medium', desc: 'Steal high-end electronics or clothing from retail stores.' },
     vandalism: { id: 'vandalism', name: 'Vandalism', minAge: 18, category: 'petty', baseSuccessRate: 0.80, payoutMin: 0, payoutMax: 0, happinessCost: 10, risk: 'low', desc: 'Spray paint subway cars and city buildings.' },
 
-    // --- VIOLENT CRIMES (Ages 18+) ---
+    // --- VIOLENT CRIMES ---
     assault: { id: 'assault', name: 'Aggravated Assault', minAge: 18, category: 'violent', baseSuccessRate: 0.55, payoutMin: 0, payoutMax: 200, happinessCost: 30, risk: 'high', desc: 'Attack someone in an alley behind a bar.' },
     attempted_murder: { id: 'attempted_murder', name: 'Attempted Murder', minAge: 18, category: 'violent', baseSuccessRate: 0.40, payoutMin: 0, payoutMax: 0, happinessCost: 45, risk: 'severe', desc: 'Hired hit or severe ambush on an enemy.' },
     murder: { id: 'murder', name: 'Homicide / Murder', minAge: 18, category: 'violent', baseSuccessRate: 0.30, payoutMin: 0, payoutMax: 5000, happinessCost: 60, risk: 'critical', desc: 'Eliminate a rival or target in cold blood.' },
 
-    // --- HIGH-STAKES PROPERTY & HEISTS (Ages 18+) ---
+    // --- HIGH-STAKES PROPERTY & HEISTS ---
     burglary: { id: 'burglary', name: 'Residential Burglary', minAge: 18, category: 'heist', baseSuccessRate: 0.50, payoutMin: 1500, payoutMax: 12000, happinessCost: 20, risk: 'high', desc: 'Break into upscale suburban homes at night.' },
     gta: { id: 'gta', name: 'Grand Theft Auto', minAge: 18, category: 'heist', baseSuccessRate: 0.45, payoutMin: 4000, payoutMax: 35000, happinessCost: 25, risk: 'high', desc: 'Hotwire and steal sports cars or luxury SUVs.' },
     bank_robbery: { id: 'bank_robbery', name: 'Bank Robbery', minAge: 18, category: 'heist', baseSuccessRate: 0.25, payoutMin: 25000, payoutMax: 250000, happinessCost: 50, risk: 'critical', desc: 'Storm a downtown bank vault with an armed crew.' }
@@ -4232,12 +4237,834 @@ function applySentencing(user, verdictResult) {
         sentenceYears: verdictResult.sentenceYears
     });
 
-    if (verdictResult.crime.category !== 'juvenile' && user.jobTitle) {
-        user.jobTitle = null;
-        user.salary = 0;
+    if (verdictResult.sentenceYears > 0) {
+        initPrisonState(user, verdictResult);
+    } else {
+        if (verdictResult.crime.category !== 'juvenile' && user.jobTitle) {
+            user.jobTitle = null;
+            user.salary = 0;
+        }
     }
 
     user.happiness = Math.max(0, (user.happiness || 50) - 35);
+}
+
+function calculatePrisonSecurity(crimeCategory, crimeId, sentenceYears) {
+    if (crimeId === 'murder' || sentenceYears >= 15) {
+        return { level: 'Supermax', facilityName: 'Ironwood State Supermax Penitentiary' };
+    } else if (crimeCategory === 'violent' || crimeCategory === 'heist' || sentenceYears >= 6) {
+        return { level: 'Maximum', facilityName: 'Oakridge Maximum Security Institution' };
+    } else if (sentenceYears >= 3) {
+        return { level: 'Medium', facilityName: 'Waynesburg Medium Correctional Facility' };
+    } else {
+        return { level: 'Minimum', facilityName: 'Green Valley Minimum Security Camp' };
+    }
+}
+
+function generateCellmate(securityLevel) {
+    const isMale = Math.random() < 0.5;
+    const firstName = getRandomFirstName(isMale ? 'male' : 'female');
+    const lastName = getLastName('Cellmate');
+    const crimes = ['Armed Robbery', 'Grand Theft', 'Assault', 'Racketeering', 'Burglary', 'Tax Evasion', 'Extortion'];
+    const personalities = ['chill', 'volatile', 'scholar', 'intimidating', 'trader'];
+    const id = 'cellmate_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+    const gender = isMale ? 'male' : 'female';
+    const age = Math.floor(Math.random() * 30) + 20;
+    
+    return {
+        id,
+        name: `${firstName} ${lastName}`,
+        gender,
+        age,
+        crime: crimes[Math.floor(Math.random() * crimes.length)],
+        personality: personalities[Math.floor(Math.random() * personalities.length)],
+        status: Math.floor(Math.random() * 30) + 35,
+        appearance: AvatarLogic.generateRandomAppearance(id, gender)
+    };
+}
+
+function generateYardInmates(securityLevel) {
+    const roles = [
+        { role: 'Yard Boss', crime: 'Racketeering', perk: 'Unlocks Yard Respect' },
+        { role: 'Contraband Dealer', crime: 'Smuggling', perk: 'Sells Black Market Items' },
+        { role: 'Gang Recruiter', crime: 'Extortion', perk: 'Offer Gang Affiliation' },
+        { role: 'Prison Snitch', crime: 'Fraud', perk: 'Risk of reporting you' }
+    ];
+
+    return roles.map((r, idx) => {
+        const isMale = Math.random() < 0.5;
+        const firstName = getRandomFirstName(isMale ? 'male' : 'female');
+        const id = `yard_inmate_${idx}_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+        const gender = isMale ? 'male' : 'female';
+        const age = Math.floor(Math.random() * 30) + 20;
+
+        return {
+            id,
+            name: firstName,
+            gender,
+            age,
+            role: r.role,
+            crime: r.crime,
+            perk: r.perk,
+            status: Math.floor(Math.random() * 30) + 30,
+            appearance: AvatarLogic.generateRandomAppearance(id, gender)
+        };
+    });
+}
+
+function initPrisonState(user, verdictResult) {
+    const sentenceYears = verdictResult.sentenceYears || 1;
+    const crime = verdictResult.crime || { category: 'petty', id: 'unknown' };
+    const security = calculatePrisonSecurity(crime.category, crime.id, sentenceYears);
+
+    user.inPrison = true;
+    user.prisonSentenceRemaining = sentenceYears;
+    user.prisonTotalSentence = sentenceYears;
+    user.prisonSecurity = security.level;
+    user.facilityName = security.facilityName;
+    user.prisonStats = {
+        respect: 25,
+        guardRelation: 50,
+        gang: 'None',
+        canteenCash: Math.min(250, Math.floor((user.money || 0) * 0.1)),
+        solitaryTurns: 0,
+        goodBehaviorPoints: 10,
+        prisonJob: 'None',
+        lawStudied: 0,
+        contraband: []
+    };
+    user.cellmate = generateCellmate(security.level);
+    user.yardInmates = generateYardInmates(security.level);
+
+    if (Array.isArray(user.relationships)) {
+        user.relationships.forEach(rel => {
+            if (rel.category === 'spouse' || rel.category === 'partner') {
+                rel.status = Math.max(0, (rel.status || 50) - 20);
+            } else if (rel.category === 'friend') {
+                rel.status = Math.max(0, (rel.status || 50) - 25);
+            } else {
+                rel.status = Math.max(0, (rel.status || 50) - 15);
+            }
+        });
+    }
+
+    user.jobTitle = null;
+    user.salary = 0;
+    user.universityEnrolled = false;
+    user.gradSchoolEnrolled = false;
+    user.isStudent = false;
+}
+
+function processPrisonAgeUp(user) {
+    if (!user || !user.inPrison) return { released: false };
+
+    const stats = user.prisonStats || { respect: 25, guardRelation: 50, gang: 'None', canteenCash: 50, solitaryTurns: 0, goodBehaviorPoints: 10, prisonJob: 'None', lawStudied: 0, contraband: [] };
+    user.prisonStats = stats;
+
+    const events = [];
+    let newlyAssignedCellmate = null;
+
+    // 1. Sentence Countdown (Served time counts towards sentence even in solitary)
+    user.prisonSentenceRemaining = Math.max(0, (user.prisonSentenceRemaining || 1) - 1);
+
+    // 2. Solitary Confinement Penalty
+    if (stats.solitaryTurns > 0) {
+        stats.solitaryTurns--;
+        user.happiness = Math.max(0, (user.happiness || 50) - 20);
+        user.health = Math.max(10, (user.health || 100) - 10);
+        events.push("Spent another grueling year in solitary confinement.");
+    } else {
+        // 3. New Cellmate Assignment (if in General Population without a cellmate)
+        if (!user.cellmate) {
+            user.cellmate = generateCellmate(user.prisonSecurity || 'Medium');
+            newlyAssignedCellmate = user.cellmate;
+            events.push(`Assigned a new cellmate named ${user.cellmate.name}.`);
+        }
+
+        // 4. Good Behavior Accrual
+        if (stats.guardRelation >= 40) {
+            stats.goodBehaviorPoints = (stats.goodBehaviorPoints || 0) + 10;
+        }
+
+        // 5. Prison Job Income
+        const jobEarnings = {
+            'Kitchen Duty': 350,
+            'Laundry Detail': 250,
+            'Library Assistant': 450,
+            'Yard Maintenance': 300
+        };
+        if (stats.prisonJob && jobEarnings[stats.prisonJob]) {
+            const earned = jobEarnings[stats.prisonJob];
+            stats.canteenCash = (stats.canteenCash || 0) + earned;
+            events.push(`Earned ${Utils.formatMoney(earned)} in canteen funds working ${stats.prisonJob}.`);
+        }
+
+        // 6. Outside Relationship Aging, Decay & Abandonment Check
+        if (Array.isArray(user.relationships)) {
+            for (let i = user.relationships.length - 1; i >= 0; i--) {
+                const rel = user.relationships[i];
+                rel.age++; // People in social continue aging while player is in prison
+
+                // Progress NPC Occupation and check for milestone events
+                const milestoneMsg = progressNPCOccupation(rel, user.age);
+                if (milestoneMsg) {
+                    events.push(milestoneMsg);
+                }
+
+                // Mortality check for aging relationships outside
+                const deathCheck = checkMortality(rel.age, rel.health ?? 100);
+                if (deathCheck.isDead) {
+                    rel.deathCause = deathCheck.cause;
+                    events.push(`Your ${rel.type} ${rel.name} passed away at age ${rel.age} from ${deathCheck.cause}.`);
+                    user.relationships.splice(i, 1);
+                    continue;
+                }
+
+                // Differentiated relationship decay
+                if (rel.category === 'spouse' || rel.category === 'partner') {
+                    rel.status = Math.max(0, (rel.status || 50) - 12);
+                } else if (rel.category === 'friend') {
+                    rel.status = Math.max(0, (rel.status || 50) - 20);
+                    if (rel.status < 15) {
+                        events.push(`Your friend ${rel.name} stopped taking your prison calls and abandoned contact.`);
+                        user.relationships.splice(i, 1);
+                        continue;
+                    }
+                } else {
+                    rel.status = Math.max(0, (rel.status || 50) - 8);
+                }
+            }
+
+            const spouse = user.relationships.find(r => r.category === 'spouse' || r.category === 'partner');
+            if (spouse && spouse.status < 30 && Math.random() < 0.25) {
+                user.relationships = user.relationships.filter(r => r.id !== spouse.id);
+                events.push(`Your partner ${spouse.name} filed for divorce/breakup while you were incarcerated.`);
+            }
+        }
+
+        // 7. Random Prison Events
+        const roll = Math.random();
+        if (roll < 0.20 && stats.contraband && stats.contraband.length > 0) {
+            // Guard Shakedown
+            if (stats.snitchFramed) {
+                stats.snitchFramed = false;
+                events.push("Guards raided the cellblock during a shakedown, but found contraband planted on the Prison Snitch! Your cell stash was untouched.");
+            } else {
+                const hadPhoneOrShank = stats.contraband.includes('Contraband Cellphone') || stats.contraband.includes('Handmade Shank');
+                stats.contraband = [];
+                stats.solitaryTurns = 1;
+                stats.guardRelation = Math.max(0, stats.guardRelation - 25);
+                stats.goodBehaviorPoints = 0;
+
+                if (hadPhoneOrShank) {
+                    user.prisonSentenceRemaining = (user.prisonSentenceRemaining || 1) + 1;
+                    user.prisonTotalSentence = (user.prisonTotalSentence || 1) + 1;
+                    events.push("Guards raided your cell during a shakedown! Found illegal contraband (Phone/Shank): +1 year sentence added, 1 year in solitary confinement, and all contraband confiscated!");
+                } else {
+                    events.push("Guards raided your cell during a shakedown! Confiscated all contraband and put you in solitary confinement for 1 year.");
+                }
+            }
+        } else if (roll > 0.85) {
+            stats.respect = Math.min(100, stats.respect + 10);
+            events.push("Gained respect among inmates after standing your ground during a yard standoff.");
+        }
+    }
+
+    // 8. Release Check
+    if (user.prisonSentenceRemaining <= 0) {
+        user.inPrison = false;
+        user.money = (user.money || 0) + 250; // Gate money
+        user.prisonSentenceRemaining = 0;
+        return {
+            released: true,
+            events,
+            newCellmate: null,
+            message: "You served your full prison sentence and were released back into society with $250 in gate money!"
+        };
+    }
+
+    return {
+        released: false,
+        events,
+        newCellmate: newlyAssignedCellmate,
+        message: `Served 1 year of your sentence. ${user.prisonSentenceRemaining} years remaining.`
+    };
+}
+
+function interactCellmate(user, actionType) {
+    if (!user || !user.cellmate) return { success: false, msg: "No cellmate assigned." };
+    const cm = user.cellmate;
+    const stats = user.prisonStats;
+    if (stats && stats.solitaryTurns > 0) {
+        return { success: false, msg: "You cannot interact with cellmates while locked in solitary confinement." };
+    }
+
+    if (actionType === 'talk') {
+        cm.status = Math.min(100, (cm.status || 50) + 8);
+        user.happiness = Math.min(100, (user.happiness || 50) + 3);
+        return { success: true, msg: `Chatted with ${cm.name}. They shared stories about why they are locked up for ${cm.crime}.` };
+    }
+
+    if (actionType === 'share_snack') {
+        if (!stats.canteenCash || stats.canteenCash < 10) {
+            return { success: false, msg: "You need at least $10 in canteen cash to buy a snack to share!" };
+        }
+        stats.canteenCash -= 10;
+        cm.status = Math.min(100, (cm.status || 50) + 20);
+        return { success: true, msg: `Gave ${cm.name} a ramen packet and chocolate bar. Relationship boosted!` };
+    }
+
+    if (actionType === 'fight') {
+        return attackPrisonInmate(user, 'cellmate', 'cellmate', 'fists');
+    }
+
+    return { success: false, msg: "Invalid action." };
+}
+
+function attackPrisonInmate(user, targetType, targetId, weaponType = 'fists') {
+    if (!user || !user.inPrison) return { success: false, msg: "Not in prison." };
+    const stats = user.prisonStats;
+    if (stats && stats.solitaryTurns > 0) {
+        return { success: false, msg: "You cannot attack inmates while locked in solitary confinement." };
+    }
+
+    let target = null;
+    if (targetType === 'cellmate') {
+        target = user.cellmate;
+    } else {
+        target = (user.yardInmates || []).find(i => String(i.id) === String(targetId));
+    }
+
+    if (!target) return { success: false, msg: "Target inmate not found." };
+
+    const hasShank = stats.contraband && stats.contraband.includes('Handmade Shank');
+    const usingShank = weaponType === 'shank' && hasShank;
+
+    if (weaponType === 'shank' && !hasShank) {
+        return { success: false, msg: "You do not own a Handmade Shank in your cell mattress stash!" };
+    }
+
+    const userPower = (user.health || 50) + (user.smarts || 50) + (usingShank ? 40 : 0);
+    const inmateDefense = Math.floor(Math.random() * 50) + 40;
+    const win = Math.random() < (userPower / (userPower + inmateDefense));
+
+    if (win) {
+        const killChance = usingShank ? 0.35 : 0.15;
+        const killed = Math.random() < killChance;
+
+        if (killed) {
+            if (usingShank) {
+                stats.contraband = stats.contraband.filter(c => c !== 'Handmade Shank');
+            }
+
+            if (targetType === 'cellmate') {
+                user.cellmate = null;
+            } else {
+                user.yardInmates = (user.yardInmates || []).filter(i => String(i.id) !== String(targetId));
+            }
+
+            user.prisonSentenceRemaining = (user.prisonSentenceRemaining || 1) + 15;
+            user.prisonTotalSentence = (user.prisonTotalSentence || 1) + 15;
+            stats.solitaryTurns = 2;
+            stats.respect = Math.min(100, (stats.respect || 25) + 50);
+            stats.guardRelation = 0;
+            stats.goodBehaviorPoints = 0;
+
+            return {
+                success: true,
+                killed: true,
+                solitary: true,
+                targetName: target.name,
+                msg: `FATAL ATTACK! You inflicted a lethal strike on ${target.name}! Inmate died of injuries. +50 Respect earned (Inmates fear you), but court added +15 YEARS to your sentence and locked you in 2 years of Solitary Confinement!`
+            };
+        } else {
+            target.status = 0;
+            stats.respect = Math.min(100, (stats.respect || 25) + 25);
+
+            const guardCaught = Math.random() < 0.45; // 45% chance guards witness the attack
+
+            if (guardCaught) {
+                stats.solitaryTurns = Math.max(stats.solitaryTurns || 0, 1);
+                stats.guardRelation = Math.max(0, (stats.guardRelation || 50) - 25);
+                stats.goodBehaviorPoints = 0;
+
+                return {
+                    success: true,
+                    killed: false,
+                    solitary: true,
+                    targetName: target.name,
+                    msg: `BRAWL CAUGHT! You beat up ${target.name}, but correctional officers rushed in and caught you in the act! You were thrown into Solitary Confinement for 1 year (-25 Guard Relation, +25 Respect).`
+                };
+            } else {
+                stats.guardRelation = Math.max(0, (stats.guardRelation || 50) - 10);
+
+                return {
+                    success: true,
+                    killed: false,
+                    solitary: false,
+                    targetName: target.name,
+                    msg: `VIOLENT BRAWL! You brutally beat up ${target.name} out of sight of guards! Gained +25 Respect.`
+                };
+            }
+        }
+    } else {
+        user.health = Math.max(5, (user.health || 50) - 35);
+        user.happiness = Math.max(0, (user.happiness || 50) - 20);
+
+        const guardCaught = Math.random() < 0.35; // 35% chance guards break up lost fight
+
+        if (guardCaught) {
+            stats.solitaryTurns = Math.max(stats.solitaryTurns || 0, 1);
+            stats.guardRelation = Math.max(0, (stats.guardRelation || 50) - 15);
+
+            return {
+                success: false,
+                killed: false,
+                solitary: true,
+                targetName: target.name,
+                msg: `BRAWL BROKEN UP! ${target.name} overpowered you in the fight before guards intervened and threw you into Solitary Confinement for 1 year! Lost 35 Health.`
+            };
+        } else {
+            return {
+                success: false,
+                killed: false,
+                solitary: false,
+                targetName: target.name,
+                msg: `${target.name} retaliated fiercely and overpowered you in the brawl! Lost 35 Health and 20 Happiness.`
+            };
+        }
+    }
+}
+
+function workoutPrisonYard(user, workoutType) {
+    if (!user || !user.inPrison) return { success: false, msg: "Not in prison." };
+    const stats = user.prisonStats;
+    if (stats && stats.solitaryTurns > 0) {
+        return { success: false, msg: "You cannot go to the prison yard while locked in solitary confinement." };
+    }
+
+    if (workoutType === 'bench_press') {
+        stats.respect = Math.min(100, (stats.respect || 25) + 5);
+        user.health = Math.min(100, (user.health || 50) + 4);
+        return { success: true, msg: "Pumped iron at the yard bench press. Built muscle and gained +5 Respect!" };
+    }
+
+    if (workoutType === 'cardio') {
+        user.health = Math.min(100, (user.health || 50) + 6);
+        user.looks = Math.min(100, (user.looks || 50) + 2);
+        return { success: true, msg: "Ran laps around the yard track. Improved Health and Stamina!" };
+    }
+
+    return { success: false, msg: "Invalid workout." };
+}
+
+function interactYardInmate(user, inmateId, actionType) {
+    if (!user || !user.yardInmates) return { success: false, msg: "No inmates available." };
+    const inmate = user.yardInmates.find(i => String(i.id) === String(inmateId));
+    if (!inmate) return { success: false, msg: "Inmate not found." };
+    const stats = user.prisonStats;
+    if (stats && stats.solitaryTurns > 0) {
+        return { success: false, msg: "You cannot interact with yard inmates while locked in solitary confinement." };
+    }
+
+    if (actionType === 'chat') {
+        inmate.status = Math.min(100, (inmate.status || 40) + 10);
+        return { success: true, msg: `Talked with ${inmate.name} (${inmate.role}). Built rapport!` };
+    }
+
+    if (actionType === 'protection') {
+        if ((stats.canteenCash || 0) < 50) {
+            return { success: false, msg: "You need at least $50 in canteen cash to pay for yard protection." };
+        }
+        stats.canteenCash -= 50;
+        stats.respect = Math.min(100, (stats.respect || 25) + 15);
+        return { success: true, msg: `Paid ${inmate.name} $50 protection money. The ${inmate.role} has your back.` };
+    }
+
+    if (actionType === 'challenge_boss') {
+        const userPower = (user.health || 50) + (user.smarts || 50);
+        if (Math.random() < (userPower / 180)) {
+            stats.respect = Math.min(100, (stats.respect || 25) + 40);
+            stats.guardRelation = Math.max(0, (stats.guardRelation || 50) - 15);
+            return { success: true, msg: `You challenged ${inmate.name} for Yard Supremacy and WON the brawl! Gained +40 Respect!` };
+        } else {
+            user.health = Math.max(10, (user.health || 50) - 30);
+            user.happiness = Math.max(0, (user.happiness || 50) - 20);
+            return { success: false, msg: `${inmate.name} defeated you in the yard brawl! Lost 30 Health and 20 Happiness.` };
+        }
+    }
+
+    if (actionType === 'gang_mission') {
+        if (stats.gang === 'None') {
+            return { success: false, msg: "You must join a prison gang before accepting gang missions!" };
+        }
+        stats.respect = Math.min(100, (stats.respect || 25) + 15);
+        stats.canteenCash = (stats.canteenCash || 0) + 50;
+        return { success: true, msg: `Completed a gang favor for ${inmate.name}! Earned +15 Respect and $50 in canteen cash.` };
+    }
+
+    if (actionType === 'bribe_snitch') {
+        if ((stats.canteenCash || 0) < 25) {
+            return { success: false, msg: "You need $25 in canteen cash to bribe the snitch." };
+        }
+        stats.canteenCash -= 25;
+        stats.snitchPacified = true;
+        stats.guardRelation = Math.min(100, (stats.guardRelation || 50) + 10);
+        return { success: true, msg: `Paid ${inmate.name} $25 to keep quiet. They promised not to snitch on your cell block!` };
+    }
+
+    if (actionType === 'confront_snitch') {
+        stats.respect = Math.min(100, (stats.respect || 25) + 10);
+        inmate.status = Math.max(0, (inmate.status || 40) - 20);
+        return { success: true, msg: `Cornered and intimidated ${inmate.name} in the yard. Showed the block you won't tolerate snitches (+10 Respect)!` };
+    }
+
+    if (actionType === 'frame_snitch') {
+        if (!stats.contraband || stats.contraband.length === 0) {
+            return { success: false, msg: "You need at least one piece of contraband to plant on the snitch!" };
+        }
+        const itemPlanted = stats.contraband.pop();
+        stats.snitchFramed = true;
+        return { success: true, msg: `Planted your ${itemPlanted} into ${inmate.name}'s cell! Next shakedown will raid their mattress instead of yours.` };
+    }
+
+    if (actionType === 'join_gang') {
+        if (stats.gang !== 'None') {
+            return { success: false, msg: `You are already affiliated with the ${stats.gang}!` };
+        }
+        stats.gang = inmate.role === 'Yard Boss' ? 'Street Syndicate' : 'Brotherhood';
+        stats.respect = Math.min(100, (stats.respect || 25) + 30);
+        stats.guardRelation = Math.max(0, (stats.guardRelation || 50) - 20);
+        return { success: true, msg: `Joined the ${stats.gang}! Gained +30 Respect, but guards will target you (-20 Guard Relation).` };
+    }
+
+    return { success: false, msg: "Invalid inmate action." };
+}
+
+function useContrabandPhone(user, phoneAction, targetId = null) {
+    if (!user || !user.inPrison) return { success: false, msg: "Not in prison." };
+    const stats = user.prisonStats;
+    if (!stats || !Array.isArray(stats.contraband) || !stats.contraband.includes('Contraband Cellphone')) {
+        return { success: false, msg: "You do not own a Contraband Cellphone!" };
+    }
+
+    // 15% risk of guard detection while using phone
+    if (Math.random() < 0.15) {
+        stats.contraband = stats.contraband.filter(c => c !== 'Contraband Cellphone');
+        stats.solitaryTurns = 1;
+        stats.guardRelation = Math.max(0, (stats.guardRelation || 50) - 25);
+        user.prisonSentenceRemaining = (user.prisonSentenceRemaining || 1) + 1;
+        user.prisonTotalSentence = (user.prisonTotalSentence || 1) + 1;
+        return {
+            success: false,
+            caught: true,
+            msg: "GUARD CAUGHT YOU ON THE PHONE! Officer confiscated your Contraband Cellphone, added +1 year to your sentence, and sent you to Solitary Confinement!"
+        };
+    }
+
+    if (phoneAction === 'contact') {
+        const rel = (user.relationships || []).find(r => String(r.id) === String(targetId));
+        if (!rel) return { success: false, msg: "Contact not found." };
+
+        rel.status = Math.min(100, (rel.status || 50) + 20);
+        user.happiness = Math.min(100, (user.happiness || 50) + 10);
+        return {
+            success: true,
+            msg: `Secretly texted and called ${rel.name} on your contraband phone! Reconnected outside (+20 status, +10 Happiness)!`
+        };
+    }
+
+    if (phoneAction === 'legal') {
+        stats.lawStudied = (stats.lawStudied || 0) + 35;
+        user.smarts = Math.min(100, (user.smarts || 50) + 3);
+        return {
+            success: true,
+            msg: "Called your private legal team hotline. Consulted appellate attorneys directly from your cell (+35 Law Study Points, +3 Smarts)!"
+        };
+    }
+
+    return { success: false, msg: "Invalid phone action." };
+}
+
+function doPrisonJob(user, jobId) {
+    if (!user || !user.prisonStats) return { success: false, msg: "Not in prison." };
+    if (user.prisonStats.solitaryTurns > 0) {
+        return { success: false, msg: "Your prison job assignment is suspended while locked in solitary confinement." };
+    }
+    const validJobs = ['Kitchen Duty', 'Laundry Detail', 'Library Assistant', 'Yard Maintenance'];
+    if (!validJobs.includes(jobId)) return { success: false, msg: "Invalid job title." };
+
+    user.prisonStats.prisonJob = jobId;
+    return { success: true, msg: `Assigned to ${jobId}. You will earn canteen cash each year.` };
+}
+
+function doSolitaryActivity(user, actType) {
+    if (!user || !user.inPrison) return { success: false, msg: "Not in prison." };
+    const stats = user.prisonStats;
+    if (!stats || stats.solitaryTurns <= 0) return { success: false, msg: "Not in solitary confinement." };
+
+    if (actType === 'pushups') {
+        user.health = Math.min(100, (user.health || 50) + 2);
+        stats.respect = Math.min(100, (stats.respect || 25) + 1);
+        return { success: true, msg: "Did 100 cell push-ups in solitary confinement (+2 Health, +1 Respect)." };
+    }
+
+    if (actType === 'meditate') {
+        user.smarts = Math.min(100, (user.smarts || 50) + 3);
+        user.health = Math.min(100, (user.health || 50) + 1);
+        return { success: true, msg: "Meditated on your life choices in solitary isolation (+3 Smarts, +1 Health)." };
+    }
+
+    return { success: false, msg: "Invalid solitary activity." };
+}
+
+function buyCanteenItem(user, itemId) {
+    if (!user || !user.prisonStats) return { success: false, msg: "Not in prison." };
+    const stats = user.prisonStats;
+    if (!Array.isArray(stats.contraband)) stats.contraband = [];
+
+    const catalog = {
+        ramen: { name: 'Ramen Packet', price: 5, type: 'snack' },
+        chocolate: { name: 'Chocolate Bar', price: 8, type: 'snack' },
+        paper_pen: { name: 'Writing Paper & Pen', price: 12, type: 'utility' },
+        cigarettes: { name: 'Pack of Cigarettes', price: 30, type: 'contraband' },
+        shank: { name: 'Handmade Shank', price: 80, type: 'contraband' },
+        cellphone: { name: 'Contraband Cellphone', price: 180, type: 'contraband' }
+    };
+
+    const item = catalog[itemId];
+    if (!item) return { success: false, msg: "Invalid canteen item." };
+
+    if ((stats.canteenCash || 0) < item.price) {
+        return { success: false, msg: `Insufficient canteen cash. ${item.name} costs $${item.price}.` };
+    }
+
+    stats.canteenCash -= item.price;
+
+    if (item.type === 'snack') {
+        user.happiness = Math.min(100, (user.happiness || 50) + 5);
+        return { success: true, msg: `Enjoyed a ${item.name}. Gained +5 Happiness!` };
+    } else {
+        stats.contraband.push(item.name);
+        return { success: true, msg: `Purchased ${item.name} from the canteen dealer!` };
+    }
+}
+
+function sellContrabandItem(user, itemIndexOrName) {
+    if (!user || !user.prisonStats) return { success: false, msg: "Not in prison." };
+    const stats = user.prisonStats;
+    if (!Array.isArray(stats.contraband) || stats.contraband.length === 0) {
+        return { success: false, msg: "You have no contraband items to sell." };
+    }
+
+    const sellValues = {
+        'Writing Paper & Pen': 8,
+        'Pack of Cigarettes': 20,
+        'Handmade Shank': 50,
+        'Contraband Cellphone': 120
+    };
+
+    let itemIndex = -1;
+    if (typeof itemIndexOrName === 'number') {
+        itemIndex = itemIndexOrName;
+    } else {
+        itemIndex = stats.contraband.findIndex(c => c === itemIndexOrName);
+    }
+
+    if (itemIndex < 0 || itemIndex >= stats.contraband.length) {
+        return { success: false, msg: "Item not found in cell stash." };
+    }
+
+    const itemName = stats.contraband[itemIndex];
+    const sellPrice = sellValues[itemName] || 15;
+
+    stats.contraband.splice(itemIndex, 1);
+    stats.canteenCash = (stats.canteenCash || 0) + sellPrice;
+
+    return {
+        success: true,
+        itemName,
+        sellPrice,
+        msg: `Sold ${itemName} to the Contraband Dealer for $${sellPrice} in canteen cash!`
+    };
+}
+
+function studyPrisonLaw(user) {
+    if (!user || !user.prisonStats) return { success: false, msg: "Not in prison." };
+    const stats = user.prisonStats;
+    stats.lawStudied = (stats.lawStudied || 0) + 15;
+    user.smarts = Math.min(100, (user.smarts || 50) + 2);
+    return { success: true, msg: "Spent hours in the prison legal library studying appeal precedent. +15 Law Study points, +2 Smarts!" };
+}
+
+function attemptSentenceAppeal(user, lawyerTier = 'self') {
+    if (!user || !user.inPrison) return { success: false, msg: "Not in prison." };
+    const stats = user.prisonStats;
+
+    let baseChance = 0.15;
+    if (lawyerTier === 'private') baseChance = 0.45;
+    if (lawyerTier === 'top') baseChance = 0.75;
+
+    const lawBonus = ((stats.lawStudied || 0) / 100) * 0.20;
+    const smartsBonus = ((user.smarts || 50) / 100) * 0.10;
+    const winChance = Math.min(0.90, baseChance + lawBonus + smartsBonus);
+
+    if (Math.random() < winChance) {
+        user.inPrison = false;
+        user.prisonSentenceRemaining = 0;
+        user.money = (user.money || 0) + 250;
+        return {
+            success: true,
+            released: true,
+            msg: "APPELLATE COURT OVERTURNED CONVICTION! You walked out of prison a free individual!"
+        };
+    } else {
+        return {
+            success: true,
+            released: false,
+            msg: "The court of appeals rejected your petition. Sentence remains unchanged."
+        };
+    }
+}
+
+function attemptParoleBoard(user) {
+    if (!user || !user.inPrison) return { success: false, msg: "Not in prison." };
+    const total = user.prisonTotalSentence || 1;
+    const remaining = user.prisonSentenceRemaining || 1;
+    const served = total - remaining;
+
+    if (served < Math.ceil(total * 0.5)) {
+        return { success: false, msg: `You must serve at least 50% of your sentence (${Math.ceil(total * 0.5)} years) before applying for parole.` };
+    }
+
+    const stats = user.prisonStats;
+    const behaviorScore = stats.goodBehaviorPoints || 0;
+    const guardScore = stats.guardRelation || 0;
+
+    const paroleChance = Math.min(0.95, (behaviorScore / 100) * 0.5 + (guardScore / 100) * 0.4);
+
+    if (Math.random() < paroleChance) {
+        user.inPrison = false;
+        user.prisonSentenceRemaining = 0;
+        user.money = (user.money || 0) + 250;
+        return {
+            success: true,
+            released: true,
+            msg: "PAROLE GRANTED! The Parole Board approved your early release on good behavior!"
+        };
+    } else {
+        stats.goodBehaviorPoints = Math.max(0, behaviorScore - 10);
+        return {
+            success: true,
+            released: false,
+            msg: "Parole Board DENIED early release. Continue serving your sentence."
+        };
+    }
+}
+
+function attemptPrisonEscape(user, method) {
+    if (!user || !user.inPrison) return { success: false, msg: "Not in prison." };
+    const stats = user.prisonStats;
+
+    let escapeChance = 0.20;
+    if (method === 'tunnel') escapeChance += ((user.smarts || 50) / 100) * 0.35;
+    if (method === 'bribe_guard') escapeChance += ((stats.guardRelation || 50) / 100) * 0.45;
+    if (method === 'laundry_cart') escapeChance += ((user.looks || 50) / 100) * 0.30;
+    if (method === 'fence_cut') escapeChance += ((user.health || 50) / 100) * 0.25;
+
+    if (Math.random() < escapeChance) {
+        user.inPrison = false;
+        user.prisonSentenceRemaining = 0;
+        return {
+            success: true,
+            escaped: true,
+            msg: "FEAT OF ESCAPE! You broke out of the prison facility and are now a fugitive on the run!"
+        };
+    } else {
+        user.prisonSentenceRemaining = (user.prisonSentenceRemaining || 1) + 5;
+        user.prisonTotalSentence = (user.prisonTotalSentence || 1) + 5;
+        user.prisonSecurity = 'Maximum';
+        stats.solitaryTurns = 2;
+        stats.guardRelation = 0;
+        stats.respect = Math.max(0, (stats.respect || 25) - 20);
+
+        return {
+            success: true,
+            escaped: false,
+            msg: "ESCAPE ATTEMPT FAILED! Guards captured you, added 5 years to your sentence, transferred you to Max Security, and placed you in 2 years of Solitary Confinement!"
+        };
+    }
+}
+
+function sendPrisonLetter(user, relId) {
+    if (!user || !user.inPrison) return { success: false, msg: "Not in prison." };
+    const stats = user.prisonStats;
+    const rel = (user.relationships || []).find(r => String(r.id) === String(relId));
+    if (!rel) return { success: false, msg: "Contact not found." };
+
+    const hasPaper = stats && Array.isArray(stats.contraband) && stats.contraband.includes('Writing Paper & Pen');
+    if (!hasPaper) {
+        if ((stats.canteenCash || 0) < 5) {
+            return { success: false, msg: "You need $5 in canteen cash (or paper & pen) to send a letter." };
+        }
+        stats.canteenCash -= 5;
+    }
+
+    rel.status = Math.min(100, (rel.status || 50) + 15);
+    user.happiness = Math.min(100, (user.happiness || 50) + 4);
+
+    return {
+        success: true,
+        msg: `Sent a handwritten prison letter to ${rel.name}. Relationship boosted (+15 status)!`
+    };
+}
+
+function requestConjugalVisit(user, relId) {
+    if (!user || !user.inPrison) return { success: false, msg: "Not in prison." };
+    const stats = user.prisonStats;
+    const rel = (user.relationships || []).find(r => String(r.id) === String(relId));
+
+    if (!rel) return { success: false, msg: "Partner not found." };
+    if (rel.category !== 'spouse' && rel.category !== 'partner') {
+        return { success: false, msg: "Conjugal visits are restricted to married spouses or long-term partners." };
+    }
+
+    if ((stats.guardRelation || 50) < 40) {
+        return { success: false, msg: "Guard relation is too low (<40%). Correctional officers denied your conjugal visit request." };
+    }
+    if ((stats.solitaryTurns || 0) > 0) {
+        return { success: false, msg: "Conjugal visits are prohibited while in solitary confinement." };
+    }
+
+    rel.status = Math.min(100, (rel.status || 50) + 25);
+    user.happiness = Math.min(100, (user.happiness || 50) + 15);
+
+    let pregnancyOccurred = false;
+    const isUserFemale = user.gender === 'female';
+    const isPartnerFemale = rel.gender === 'female';
+
+    if (isUserFemale !== isPartnerFemale && (user.age || 20) >= 18 && (user.age || 20) <= 45 && (rel.age || 20) >= 18 && (rel.age || 20) <= 45) {
+        const pregChance = 0.35;
+        if (Math.random() < pregChance) {
+            pregnancyOccurred = true;
+            user.isExpecting = true;
+            user.expectingWithId = rel.id;
+        }
+    }
+
+    if (pregnancyOccurred) {
+        return {
+            success: true,
+            pregnancyOccurred: true,
+            msg: `Conjugal visit with ${rel.name} was intimate and successful (+25 status, +15 Happiness)! A baby is expecting!`
+        };
+    }
+
+    return {
+        success: true,
+        pregnancyOccurred: false,
+        msg: `Enjoyed a private conjugal visit with ${rel.name}. Reconnected intimately (+25 status, +15 Happiness)!`
+    };
 }
 
 export const GameLogic = {
@@ -4368,7 +5195,27 @@ export const GameLogic = {
     attemptCrime,
     handleArrestAction,
     calculateTrialVerdict,
-    applySentencing
+    applySentencing,
+    calculatePrisonSecurity,
+    generateCellmate,
+    generateYardInmates,
+    initPrisonState,
+    processPrisonAgeUp,
+    interactCellmate,
+    workoutPrisonYard,
+    interactYardInmate,
+    doPrisonJob,
+    buyCanteenItem,
+    studyPrisonLaw,
+    attemptSentenceAppeal,
+    attemptParoleBoard,
+    attemptPrisonEscape,
+    sendPrisonLetter,
+    requestConjugalVisit,
+    useContrabandPhone,
+    sellContrabandItem,
+    doSolitaryActivity,
+    attackPrisonInmate
 };
 
 

@@ -28,6 +28,7 @@ import { renderGodModeAvatarModal, cycleGodModeTrait, randomizeGodModeAvatarTrai
 import { grantInstantHighSchool, grantInstantUniversityDegree, grantInstantGradDegree, renderInstantDiplomaHub, claimInstantUniversityMajor } from '../features/education/instantDiploma.js';
 import { renderVipLoungeModal, selectTheme, isVipSupporter } from '../features/store/vipLounge.js';
 import { renderGraveyardModal, showAncestorEulogy } from '../features/player/graveyardScreen.js';
+import { renderPrisonDashboard, setPrisonTab, handleCellmateAction, handleYardWorkout, handleInmateInteract, handleSelectPrisonJob, handleBuyCanteen, handleStudyLaw, handleFileAppeal, handlePrisonVisit, handleSendPrisonLetter, handleConjugalVisit, handleParoleHearing, handlePrisonEscapeAction, openContrabandPhoneModal, submitContrabandPhoneAction, openDealerBuyModal, openDealerSellModal, handleSellContrabandAction, handleSolitaryActivity, openInmateDetailModal, openAttackPromptModal, executeInmateAttack } from '../features/more/prisonScreen.js';
 import { Utils } from '../ui/utils.js';
 import { UI } from '../ui/ui.js';
 
@@ -463,7 +464,17 @@ export function updateGameInfo(dbUser) {
             // --- RELATIONSHIPS ---
             relationships: savedUser.relationships || [],
             isExpecting: savedUser.isExpecting || false,
-            expectingWithId: savedUser.expectingWithId || null
+            expectingWithId: savedUser.expectingWithId || null,
+
+            // --- PRISON STATE ---
+            inPrison: savedUser.inPrison || false,
+            prisonSentenceRemaining: savedUser.prisonSentenceRemaining || 0,
+            prisonTotalSentence: savedUser.prisonTotalSentence || 0,
+            prisonSecurity: savedUser.prisonSecurity || 'Minimum',
+            facilityName: savedUser.facilityName || null,
+            prisonStats: savedUser.prisonStats || null,
+            cellmate: savedUser.cellmate || null,
+            yardInmates: savedUser.yardInmates || []
         },
         
         // --- ASSETS & HISTORY ---
@@ -572,7 +583,17 @@ export const loadAndRenderGame = (userData) => {
 
             // --- RELATIONSHIPS ---
             relationships: userData.relationships || [],
-            hadUnfaithfulHookupThisYear: userData.hadUnfaithfulHookupThisYear || false
+            hadUnfaithfulHookupThisYear: userData.hadUnfaithfulHookupThisYear || false,
+
+            // --- PRISON STATE ---
+            inPrison: userData.inPrison || false,
+            prisonSentenceRemaining: userData.prisonSentenceRemaining || 0,
+            prisonTotalSentence: userData.prisonTotalSentence || 0,
+            prisonSecurity: userData.prisonSecurity || 'Minimum',
+            facilityName: userData.facilityName || null,
+            prisonStats: userData.prisonStats || null,
+            cellmate: userData.cellmate || null,
+            yardInmates: userData.yardInmates || []
         },
         lifeLog: [{ age: 0, events: [{ msg: "Game Loaded.", color: "text-white" }] }]    
     };
@@ -1057,6 +1078,29 @@ const routeHandlers = {
   buyLotteryTicket,
   openMoveCountryModal,
   updateRelocateCityDropdown,
+  renderPrisonDashboard,
+  setPrisonTab,
+  handleCellmateAction,
+  handleYardWorkout,
+  handleInmateInteract,
+  handleSelectPrisonJob,
+  handleBuyCanteen,
+  handleStudyLaw,
+  handleFileAppeal,
+  handlePrisonVisit,
+  handleSendPrisonLetter,
+  handleConjugalVisit,
+  handleParoleHearing,
+  handlePrisonEscapeAction,
+  openContrabandPhoneModal,
+  submitContrabandPhoneAction,
+  openDealerBuyModal,
+  openDealerSellModal,
+  handleSellContrabandAction,
+  handleSolitaryActivity,
+  openInmateDetailModal,
+  openAttackPromptModal,
+  executeInmateAttack,
   confirmMoveCountry,
   askPartnerToMove,
   confirmMoveAlone,

@@ -1,4 +1,5 @@
 import { Utils } from './utils.js';
+import { renderAvatar } from './avatarRenderer.js';
 
 const _elements = {
     get name() { return document.getElementById('header-name'); },
@@ -21,9 +22,10 @@ const _elements = {
 
 //Global UI object
 export const UI = {
-    /** * @param {Object} stats - { username, age, money, city, health }
+    /** * @param {Object} stats - { username, name, age, money, city, health }
      */
     updateHeader: (stats) => {
+        if (!stats) return;
         // Toggle header element visibility for in-game stats view
         if (_elements.headerBrand) _elements.headerBrand.classList.add('hidden');
         if (_elements.userInfo) _elements.userInfo.classList.remove('hidden');
@@ -74,6 +76,12 @@ export const UI = {
             } else {
                 _elements.bank.classList.add('text-green-400');
             }
+        }
+
+        // 5. AVATAR UPDATE
+        const avatarContainer = document.getElementById('avatar-container');
+        if (avatarContainer) {
+            avatarContainer.innerHTML = renderAvatar(stats);
         }
     },
 

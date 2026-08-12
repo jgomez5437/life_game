@@ -95,7 +95,7 @@ export function openPlayerOverviewModal() {
                     ${displayName} ${flagHtml}
                 </h3>
                 ${vipBadgeTag}
-                <div class="text-xs text-blue-400 font-semibold uppercase tracking-wider mt-0.5">${statusText}</div>
+                <div class="text-xs ${user.inPrison ? 'text-red-400 font-bold' : 'text-blue-400 font-semibold'} uppercase tracking-wider mt-0.5">${statusText}</div>
                 <div class="text-xs text-slate-400 mt-1">Based in <span class="text-white font-bold">${city}</span></div>
                 <div class="text-[10px] text-amber-400 font-bold mt-2 px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center gap-1 group-hover:bg-amber-500/20 transition">
                     <i class="fas fa-monument"></i> Generation ${currentGen} Lineage • ${pastLivesCount} Past ${pastLivesCount === 1 ? 'Life' : 'Lives'} &rarr;

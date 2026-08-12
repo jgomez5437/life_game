@@ -93,7 +93,7 @@ export function renderMoreDashboard() {
     const ticketsLeft = 10 - ticketsBought;
 
     get('game-container').innerHTML = `
-        <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
+        <div class="flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-3 flex items-center justify-between">
                 <button data-action="renderLifeDashboard" class="text-slate-400 hover:text-white text-xs flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition">
                     <i class="fas fa-arrow-left"></i> Back to Dashboard
@@ -275,7 +275,7 @@ export function renderMoreDashboard() {
                             iconColor: 'text-red-400',
                             badgeColor: 'border-red-800/60 text-red-300 bg-red-950/40',
                             title: 'Underworld & Crime Hub',
-                            subtitle: 'Teen Mischief, Theft & Bank Heists',
+                            subtitle: 'Mischief, Theft & Bank Heists',
                             action: 'renderCrimeDashboard',
                             buttonText: 'Crime Hub',
                             buttonStyle: 'bg-red-700 hover:bg-red-600 text-white shadow'

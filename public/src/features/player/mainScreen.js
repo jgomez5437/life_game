@@ -12,6 +12,7 @@ import { checkActionTaken } from '../career/jobCareerManagerScreen.js';
 import { autoProcessBusinessQuarter } from '../business/businessDashboard.js';
 import { AvatarLogic } from '../../core/avatarLogic.js';
 import { renderAvatar } from '../../ui/avatarRenderer.js';
+import { renderPrisonDashboard, renderNewCellmateModal } from '../more/prisonScreen.js';
 const get = id => document.getElementById(id);
 
 // public/screens/mainScreen.js
@@ -21,6 +22,28 @@ const get = id => document.getElementById(id);
 export function ageUp() {
     const currentState = state.gameState;
     const user = currentState.user;
+
+    if (user.inPrison) {
+        user.age++;
+        const prisonRes = GameLogic.processPrisonAgeUp(user);
+        if (prisonRes.events && prisonRes.events.length > 0) {
+            prisonRes.events.forEach(eMsg => addLog(eMsg, 'neutral'));
+        }
+        if (prisonRes.released) {
+            addLog(prisonRes.message, 'good');
+            UI.showModal("Released from Prison", prisonRes.message);
+            renderLifeDashboard();
+        } else {
+            addLog(prisonRes.message, 'neutral');
+            if (prisonRes.newCellmate) {
+                renderNewCellmateModal(prisonRes.newCellmate);
+            } else {
+                renderPrisonDashboard();
+            }
+        }
+        if (typeof saveGame === "function") saveGame();
+        return;
+    }
     
     // 1. Mortality Check
     const currentHealth = user.stats?.health ?? user.health ?? 100; 
@@ -665,7 +688,7 @@ function handleRelationships(user) {
         rel.status = GameLogic.calculateRelationshipDecay(previousStatus, rel.interactedThisYear, rel.category, user.age);
         
         // Category shift logic
-        const newCategory = GameLogic.checkRelationshipCategoryShift(rel.category, rel.status);
+        const newCategory = GameLogic.checkRelationshipCategoryShift(rel.category, rel.status, rel.type);
         if (newCategory) {
             if (newCategory === 'enemy') {
                 addLog(`${rel.name} is now your Enemy due to neglect!`, 'bad');
@@ -735,11 +758,15 @@ export function renderLifeDashboard(maybeGameState) {
         console.warn("renderLifeDashboard called before game state existed.");
         return;}
     const user = currentState.user;
+    if (user && user.inPrison) {
+        renderPrisonDashboard();
+        return;
+    }
     //Update the Header Bar using the UI Manager
     //    We assume 'game' holds the key stats needed for the header.
     UI.updateHeader(user);
     const avatarElem = get('avatar-container');
-    if (user.username && avatarElem) avatarElem.innerHTML = renderAvatar(user);
+    if ((user.name || user.username) && avatarElem) avatarElem.innerHTML = renderAvatar(user);
     const isCompact = localStorage.getItem('life_game_compact') === 'true';
 
 // Generate the Life Log HTML 
@@ -782,7 +809,7 @@ export function renderLifeDashboard(maybeGameState) {
 
     //Define the Final HTML String
     const dashboardHTML = `
-        <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
+        <div class="flex flex-col h-full max-w-lg mx-auto">
             ${vipBannerHtml}
             <div class="flex-1 overflow-y-auto mb-4 bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
                 <h3 class="font-bold text-slate-300 mb-4 sticky top-0 bg-transparent backdrop-blur-md py-1 border-b border-slate-700/50">Life History</h3>

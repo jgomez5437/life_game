@@ -2,6 +2,7 @@ import { GameLogic } from '../../core/gameLogic.js';
 import { state } from '../../core/state.js';
 import { renderLifeDashboard, addLog } from '../player/mainScreen.js';
 import { renderMoreDashboard } from './moreScreen.js';
+import { renderPrisonDashboard } from './prisonScreen.js';
 import { UI } from '../../ui/ui.js';
 import { Utils } from '../../ui/utils.js';
 
@@ -12,7 +13,7 @@ export function renderCrimeDashboard() {
     const age = user.age || 0;
 
     if (age < 12) {
-        UI.showModal("Too Young", "You must be at least 12 years old to engage in juvenile mischief or crime.");
+        UI.showModal("Too Young", "You must be at least 12 years old to engage in mischief or crime.");
         renderMoreDashboard();
         return;
     }
@@ -26,7 +27,7 @@ export function renderCrimeDashboard() {
     const heistCrimes = crimesList.filter(c => c.category === 'heist');
 
     get('game-container').innerHTML = `
-        <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
+        <div class="flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4 flex items-center justify-between">
                 <button data-action="renderMoreDashboard" class="text-slate-400 hover:text-white text-xs flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition border border-slate-700/50">
                     <i class="fas fa-arrow-left"></i> Back to More Options
@@ -39,16 +40,16 @@ export function renderCrimeDashboard() {
                 </div>
                 <div>
                     <h2 class="text-2xl font-bold text-white">Underworld & Crime</h2>
-                    <p class="text-slate-400 text-xs">High-risk activities, juvenile mischief, street crime, and heists.</p>
+                    <p class="text-slate-400 text-xs">High-risk activities, mischief, street crime, and heists.</p>
                 </div>
             </div>
 
             <div class="flex-1 overflow-y-auto pb-6 space-y-5 mt-2">
 
-                <!-- JUVENILE MISCHIEF (Ages 12+) -->
+                <!-- MISCHIEF -->
                 <div class="space-y-2">
                     <div class="text-xs font-bold uppercase tracking-wider text-amber-400 px-1 flex items-center gap-1.5">
-                        <i class="fas fa-ghost"></i> Juvenile Mischief (Ages 12-17)
+                        <i class="fas fa-ghost"></i> Mischief
                     </div>
                     <div class="grid grid-cols-1 gap-2">
                         ${juvenileCrimes.map(c => renderCrimeCard(c)).join('')}
@@ -56,7 +57,7 @@ export function renderCrimeDashboard() {
                 </div>
 
                 ${!isTeen ? `
-                <!-- PETTY & STREET CRIMES (Ages 18+) -->
+                <!-- PETTY & STREET CRIMES -->
                 <div class="space-y-2">
                     <div class="text-xs font-bold uppercase tracking-wider text-emerald-400 px-1 flex items-center gap-1.5">
                         <i class="fas fa-user-ninja"></i> Street & Petty Crimes
@@ -66,7 +67,7 @@ export function renderCrimeDashboard() {
                     </div>
                 </div>
 
-                <!-- VIOLENT CRIMES (Ages 18+) -->
+                <!-- VIOLENT CRIMES -->
                 <div class="space-y-2">
                     <div class="text-xs font-bold uppercase tracking-wider text-red-400 px-1 flex items-center gap-1.5">
                         <i class="fas fa-skull"></i> Violent Crimes
@@ -76,7 +77,7 @@ export function renderCrimeDashboard() {
                     </div>
                 </div>
 
-                <!-- HIGH-STAKES HEISTS (Ages 18+) -->
+                <!-- HIGH-STAKES HEISTS -->
                 <div class="space-y-2">
                     <div class="text-xs font-bold uppercase tracking-wider text-purple-400 px-1 flex items-center gap-1.5">
                         <i class="fas fa-sack-dollar"></i> High-Stakes Heists
@@ -382,7 +383,7 @@ export function showCourtArraignmentModal() {
                 <button data-action="selectLegalCounsel" data-args="&apos;public_defender&apos;" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 p-3 rounded-xl text-left transition flex items-center justify-between">
                     <div>
                         <div class="font-bold text-white text-sm">Public Defender</div>
-                        <div class="text-xs text-slate-400">Court-appointed (25% Base Win Rate)</div>
+                        <div class="text-xs text-slate-400">Court-appointed public defender</div>
                     </div>
                     <span class="text-xs font-bold text-emerald-400">FREE</span>
                 </button>
@@ -390,7 +391,7 @@ export function showCourtArraignmentModal() {
                 <button data-action="selectLegalCounsel" data-args="&apos;private_attorney&apos;" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 p-3 rounded-xl text-left transition flex items-center justify-between">
                     <div>
                         <div class="font-bold text-white text-sm">Criminal Defense Attorney</div>
-                        <div class="text-xs text-slate-400">Experienced counsel (55% Base Win Rate)</div>
+                        <div class="text-xs text-slate-400">Experienced private defense counsel</div>
                     </div>
                     <span class="text-xs font-bold text-white">${Utils.formatMoney(2500)}</span>
                 </button>
@@ -400,7 +401,7 @@ export function showCourtArraignmentModal() {
                         <div class="font-bold text-amber-300 text-sm flex items-center gap-1.5">
                             <i class="fas fa-crown text-amber-400"></i> High-Powered Law Firm
                         </div>
-                        <div class="text-xs text-slate-400">Elite trial defense (85% Base Win Rate)</div>
+                        <div class="text-xs text-slate-400">Elite trial defense team</div>
                     </div>
                     <span class="text-xs font-bold text-amber-400">${Utils.formatMoney(25000)}</span>
                 </button>
@@ -431,6 +432,7 @@ export function selectLegalCounsel(lawyerTier) {
                 <p class="text-xs text-slate-300">The jury returned a verdict of not guilty! You walked out of the courtroom a free individual.</p>
             </div>
         `);
+        renderCrimeDashboard();
     } else {
         addLog(result.message, 'bad');
         UI.showModal("Convicted & Sentenced", `
@@ -445,7 +447,11 @@ export function selectLegalCounsel(lawyerTier) {
                 </div>
             </div>
         `);
+        if (user.inPrison) {
+            renderPrisonDashboard();
+        } else {
+            renderCrimeDashboard();
+        }
     }
-
-    renderCrimeDashboard();
 }
+
