@@ -1,7 +1,8 @@
-import { state } from './state.js';
+import { state, hasPurchasedPack } from './state.js';
 import { UI } from '../ui/ui.js';
 import { Utils } from '../ui/utils.js';
-import { hasPurchasedPack, buyPack } from '../features/store/storeScreen.js';
+
+const buyPack = async (...args) => (await import('../features/store/storeScreen.js')).buyPack(...args);
 
 export const MAX_SNAPSHOTS = 5;
 

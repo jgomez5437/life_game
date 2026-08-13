@@ -1,13 +1,12 @@
 import { GameLogic } from '../../core/gameLogic.js';
 import { loadAndRenderGame, updateGameInfo } from '../../core/main.js';
-import { state } from '../../core/state.js';
+import { state, hasPurchasedPack } from '../../core/state.js';
 import { renderLifeDashboard, addLog } from './mainScreen.js';
 import { FamilyFactory } from '../relationships/familyFactory.js';
 import { UI } from '../../ui/ui.js';
 import { Utils, COUNTRIES_DATA } from '../../ui/utils.js';
 import { AvatarLogic } from '../../core/avatarLogic.js';
 import { renderAvatar } from '../../ui/avatarRenderer.js';
-import { hasPurchasedPack } from '../store/storeScreen.js';
 import { captureAnnualSnapshot } from '../../core/timeMachine.js';
 
 //Character creation screen
