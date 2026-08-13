@@ -6,12 +6,14 @@ import { processNextFuneral } from '../relationships/funeralScreen.js';
 import { Utils } from '../../ui/utils.js';
 import { UI } from '../../ui/ui.js';
 import { renderAssets, processNextTenantDefaultEvent } from '../assets/assetsScreen.js';
-import { saveGame, resetGame, CAREER_TRACKS } from '../../core/main.js';
+import { saveGame, resetGame, CAREER_TRACKS, SPECIAL_CAREER_TRACKS } from '../../core/main.js';
 import { checkSchoolActionTaken } from '../education/manageEducationScreen.js';
 import { checkActionTaken } from '../career/jobCareerManagerScreen.js';
 import { autoProcessBusinessQuarter } from '../business/businessDashboard.js';
 import { AvatarLogic } from '../../core/avatarLogic.js';
 import { renderAvatar } from '../../ui/avatarRenderer.js';
+import { renderPrisonDashboard, renderNewCellmateModal } from '../more/prisonScreen.js';
+import { captureAnnualSnapshot } from '../../core/timeMachine.js';
 const get = id => document.getElementById(id);
 
 // public/screens/mainScreen.js
@@ -21,6 +23,28 @@ const get = id => document.getElementById(id);
 export function ageUp() {
     const currentState = state.gameState;
     const user = currentState.user;
+
+    if (user.inPrison) {
+        user.age++;
+        const prisonRes = GameLogic.processPrisonAgeUp(user);
+        if (prisonRes.events && prisonRes.events.length > 0) {
+            prisonRes.events.forEach(eMsg => addLog(eMsg, 'neutral'));
+        }
+        if (prisonRes.released) {
+            addLog(prisonRes.message, 'good');
+            UI.showModal("Released from Prison", prisonRes.message);
+            renderLifeDashboard();
+        } else {
+            addLog(prisonRes.message, 'neutral');
+            if (prisonRes.newCellmate) {
+                renderNewCellmateModal(prisonRes.newCellmate);
+            } else {
+                renderPrisonDashboard();
+            }
+        }
+        if (typeof saveGame === "function") saveGame();
+        return;
+    }
     
     // 1. Mortality Check
     const currentHealth = user.stats?.health ?? user.health ?? 100; 
@@ -64,6 +88,8 @@ export function ageUp() {
     // Process tenant default popups first, then funerals, then render dashboard
     processNextTenantDefaultEvent();
     
+    captureAnnualSnapshot(currentState);
+
     if (typeof saveGame === "function") {
         saveGame();
     }
@@ -155,6 +181,9 @@ export async function renderDeathScreen(user, cause) {
             </div>
             <div class="w-full space-y-3">
                 ${childrenOptionsHtml}
+                <button data-action="openTimeMachineModal" class="w-full py-3.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-extrabold rounded-xl shadow-lg transition flex items-center justify-center gap-2 border border-cyan-400/30">
+                    <i class="fas fa-hourglass-half text-amber-300"></i> Time Machine: Undo Death
+                </button>
                 <button data-action="resetGame" class="w-full btn-primary text-white font-bold py-4 rounded-xl text-lg mt-4 shadow-lg">
                     Start New Life
                 </button>
@@ -178,33 +207,38 @@ export async function renderDeathScreen(user, cause) {
             const data = await response.json();
             const eulogyContainer = document.getElementById('eulogy-container');
             
-            // Remove centering classes so paragraph flows naturally
-            eulogyContainer.classList.remove('flex', 'items-center', 'justify-center');
-            
-            eulogyContainer.innerHTML = `
-                <h3 class="text-sm font-bold text-slate-400 mb-2 uppercase tracking-wider text-left">Life Summary</h3>
-                <div class="relative w-full">
-                    <p id="eulogy-text" class="text-slate-300 italic text-sm text-left leading-relaxed line-clamp-5 overflow-hidden">"${data.eulogy}"</p>
-                    <button id="eulogy-view-more" data-action="showFullEulogy" class="hidden mt-3 text-blue-400 hover:text-blue-300 text-xs font-bold uppercase tracking-wider text-left w-full">View More &rarr;</button>
-                </div>
-            `;
-            
-            state.gameState.currentEulogy = data.eulogy;
-            
-            setTimeout(() => {
-                const p = document.getElementById('eulogy-text');
-                const btn = document.getElementById('eulogy-view-more');
-                if (p && btn && p.scrollHeight > p.clientHeight) {
-                    btn.classList.remove('hidden');
-                }
-            }, 50);
+            // Guard: user may have navigated away before fetch resolved
+            if (eulogyContainer) {
+                // Remove centering classes so paragraph flows naturally
+                eulogyContainer.classList.remove('flex', 'items-center', 'justify-center');
+                
+                eulogyContainer.innerHTML = `
+                    <h3 class="text-sm font-bold text-slate-400 mb-2 uppercase tracking-wider text-left">Life Summary</h3>
+                    <div class="relative w-full">
+                        <p id="eulogy-text" class="text-slate-300 italic text-sm text-left leading-relaxed line-clamp-5 overflow-hidden">"${data.eulogy}"</p>
+                        <button id="eulogy-view-more" data-action="showFullEulogy" class="hidden mt-3 text-blue-400 hover:text-blue-300 text-xs font-bold uppercase tracking-wider text-left w-full">View More &rarr;</button>
+                    </div>
+                `;
+                
+                state.gameState.currentEulogy = data.eulogy;
+                
+                setTimeout(() => {
+                    const p = document.getElementById('eulogy-text');
+                    const btn = document.getElementById('eulogy-view-more');
+                    if (p && btn && p.scrollHeight > p.clientHeight) {
+                        btn.classList.remove('hidden');
+                    }
+                }, 50);
+            }
 
         } else {
-            document.getElementById('eulogy-container').style.display = 'none';
+            const el = document.getElementById('eulogy-container');
+            if (el) el.style.display = 'none';
         }
     } catch (e) {
         console.error("Failed to fetch eulogy", e);
-        document.getElementById('eulogy-container').style.display = 'none';
+        const el = document.getElementById('eulogy-container');
+        if (el) el.style.display = 'none';
     }
 }
 
@@ -350,10 +384,41 @@ function handleFinances(user) {
 
     // 2. Job Salary + annual adjustments
     if (user.jobTitle) {
-        user.money += user.jobSalary;
-        if (user.hasSeenJobSalary) {
-            addLog(`Earned ${Utils.formatMoney(user.jobSalary)} as a ${user.jobTitle}.`, 'good');
-        }
+        if (user.careerTrack === 'mafia_syndicate') {
+            const crimes = user.mafiaCrimesThisYear || 0;
+            if (crimes < 3) {
+                addLog(`You failed to meet your Syndicate quota (${crimes}/3). The boss had you beaten. No pay this year.`, 'bad');
+                user.health = Math.max(0, (user.health || 100) - 25);
+                user.yearsInRole = (user.yearsInRole || 0); // No progress
+            } else {
+                user.money += user.jobSalary;
+                addLog(`You met your Syndicate quota and received your cut of ${Utils.formatMoney(user.jobSalary)}.`, 'good');
+                user.yearsInRole = (user.yearsInRole || 0) + 1;
+                
+                // Mafia Promotions
+                const track = SPECIAL_CAREER_TRACKS.find(t => t.key === 'mafia_syndicate');
+                const lvlIdx = user.careerLevel || 0;
+                const level = track?.levels[lvlIdx];
+                const nextLevel = track?.levels[lvlIdx + 1];
+
+                if (nextLevel && level.minYears !== null && user.yearsInRole >= level.minYears) {
+                    if (Math.random() < 0.6) { // 60% chance to promote when eligible
+                        user.careerLevel++;
+                        const nextSalary = GameLogic.calculateScaledSalary(nextLevel.salary, user.city);
+                        user.jobTitle = nextLevel.title;
+                        user.jobSalary = nextSalary;
+                        user.yearsInRole = 0;
+                        addLog(`You've been promoted to ${nextLevel.title} in the Syndicate! Cut: ${Utils.formatMoney(user.jobSalary)}/yr.`, 'major');
+                    }
+                }
+            }
+            user.mafiaCrimesThisYear = 0;
+            user.careerActionTaken = false;
+        } else {
+            user.money += user.jobSalary;
+            if (user.hasSeenJobSalary) {
+                addLog(`Earned ${Utils.formatMoney(user.jobSalary)} as a ${user.jobTitle}.`, 'good');
+            }
 
         // Annual cost-of-living raise (~2%, silent)
         user.jobSalary += Math.max(500, Math.floor(user.jobSalary * 0.02));
@@ -428,6 +493,7 @@ function handleFinances(user) {
                 user.careerActionTaken = false; user.hasSeenJobSalary = false;
             }
         }
+        }
     }
 
     // 3. Living Expenses
@@ -444,7 +510,7 @@ function handleFinances(user) {
 
     // 4. Student Loans
     const yearlyStudentLoanPayment = GameLogic.addStudentLoanPayment(user.age, user.studentLoans, user.isStudent); 
-    user.monthlyOutflow += yearlyStudentLoanPayment;
+    user.monthlyOutflow = (user.monthlyOutflow || 0) + yearlyStudentLoanPayment;
     user.studentLoans -= yearlyStudentLoanPayment;
 
     // 5. Active Health Costs
@@ -665,7 +731,7 @@ function handleRelationships(user) {
         rel.status = GameLogic.calculateRelationshipDecay(previousStatus, rel.interactedThisYear, rel.category, user.age);
         
         // Category shift logic
-        const newCategory = GameLogic.checkRelationshipCategoryShift(rel.category, rel.status);
+        const newCategory = GameLogic.checkRelationshipCategoryShift(rel.category, rel.status, rel.type);
         if (newCategory) {
             if (newCategory === 'enemy') {
                 addLog(`${rel.name} is now your Enemy due to neglect!`, 'bad');
@@ -735,11 +801,15 @@ export function renderLifeDashboard(maybeGameState) {
         console.warn("renderLifeDashboard called before game state existed.");
         return;}
     const user = currentState.user;
+    if (user && user.inPrison) {
+        renderPrisonDashboard();
+        return;
+    }
     //Update the Header Bar using the UI Manager
     //    We assume 'game' holds the key stats needed for the header.
     UI.updateHeader(user);
     const avatarElem = get('avatar-container');
-    if (user.username && avatarElem) avatarElem.innerHTML = renderAvatar(user);
+    if ((user.name || user.username) && avatarElem) avatarElem.innerHTML = renderAvatar(user);
     const isCompact = localStorage.getItem('life_game_compact') === 'true';
 
 // Generate the Life Log HTML 
@@ -782,7 +852,7 @@ export function renderLifeDashboard(maybeGameState) {
 
     //Define the Final HTML String
     const dashboardHTML = `
-        <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
+        <div class="flex flex-col h-full max-w-lg mx-auto">
             ${vipBannerHtml}
             <div class="flex-1 overflow-y-auto mb-4 bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
                 <h3 class="font-bold text-slate-300 mb-4 sticky top-0 bg-transparent backdrop-blur-md py-1 border-b border-slate-700/50">Life History</h3>
@@ -835,6 +905,10 @@ export function addLog(msg, type = 'neutral') {
     else if (type === 'bad') color = 'text-red-400';
     else if (type === 'major') color = 'text-yellow-400 font-bold';
     else if (type === 'green') color = 'text-green-400';
+    if (!Array.isArray(state.gameState?.lifeLog)) {
+        if (state.gameState) state.gameState.lifeLog = [];
+        else return;
+    }
     //is there a log for this age?
     let ageLog = state.gameState.lifeLog.find(l => l.age === currentAge);
     if (ageLog) {

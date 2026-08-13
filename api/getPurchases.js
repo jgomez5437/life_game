@@ -1,21 +1,23 @@
 import { sql } from '@vercel/postgres';
+import { verifyAuth } from './lib/verifyAuth.js';
 
 export default async function handler(request, response) {
   if (request.method !== 'GET') {
     return response.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { userAuthId } = request.query;
-
-  if (!userAuthId) {
-    return response.status(400).json({ error: 'Missing userAuthId query parameter' });
+  let authUserId;
+  try {
+    authUserId = await verifyAuth(request);
+  } catch (error) {
+    return response.status(401).json({ error: error.message });
   }
 
   try {
     const result = await sql`
       SELECT DISTINCT pack_id 
       FROM user_purchases 
-      WHERE auth0_id = ${userAuthId};
+      WHERE auth0_id = ${authUserId};
     `;
 
     const purchases = result.rows.map(row => row.pack_id);

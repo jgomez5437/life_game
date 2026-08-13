@@ -150,7 +150,8 @@ const renderFuneralScreen = (deceased) => {
     }
 
     let optionsHtml = '';
-    if (isFamily) {
+    // Minors (< 18) are not expected to plan funerals, even for family members
+    if (isFamily && user.age >= 18) {
         optionsHtml = `
             <button data-action="chooseFuneralType" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-500 text-white font-bold py-3 px-4 rounded-xl mb-3 flex items-center justify-between transition group">
                 <div class="flex items-center gap-3">
@@ -209,7 +210,7 @@ const renderFuneralScreen = (deceased) => {
                         <i class="fas fa-home"></i>
                     </div>
                     <div class="text-left">
-                        <div class="text-white font-bold">Skip Funeral</div>
+                        <div class="text-white font-bold">Not Attend Funeral</div>
                         <div class="text-xs text-slate-400">Stay home</div>
                     </div>
                 </div>

@@ -8,13 +8,14 @@ import { Utils, COUNTRIES_DATA } from '../../ui/utils.js';
 import { AvatarLogic } from '../../core/avatarLogic.js';
 import { renderAvatar } from '../../ui/avatarRenderer.js';
 import { hasPurchasedPack } from '../store/storeScreen.js';
+import { captureAnnualSnapshot } from '../../core/timeMachine.js';
 
 //Character creation screen
 const get = id => document.getElementById(id);
 let selectedGender = 'male';
 
 export function updateCityDropdown(countryName) {
-    const selectedCountry = countryName || (get('inp-country') ? get('inp-country').value : 'United States');
+    const selectedCountry = (typeof countryName === 'string' ? countryName : null) || (get('inp-country') ? get('inp-country').value : 'United States');
     const countryObj = COUNTRIES_DATA.find(c => c.name === selectedCountry) || COUNTRIES_DATA[0];
     const citySelect = get('inp-city');
     if (citySelect) {
@@ -130,6 +131,9 @@ export function randomizeAllTraits() {
 }
 
 export const renderCharCreation = () => {
+    if (typeof window !== 'undefined') {
+        window.renderCharCreation = renderCharCreation;
+    }
     UI.resetHeader();
     draftAppearance = AvatarLogic.generateRandomAppearance('draft-' + Math.random(), selectedGender);
 
@@ -332,11 +336,28 @@ export async function submitCharacter() {
                     looks: Math.floor(Math.random() * 56) + 40
                 };
             }
+            let savedPurchases = [];
+            try {
+                const storedP = localStorage.getItem('life_game_purchases');
+                if (storedP) savedPurchases = JSON.parse(storedP);
+            } catch (e) {}
+
+            let activeSlotId = 'slot_1';
+            try {
+                const rawStore = localStorage.getItem('life_game_slots');
+                if (rawStore) {
+                    const storeObj = JSON.parse(rawStore);
+                    if (storeObj.activeSlotId) activeSlotId = storeObj.activeSlotId;
+                }
+            } catch (e) {}
+
             userData = {
                 username: finalName,
                 gender: gender,
                 country: country,
                 city: city,
+                purchases: savedPurchases,
+                _slotId: activeSlotId,
                 stats: {
                     ...initialStats,
                     money: 0
@@ -351,6 +372,7 @@ export async function submitCharacter() {
                 relationships: startingFamily // Inject before load
             };
             loadAndRenderGame(userData);
+            if (state.gameState) state.gameState._slotId = activeSlotId;
         }
 
         // --- PARENTAGE LOGIC ---
@@ -376,6 +398,12 @@ export async function submitCharacter() {
         // Render the UI only after all state has been initialized
         // Note: updateGameInfo/loadAndRenderGame should be responsible for calling this, 
         // but if left here, it will execute after gameState exists.
+        captureAnnualSnapshot(state.gameState);
+        import('../../core/saveSlotManager.js').then(m => {
+            if (m && typeof m.saveToSlot === 'function') {
+                m.saveToSlot(state.gameState._slotId);
+            }
+        }).catch(() => {});
         renderLifeDashboard(state.gameState);
 
     } catch (error) {

@@ -246,8 +246,22 @@ export const Utils = {
                 const serializedState = JSON.stringify(currentState);
                 localStorage.setItem(Utils.guestStorage.SAVE_KEY, serializedState);
                 console.log("Game saved successfully.");
+                return true;
             } catch (err) {
                 console.error("Save failed:", err);
+                // Alert user so they know their progress may not be saved
+                try {
+                    const alertEl = document.getElementById('save-failure-alert');
+                    if (!alertEl) {
+                        const toast = document.createElement('div');
+                        toast.id = 'save-failure-alert';
+                        toast.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:99999;background:#7f1d1d;border:1px solid #ef4444;color:#fca5a5;padding:10px 18px;border-radius:10px;font-size:12px;font-weight:600;text-align:center;max-width:90vw;';
+                        toast.textContent = '⚠️ Save failed — storage full. Clear browser data or your progress may be lost.';
+                        document.body.appendChild(toast);
+                        setTimeout(() => toast.remove(), 8000);
+                    }
+                } catch (uiErr) {}
+                return false;
             }
         },
 

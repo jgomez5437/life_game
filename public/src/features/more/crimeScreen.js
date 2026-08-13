@@ -1,18 +1,29 @@
 import { GameLogic } from '../../core/gameLogic.js';
 import { state } from '../../core/state.js';
+import { saveGame } from '../../core/main.js';
 import { renderLifeDashboard, addLog } from '../player/mainScreen.js';
 import { renderMoreDashboard } from './moreScreen.js';
+import { renderPrisonDashboard } from './prisonScreen.js';
+import { renderCareerManager } from '../career/jobCareerManagerScreen.js';
 import { UI } from '../../ui/ui.js';
 import { Utils } from '../../ui/utils.js';
 
 const get = id => document.getElementById(id);
+
+function returnFromCrimeOrArrest(user) {
+    if (user && user.careerTrack === 'mafia_syndicate') {
+        renderCareerManager();
+    } else {
+        renderCrimeDashboard();
+    }
+}
 
 export function renderCrimeDashboard() {
     const user = state.gameState.user;
     const age = user.age || 0;
 
     if (age < 12) {
-        UI.showModal("Too Young", "You must be at least 12 years old to engage in juvenile mischief or crime.");
+        UI.showModal("Too Young", "You must be at least 12 years old to engage in mischief or crime.");
         renderMoreDashboard();
         return;
     }
@@ -26,7 +37,7 @@ export function renderCrimeDashboard() {
     const heistCrimes = crimesList.filter(c => c.category === 'heist');
 
     get('game-container').innerHTML = `
-        <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
+        <div class="flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4 flex items-center justify-between">
                 <button data-action="renderMoreDashboard" class="text-slate-400 hover:text-white text-xs flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition border border-slate-700/50">
                     <i class="fas fa-arrow-left"></i> Back to More Options
@@ -39,16 +50,16 @@ export function renderCrimeDashboard() {
                 </div>
                 <div>
                     <h2 class="text-2xl font-bold text-white">Underworld & Crime</h2>
-                    <p class="text-slate-400 text-xs">High-risk activities, juvenile mischief, street crime, and heists.</p>
+                    <p class="text-slate-400 text-xs">High-risk activities, mischief, street crime, and heists.</p>
                 </div>
             </div>
 
             <div class="flex-1 overflow-y-auto pb-6 space-y-5 mt-2">
 
-                <!-- JUVENILE MISCHIEF (Ages 12+) -->
+                <!-- MISCHIEF -->
                 <div class="space-y-2">
                     <div class="text-xs font-bold uppercase tracking-wider text-amber-400 px-1 flex items-center gap-1.5">
-                        <i class="fas fa-ghost"></i> Juvenile Mischief (Ages 12-17)
+                        <i class="fas fa-ghost"></i> Mischief
                     </div>
                     <div class="grid grid-cols-1 gap-2">
                         ${juvenileCrimes.map(c => renderCrimeCard(c)).join('')}
@@ -56,7 +67,7 @@ export function renderCrimeDashboard() {
                 </div>
 
                 ${!isTeen ? `
-                <!-- PETTY & STREET CRIMES (Ages 18+) -->
+                <!-- PETTY & STREET CRIMES -->
                 <div class="space-y-2">
                     <div class="text-xs font-bold uppercase tracking-wider text-emerald-400 px-1 flex items-center gap-1.5">
                         <i class="fas fa-user-ninja"></i> Street & Petty Crimes
@@ -66,7 +77,7 @@ export function renderCrimeDashboard() {
                     </div>
                 </div>
 
-                <!-- VIOLENT CRIMES (Ages 18+) -->
+                <!-- VIOLENT CRIMES -->
                 <div class="space-y-2">
                     <div class="text-xs font-bold uppercase tracking-wider text-red-400 px-1 flex items-center gap-1.5">
                         <i class="fas fa-skull"></i> Violent Crimes
@@ -76,7 +87,7 @@ export function renderCrimeDashboard() {
                     </div>
                 </div>
 
-                <!-- HIGH-STAKES HEISTS (Ages 18+) -->
+                <!-- HIGH-STAKES HEISTS -->
                 <div class="space-y-2">
                     <div class="text-xs font-bold uppercase tracking-wider text-purple-400 px-1 flex items-center gap-1.5">
                         <i class="fas fa-sack-dollar"></i> High-Stakes Heists
@@ -177,6 +188,8 @@ export function commitCrimeAction(crimeId) {
     UI.hideModal();
 
     const result = GameLogic.attemptCrime(crimeId, user, targetPersonId);
+
+    if (typeof saveGame === 'function') saveGame();
 
     UI.updateHeader(user);
 
@@ -333,7 +346,7 @@ export function submitBribeAction() {
     if (result.outcome === 'escaped') {
         addLog(result.message, 'good');
         UI.showModal("Escaped Custody!", result.message);
-        renderCrimeDashboard();
+        returnFromCrimeOrArrest(user);
     } else {
         addLog(result.message, 'bad');
         showArrestModal(user.pendingTrial?.crime);
@@ -349,7 +362,7 @@ export function handleArrestChoice(choice) {
     if (result.outcome === 'escaped') {
         addLog(result.message, 'good');
         UI.showModal("Escaped Custody!", result.message);
-        renderCrimeDashboard();
+        returnFromCrimeOrArrest(user);
     } else if (result.outcome === 'flee_failed') {
         addLog(result.message, 'bad');
         showArrestModal(user.pendingTrial?.crime);
@@ -358,17 +371,24 @@ export function handleArrestChoice(choice) {
     }
 }
 
-export function showCourtArraignmentModal() {
+export function showCourtArraignmentModal(errorMsg = null) {
     const user = state.gameState.user;
     const pending = user.pendingTrial;
 
     if (!pending) {
-        renderCrimeDashboard();
+        returnFromCrimeOrArrest(user);
         return;
     }
 
     const html = `
         <div class="text-left space-y-4">
+            ${errorMsg ? `
+                <div class="bg-red-950/80 border border-red-700/80 p-3 rounded-xl text-xs text-red-300 font-bold flex items-center gap-2">
+                    <i class="fas fa-exclamation-circle text-red-400"></i>
+                    <span>${errorMsg}</span>
+                </div>
+            ` : ''}
+
             <div class="bg-slate-800 p-3.5 rounded-xl border border-slate-700 space-y-1">
                 <div class="text-xs font-bold uppercase tracking-wider text-indigo-400">State District Court Arraignment</div>
                 <h3 class="text-lg font-bold text-white">Pending Charge: ${pending.crime.name}</h3>
@@ -382,7 +402,7 @@ export function showCourtArraignmentModal() {
                 <button data-action="selectLegalCounsel" data-args="&apos;public_defender&apos;" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 p-3 rounded-xl text-left transition flex items-center justify-between">
                     <div>
                         <div class="font-bold text-white text-sm">Public Defender</div>
-                        <div class="text-xs text-slate-400">Court-appointed (25% Base Win Rate)</div>
+                        <div class="text-xs text-slate-400">Court-appointed public defender</div>
                     </div>
                     <span class="text-xs font-bold text-emerald-400">FREE</span>
                 </button>
@@ -390,7 +410,7 @@ export function showCourtArraignmentModal() {
                 <button data-action="selectLegalCounsel" data-args="&apos;private_attorney&apos;" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 p-3 rounded-xl text-left transition flex items-center justify-between">
                     <div>
                         <div class="font-bold text-white text-sm">Criminal Defense Attorney</div>
-                        <div class="text-xs text-slate-400">Experienced counsel (55% Base Win Rate)</div>
+                        <div class="text-xs text-slate-400">Experienced private defense counsel</div>
                     </div>
                     <span class="text-xs font-bold text-white">${Utils.formatMoney(2500)}</span>
                 </button>
@@ -400,7 +420,7 @@ export function showCourtArraignmentModal() {
                         <div class="font-bold text-amber-300 text-sm flex items-center gap-1.5">
                             <i class="fas fa-crown text-amber-400"></i> High-Powered Law Firm
                         </div>
-                        <div class="text-xs text-slate-400">Elite trial defense (85% Base Win Rate)</div>
+                        <div class="text-xs text-slate-400">Elite trial defense team</div>
                     </div>
                     <span class="text-xs font-bold text-amber-400">${Utils.formatMoney(25000)}</span>
                 </button>
@@ -416,11 +436,12 @@ export function selectLegalCounsel(lawyerTier) {
     const result = GameLogic.calculateTrialVerdict(user, lawyerTier);
 
     if (result && result.error) {
-        UI.showModal("Insufficient Funds", result.error);
+        showCourtArraignmentModal(result.error);
         return;
     }
 
     UI.updateHeader(user);
+    if (typeof saveGame === 'function') saveGame();
 
     if (result.verdict === 'not_guilty') {
         addLog(result.message, 'good');
@@ -431,21 +452,29 @@ export function selectLegalCounsel(lawyerTier) {
                 <p class="text-xs text-slate-300">The jury returned a verdict of not guilty! You walked out of the courtroom a free individual.</p>
             </div>
         `);
+        returnFromCrimeOrArrest(user);
     } else {
         addLog(result.message, 'bad');
-        UI.showModal("Convicted & Sentenced", `
+
+        const isMafia = user.careerTrack === 'mafia_syndicate';
+        const jobStatusText = isMafia ? 'Retained (Syndicate Member)' : (result.crime.category !== 'juvenile' ? 'Terminated' : 'N/A');
+        const nextScreenAction = user.inPrison ? 'renderPrisonDashboard' : (isMafia ? 'renderCareerManager' : 'renderCrimeDashboard');
+
+        UI.showCustomModal("Convicted & Sentenced", `
             <div class="text-center space-y-3">
                 <div class="text-4xl">👨‍⚖️</div>
                 <h3 class="text-xl font-bold text-red-400">GUILTY VERDICT</h3>
                 <p class="text-xs text-slate-300">The judge read your formal sentence: <strong>${result.sentenceYears > 0 ? `${result.sentenceYears} years` : 'probation'}</strong> and <strong>${Utils.formatMoney(result.fine)}</strong> in court restitution.</p>
-                <div class="bg-slate-900 p-2.5 rounded-lg text-xs text-slate-400 text-left">
-                    • Court Fine Deducted: ${Utils.formatMoney(result.fine)}<br>
-                    • Active Job Terminated: ${result.crime.category !== 'juvenile' ? 'Yes' : 'N/A'}<br>
-                    • Criminal Record Updated: Permanent Felony Tag
+                <div class="bg-slate-900 p-2.5 rounded-lg text-xs text-slate-400 text-left space-y-1">
+                    <div>• Court Fine Deducted: <span class="text-red-400">${Utils.formatMoney(result.fine)}</span></div>
+                    <div>• Employment Status: <span class="text-slate-200">${jobStatusText}</span></div>
+                    <div>• Criminal Record: <span class="text-amber-400">Permanent Record Updated</span></div>
                 </div>
+                <button data-action="${nextScreenAction}" class="w-full bg-red-700 hover:bg-red-600 text-white font-bold py-2.5 rounded-lg text-xs transition">
+                    ${user.inPrison ? 'Enter Prison System' : 'Continue'}
+                </button>
             </div>
         `);
     }
-
-    renderCrimeDashboard();
 }
+

@@ -57,6 +57,23 @@ export const STORE_PACKS = [
         status: 'available'
     },
     {
+        id: 'mafia_syndicate',
+        title: 'Mafia Crime Syndicate Career',
+        category: 'career',
+        price: '$2.99',
+        badge: 'New',
+        badgeColor: 'bg-red-500/20 text-red-300 border-red-500/40',
+        icon: 'fa-user-ninja text-red-400',
+        desc: 'Join La Cosa Nostra and rise from street Muscle to the Don. A high-risk, high-reward life of crime.',
+        features: [
+            'Exclusive Premium Career Track',
+            'Commit 5 unique crimes (Shakedowns, Smuggling, Assassinations)',
+            'Earn millions as a Mafia Boss',
+            'Retain your underworld status even if you go to prison'
+        ],
+        status: 'available'
+    },
+    {
         id: 'vip_supporter',
         title: 'VIP Supporter & Unique Theme',
         category: 'cosmetic',
@@ -150,17 +167,19 @@ let currentActiveTab = 'all';
  */
 export function hasPurchasedPack(packId) {
     const user = state.gameState?.user;
-    if (user && !user.purchases) {
+    if (user && !Array.isArray(user.purchases)) {
         user.purchases = [];
     }
-    let purchases = user?.purchases || [];
-    if (purchases.length === 0) {
-        try {
-            const stored = localStorage.getItem('life_game_purchases');
-            if (stored) purchases = JSON.parse(stored);
-        } catch (e) {}
-    }
-    return Array.isArray(purchases) && purchases.includes(packId);
+    let userP = user?.purchases || [];
+    let localP = [];
+    try {
+        const stored = localStorage.getItem('life_game_purchases');
+        if (stored) localP = JSON.parse(stored);
+    } catch (e) {}
+
+    const allPurchases = new Set([...userP, ...localP]);
+
+    return allPurchases.has(packId);
 }
 
 /**
@@ -311,6 +330,10 @@ function renderPackCard(pack) {
                     ` : pack.id === 'vip_supporter' ? `
                         <button data-action="renderVipLoungeModal" class="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition flex items-center gap-1">
                             <i class="fas fa-gem"></i> VIP Lounge
+                        </button>
+                    ` : pack.id === 'time_machine' ? `
+                        <button data-action="openTimeMachineModal" class="px-4 py-2 rounded-xl text-xs font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-500/30 transition flex items-center gap-1">
+                            <i class="fas fa-hourglass-half"></i> Use Perk
                         </button>
                     ` : `
                         <button class="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-950/60 text-emerald-400 border border-emerald-500/40 cursor-default">
@@ -486,14 +509,47 @@ export async function buyPack(packId) {
  * Simulates sandbox approval for testing entitlement activation
  */
 function simulateSandboxPurchase(pack) {
-    const user = state.gameState.user;
-    if (!user.purchases) user.purchases = [];
-    
-    if (!user.purchases.includes(pack.id)) {
-        user.purchases.push(pack.id);
+    let localP = [];
+    try {
+        const stored = localStorage.getItem('life_game_purchases');
+        if (stored) localP = JSON.parse(stored);
+    } catch (e) {}
+
+    if (!localP.includes(pack.id)) {
+        localP.push(pack.id);
     }
 
-    saveGame();
+    try {
+        localStorage.setItem('life_game_purchases', JSON.stringify(localP));
+    } catch (e) {}
+
+    const user = state.gameState?.user;
+    if (user) {
+        if (!Array.isArray(user.purchases)) user.purchases = [];
+        if (!user.purchases.includes(pack.id)) user.purchases.push(pack.id);
+        saveGame();
+    }
+
+    // Sync pack entitlement across all saved slots in storage
+    import('../../core/saveSlotManager.js').then(m => {
+        if (m && typeof m.getSlotsStore === 'function') {
+            const store = m.getSlotsStore();
+            let modified = false;
+            Object.keys(store.slots || {}).forEach(k => {
+                const s = store.slots[k];
+                if (s.data && s.data.user) {
+                    if (!Array.isArray(s.data.user.purchases)) s.data.user.purchases = [];
+                    if (!s.data.user.purchases.includes(pack.id)) {
+                        s.data.user.purchases.push(pack.id);
+                        modified = true;
+                    }
+                }
+            });
+            if (modified && typeof m.persistSlotsStore === 'function') {
+                m.persistSlotsStore(store);
+            }
+        }
+    }).catch(() => {});
 
     const celebrationHTML = `
         <div class="text-center py-2 space-y-3">
@@ -516,6 +572,11 @@ function simulateSandboxPurchase(pack) {
         confirmText: "Awesome!",
         onConfirm: () => {
             renderStoreScreen();
+            import('../../core/saveSlotManager.js').then(m => {
+                if (m && typeof m.renderSaveSlotManagerModal === 'function') {
+                    m.renderSaveSlotManagerModal();
+                }
+            }).catch(() => {});
         }
     });
 }
@@ -651,4 +712,98 @@ export function applyGodModeStats() {
     UI.updateHeader(user);
     UI.showModal("Stats Updated", "Character stats have been updated via God Mode.");
 }
+
+/**
+ * Renders the God Mode Hub Screen/Modal with options to edit stats and avatar appearance.
+ */
+export function openGodModeHubModal() {
+    const isOwned = hasPurchasedPack('god_mode');
+
+    if (!isOwned) {
+        UI.showCustomModal({
+            title: "God Mode Locked",
+            content: `
+                <div class="space-y-3 text-left">
+                    <div class="bg-slate-900 p-3.5 rounded-xl border border-amber-500/40 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-amber-950/60 text-amber-400 border border-amber-500/40 flex items-center justify-center text-lg shrink-0">
+                            <i class="fas fa-bolt"></i>
+                        </div>
+                        <div>
+                            <div class="text-sm font-bold text-white">God Mode & Stat Editor</div>
+                            <div class="text-xs text-amber-400 font-semibold">$2.99 One-Time Purchase</div>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Unlock <strong>God Mode</strong> to freely edit your character's stats on demand, tune your looks, smarts, and health, and customize full vector SVG avatar appearances for yourself and your social circle.
+                    </p>
+                </div>
+            `,
+            confirmText: "Unlock God Mode ($2.99)",
+            cancelText: "Cancel",
+            onConfirm: () => buyPack('god_mode')
+        });
+        return;
+    }
+
+    const htmlContent = `
+        <div class="space-y-3 text-left">
+            <div class="bg-gradient-to-r from-amber-950/60 via-slate-900 to-slate-900 border border-amber-500/30 p-3.5 rounded-xl flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center text-xl shrink-0">
+                        <i class="fas fa-crown"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-extrabold text-white">God Mode Control Studio</h3>
+                        <p class="text-xs text-amber-300">Edit character stats & avatar appearance</p>
+                    </div>
+                </div>
+                <span class="text-[10px] uppercase font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-500/40 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <i class="fas fa-check"></i> Active
+                </span>
+            </div>
+
+            <div class="grid grid-cols-1 gap-2.5 pt-1">
+                <!-- Option 1: Stat Editor -->
+                <div class="bg-slate-900 border border-slate-700 hover:border-amber-500/40 p-3.5 rounded-xl transition flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center justify-center text-lg shrink-0">
+                            <i class="fas fa-sliders-h"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-xs font-bold text-white">Core Stat Editor</h4>
+                            <p class="text-[11px] text-slate-400 mt-0.5">Tune Health, Happiness, Smarts & Looks on demand</p>
+                        </div>
+                    </div>
+                    <button data-action="renderGodModeModal" class="px-3 py-2 rounded-xl text-xs font-extrabold bg-amber-500 hover:bg-amber-400 text-slate-950 transition shrink-0">
+                        Edit Stats
+                    </button>
+                </div>
+
+                <!-- Option 2: Avatar Appearance Studio -->
+                <div class="bg-slate-900 border border-slate-700 hover:border-amber-500/40 p-3.5 rounded-xl transition flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/30 flex items-center justify-center text-lg shrink-0">
+                            <i class="fas fa-user-edit"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-xs font-bold text-white">Avatar Appearance Studio</h4>
+                            <p class="text-[11px] text-slate-400 mt-0.5">Customize hair, face, eyes, skin tone & accessories</p>
+                        </div>
+                    </div>
+                    <button data-action="renderGodModeAvatarModal" data-args="'self'" class="px-3 py-2 rounded-xl text-xs font-extrabold bg-purple-600 hover:bg-purple-500 text-white transition shrink-0">
+                        Edit Avatar
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    UI.showCustomModal({
+        title: "God Mode Control Center",
+        content: htmlContent,
+        confirmText: "Close",
+        onConfirm: () => {}
+    });
+}
+
 
