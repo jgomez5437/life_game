@@ -10,7 +10,7 @@ export const renderLoginScreen = () => {
         
         <div class="mb-8 relative">
             <div class="absolute inset-0 bg-blue-500 blur-2xl opacity-20 rounded-full"></div>
-            <img src="favicon.png" class="w-24 h-24 relative z-10 object-contain drop-shadow-lg mx-auto" alt="Start a Life Logo">
+            <i class="fas fa-globe-americas text-8xl text-blue-400 relative z-10 animate-pulse"></i>
         </div>
 
         <h1 class="text-5xl font-bold text-white mb-2 tracking-tight">Start a Life</h1>
