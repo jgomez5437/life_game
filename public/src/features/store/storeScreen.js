@@ -1,4 +1,5 @@
-import { state } from '../../core/state.js';
+import { state, hasPurchasedPack } from '../../core/state.js';
+export { hasPurchasedPack };
 import { saveGame } from '../../core/main.js';
 import { UI } from '../../ui/ui.js';
 
@@ -162,25 +163,7 @@ export const STORE_PACKS = [
 
 let currentActiveTab = 'all';
 
-/**
- * Checks if the current user owns a specified pack ID.
- */
-export function hasPurchasedPack(packId) {
-    const user = state.gameState?.user;
-    if (user && !Array.isArray(user.purchases)) {
-        user.purchases = [];
-    }
-    let userP = user?.purchases || [];
-    let localP = [];
-    try {
-        const stored = localStorage.getItem('life_game_purchases');
-        if (stored) localP = JSON.parse(stored);
-    } catch (e) {}
 
-    const allPurchases = new Set([...userP, ...localP]);
-
-    return allPurchases.has(packId);
-}
 
 /**
  * Renders the primary Store Hub screen.

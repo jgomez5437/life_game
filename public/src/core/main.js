@@ -1,38 +1,363 @@
 import { login, configureAuth } from '../auth/auth.js';
 import { startGuestMode, renderLoginScreen } from '../auth/loginScreen.js';
-import { processQuarter, enterBusinessMode, hireEmployee, layoffEmployee, sellBusiness, purchaseUpgrade, setBusinessTab, selectSupplierDashboard, upgradeHQTier, upgradeMarketingChannel, adjustRoleCount, acceptVCPitch, chooseEventChoice } from '../features/business/businessDashboard.js';
-import { selectIndustry, selectSupplier, renderBusinessSetup, initBusiness } from '../features/business/createBusinessScreen.js';
-import { renderCareerMarket, applyForJob, applyForCareerTrack, joinSpecialCareer, confirmJoinSpecialCareer, answerInterview, retryInterview } from '../features/career/careerJobsScreen.js';
-import { confirmQuitCareer, quitCareer, renderCareerManager, workHarderJob, slackOffJob, attemptMafiaCrime } from '../features/career/jobCareerManagerScreen.js';
-import { renderJobMarket } from '../features/career/partTimeJobsScreen.js';
-import { renderEducation, workHarder, skipSchool, renderClassmates } from '../features/education/manageEducationScreen.js';
-import { attemptEnrollment, openGradEnrollmentModal, attemptGradEnrollment, renderGradSchoolMarket, openUniversityModal } from '../features/career/occupationScreen.js';
-import { selectGender, submitCharacter, renderCharCreation, cycleTrait, randomizeSection, randomizeAllTraits, updateCityDropdown, maxCreationGodStats } from '../features/player/charCreationScreen.js';
-import { ageUp, continueAsChild, renderLifeDashboard, addLog, renderDeathScreen, showFullEulogy } from '../features/player/mainScreen.js';
-import { openPlayerOverviewModal } from '../features/player/playerOverviewScreen.js';
 import { state } from './state.js';
 import { GameLogic } from './gameLogic.js';
-import { renderAssets, renderVehicleManager, repairVehicle, sellVehicle, renderPropertyManager, payOffMortgage, openSellPropertyModal, submitPropertyListing, acceptBuyerOffer, doPropertyMaintenance, doPropertyRenovation, openTenantScreening, acceptTenantLease, evictTenantAction, demandTenantRentPayment, forgiveTenantRent, evictTenantFromEvent, demandTenantRepairPayment, forgiveTenantDamage, renewLeaseSameRate, renewLeaseWithIncrease, declineLeaseRenewal, renderJewelryManager, toggleWearJewelry, toggleInsureJewelry, sellJewelry, openGiftJewelryModal, confirmGiftJewelry, setPrimaryVehicle, toggleInsureVehicle, takeJoyride, openGiftVehicleModal, confirmGiftVehicle } from '../features/assets/assetsScreen.js';
-import { renderShoppingHub, renderVehicleDealer, buyVehicle, buyVehicleCash, buyVehicleLoan, renderRealEstateDealer, buyPropertyCash, buyPropertyMortgage, renderJewelryDealer, buyJewelry } from '../features/assets/goShoppingScreen.js';
-import { renderInvestmentsScreen, switchInvestmentTab, setStockFilter, openStockDetailsModal, openBuyStockModal, confirmBuyStock, openSellStockModal, confirmSellStock, openDepositSavingsModal, confirmDepositSavings, openWithdrawSavingsModal, confirmWithdrawSavings } from '../features/assets/investmentsScreen.js';
-import { renderActivities } from '../features/career/occupationScreen.js';
-import { renderRelationships, renderPersonInteraction, openRelationshipConfirm, spendTimeWithAll, goOutMeetSomeone, openMeetPeopleModal, setAttractionPreference, handleBlindDate, handleDatingApp, renderDatingAppModal, selectDatingAppMatch, handleMeetFriend, handleNightOut, renderLuxeMatchModal, selectLuxeAgePreset, selectLuxeWealthTier, confirmLuxeMatch, handleMakeAMove, confirmHookupChoice, handleEndAffair, handleCheatingConfrontationChoice, handleProposeAction, openRingSelectionModal, proposeWithRing } from '../features/relationships/relationshipScreen.js';
-import { chooseFuneralType, cancelFuneralPlan, confirmFuneralPlan, donateBody, lookTheOtherWay, goToFuneral, skipFuneral, respondNewTeacher, processNextTeacherReplacement } from '../features/relationships/funeralScreen.js';
-import { openWeddingPlanner, confirmWeddingPlan, openNameChangeChoice, chooseNameChange } from '../features/relationships/romanceScreen.js';
-import { renderMoreDashboard, buyGymMembership, cancelGymMembership, visitGymOneTime, startBetterDiet, cancelBetterDiet, visitDoctor, openBlackjackBetting, startBlackjackGame, blackjackHit, blackjackStand, openTravelModal, bookTrip, openDietSelectionModal, selectDiet, openLotteryModal, buyLotteryTicket, openMoveCountryModal, updateRelocateCityDropdown, confirmMoveCountry, askPartnerToMove, confirmMoveAlone, openSkillsModal } from '../features/more/moreScreen.js';
-import { renderCrimeDashboard, openCrimeModal, commitCrimeAction, showArrestModal, openBribeModal, submitBribeAction, handleArrestChoice, showCourtArraignmentModal, selectLegalCounsel } from '../features/more/crimeScreen.js';
-import { renderCasinoHub, openRouletteModal, confirmRouletteBet, confirmRouletteSingleNumberBet, openSlotsModal, confirmSlotsSpin } from '../features/more/casinoScreen.js';
-import { openSettingsModal, triggerManualSave, promptResetGame, toggleSettingSFX, toggleSettingCompact, toggleSettingTheme, applyTheme } from '../features/more/settingsScreen.js';
-import { renderStoreScreen, filterStoreCategory, previewPackDetails, buyPack, restorePurchases, renderGodModeModal, maxGodModeStats, applyGodModeStats, openGodModeHubModal } from '../features/store/storeScreen.js';
-import { renderGodModeAvatarModal, cycleGodModeTrait, randomizeGodModeAvatarTraits, saveGodModeAvatar } from '../features/store/godModeAvatarEditor.js';
-import { grantInstantHighSchool, grantInstantUniversityDegree, grantInstantGradDegree, renderInstantDiplomaHub, claimInstantUniversityMajor } from '../features/education/instantDiploma.js';
-import { renderVipLoungeModal, selectTheme, isVipSupporter } from '../features/store/vipLounge.js';
-import { renderGraveyardModal, showAncestorEulogy } from '../features/player/graveyardScreen.js';
-import { renderPrisonDashboard, setPrisonTab, handleCellmateAction, handleYardWorkout, handleInmateInteract, handleSelectPrisonJob, handleBuyCanteen, handleStudyLaw, handleFileAppeal, handlePrisonVisit, handleSendPrisonLetter, handleConjugalVisit, handleParoleHearing, handlePrisonEscapeAction, openContrabandPhoneModal, submitContrabandPhoneAction, openDealerBuyModal, openDealerSellModal, handleSellContrabandAction, handleSolitaryActivity, openInmateDetailModal, openAttackPromptModal, executeInmateAttack } from '../features/more/prisonScreen.js';
-import { renderTimeMachineModal, rewindToAge } from './timeMachine.js';
-import { renderSaveSlotManagerModal, loadSlot, branchCurrentSave, deleteSlot, startNewLifeInNewSlot, saveToSlot } from './saveSlotManager.js';
 import { Utils } from '../ui/utils.js';
 import { UI } from '../ui/ui.js';
+
+// --- Dynamic Module Lazy Loader ---
+const isJest = typeof process !== 'undefined' && (process.env.JEST_WORKER_ID !== undefined || process.env.NODE_ENV === 'test');
+
+const _staticMods = {};
+if (isJest) {
+    _staticMods.businessDashboard = await import('../features/business/businessDashboard.js');
+    _staticMods.createBusinessScreen = await import('../features/business/createBusinessScreen.js');
+    _staticMods.careerJobsScreen = await import('../features/career/careerJobsScreen.js');
+    _staticMods.jobCareerManagerScreen = await import('../features/career/jobCareerManagerScreen.js');
+    _staticMods.partTimeJobsScreen = await import('../features/career/partTimeJobsScreen.js');
+    _staticMods.manageEducationScreen = await import('../features/education/manageEducationScreen.js');
+    _staticMods.occupationScreen = await import('../features/career/occupationScreen.js');
+    _staticMods.charCreationScreen = await import('../features/player/charCreationScreen.js');
+    _staticMods.mainScreen = await import('../features/player/mainScreen.js');
+    _staticMods.playerOverviewScreen = await import('../features/player/playerOverviewScreen.js');
+    _staticMods.assetsScreen = await import('../features/assets/assetsScreen.js');
+    _staticMods.goShoppingScreen = await import('../features/assets/goShoppingScreen.js');
+    _staticMods.investmentsScreen = await import('../features/assets/investmentsScreen.js');
+    _staticMods.relationshipScreen = await import('../features/relationships/relationshipScreen.js');
+    _staticMods.funeralScreen = await import('../features/relationships/funeralScreen.js');
+    _staticMods.romanceScreen = await import('../features/relationships/romanceScreen.js');
+    _staticMods.moreScreen = await import('../features/more/moreScreen.js');
+    _staticMods.crimeScreen = await import('../features/more/crimeScreen.js');
+    _staticMods.casinoScreen = await import('../features/more/casinoScreen.js');
+    _staticMods.settingsScreen = await import('../features/more/settingsScreen.js');
+    _staticMods.storeScreen = await import('../features/store/storeScreen.js');
+    _staticMods.godModeAvatarEditor = await import('../features/store/godModeAvatarEditor.js');
+    _staticMods.instantDiploma = await import('../features/education/instantDiploma.js');
+    _staticMods.vipLounge = await import('../features/store/vipLounge.js');
+    _staticMods.graveyardScreen = await import('../features/player/graveyardScreen.js');
+    _staticMods.prisonScreen = await import('../features/more/prisonScreen.js');
+    _staticMods.timeMachine = await import('./timeMachine.js');
+    _staticMods.saveSlotManager = await import('./saveSlotManager.js');
+}
+
+const _modCache = new Map();
+const loadMod = (importFn, key) => {
+    if (isJest && _staticMods[key]) {
+        return Promise.resolve(_staticMods[key]);
+    }
+    if (!_modCache.has(importFn)) {
+        _modCache.set(importFn, importFn());
+    }
+    return _modCache.get(importFn);
+};
+const lazy = (importFn, name, key) => async (...args) => {
+    const mod = await loadMod(importFn, key);
+    return mod[name](...args);
+};
+
+// --- Dynamic Feature Screen Proxies ---
+const modBusiness = () => import('../features/business/businessDashboard.js');
+export const processQuarter = lazy(modBusiness, 'processQuarter', 'businessDashboard');
+export const enterBusinessMode = lazy(modBusiness, 'enterBusinessMode', 'businessDashboard');
+export const hireEmployee = lazy(modBusiness, 'hireEmployee', 'businessDashboard');
+export const layoffEmployee = lazy(modBusiness, 'layoffEmployee', 'businessDashboard');
+export const sellBusiness = lazy(modBusiness, 'sellBusiness', 'businessDashboard');
+export const purchaseUpgrade = lazy(modBusiness, 'purchaseUpgrade', 'businessDashboard');
+export const setBusinessTab = lazy(modBusiness, 'setBusinessTab', 'businessDashboard');
+export const selectSupplierDashboard = lazy(modBusiness, 'selectSupplierDashboard', 'businessDashboard');
+export const upgradeHQTier = lazy(modBusiness, 'upgradeHQTier', 'businessDashboard');
+export const upgradeMarketingChannel = lazy(modBusiness, 'upgradeMarketingChannel', 'businessDashboard');
+export const adjustRoleCount = lazy(modBusiness, 'adjustRoleCount', 'businessDashboard');
+export const acceptVCPitch = lazy(modBusiness, 'acceptVCPitch', 'businessDashboard');
+export const chooseEventChoice = lazy(modBusiness, 'chooseEventChoice', 'businessDashboard');
+
+const modCreateBusiness = () => import('../features/business/createBusinessScreen.js');
+export const selectIndustry = lazy(modCreateBusiness, 'selectIndustry', 'createBusinessScreen');
+export const selectSupplier = lazy(modCreateBusiness, 'selectSupplier', 'createBusinessScreen');
+export const renderBusinessSetup = lazy(modCreateBusiness, 'renderBusinessSetup', 'createBusinessScreen');
+export const initBusiness = lazy(modCreateBusiness, 'initBusiness', 'createBusinessScreen');
+
+const modCareerJobs = () => import('../features/career/careerJobsScreen.js');
+export const renderCareerMarket = lazy(modCareerJobs, 'renderCareerMarket', 'careerJobsScreen');
+export const applyForJob = lazy(modCareerJobs, 'applyForJob', 'careerJobsScreen');
+export const applyForCareerTrack = lazy(modCareerJobs, 'applyForCareerTrack', 'careerJobsScreen');
+export const joinSpecialCareer = lazy(modCareerJobs, 'joinSpecialCareer', 'careerJobsScreen');
+export const confirmJoinSpecialCareer = lazy(modCareerJobs, 'confirmJoinSpecialCareer', 'careerJobsScreen');
+export const answerInterview = lazy(modCareerJobs, 'answerInterview', 'careerJobsScreen');
+export const retryInterview = lazy(modCareerJobs, 'retryInterview', 'careerJobsScreen');
+
+const modJobCareerManager = () => import('../features/career/jobCareerManagerScreen.js');
+export const confirmQuitCareer = lazy(modJobCareerManager, 'confirmQuitCareer', 'jobCareerManagerScreen');
+export const quitCareer = lazy(modJobCareerManager, 'quitCareer', 'jobCareerManagerScreen');
+export const renderCareerManager = lazy(modJobCareerManager, 'renderCareerManager', 'jobCareerManagerScreen');
+export const workHarderJob = lazy(modJobCareerManager, 'workHarderJob', 'jobCareerManagerScreen');
+export const slackOffJob = lazy(modJobCareerManager, 'slackOffJob', 'jobCareerManagerScreen');
+export const attemptMafiaCrime = lazy(modJobCareerManager, 'attemptMafiaCrime', 'jobCareerManagerScreen');
+
+const modPartTimeJobs = () => import('../features/career/partTimeJobsScreen.js');
+export const renderJobMarket = lazy(modPartTimeJobs, 'renderJobMarket', 'partTimeJobsScreen');
+
+const modManageEducation = () => import('../features/education/manageEducationScreen.js');
+export const renderEducation = lazy(modManageEducation, 'renderEducation', 'manageEducationScreen');
+export const workHarder = lazy(modManageEducation, 'workHarder', 'manageEducationScreen');
+export const skipSchool = lazy(modManageEducation, 'skipSchool', 'manageEducationScreen');
+export const renderClassmates = lazy(modManageEducation, 'renderClassmates', 'manageEducationScreen');
+
+const modOccupation = () => import('../features/career/occupationScreen.js');
+export const attemptEnrollment = lazy(modOccupation, 'attemptEnrollment', 'occupationScreen');
+export const openGradEnrollmentModal = lazy(modOccupation, 'openGradEnrollmentModal', 'occupationScreen');
+export const attemptGradEnrollment = lazy(modOccupation, 'attemptGradEnrollment', 'occupationScreen');
+export const renderGradSchoolMarket = lazy(modOccupation, 'renderGradSchoolMarket', 'occupationScreen');
+export const openUniversityModal = lazy(modOccupation, 'openUniversityModal', 'occupationScreen');
+export const renderActivities = lazy(modOccupation, 'renderActivities', 'occupationScreen');
+
+const modCharCreation = () => import('../features/player/charCreationScreen.js');
+export const selectGender = lazy(modCharCreation, 'selectGender', 'charCreationScreen');
+export const submitCharacter = lazy(modCharCreation, 'submitCharacter', 'charCreationScreen');
+export const renderCharCreation = lazy(modCharCreation, 'renderCharCreation', 'charCreationScreen');
+export const cycleTrait = lazy(modCharCreation, 'cycleTrait', 'charCreationScreen');
+export const randomizeSection = lazy(modCharCreation, 'randomizeSection', 'charCreationScreen');
+export const randomizeAllTraits = lazy(modCharCreation, 'randomizeAllTraits', 'charCreationScreen');
+export const updateCityDropdown = lazy(modCharCreation, 'updateCityDropdown', 'charCreationScreen');
+export const maxCreationGodStats = lazy(modCharCreation, 'maxCreationGodStats', 'charCreationScreen');
+
+const modMainScreen = () => import('../features/player/mainScreen.js');
+export const ageUp = lazy(modMainScreen, 'ageUp', 'mainScreen');
+export const continueAsChild = lazy(modMainScreen, 'continueAsChild', 'mainScreen');
+export const renderLifeDashboard = lazy(modMainScreen, 'renderLifeDashboard', 'mainScreen');
+export const addLog = lazy(modMainScreen, 'addLog', 'mainScreen');
+export const renderDeathScreen = lazy(modMainScreen, 'renderDeathScreen', 'mainScreen');
+export const showFullEulogy = lazy(modMainScreen, 'showFullEulogy', 'mainScreen');
+
+const modPlayerOverview = () => import('../features/player/playerOverviewScreen.js');
+export const openPlayerOverviewModal = lazy(modPlayerOverview, 'openPlayerOverviewModal', 'playerOverviewScreen');
+
+const modAssets = () => import('../features/assets/assetsScreen.js');
+export const renderAssets = lazy(modAssets, 'renderAssets', 'assetsScreen');
+export const renderVehicleManager = lazy(modAssets, 'renderVehicleManager', 'assetsScreen');
+export const repairVehicle = lazy(modAssets, 'repairVehicle', 'assetsScreen');
+export const sellVehicle = lazy(modAssets, 'sellVehicle', 'assetsScreen');
+export const renderPropertyManager = lazy(modAssets, 'renderPropertyManager', 'assetsScreen');
+export const payOffMortgage = lazy(modAssets, 'payOffMortgage', 'assetsScreen');
+export const openSellPropertyModal = lazy(modAssets, 'openSellPropertyModal', 'assetsScreen');
+export const submitPropertyListing = lazy(modAssets, 'submitPropertyListing', 'assetsScreen');
+export const acceptBuyerOffer = lazy(modAssets, 'acceptBuyerOffer', 'assetsScreen');
+export const doPropertyMaintenance = lazy(modAssets, 'doPropertyMaintenance', 'assetsScreen');
+export const doPropertyRenovation = lazy(modAssets, 'doPropertyRenovation', 'assetsScreen');
+export const openTenantScreening = lazy(modAssets, 'openTenantScreening', 'assetsScreen');
+export const acceptTenantLease = lazy(modAssets, 'acceptTenantLease', 'assetsScreen');
+export const evictTenantAction = lazy(modAssets, 'evictTenantAction', 'assetsScreen');
+export const demandTenantRentPayment = lazy(modAssets, 'demandTenantRentPayment', 'assetsScreen');
+export const forgiveTenantRent = lazy(modAssets, 'forgiveTenantRent', 'assetsScreen');
+export const evictTenantFromEvent = lazy(modAssets, 'evictTenantFromEvent', 'assetsScreen');
+export const demandTenantRepairPayment = lazy(modAssets, 'demandTenantRepairPayment', 'assetsScreen');
+export const forgiveTenantDamage = lazy(modAssets, 'forgiveTenantDamage', 'assetsScreen');
+export const renewLeaseSameRate = lazy(modAssets, 'renewLeaseSameRate', 'assetsScreen');
+export const renewLeaseWithIncrease = lazy(modAssets, 'renewLeaseWithIncrease', 'assetsScreen');
+export const declineLeaseRenewal = lazy(modAssets, 'declineLeaseRenewal', 'assetsScreen');
+export const renderJewelryManager = lazy(modAssets, 'renderJewelryManager', 'assetsScreen');
+export const toggleWearJewelry = lazy(modAssets, 'toggleWearJewelry', 'assetsScreen');
+export const toggleInsureJewelry = lazy(modAssets, 'toggleInsureJewelry', 'assetsScreen');
+export const sellJewelry = lazy(modAssets, 'sellJewelry', 'assetsScreen');
+export const openGiftJewelryModal = lazy(modAssets, 'openGiftJewelryModal', 'assetsScreen');
+export const confirmGiftJewelry = lazy(modAssets, 'confirmGiftJewelry', 'assetsScreen');
+export const setPrimaryVehicle = lazy(modAssets, 'setPrimaryVehicle', 'assetsScreen');
+export const toggleInsureVehicle = lazy(modAssets, 'toggleInsureVehicle', 'assetsScreen');
+export const takeJoyride = lazy(modAssets, 'takeJoyride', 'assetsScreen');
+export const openGiftVehicleModal = lazy(modAssets, 'openGiftVehicleModal', 'assetsScreen');
+export const confirmGiftVehicle = lazy(modAssets, 'confirmGiftVehicle', 'assetsScreen');
+
+const modGoShopping = () => import('../features/assets/goShoppingScreen.js');
+export const renderShoppingHub = lazy(modGoShopping, 'renderShoppingHub', 'goShoppingScreen');
+export const renderVehicleDealer = lazy(modGoShopping, 'renderVehicleDealer', 'goShoppingScreen');
+export const buyVehicle = lazy(modGoShopping, 'buyVehicle', 'goShoppingScreen');
+export const buyVehicleCash = lazy(modGoShopping, 'buyVehicleCash', 'goShoppingScreen');
+export const buyVehicleLoan = lazy(modGoShopping, 'buyVehicleLoan', 'goShoppingScreen');
+export const renderRealEstateDealer = lazy(modGoShopping, 'renderRealEstateDealer', 'goShoppingScreen');
+export const buyPropertyCash = lazy(modGoShopping, 'buyPropertyCash', 'goShoppingScreen');
+export const buyPropertyMortgage = lazy(modGoShopping, 'buyPropertyMortgage', 'goShoppingScreen');
+export const renderJewelryDealer = lazy(modGoShopping, 'renderJewelryDealer', 'goShoppingScreen');
+export const buyJewelry = lazy(modGoShopping, 'buyJewelry', 'goShoppingScreen');
+
+const modInvestments = () => import('../features/assets/investmentsScreen.js');
+export const renderInvestmentsScreen = lazy(modInvestments, 'renderInvestmentsScreen', 'investmentsScreen');
+export const switchInvestmentTab = lazy(modInvestments, 'switchInvestmentTab', 'investmentsScreen');
+export const setStockFilter = lazy(modInvestments, 'setStockFilter', 'investmentsScreen');
+export const openStockDetailsModal = lazy(modInvestments, 'openStockDetailsModal', 'investmentsScreen');
+export const openBuyStockModal = lazy(modInvestments, 'openBuyStockModal', 'investmentsScreen');
+export const confirmBuyStock = lazy(modInvestments, 'confirmBuyStock', 'investmentsScreen');
+export const openSellStockModal = lazy(modInvestments, 'openSellStockModal', 'investmentsScreen');
+export const confirmSellStock = lazy(modInvestments, 'confirmSellStock', 'investmentsScreen');
+export const openDepositSavingsModal = lazy(modInvestments, 'openDepositSavingsModal', 'investmentsScreen');
+export const confirmDepositSavings = lazy(modInvestments, 'confirmDepositSavings', 'investmentsScreen');
+export const openWithdrawSavingsModal = lazy(modInvestments, 'openWithdrawSavingsModal', 'investmentsScreen');
+export const confirmWithdrawSavings = lazy(modInvestments, 'confirmWithdrawSavings', 'investmentsScreen');
+
+const modRelationships = () => import('../features/relationships/relationshipScreen.js');
+export const renderRelationships = lazy(modRelationships, 'renderRelationships', 'relationshipScreen');
+export const renderPersonInteraction = lazy(modRelationships, 'renderPersonInteraction', 'relationshipScreen');
+export const openRelationshipConfirm = lazy(modRelationships, 'openRelationshipConfirm', 'relationshipScreen');
+export const spendTimeWithAll = lazy(modRelationships, 'spendTimeWithAll', 'relationshipScreen');
+export const goOutMeetSomeone = lazy(modRelationships, 'goOutMeetSomeone', 'relationshipScreen');
+export const openMeetPeopleModal = lazy(modRelationships, 'openMeetPeopleModal', 'relationshipScreen');
+export const setAttractionPreference = lazy(modRelationships, 'setAttractionPreference', 'relationshipScreen');
+export const handleBlindDate = lazy(modRelationships, 'handleBlindDate', 'relationshipScreen');
+export const handleDatingApp = lazy(modRelationships, 'handleDatingApp', 'relationshipScreen');
+export const renderDatingAppModal = lazy(modRelationships, 'renderDatingAppModal', 'relationshipScreen');
+export const selectDatingAppMatch = lazy(modRelationships, 'selectDatingAppMatch', 'relationshipScreen');
+export const handleMeetFriend = lazy(modRelationships, 'handleMeetFriend', 'relationshipScreen');
+export const handleNightOut = lazy(modRelationships, 'handleNightOut', 'relationshipScreen');
+export const renderLuxeMatchModal = lazy(modRelationships, 'renderLuxeMatchModal', 'relationshipScreen');
+export const selectLuxeAgePreset = lazy(modRelationships, 'selectLuxeAgePreset', 'relationshipScreen');
+export const selectLuxeWealthTier = lazy(modRelationships, 'selectLuxeWealthTier', 'relationshipScreen');
+export const confirmLuxeMatch = lazy(modRelationships, 'confirmLuxeMatch', 'relationshipScreen');
+export const handleMakeAMove = lazy(modRelationships, 'handleMakeAMove', 'relationshipScreen');
+export const confirmHookupChoice = lazy(modRelationships, 'confirmHookupChoice', 'relationshipScreen');
+export const handleEndAffair = lazy(modRelationships, 'handleEndAffair', 'relationshipScreen');
+export const handleCheatingConfrontationChoice = lazy(modRelationships, 'handleCheatingConfrontationChoice', 'relationshipScreen');
+export const handleProposeAction = lazy(modRelationships, 'handleProposeAction', 'relationshipScreen');
+export const openRingSelectionModal = lazy(modRelationships, 'openRingSelectionModal', 'relationshipScreen');
+export const proposeWithRing = lazy(modRelationships, 'proposeWithRing', 'relationshipScreen');
+
+const modFuneral = () => import('../features/relationships/funeralScreen.js');
+export const chooseFuneralType = lazy(modFuneral, 'chooseFuneralType', 'funeralScreen');
+export const cancelFuneralPlan = lazy(modFuneral, 'cancelFuneralPlan', 'funeralScreen');
+export const confirmFuneralPlan = lazy(modFuneral, 'confirmFuneralPlan', 'funeralScreen');
+export const donateBody = lazy(modFuneral, 'donateBody', 'funeralScreen');
+export const lookTheOtherWay = lazy(modFuneral, 'lookTheOtherWay', 'funeralScreen');
+export const goToFuneral = lazy(modFuneral, 'goToFuneral', 'funeralScreen');
+export const skipFuneral = lazy(modFuneral, 'skipFuneral', 'funeralScreen');
+export const respondNewTeacher = lazy(modFuneral, 'respondNewTeacher', 'funeralScreen');
+export const processNextTeacherReplacement = lazy(modFuneral, 'processNextTeacherReplacement', 'funeralScreen');
+
+const modRomance = () => import('../features/relationships/romanceScreen.js');
+export const openWeddingPlanner = lazy(modRomance, 'openWeddingPlanner', 'romanceScreen');
+export const confirmWeddingPlan = lazy(modRomance, 'confirmWeddingPlan', 'romanceScreen');
+export const openNameChangeChoice = lazy(modRomance, 'openNameChangeChoice', 'romanceScreen');
+export const chooseNameChange = lazy(modRomance, 'chooseNameChange', 'romanceScreen');
+
+const modMore = () => import('../features/more/moreScreen.js');
+export const renderMoreDashboard = lazy(modMore, 'renderMoreDashboard', 'moreScreen');
+export const buyGymMembership = lazy(modMore, 'buyGymMembership', 'moreScreen');
+export const cancelGymMembership = lazy(modMore, 'cancelGymMembership', 'moreScreen');
+export const visitGymOneTime = lazy(modMore, 'visitGymOneTime', 'moreScreen');
+export const startBetterDiet = lazy(modMore, 'startBetterDiet', 'moreScreen');
+export const cancelBetterDiet = lazy(modMore, 'cancelBetterDiet', 'moreScreen');
+export const visitDoctor = lazy(modMore, 'visitDoctor', 'moreScreen');
+export const openBlackjackBetting = lazy(modMore, 'openBlackjackBetting', 'moreScreen');
+export const startBlackjackGame = lazy(modMore, 'startBlackjackGame', 'moreScreen');
+export const blackjackHit = lazy(modMore, 'blackjackHit', 'moreScreen');
+export const blackjackStand = lazy(modMore, 'blackjackStand', 'moreScreen');
+export const openTravelModal = lazy(modMore, 'openTravelModal', 'moreScreen');
+export const bookTrip = lazy(modMore, 'bookTrip', 'moreScreen');
+export const openDietSelectionModal = lazy(modMore, 'openDietSelectionModal', 'moreScreen');
+export const selectDiet = lazy(modMore, 'selectDiet', 'moreScreen');
+export const openLotteryModal = lazy(modMore, 'openLotteryModal', 'moreScreen');
+export const buyLotteryTicket = lazy(modMore, 'buyLotteryTicket', 'moreScreen');
+export const openMoveCountryModal = lazy(modMore, 'openMoveCountryModal', 'moreScreen');
+export const updateRelocateCityDropdown = lazy(modMore, 'updateRelocateCityDropdown', 'moreScreen');
+export const confirmMoveCountry = lazy(modMore, 'confirmMoveCountry', 'moreScreen');
+export const askPartnerToMove = lazy(modMore, 'askPartnerToMove', 'moreScreen');
+export const confirmMoveAlone = lazy(modMore, 'confirmMoveAlone', 'moreScreen');
+export const openSkillsModal = lazy(modMore, 'openSkillsModal', 'moreScreen');
+
+const modCrime = () => import('../features/more/crimeScreen.js');
+export const renderCrimeDashboard = lazy(modCrime, 'renderCrimeDashboard', 'crimeScreen');
+export const openCrimeModal = lazy(modCrime, 'openCrimeModal', 'crimeScreen');
+export const commitCrimeAction = lazy(modCrime, 'commitCrimeAction', 'crimeScreen');
+export const showArrestModal = lazy(modCrime, 'showArrestModal', 'crimeScreen');
+export const openBribeModal = lazy(modCrime, 'openBribeModal', 'crimeScreen');
+export const submitBribeAction = lazy(modCrime, 'submitBribeAction', 'crimeScreen');
+export const handleArrestChoice = lazy(modCrime, 'handleArrestChoice', 'crimeScreen');
+export const showCourtArraignmentModal = lazy(modCrime, 'showCourtArraignmentModal', 'crimeScreen');
+export const selectLegalCounsel = lazy(modCrime, 'selectLegalCounsel', 'crimeScreen');
+
+const modCasino = () => import('../features/more/casinoScreen.js');
+export const renderCasinoHub = lazy(modCasino, 'renderCasinoHub', 'casinoScreen');
+export const openRouletteModal = lazy(modCasino, 'openRouletteModal', 'casinoScreen');
+export const confirmRouletteBet = lazy(modCasino, 'confirmRouletteBet', 'casinoScreen');
+export const confirmRouletteSingleNumberBet = lazy(modCasino, 'confirmRouletteSingleNumberBet', 'casinoScreen');
+export const openSlotsModal = lazy(modCasino, 'openSlotsModal', 'casinoScreen');
+export const confirmSlotsSpin = lazy(modCasino, 'confirmSlotsSpin', 'casinoScreen');
+
+const modSettings = () => import('../features/more/settingsScreen.js');
+export const openSettingsModal = lazy(modSettings, 'openSettingsModal', 'settingsScreen');
+export const triggerManualSave = lazy(modSettings, 'triggerManualSave', 'settingsScreen');
+export const promptResetGame = lazy(modSettings, 'promptResetGame', 'settingsScreen');
+export const toggleSettingSFX = lazy(modSettings, 'toggleSettingSFX', 'settingsScreen');
+export const toggleSettingCompact = lazy(modSettings, 'toggleSettingCompact', 'settingsScreen');
+export const toggleSettingTheme = lazy(modSettings, 'toggleSettingTheme', 'settingsScreen');
+export const applyTheme = lazy(modSettings, 'applyTheme', 'settingsScreen');
+
+const modStore = () => import('../features/store/storeScreen.js');
+export const renderStoreScreen = lazy(modStore, 'renderStoreScreen', 'storeScreen');
+export const filterStoreCategory = lazy(modStore, 'filterStoreCategory', 'storeScreen');
+export const previewPackDetails = lazy(modStore, 'previewPackDetails', 'storeScreen');
+export const buyPack = lazy(modStore, 'buyPack', 'storeScreen');
+export const restorePurchases = lazy(modStore, 'restorePurchases', 'storeScreen');
+export const renderGodModeModal = lazy(modStore, 'renderGodModeModal', 'storeScreen');
+export const maxGodModeStats = lazy(modStore, 'maxGodModeStats', 'storeScreen');
+export const applyGodModeStats = lazy(modStore, 'applyGodModeStats', 'storeScreen');
+export const openGodModeHubModal = lazy(modStore, 'openGodModeHubModal', 'storeScreen');
+
+const modGodModeAvatar = () => import('../features/store/godModeAvatarEditor.js');
+export const renderGodModeAvatarModal = lazy(modGodModeAvatar, 'renderGodModeAvatarModal', 'godModeAvatarEditor');
+export const cycleGodModeTrait = lazy(modGodModeAvatar, 'cycleGodModeTrait', 'godModeAvatarEditor');
+export const randomizeGodModeAvatarTraits = lazy(modGodModeAvatar, 'randomizeGodModeAvatarTraits', 'godModeAvatarEditor');
+export const saveGodModeAvatar = lazy(modGodModeAvatar, 'saveGodModeAvatar', 'godModeAvatarEditor');
+
+const modInstantDiploma = () => import('../features/education/instantDiploma.js');
+export const grantInstantHighSchool = lazy(modInstantDiploma, 'grantInstantHighSchool', 'instantDiploma');
+export const grantInstantUniversityDegree = lazy(modInstantDiploma, 'grantInstantUniversityDegree', 'instantDiploma');
+export const grantInstantGradDegree = lazy(modInstantDiploma, 'grantInstantGradDegree', 'instantDiploma');
+export const renderInstantDiplomaHub = lazy(modInstantDiploma, 'renderInstantDiplomaHub', 'instantDiploma');
+export const claimInstantUniversityMajor = lazy(modInstantDiploma, 'claimInstantUniversityMajor', 'instantDiploma');
+
+const modVipLounge = () => import('../features/store/vipLounge.js');
+export const renderVipLoungeModal = lazy(modVipLounge, 'renderVipLoungeModal', 'vipLounge');
+export const selectTheme = lazy(modVipLounge, 'selectTheme', 'vipLounge');
+export const isVipSupporter = lazy(modVipLounge, 'isVipSupporter', 'vipLounge');
+
+const modGraveyard = () => import('../features/player/graveyardScreen.js');
+export const renderGraveyardModal = lazy(modGraveyard, 'renderGraveyardModal', 'graveyardScreen');
+export const showAncestorEulogy = lazy(modGraveyard, 'showAncestorEulogy', 'graveyardScreen');
+
+const modPrison = () => import('../features/more/prisonScreen.js');
+export const renderPrisonDashboard = lazy(modPrison, 'renderPrisonDashboard', 'prisonScreen');
+export const setPrisonTab = lazy(modPrison, 'setPrisonTab', 'prisonScreen');
+export const handleCellmateAction = lazy(modPrison, 'handleCellmateAction', 'prisonScreen');
+export const handleYardWorkout = lazy(modPrison, 'handleYardWorkout', 'prisonScreen');
+export const handleInmateInteract = lazy(modPrison, 'handleInmateInteract', 'prisonScreen');
+export const handleSelectPrisonJob = lazy(modPrison, 'handleSelectPrisonJob', 'prisonScreen');
+export const handleBuyCanteen = lazy(modPrison, 'handleBuyCanteen', 'prisonScreen');
+export const handleStudyLaw = lazy(modPrison, 'handleStudyLaw', 'prisonScreen');
+export const handleFileAppeal = lazy(modPrison, 'handleFileAppeal', 'prisonScreen');
+export const handlePrisonVisit = lazy(modPrison, 'handlePrisonVisit', 'prisonScreen');
+export const handleSendPrisonLetter = lazy(modPrison, 'handleSendPrisonLetter', 'prisonScreen');
+export const handleConjugalVisit = lazy(modPrison, 'handleConjugalVisit', 'prisonScreen');
+export const handleParoleHearing = lazy(modPrison, 'handleParoleHearing', 'prisonScreen');
+export const handlePrisonEscapeAction = lazy(modPrison, 'handlePrisonEscapeAction', 'prisonScreen');
+export const openContrabandPhoneModal = lazy(modPrison, 'openContrabandPhoneModal', 'prisonScreen');
+export const submitContrabandPhoneAction = lazy(modPrison, 'submitContrabandPhoneAction', 'prisonScreen');
+export const openDealerBuyModal = lazy(modPrison, 'openDealerBuyModal', 'prisonScreen');
+export const openDealerSellModal = lazy(modPrison, 'openDealerSellModal', 'prisonScreen');
+export const handleSellContrabandAction = lazy(modPrison, 'handleSellContrabandAction', 'prisonScreen');
+export const handleSolitaryActivity = lazy(modPrison, 'handleSolitaryActivity', 'prisonScreen');
+export const openInmateDetailModal = lazy(modPrison, 'openInmateDetailModal', 'prisonScreen');
+export const openAttackPromptModal = lazy(modPrison, 'openAttackPromptModal', 'prisonScreen');
+export const executeInmateAttack = lazy(modPrison, 'executeInmateAttack', 'prisonScreen');
+
+const modTimeMachine = () => import('./timeMachine.js');
+export const renderTimeMachineModal = lazy(modTimeMachine, 'renderTimeMachineModal', 'timeMachine');
+export const rewindToAge = lazy(modTimeMachine, 'rewindToAge', 'timeMachine');
+
+const modSaveSlotManager = () => import('./saveSlotManager.js');
+export const renderSaveSlotManagerModal = lazy(modSaveSlotManager, 'renderSaveSlotManagerModal', 'saveSlotManager');
+export const loadSlot = lazy(modSaveSlotManager, 'loadSlot', 'saveSlotManager');
+export const branchCurrentSave = lazy(modSaveSlotManager, 'branchCurrentSave', 'saveSlotManager');
+export const deleteSlot = lazy(modSaveSlotManager, 'deleteSlot', 'saveSlotManager');
+export const startNewLifeInNewSlot = lazy(modSaveSlotManager, 'startNewLifeInNewSlot', 'saveSlotManager');
+export const saveToSlot = lazy(modSaveSlotManager, 'saveToSlot', 'saveSlotManager');
 
 const get = id => document.getElementById(id);
 // --- CONSTANTS ---

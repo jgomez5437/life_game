@@ -3,8 +3,13 @@
   "version": "1.0.0",
   "description": "",
   "main": "game-file.js",
+  "packageManager": "npm@10.8.2",
   "scripts": {
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "build:css": "npx tailwindcss@3 -i ./public/tailwind-input.css -o ./public/styles.bundle.css --content \"./public/**/*.{html,js}\" --minify"
   },
   "keywords": [],
   "author": "",
@@ -21,7 +26,8 @@
     "jest": "^30.2.0",
     "jest-environment-jsdom": "^30.4.1",
     "nodemon": "^3.1.11",
-    "vercel": "^54.6.1"
+    "vercel": "^54.6.1",
+    "vite": "^8.2.1"
   },
   "repository": {
     "type": "git",
