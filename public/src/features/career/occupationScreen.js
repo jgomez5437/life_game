@@ -2,9 +2,10 @@ import { GameLogic } from '../../core/gameLogic.js';
 import { state } from '../../core/state.js';
 import { renderLifeDashboard, addLog, refreshClassmates } from '../player/mainScreen.js';
 import { Utils } from '../../ui/utils.js';
-import { MAJORS, CAREER_TRACKS, PART_TIME_JOBS } from '../../core/main.js';
+import { MAJORS, CAREER_TRACKS, SPECIAL_CAREER_TRACKS, PART_TIME_JOBS } from '../../core/main.js';
 import { UI } from '../../ui/ui.js';
 import { hasInstantDiplomaPerk, grantInstantUniversityDegree, grantInstantGradDegree, renderInstantDiplomaHub } from '../education/instantDiploma.js';
+import { hasPurchasedPack } from '../store/storeScreen.js';
 
 const get = id => document.getElementById(id);
 
@@ -645,6 +646,57 @@ if (user.age < 15) {
             `;
         }
     }
+
+    // 6. SPECIAL CAREERS SECTION
+    content += `
+        <div class="mt-8 mb-4 border-b border-slate-700/50 pb-2">
+            <h2 class="text-lg font-bold text-slate-300"><i class="fas fa-star text-amber-500 mr-2"></i>Special Careers</h2>
+            <p class="text-xs text-slate-500">Premium and high-risk lifestyle choices.</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    `;
+
+    SPECIAL_CAREER_TRACKS.forEach(t => {
+        const isUnownedPremium = t.premiumPack && !hasPurchasedPack(t.premiumPack);
+        const level0 = t.levels[0];
+        const activeClass = (user.careerTrack === t.key) 
+            ? 'border-green-500 bg-slate-800' 
+            : 'border-slate-700 bg-slate-800 hover:bg-slate-750 hover:border-blue-500/50 cursor-pointer';
+
+        let onclickAttr = '';
+        if (isUnownedPremium) {
+            onclickAttr = `data-action="previewPackDetails" data-args="&apos;${t.premiumPack}&apos;"`;
+        } else if (user.careerTrack === t.key) {
+            onclickAttr = `data-action="renderCareerManager"`;
+        } else {
+            onclickAttr = `data-action="joinSpecialCareer" data-args="&apos;${t.key}&apos;"`;
+        }
+
+        let trailingIcon = isUnownedPremium ? `<i class="fas fa-lock text-amber-400 text-lg"></i>` : `<i class="fas fa-chevron-right text-slate-600"></i>`;
+        if (user.careerTrack === t.key) trailingIcon = `<i class="fas fa-check-circle text-green-500 text-lg"></i>`;
+
+        content += `
+            <div ${onclickAttr} class="p-4 rounded-xl border transition ${activeClass}">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-slate-700 flex items-center justify-center text-slate-300">
+                            <i class="fas ${t.icon} text-lg"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-white text-sm">${t.label}</h3>
+                            <div class="text-xs ${isUnownedPremium ? 'text-amber-400' : 'text-slate-400'}">
+                                ${isUnownedPremium ? 'Unlock in Store' : `${level0.title} - ${Utils.formatMoney(GameLogic.calculateScaledSalary(level0.salary, user.city))}/yr`}
+                            </div>
+                        </div>
+                    </div>
+                    ${trailingIcon}
+                </div>
+            </div>
+        `;
+    });
+    
+    content += `</div>`;
+
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">

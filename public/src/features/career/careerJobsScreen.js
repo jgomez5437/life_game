@@ -3,7 +3,7 @@ import { renderActivities } from './occupationScreen.js';
 import { addLog } from '../player/mainScreen.js';
 import { Utils } from '../../ui/utils.js';
 import { UI } from '../../ui/ui.js';
-import { CAREER_TRACKS, PART_TIME_JOBS } from '../../core/main.js';
+import { CAREER_TRACKS, PART_TIME_JOBS, SPECIAL_CAREER_TRACKS, saveGame } from '../../core/main.js';
 import { GameLogic } from '../../core/gameLogic.js';
 
 const get = id => document.getElementById(id);
@@ -405,4 +405,82 @@ export function retryInterview() {
     } else {
         startPartTimeInterview(_pendingInterview.title, _pendingInterview.salary);
     }
+}
+
+// ─── JOIN SPECIAL CAREER ─────────────────────────────────────────────────────
+
+export function joinSpecialCareer(trackKey) {
+    const user = state.gameState.user;
+    if (user.careerTrack === trackKey) return; // Already in it
+
+    const track = SPECIAL_CAREER_TRACKS.find(t => t.key === trackKey);
+    if (!track) return;
+
+    // Prerequisite check for Mafia: at least 3 lifetime crimes from the Crime section
+    if (trackKey === 'mafia_syndicate') {
+        const crimes = user.lifetimeCrimesCommitted || 0;
+        if (crimes < 3) {
+            UI.showModal(
+                "Not Reputable Enough",
+                `<div class="text-center space-y-3">
+                    <div class="text-4xl">🧼</div>
+                    <h4 class="text-base font-bold text-amber-400">You're too squeaky clean to join!</h4>
+                    <p class="text-xs text-slate-300">Get your hands dirty first. You must commit at least <strong>3 crimes</strong> from the Crime section in <strong>More Options</strong> before La Cosa Nostra will even talk to you.</p>
+                    <div class="text-xs font-bold text-slate-400">Crimes Committed: <span class="text-red-400">${crimes} / 3</span></div>
+                </div>`
+            );
+            return;
+        }
+    }
+
+    const level = track.levels[0];
+    const modalHtml = `
+        <div class="text-left space-y-4">
+            <div class="bg-red-950/40 border border-red-800/60 p-3.5 rounded-xl flex items-center gap-3">
+                <div class="w-12 h-12 rounded-full bg-red-900/80 border border-red-500 flex items-center justify-center text-red-400 text-2xl shrink-0">
+                    <i class="fas ${track.icon}"></i>
+                </div>
+                <div>
+                    <h4 class="font-bold text-white text-sm">${track.label}</h4>
+                    <div class="text-xs text-red-300 font-semibold">Starting Rank: ${level.title} (${Utils.formatMoney(level.salary)}/yr)</div>
+                </div>
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+                Are you sure you want to take this job and join <strong>${track.label}</strong>? Once initiated, you will be expected to complete <strong>3 syndicate crimes every year</strong> or face severe beatings and loss of pay.
+            </p>
+            <div class="flex gap-2 pt-2 border-t border-slate-700">
+                <button data-action="confirmJoinSpecialCareer" data-args="&apos;${trackKey}&apos;" class="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 rounded-lg text-xs transition">
+                    Accept Position & Swear Oath
+                </button>
+                <button data-action="hideModal" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-2.5 rounded-lg text-xs transition">
+                    Decline
+                </button>
+            </div>
+        </div>
+    `;
+
+    UI.showCustomModal(`Confirm Job: ${track.label}`, modalHtml);
+}
+
+export function confirmJoinSpecialCareer(trackKey) {
+    const user = state.gameState.user;
+    UI.hideModal();
+
+    const track = SPECIAL_CAREER_TRACKS.find(t => t.key === trackKey);
+    if (!track) return;
+
+    user.careerTrack = trackKey;
+    user.careerLevel = 0;
+    user.yearsInRole = 0;
+    user.jobPerformance = 100;
+    const level = track.levels[0];
+    user.jobTitle = level.title;
+    user.jobSalary = GameLogic.calculateScaledSalary(level.salary, user.city);
+    user.hasSeenJobSalary = false;
+    user.mafiaCrimesThisYear = 0;
+
+    if (typeof saveGame === 'function') saveGame();
+
+    addLog(`You swore the oath and were initiated into ${track.label} as a ${level.title}.`, 'major');
+    renderActivities();
 }

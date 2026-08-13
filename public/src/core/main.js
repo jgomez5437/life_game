@@ -2,8 +2,8 @@ import { login, configureAuth } from '../auth/auth.js';
 import { startGuestMode, renderLoginScreen } from '../auth/loginScreen.js';
 import { processQuarter, enterBusinessMode, hireEmployee, layoffEmployee, sellBusiness, purchaseUpgrade, setBusinessTab, selectSupplierDashboard, upgradeHQTier, upgradeMarketingChannel, adjustRoleCount, acceptVCPitch, chooseEventChoice } from '../features/business/businessDashboard.js';
 import { selectIndustry, selectSupplier, renderBusinessSetup, initBusiness } from '../features/business/createBusinessScreen.js';
-import { renderCareerMarket, applyForJob, applyForCareerTrack, answerInterview, retryInterview } from '../features/career/careerJobsScreen.js';
-import { confirmQuitCareer, quitCareer, renderCareerManager, workHarderJob, slackOffJob } from '../features/career/jobCareerManagerScreen.js';
+import { renderCareerMarket, applyForJob, applyForCareerTrack, joinSpecialCareer, confirmJoinSpecialCareer, answerInterview, retryInterview } from '../features/career/careerJobsScreen.js';
+import { confirmQuitCareer, quitCareer, renderCareerManager, workHarderJob, slackOffJob, attemptMafiaCrime } from '../features/career/jobCareerManagerScreen.js';
 import { renderJobMarket } from '../features/career/partTimeJobsScreen.js';
 import { renderEducation, workHarder, skipSchool, renderClassmates } from '../features/education/manageEducationScreen.js';
 import { attemptEnrollment, openGradEnrollmentModal, attemptGradEnrollment, renderGradSchoolMarket, openUniversityModal } from '../features/career/occupationScreen.js';
@@ -23,12 +23,14 @@ import { renderMoreDashboard, buyGymMembership, cancelGymMembership, visitGymOne
 import { renderCrimeDashboard, openCrimeModal, commitCrimeAction, showArrestModal, openBribeModal, submitBribeAction, handleArrestChoice, showCourtArraignmentModal, selectLegalCounsel } from '../features/more/crimeScreen.js';
 import { renderCasinoHub, openRouletteModal, confirmRouletteBet, confirmRouletteSingleNumberBet, openSlotsModal, confirmSlotsSpin } from '../features/more/casinoScreen.js';
 import { openSettingsModal, triggerManualSave, promptResetGame, toggleSettingSFX, toggleSettingCompact, toggleSettingTheme, applyTheme } from '../features/more/settingsScreen.js';
-import { renderStoreScreen, filterStoreCategory, previewPackDetails, buyPack, restorePurchases, renderGodModeModal, maxGodModeStats, applyGodModeStats } from '../features/store/storeScreen.js';
+import { renderStoreScreen, filterStoreCategory, previewPackDetails, buyPack, restorePurchases, renderGodModeModal, maxGodModeStats, applyGodModeStats, openGodModeHubModal } from '../features/store/storeScreen.js';
 import { renderGodModeAvatarModal, cycleGodModeTrait, randomizeGodModeAvatarTraits, saveGodModeAvatar } from '../features/store/godModeAvatarEditor.js';
 import { grantInstantHighSchool, grantInstantUniversityDegree, grantInstantGradDegree, renderInstantDiplomaHub, claimInstantUniversityMajor } from '../features/education/instantDiploma.js';
 import { renderVipLoungeModal, selectTheme, isVipSupporter } from '../features/store/vipLounge.js';
 import { renderGraveyardModal, showAncestorEulogy } from '../features/player/graveyardScreen.js';
 import { renderPrisonDashboard, setPrisonTab, handleCellmateAction, handleYardWorkout, handleInmateInteract, handleSelectPrisonJob, handleBuyCanteen, handleStudyLaw, handleFileAppeal, handlePrisonVisit, handleSendPrisonLetter, handleConjugalVisit, handleParoleHearing, handlePrisonEscapeAction, openContrabandPhoneModal, submitContrabandPhoneAction, openDealerBuyModal, openDealerSellModal, handleSellContrabandAction, handleSolitaryActivity, openInmateDetailModal, openAttackPromptModal, executeInmateAttack } from '../features/more/prisonScreen.js';
+import { renderTimeMachineModal, rewindToAge } from './timeMachine.js';
+import { renderSaveSlotManagerModal, loadSlot, branchCurrentSave, deleteSlot, startNewLifeInNewSlot, saveToSlot } from './saveSlotManager.js';
 import { Utils } from '../ui/utils.js';
 import { UI } from '../ui/ui.js';
 
@@ -280,6 +282,20 @@ const get = id => document.getElementById(id);
             }
         ];
 
+        export const SPECIAL_CAREER_TRACKS = [
+            {
+                key: 'mafia_syndicate', label: 'La Cosa Nostra', icon: 'fa-user-ninja',
+                reqDegree: false, reqGrad: null, reqMajors: null, premiumPack: 'mafia_syndicate',
+                levels: [
+                    { title: 'Muscle',      salary:   80000, minYears: 2 },
+                    { title: 'Made Man',    salary:  150000, minYears: 3 },
+                    { title: 'Street Boss', salary:  500000, minYears: 4 },
+                    { title: 'Underboss',   salary: 1500000, minYears: 5 },
+                    { title: 'The Don',     salary: 4000000, minYears: null }
+                ]
+            }
+        ];
+
         export const PART_TIME_JOBS = [
             { title: "Babysitter",          hourly: 15, salary: 15600, icon: "fa-baby-carriage" },
             { title: "Amusement Park Crew", hourly: 12, salary: 12480, icon: "fa-ticket-alt" },
@@ -451,11 +467,13 @@ export function updateGameInfo(dbUser) {
             pastLives:           savedUser.pastLives           || [],
             generation:          savedUser.generation          || 1,
 
-            // --- FLAGS ---
+            // --- FLAGS & UNDERWORLD ---
             hasSeenExpenseMsg: savedUser.hasSeenExpenseMsg || false,
             hasSeenJobSalary: savedUser.hasSeenJobSalary || false,
             gymMembership: savedUser.gymMembership || false,
             hasBetterDiet: savedUser.hasBetterDiet || false,
+            lifetimeCrimesCommitted: savedUser.lifetimeCrimesCommitted || 0,
+            mafiaCrimesThisYear: savedUser.mafiaCrimesThisYear || 0,
 
             // --- ASSETS & INVESTMENTS ---
             assets: savedUser.assets || [],
@@ -478,7 +496,10 @@ export function updateGameInfo(dbUser) {
         },
         
         // --- ASSETS & HISTORY ---
-        lifeLog: cleanHistory
+        lifeLog: cleanHistory,
+
+        // --- TIME MACHINE SNAPSHOTS ---
+        snapshots: Array.isArray(data.snapshots) ? data.snapshots : []
     };
     GameLogic.backfillRelationshipGender(state.gameState.user.relationships);
     // 5. Render
@@ -602,12 +623,18 @@ export const loadAndRenderGame = (userData) => {
 };
 //save game function
 // Attach to window so it is globally accessible
+if (typeof window !== 'undefined') {
+    window.saveGame = saveGame;
+    window.renderLifeDashboard = renderLifeDashboard;
+    window.renderCharCreation = renderCharCreation;
+}
+
 export async function saveGame() {
     
     // 1. Safety Checks
     // Don't save if we are a guest (no ID) or if the game hasn't loaded yet (no state)
     if (!state.userAuthId) {
-        Utils.guestStorage.saveGame()
+        saveToSlot();
         console.log("⚠️ Guest mode. Saved locally.");
         return;
     }
@@ -632,6 +659,9 @@ export async function saveGame() {
             history: state.gameState.lifeLog,
             assets: state.gameState.assets,
             
+            // Time Machine snapshots (paid feature data)
+            snapshots: state.gameState.snapshots || [],
+            
             // Redundant top-level helpers for easier DB queries later
             bank: state.gameState.user.money,
             job: { 
@@ -649,10 +679,22 @@ export async function saveGame() {
     };
 
     // 3. Send to API
+    let authToken = '';
+    try {
+        if (state.auth0Client) {
+            authToken = await state.auth0Client.getTokenSilently();
+        }
+    } catch (e) {
+        console.warn('Could not get auth token:', e);
+    }
+
     try {
         const response = await fetch('/api/saveGame', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
             body: JSON.stringify(payload)
         });
 
@@ -712,7 +754,11 @@ async function initGame() {
         // Try to load existing cloud save first
         let dbUser = null;
         try {
-            const response = await fetch(`/api/load?auth0_id=${user.sub}`);
+            let authToken = '';
+            try { authToken = await state.auth0Client.getTokenSilently(); } catch (e) {}
+            const response = await fetch(`/api/load?auth0_id=${user.sub}`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
             if (response.ok) {
                 const data = await response.json();
                 if (data && data.game_data && Object.keys(data.game_data).length > 0 && (data.game_data.user || data.game_data.stats)) {
@@ -806,16 +852,34 @@ async function initGame() {
         }
 
     } else {
-        // Guest Mode - Check for local storage save
+        // Guest Mode - Check Multi-Save Slots Store first
         console.log("Guest mode detected.");
-        const guestSave = Utils.guestStorage.loadGame();
         
-    if (guestSave) {
+        let loadedState = null;
+        let activeSlotId = 'slot_1';
+
+        try {
+            const rawSlots = localStorage.getItem('life_game_slots');
+            if (rawSlots) {
+                const slotsStore = JSON.parse(rawSlots);
+                activeSlotId = slotsStore.activeSlotId || 'slot_1';
+                if (slotsStore.slots && slotsStore.slots[activeSlotId] && slotsStore.slots[activeSlotId].data) {
+                    loadedState = JSON.parse(JSON.stringify(slotsStore.slots[activeSlotId].data));
+                    loadedState._slotId = activeSlotId;
+                }
+            }
+        } catch (e) {}
+
+        if (!loadedState) {
+            loadedState = Utils.guestStorage.loadGame();
+            if (loadedState) loadedState._slotId = activeSlotId;
+        }
+        
+        if (loadedState) {
             // THE FIX: Intercept and destroy dead guest saves
-            if (guestSave.user && guestSave.user.lifeStatus === "Deceased") {
+            if (loadedState.user && loadedState.user.lifeStatus === "Deceased") {
                 console.log("Guest character is dead. Wiping local save.");
                 
-                // Clear state and overwrite local storage with empty data
                 state.gameState = null;
                 if (Utils.guestStorage.saveGame) {
                     Utils.guestStorage.saveGame(); 
@@ -823,11 +887,11 @@ async function initGame() {
                 
                 renderLoginScreen();
             } else {
-                console.log("Loading guest save from local storage...");
-                state.gameState = guestSave;
+                console.log(`Loading active save slot (${loadedState._slotId}) from storage...`);
+                state.gameState = loadedState;
                 GameLogic.backfillRelationshipGender(state.gameState.user?.relationships);
                 if (typeof renderLifeDashboard === "function") {
-                    renderLifeDashboard();
+                    renderLifeDashboard(state.gameState);
                 } else {
                     console.error("renderLifeDashboard function not found!");
                 }
@@ -858,9 +922,8 @@ export async function resetGame() {
 
     // 2. Handle Guest Reset
     if (!state.userAuthId) {
-        if (Utils && Utils.guestStorage && typeof Utils.guestStorage.saveGame === 'function') {
-            // Saving while gameState is null effectively clears the local storage
-            Utils.guestStorage.saveGame(); 
+        if (Utils && Utils.guestStorage && typeof Utils.guestStorage.clearSave === 'function') {
+            Utils.guestStorage.clearSave();
         }
         console.log("Guest save wiped.");
         
@@ -911,6 +974,9 @@ const routeHandlers = {
   updateCityDropdown,
   applyForJob,
   applyForCareerTrack,
+  joinSpecialCareer,
+  confirmJoinSpecialCareer,
+  attemptMafiaCrime,
   answerInterview,
   retryInterview,
   showFullEulogy,
@@ -1024,15 +1090,15 @@ const routeHandlers = {
   confirmWeddingPlan,
   openNameChangeChoice,
   chooseNameChange,
-  chooseFuneralType,
-  cancelFuneralPlan,
-  confirmFuneralPlan,
-  donateBody,
-  lookTheOtherWay,
-  goToFuneral,
-  skipFuneral,
-  respondNewTeacher,
-  processNextTeacherReplacement,
+  get chooseFuneralType() { return chooseFuneralType; },
+  get cancelFuneralPlan() { return cancelFuneralPlan; },
+  get confirmFuneralPlan() { return confirmFuneralPlan; },
+  get donateBody() { return donateBody; },
+  get lookTheOtherWay() { return lookTheOtherWay; },
+  get goToFuneral() { return goToFuneral; },
+  get skipFuneral() { return skipFuneral; },
+  get respondNewTeacher() { return respondNewTeacher; },
+  get processNextTeacherReplacement() { return processNextTeacherReplacement; },
   renderMoreDashboard,
   renderCasinoHub,
   openRouletteModal,
@@ -1141,7 +1207,15 @@ const routeHandlers = {
   submitBribeAction,
   handleArrestChoice,
   showCourtArraignmentModal,
-  selectLegalCounsel
+  selectLegalCounsel,
+  openGodModeHubModal,
+  openTimeMachineModal: renderTimeMachineModal,
+  executeTimeRewind: rewindToAge,
+  openSaveSlotManager: renderSaveSlotManagerModal,
+  loadSaveSlot: loadSlot,
+  branchSaveSlot: branchCurrentSave,
+  startNewSlotLife: startNewLifeInNewSlot,
+  deleteSaveSlot: deleteSlot
 };
 
 document.addEventListener('click', (e) => {

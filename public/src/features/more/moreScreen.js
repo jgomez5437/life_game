@@ -283,6 +283,38 @@ export function renderMoreDashboard() {
                     </div>
                 </div>
 
+                <!-- CATEGORY 6: GOD PERKS & TEMPORAL POWER -->
+                <div class="space-y-1.5 text-left pt-2 border-t border-slate-700/60">
+                    <div class="text-[11px] font-extrabold uppercase tracking-wider text-amber-400 px-1 flex items-center gap-1.5">
+                        <i class="fas fa-crown text-amber-400"></i> God Perks & Temporal Power
+                    </div>
+                    <div class="grid grid-cols-1 gap-1.5">
+                        ${renderSlimOptionRow({
+                            icon: 'fa-bolt',
+                            iconBg: 'bg-amber-950/60',
+                            iconColor: 'text-amber-400',
+                            badgeColor: 'border-amber-500/40 text-amber-300 bg-amber-950/40',
+                            title: 'God Mode Studio',
+                            subtitle: 'Edit Character Stats, Appearance & Social Circle',
+                            action: 'openGodModeHubModal',
+                            buttonText: 'God Mode',
+                            buttonStyle: 'bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-extrabold shadow'
+                        })}
+
+                        ${renderSlimOptionRow({
+                            icon: 'fa-hourglass-half',
+                            iconBg: 'bg-cyan-950/60',
+                            iconColor: 'text-cyan-400',
+                            badgeColor: 'border-cyan-500/40 text-cyan-300 bg-cyan-950/40',
+                            title: 'Time Machine Engine',
+                            subtitle: 'Rewind up to 5 Years & Undo Death',
+                            action: 'openTimeMachineModal',
+                            buttonText: 'Time Machine',
+                            buttonStyle: 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-extrabold shadow'
+                        })}
+                    </div>
+                </div>
+
             </div>
         </div>
     `;

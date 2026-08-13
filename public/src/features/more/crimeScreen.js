@@ -1,12 +1,22 @@
 import { GameLogic } from '../../core/gameLogic.js';
 import { state } from '../../core/state.js';
+import { saveGame } from '../../core/main.js';
 import { renderLifeDashboard, addLog } from '../player/mainScreen.js';
 import { renderMoreDashboard } from './moreScreen.js';
 import { renderPrisonDashboard } from './prisonScreen.js';
+import { renderCareerManager } from '../career/jobCareerManagerScreen.js';
 import { UI } from '../../ui/ui.js';
 import { Utils } from '../../ui/utils.js';
 
 const get = id => document.getElementById(id);
+
+function returnFromCrimeOrArrest(user) {
+    if (user && user.careerTrack === 'mafia_syndicate') {
+        renderCareerManager();
+    } else {
+        renderCrimeDashboard();
+    }
+}
 
 export function renderCrimeDashboard() {
     const user = state.gameState.user;
@@ -179,6 +189,8 @@ export function commitCrimeAction(crimeId) {
 
     const result = GameLogic.attemptCrime(crimeId, user, targetPersonId);
 
+    if (typeof saveGame === 'function') saveGame();
+
     UI.updateHeader(user);
 
     if (result.success) {
@@ -334,7 +346,7 @@ export function submitBribeAction() {
     if (result.outcome === 'escaped') {
         addLog(result.message, 'good');
         UI.showModal("Escaped Custody!", result.message);
-        renderCrimeDashboard();
+        returnFromCrimeOrArrest(user);
     } else {
         addLog(result.message, 'bad');
         showArrestModal(user.pendingTrial?.crime);
@@ -350,7 +362,7 @@ export function handleArrestChoice(choice) {
     if (result.outcome === 'escaped') {
         addLog(result.message, 'good');
         UI.showModal("Escaped Custody!", result.message);
-        renderCrimeDashboard();
+        returnFromCrimeOrArrest(user);
     } else if (result.outcome === 'flee_failed') {
         addLog(result.message, 'bad');
         showArrestModal(user.pendingTrial?.crime);
@@ -359,17 +371,24 @@ export function handleArrestChoice(choice) {
     }
 }
 
-export function showCourtArraignmentModal() {
+export function showCourtArraignmentModal(errorMsg = null) {
     const user = state.gameState.user;
     const pending = user.pendingTrial;
 
     if (!pending) {
-        renderCrimeDashboard();
+        returnFromCrimeOrArrest(user);
         return;
     }
 
     const html = `
         <div class="text-left space-y-4">
+            ${errorMsg ? `
+                <div class="bg-red-950/80 border border-red-700/80 p-3 rounded-xl text-xs text-red-300 font-bold flex items-center gap-2">
+                    <i class="fas fa-exclamation-circle text-red-400"></i>
+                    <span>${errorMsg}</span>
+                </div>
+            ` : ''}
+
             <div class="bg-slate-800 p-3.5 rounded-xl border border-slate-700 space-y-1">
                 <div class="text-xs font-bold uppercase tracking-wider text-indigo-400">State District Court Arraignment</div>
                 <h3 class="text-lg font-bold text-white">Pending Charge: ${pending.crime.name}</h3>
@@ -417,11 +436,12 @@ export function selectLegalCounsel(lawyerTier) {
     const result = GameLogic.calculateTrialVerdict(user, lawyerTier);
 
     if (result && result.error) {
-        UI.showModal("Insufficient Funds", result.error);
+        showCourtArraignmentModal(result.error);
         return;
     }
 
     UI.updateHeader(user);
+    if (typeof saveGame === 'function') saveGame();
 
     if (result.verdict === 'not_guilty') {
         addLog(result.message, 'good');
@@ -432,26 +452,29 @@ export function selectLegalCounsel(lawyerTier) {
                 <p class="text-xs text-slate-300">The jury returned a verdict of not guilty! You walked out of the courtroom a free individual.</p>
             </div>
         `);
-        renderCrimeDashboard();
+        returnFromCrimeOrArrest(user);
     } else {
         addLog(result.message, 'bad');
-        UI.showModal("Convicted & Sentenced", `
+
+        const isMafia = user.careerTrack === 'mafia_syndicate';
+        const jobStatusText = isMafia ? 'Retained (Syndicate Member)' : (result.crime.category !== 'juvenile' ? 'Terminated' : 'N/A');
+        const nextScreenAction = user.inPrison ? 'renderPrisonDashboard' : (isMafia ? 'renderCareerManager' : 'renderCrimeDashboard');
+
+        UI.showCustomModal("Convicted & Sentenced", `
             <div class="text-center space-y-3">
                 <div class="text-4xl">👨‍⚖️</div>
                 <h3 class="text-xl font-bold text-red-400">GUILTY VERDICT</h3>
                 <p class="text-xs text-slate-300">The judge read your formal sentence: <strong>${result.sentenceYears > 0 ? `${result.sentenceYears} years` : 'probation'}</strong> and <strong>${Utils.formatMoney(result.fine)}</strong> in court restitution.</p>
-                <div class="bg-slate-900 p-2.5 rounded-lg text-xs text-slate-400 text-left">
-                    • Court Fine Deducted: ${Utils.formatMoney(result.fine)}<br>
-                    • Active Job Terminated: ${result.crime.category !== 'juvenile' ? 'Yes' : 'N/A'}<br>
-                    • Criminal Record Updated: Permanent Felony Tag
+                <div class="bg-slate-900 p-2.5 rounded-lg text-xs text-slate-400 text-left space-y-1">
+                    <div>• Court Fine Deducted: <span class="text-red-400">${Utils.formatMoney(result.fine)}</span></div>
+                    <div>• Employment Status: <span class="text-slate-200">${jobStatusText}</span></div>
+                    <div>• Criminal Record: <span class="text-amber-400">Permanent Record Updated</span></div>
                 </div>
+                <button data-action="${nextScreenAction}" class="w-full bg-red-700 hover:bg-red-600 text-white font-bold py-2.5 rounded-lg text-xs transition">
+                    ${user.inPrison ? 'Enter Prison System' : 'Continue'}
+                </button>
             </div>
         `);
-        if (user.inPrison) {
-            renderPrisonDashboard();
-        } else {
-            renderCrimeDashboard();
-        }
     }
 }
 

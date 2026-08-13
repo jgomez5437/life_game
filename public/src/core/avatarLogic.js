@@ -227,6 +227,7 @@ function generateRandomAppearance(seed, gender) {
  * @returns {object} the character's appearance descriptor
  */
 function ensureAppearance(character) {
+    if (!character) return {};
     if (!character.appearance) {
         character.appearance = generateRandomAppearance(character.id || character.name, character.gender);
     }

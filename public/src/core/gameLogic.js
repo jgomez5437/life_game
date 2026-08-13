@@ -1,3 +1,4 @@
+import { state } from './state.js';
 import { addLog } from '../features/player/mainScreen.js';
 import { UI } from '../ui/ui.js';
 import { Utils } from '../ui/utils.js';
@@ -4012,6 +4013,7 @@ function attemptCrime(crimeId, user, targetPersonId = null) {
     if (!crime) return { success: false, message: "Invalid crime requested." };
 
     if (!Array.isArray(user.criminalRecord)) user.criminalRecord = [];
+    user.lifetimeCrimesCommitted = (user.lifetimeCrimesCommitted || 0) + 1;
 
     const priorConvictions = user.criminalRecord.filter(r => r.verdict === 'guilty').length;
     const smartsBonus = ((user.smarts || 50) - 50) * 0.003;
@@ -5196,6 +5198,39 @@ export const GameLogic = {
     handleArrestAction,
     calculateTrialVerdict,
     applySentencing,
+    processMafiaCrime: (type) => {
+        const user = state.gameState.user;
+        let successChance = 0.6;
+        let payout = 0;
+        let crimeName = '';
+
+        if (type === 'shakedown') { crimeName = 'Extortion'; successChance = 0.7; payout = 5000; }
+        else if (type === 'smuggle') { crimeName = 'Smuggling'; successChance = 0.6; payout = 15000; }
+        else if (type === 'hijack') { crimeName = 'Grand Theft'; successChance = 0.5; payout = 35000; }
+        else if (type === 'bribe') { crimeName = 'Bribery'; successChance = 0.8; payout = 0; }
+        else if (type === 'whack') { crimeName = 'Syndicate Hit'; successChance = 0.4; payout = 0; }
+
+        const smartsBonus = ((user.smarts || 50) - 50) * 0.005;
+        const finalChance = Math.min(0.95, Math.max(0.1, successChance + smartsBonus));
+
+        if (Math.random() < finalChance) {
+            user.mafiaCrimesThisYear = (user.mafiaCrimesThisYear || 0) + 1;
+            if (payout > 0) {
+                user.money += payout;
+                return { success: true, message: `You successfully completed ${crimeName} and pocketed $${payout.toLocaleString()}.` };
+            } else {
+                return { success: true, message: `You successfully completed ${crimeName} for the Syndicate.` };
+            }
+        } else {
+            user.pendingTrial = {
+                crime: { name: crimeName, category: type === 'whack' ? 'violent' : 'heist', risk: type === 'whack' ? 'critical' : 'high' },
+                targetName: 'the Syndicate',
+                evidenceRating: Math.floor(Math.random() * 40) + 50,
+                extraCharges: []
+            };
+            return { success: false, arrested: true, message: `You were caught by the feds while attempting ${crimeName}!` };
+        }
+    },
     calculatePrisonSecurity,
     generateCellmate,
     generateYardInmates,

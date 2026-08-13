@@ -2,7 +2,10 @@ import { state } from '../../core/state.js';
 import { renderActivities } from './occupationScreen.js';
 import { addLog } from '../player/mainScreen.js';
 import { Utils } from '../../ui/utils.js';
-import { CAREER_TRACKS } from '../../core/main.js';
+import { CAREER_TRACKS, SPECIAL_CAREER_TRACKS, saveGame } from '../../core/main.js';
+import { GameLogic } from '../../core/gameLogic.js';
+import { showArrestModal } from '../more/crimeScreen.js';
+import { UI } from '../../ui/ui.js';
 
 const get = id => document.getElementById(id);
 
@@ -10,6 +13,10 @@ const get = id => document.getElementById(id);
 
 export function renderCareerManager() {
     const user = state.gameState.user;
+    if (user.careerTrack === 'mafia_syndicate') {
+        return renderMafiaManager();
+    }
+
     const p = user.jobPerformance;
     const actionTaken = user.careerActionTaken;
 
@@ -18,7 +25,8 @@ export function renderCareerManager() {
     else if (p > 25) barColor = 'bg-yellow-500';
 
     // Career track level info
-    const track = user.careerTrack ? CAREER_TRACKS.find(t => t.key === user.careerTrack) : null;
+    let track = user.careerTrack ? CAREER_TRACKS.find(t => t.key === user.careerTrack) : null;
+    if (!track && user.careerTrack) track = SPECIAL_CAREER_TRACKS.find(t => t.key === user.careerTrack);
     const lvlIdx = user.careerLevel || 0;
     const level  = track?.levels[lvlIdx];
     const totalLevels = track?.levels.length || 1;
@@ -195,4 +203,122 @@ export function checkActionTaken() {
     if (user.careerActionTaken) {
         user.careerActionTaken = false
     };
+}
+
+// --- MAFIA CRIME SYNDICATE SPECIFIC UI ---
+
+function renderMafiaManager() {
+    const user = state.gameState.user;
+    
+    // Track info
+    const track = SPECIAL_CAREER_TRACKS.find(t => t.key === 'mafia_syndicate');
+    const lvlIdx = user.careerLevel || 0;
+    const level  = track.levels[lvlIdx];
+    const totalLevels = track.levels.length;
+    
+    // Quota
+    const crimesCommitted = user.mafiaCrimesThisYear || 0;
+    const quotaMet = crimesCommitted >= 3;
+    const quotaClass = quotaMet ? 'text-green-400' : 'text-red-400';
+
+    const dots = track.levels.map((_, i) => {
+        const filled = i <= lvlIdx;
+        return `<div class="w-3 h-3 rounded-full ${filled ? 'bg-red-500' : 'bg-slate-700'} border ${filled ? 'border-red-400' : 'border-slate-600'}"></div>`;
+    }).join('');
+
+    get('game-container').innerHTML = `
+        <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
+            <div class="mb-4">
+                <button data-action="renderActivities" class="text-slate-400 hover:text-white text-xs flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition border border-slate-700/50">
+                    <i class="fas fa-arrow-left"></i> Back to Occupation
+                </button>
+            </div>
+            <div class="text-center mb-4">
+                <div class="w-16 h-16 rounded-full bg-red-900/50 flex items-center justify-center text-red-500 mx-auto mb-3 text-2xl border border-red-500/30">
+                    <i class="fas fa-user-ninja"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-white uppercase tracking-widest">${user.jobTitle}</h2>
+                <p class="text-red-400 text-sm font-bold">${Utils.formatMoney(user.jobSalary)} / year cut</p>
+            </div>
+            
+            <div class="bg-slate-800 p-4 rounded-xl border border-red-900 mb-4 shadow-lg shadow-red-900/20">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">La Cosa Nostra</span>
+                    <span class="text-xs text-slate-500">Rank ${lvlIdx + 1} of ${totalLevels}</span>
+                </div>
+                <div class="flex gap-2 mb-4">${dots}</div>
+                
+                <div class="bg-slate-900 rounded p-3 text-center border border-slate-700">
+                    <div class="text-xs text-slate-400 uppercase tracking-widest mb-1">Yearly Quota</div>
+                    <div class="text-2xl font-black ${quotaClass}">${crimesCommitted} / 3</div>
+                    <div class="text-xs text-slate-500 mt-1">Complete 3 crimes or face a severe beating & no pay.</div>
+                </div>
+            </div>
+
+            <h3 class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2 px-1">Syndicate Actions</h3>
+            <div class="grid grid-cols-1 gap-3 mb-8">
+                ${createMafiaActionBtn('Shakedown', 'Extort a local business.', 'fa-hand-holding-usd', 'shakedown', quotaMet)}
+                ${createMafiaActionBtn('Smuggle', 'Move contraband across the border.', 'fa-truck-loading', 'smuggle', quotaMet)}
+                ${createMafiaActionBtn('Hijack', 'Steal a shipment of electronics.', 'fa-truck-moving', 'hijack', quotaMet)}
+                ${createMafiaActionBtn('Bribe', 'Pay off a local official.', 'fa-handshake', 'bribe', quotaMet)}
+                ${createMafiaActionBtn('Whack', 'Assassinate a rival gang member.', 'fa-crosshairs', 'whack', quotaMet)}
+                
+                <button data-action="confirmQuitCareer" class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex items-center justify-between hover:bg-slate-750 transition group mt-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-slate-400">
+                            <i class="fas fa-door-open"></i>
+                        </div>
+                        <div class="text-left">
+                            <h3 class="font-bold text-white">Leave Syndicate</h3>
+                            <div class="text-xs text-slate-500">Try to walk away</div>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right text-slate-600"></i>
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+function createMafiaActionBtn(title, desc, icon, actionType, quotaMet) {
+    // If they met quota, maybe they can still do it, but let's make it look normal.
+    // For now, they can do unlimited crimes, but only the first 3 count for the quota.
+    return `
+        <button data-action="attemptMafiaCrime" data-args="&apos;${actionType}&apos;" class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex items-center justify-between hover:border-red-500/50 hover:bg-red-900/10 transition group cursor-pointer">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center text-red-500">
+                    <i class="fas ${icon}"></i>
+                </div>
+                <div class="text-left">
+                    <h3 class="font-bold text-white group-hover:text-red-400 transition">${title}</h3>
+                    <div class="text-xs text-slate-400">${desc}</div>
+                </div>
+            </div>
+            <i class="fas fa-chevron-right text-slate-600 group-hover:text-red-500 transition"></i>
+        </button>
+    `;
+}
+
+export function attemptMafiaCrime(type) {
+    const user = state.gameState.user;
+    const result = GameLogic.processMafiaCrime(type);
+    
+    if (typeof saveGame === 'function') saveGame();
+
+    UI.updateHeader(user);
+
+    if (result.success) {
+        addLog(result.message, 'good');
+        UI.showModal("Syndicate Success", `
+            <div class="text-center space-y-3">
+                <div class="text-4xl">💰</div>
+                <h3 class="text-lg font-bold text-emerald-400">Action Successful</h3>
+                <p class="text-xs text-slate-300">${result.message}</p>
+            </div>
+        `);
+        renderCareerManager();
+    } else if (result.arrested) {
+        addLog(result.message, 'bad');
+        showArrestModal(user.pendingTrial.crime);
+    }
 }

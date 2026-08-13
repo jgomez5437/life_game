@@ -53,6 +53,7 @@ export default async function handler(request, response) {
 
     const session = await stripe.checkout.sessions.create({
       managed_payments: { enabled: false },
+      allow_promotion_codes: true,
       line_items: [
         {
           price_data: {

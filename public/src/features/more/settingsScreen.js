@@ -35,6 +35,16 @@ export function openSettingsModal() {
                         <i class="fas fa-save"></i> ${isCloud ? 'Save Now' : 'Save Local'}
                     </button>
                 </div>
+
+                <div class="grid grid-cols-2 gap-2 mt-3 pt-2.5 border-t border-slate-700/70">
+                    <button data-action="openTimeMachineModal" class="bg-cyan-950/60 hover:bg-cyan-900/60 border border-cyan-500/40 text-cyan-300 font-bold text-xs py-2 px-2.5 rounded-lg transition flex items-center justify-center gap-1.5">
+                        <i class="fas fa-hourglass-half text-cyan-400"></i> Time Machine
+                    </button>
+                    <button data-action="openSaveSlotManager" class="bg-slate-900 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs py-2 px-2.5 rounded-lg transition flex items-center justify-center gap-1.5">
+                        <i class="fas fa-layer-group text-cyan-400"></i> Save & Load Slots
+                    </button>
+                </div>
+
                 ${!isCloud ? `
                 <div class="mt-3 pt-2.5 border-t border-slate-700/70">
                     <p class="text-xs text-slate-300 mb-2.5">

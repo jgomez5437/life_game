@@ -21,6 +21,43 @@ const _elements = {
 };
 
 //Global UI object
+
+// Modal stack to prevent callback loss when modals overlap
+const _modalStack = [];
+
+function _pushCurrentModal() {
+    // Only push if a modal is currently visible
+    if (_elements.modalOverlay && !_elements.modalOverlay.classList.contains('hidden')) {
+        _modalStack.push({
+            title: _elements.modalTitle?.innerText || '',
+            titleHidden: _elements.modalTitle?.classList.contains('hidden') || false,
+            content: _elements.modalContent?.innerHTML || '',
+            actions: _elements.modalActions?.innerHTML || '',
+            actionsHidden: _elements.modalActions?.classList.contains('hidden') || false
+        });
+    }
+}
+
+function _restorePreviousModal() {
+    if (_modalStack.length === 0) {
+        _elements.modalOverlay.classList.add('hidden');
+        _elements.modalOverlay.classList.remove('flex');
+        return;
+    }
+    const prev = _modalStack.pop();
+    if (_elements.modalTitle) {
+        _elements.modalTitle.innerText = prev.title;
+        if (prev.titleHidden) _elements.modalTitle.classList.add('hidden');
+        else _elements.modalTitle.classList.remove('hidden');
+    }
+    if (_elements.modalContent) _elements.modalContent.innerHTML = prev.content;
+    if (_elements.modalActions) {
+        _elements.modalActions.innerHTML = prev.actions;
+        if (prev.actionsHidden) _elements.modalActions.classList.add('hidden');
+        else _elements.modalActions.classList.remove('hidden');
+    }
+}
+
 export const UI = {
     /** * @param {Object} stats - { username, name, age, money, city, health }
      */
@@ -33,7 +70,15 @@ export const UI = {
         if (_elements.settingsBtn) _elements.settingsBtn.classList.remove('hidden');
 
         // 1. NAME & FLAG UPDATE
-        const displayName = stats.username || stats.name || "Player";
+        const displayNameRaw = stats.username || stats.name || "Player";
+        // Sanitize to prevent XSS
+        const displayName = String(displayNameRaw)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+
         const countryCode = Utils.getCountryCode(stats.city);
         
         let flagHtml = "";
@@ -127,7 +172,9 @@ export const UI = {
      * @param {function} onClose
      */
     showModal: (title, message, onClose = null) => {
+        _pushCurrentModal();
         _elements.modalTitle.innerText = title;
+        if (_elements.modalTitle) _elements.modalTitle.classList.remove('hidden');
         _elements.modalContent.innerHTML = message;
         
         _elements.modalActions.innerHTML = `
@@ -140,6 +187,7 @@ export const UI = {
         newDismissBtn.onclick = () => {
             _elements.modalOverlay.classList.add('hidden');
             _elements.modalOverlay.classList.remove('flex');
+            _modalStack.length = 0; // Info modals clear the stack on dismiss
             if (onClose) onClose();
         }
 
@@ -154,7 +202,9 @@ export const UI = {
      * @param {function} onConfirm
      */
     showConfirm: (title, message, confirmText, onConfirm) => {
+        _pushCurrentModal();
         _elements.modalTitle.innerText = title;
+        if (_elements.modalTitle) _elements.modalTitle.classList.remove('hidden');
         _elements.modalContent.innerHTML = message;
 
         _elements.modalActions.innerHTML = `
@@ -171,12 +221,12 @@ export const UI = {
         confirmBtn.onclick = () => {
             _elements.modalOverlay.classList.add('hidden');
             _elements.modalOverlay.classList.remove('flex');
+            _modalStack.length = 0;
             if (onConfirm) onConfirm();
         };
 
         cancelBtn.onclick = () => {
-            _elements.modalOverlay.classList.add('hidden');
-            _elements.modalOverlay.classList.remove('flex');
+            _restorePreviousModal();
         };
 
         _elements.modalOverlay.classList.remove('hidden');
@@ -188,6 +238,7 @@ export const UI = {
      * @param {string} [htmlContent]
      */
     showCustomModal: (titleOrOptions, htmlContent) => {
+        _pushCurrentModal();
         let title, content, confirmText, cancelText, onConfirm, onClose;
 
         if (typeof titleOrOptions === 'object' && titleOrOptions !== null) {
@@ -251,8 +302,7 @@ export const UI = {
     },
 
     hideModal: () => {
-        _elements.modalOverlay.classList.add('hidden');
-        _elements.modalOverlay.classList.remove('flex');
+        _restorePreviousModal();
     },
 
     /**
