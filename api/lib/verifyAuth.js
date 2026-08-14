@@ -1,6 +1,7 @@
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 
 const AUTH0_DOMAIN = 'https://dev-ofc1agu3ax7gzj2f.us.auth0.com';
+const AUTH0_CLIENT_ID = 'SzIrZaBzHZLS9js0HtJEwA35ZwN8hmkT';
 const JWKS = createRemoteJWKSet(new URL(`${AUTH0_DOMAIN}/.well-known/jwks.json`));
 
 export async function verifyAuth(request) {
@@ -12,9 +13,9 @@ export async function verifyAuth(request) {
     const token = authHeader.split(' ')[1];
 
     try {
-        // Try with issuer validation
         const { payload } = await jwtVerify(token, JWKS, {
             issuer: `${AUTH0_DOMAIN}/`,
+            audience: AUTH0_CLIENT_ID
         });
         return payload.sub;
     } catch (err) {

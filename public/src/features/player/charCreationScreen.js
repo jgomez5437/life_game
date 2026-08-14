@@ -314,7 +314,10 @@ export async function submitCharacter() {
             if (!response.ok) throw new Error('API Login Failed');
 
             userData = await response.json();
-            userData.relationships = startingFamily; // Inject before update
+            const isExistingAdult = (userData.game_data?.stats?.age || userData.game_data?.user?.age || userData.age || 0) > 0;
+            if (!isExistingAdult) {
+                userData.relationships = startingFamily; // Only inject new family for newborn
+            }
             updateGameInfo(userData);
         }
         // === IF GUEST ===
@@ -374,25 +377,28 @@ export async function submitCharacter() {
             if (state.gameState) state.gameState._slotId = activeSlotId;
         }
 
-        // --- PARENTAGE LOGIC ---
-    const rels = state.gameState.user.relationships;
-    const mother = rels.find(r => r.type === 'Mother');
-    const father = rels.find(r => r.type === 'Father');
-    const siblings = rels.filter(r => r.type === 'Brother' || r.type === 'Sister').length;
+        // --- PARENTAGE LOGIC (Newborns only) ---
+        const userAge = state.gameState?.user?.age || 0;
+        if (userAge === 0 && state.gameState?.user?.relationships) {
+            const rels = state.gameState.user.relationships;
+            const mother = rels.find(r => r.type === 'Mother');
+            const father = rels.find(r => r.type === 'Father');
+            const siblings = rels.filter(r => r.type === 'Brother' || r.type === 'Sister').length;
 
-    if (mother && father) {
-        addLog(`You were born to ${mother.name} (Age ${mother.age}) and ${father.name} (Age ${father.age}).`, 'neutral');
-    } else if (mother) {
-        addLog(`You were born to a single mother, ${mother.name} (Age ${mother.age}).`, 'neutral');
-    } else if (father) {
-        addLog(`You were born to a single father, ${father.name} (Age ${father.age}).`, 'neutral');
-    } else {
-        addLog(`You were born an orphan with no known parents.`, 'bad');
-    }
+            if (mother && father) {
+                addLog(`You were born to ${mother.name} (Age ${mother.age}) and ${father.name} (Age ${father.age}).`, 'neutral');
+            } else if (mother) {
+                addLog(`You were born to a single mother, ${mother.name} (Age ${mother.age}).`, 'neutral');
+            } else if (father) {
+                addLog(`You were born to a single father, ${father.name} (Age ${father.age}).`, 'neutral');
+            } else {
+                addLog(`You were born an orphan with no known parents.`, 'bad');
+            }
 
-    if (siblings > 0) {
-        addLog(`You have ${siblings} older sibling${siblings > 1 ? 's' : ''}.`, 'neutral');
-    }
+            if (siblings > 0) {
+                addLog(`You have ${siblings} older sibling${siblings > 1 ? 's' : ''}.`, 'neutral');
+            }
+        }
 
         // Render the UI only after all state has been initialized
         // Note: updateGameInfo/loadAndRenderGame should be responsible for calling this, 

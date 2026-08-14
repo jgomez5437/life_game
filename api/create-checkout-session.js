@@ -29,7 +29,8 @@ export default async function handler(request, response) {
       instant_diplomas: 199,
       time_machine: 199,
       vip_supporter: 499,
-      mafia_expansion: 399,
+      mafia_syndicate: 299,
+      mafia_expansion: 299,
       artist_pack: 399,
       athlete_pack: 399,
       politician_pack: 399
@@ -40,7 +41,8 @@ export default async function handler(request, response) {
       instant_diplomas: 'Instant Diplomas',
       time_machine: 'Time Machine & Multi-Save Slots',
       vip_supporter: 'VIP Supporter & Unique Theme',
-      mafia_expansion: 'Mafia / Crime Syndicate',
+      mafia_syndicate: 'Start a Life Expansion: Mafia Pack',
+      mafia_expansion: 'Start a Life Expansion: Mafia Pack',
       artist_pack: 'Artist & Creative Industry',
       athlete_pack: 'Athlete & Pro Sports',
       politician_pack: 'Politician & Head of State'
