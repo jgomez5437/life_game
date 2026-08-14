@@ -4,33 +4,6 @@ import { renderLifeDashboard, addLog } from '../player/mainScreen.js';
 import { saveGame } from '../../core/main.js';
 import { UI } from '../../ui/ui.js';
 import { Utils, COUNTRIES_DATA } from '../../ui/utils.js';
-import {
-    renderCasinoHub,
-    openBlackjackBetting,
-    startBlackjackGame,
-    renderBlackjackGame,
-    blackjackHit,
-    blackjackStand,
-    openRouletteModal,
-    confirmRouletteBet,
-    confirmRouletteSingleNumberBet,
-    openSlotsModal,
-    confirmSlotsSpin
-} from './casinoScreen.js';
-
-export {
-    renderCasinoHub,
-    openBlackjackBetting,
-    startBlackjackGame,
-    renderBlackjackGame,
-    blackjackHit,
-    blackjackStand,
-    openRouletteModal,
-    confirmRouletteBet,
-    confirmRouletteSingleNumberBet,
-    openSlotsModal,
-    confirmSlotsSpin
-};
 
 const get = id => document.getElementById(id);
 

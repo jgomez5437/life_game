@@ -1,20 +1,20 @@
 import { GameLogic } from '../../core/gameLogic.js';
-import { state } from '../../core/state.js';
+import { state, hasPurchasedPack, addLog } from '../../core/state.js';
+export { addLog };
 import { renderActivities, GRAD_SCHOOLS } from '../career/occupationScreen.js';
 import { renderRelationships, renderAgeUpCheatingDiscoveredModal } from '../relationships/relationshipScreen.js';
-import { processNextFuneral } from '../relationships/funeralScreen.js';
 import { Utils } from '../../ui/utils.js';
 import { UI } from '../../ui/ui.js';
 import { renderAssets, processNextTenantDefaultEvent } from '../assets/assetsScreen.js';
-import { saveGame, resetGame, CAREER_TRACKS, SPECIAL_CAREER_TRACKS } from '../../core/main.js';
-import { hasPurchasedPack } from '../store/storeScreen.js';
+import { saveGame, resetGame } from '../../core/main.js';
+import { CAREER_TRACKS, SPECIAL_CAREER_TRACKS } from '../../core/constants.js';
 import { checkSchoolActionTaken } from '../education/manageEducationScreen.js';
 import { checkActionTaken } from '../career/jobCareerManagerScreen.js';
-import { autoProcessBusinessQuarter } from '../business/businessDashboard.js';
 import { AvatarLogic } from '../../core/avatarLogic.js';
 import { renderAvatar } from '../../ui/avatarRenderer.js';
-import { renderPrisonDashboard, renderNewCellmateModal } from '../more/prisonScreen.js';
 import { captureAnnualSnapshot } from '../../core/timeMachine.js';
+import { EulogyGenerator } from '../../core/eulogyGenerator.js';
+import { loadModule, preloadForContext } from '../../core/moduleLoader.js';
 const get = id => document.getElementById(id);
 
 // public/screens/mainScreen.js
@@ -37,11 +37,13 @@ export function ageUp() {
             renderLifeDashboard();
         } else {
             addLog(prisonRes.message, 'neutral');
-            if (prisonRes.newCellmate) {
-                renderNewCellmateModal(prisonRes.newCellmate);
-            } else {
-                renderPrisonDashboard();
-            }
+            loadModule('prison').then(m => {
+                if (prisonRes.newCellmate) {
+                    m.renderNewCellmateModal(prisonRes.newCellmate);
+                } else {
+                    m.renderPrisonDashboard();
+                }
+            });
         }
         if (typeof saveGame === "function") saveGame();
         return;
@@ -109,7 +111,7 @@ function handleDeath(user, cause) {
     renderDeathScreen(user, cause);
 }
 //renders death screen
-export async function renderDeathScreen(user, cause) {
+export function renderDeathScreen(user, cause) {
     // 1. Calculate Inheritance
     const children = user.relationships.filter(r => r.type === 'Son' || r.type === 'Daughter');
     const spouse = user.relationships.find(r => r.category === 'spouse');
@@ -164,15 +166,23 @@ export async function renderDeathScreen(user, cause) {
         `).join('');
     }
 
-    // 4. Render Terminal Screen with Loading State for Eulogy
+    // 4. Generate the Eulogy procedurally (instant & zero API cost)
+    const eulogy = EulogyGenerator.generate(user, state.gameState?.lifeLog, cause);
+    state.gameState.currentEulogy = eulogy;
+
+    // 5. Render Terminal Screen with Instant Eulogy
     const deathHTML = `
         <div class="fade-in max-w-md mx-auto min-h-full py-8 flex flex-col justify-center items-center text-center px-4">
             <i class="fas fa-skull text-6xl text-slate-500 mb-6"></i>
             <h1 class="text-4xl font-bold text-red-500 mb-2">You Died</h1>
             <p class="text-slate-300 text-lg mb-6">Age ${user.age} • Cause: ${cause}</p>
             
-            <div id="eulogy-container" class="bg-slate-800 p-6 rounded-xl border border-slate-700 w-full mb-6 shadow-2xl min-h-[100px] flex items-center justify-center">
-                <i class="fas fa-circle-notch fa-spin text-2xl text-slate-400"></i>
+            <div id="eulogy-container" class="bg-slate-800 p-6 rounded-xl border border-slate-700 w-full mb-6 shadow-2xl">
+                <h3 class="text-sm font-bold text-slate-400 mb-2 uppercase tracking-wider text-left">Life Summary</h3>
+                <div class="relative w-full">
+                    <p id="eulogy-text" class="text-slate-300 italic text-sm text-left leading-relaxed line-clamp-5 overflow-hidden">"${eulogy}"</p>
+                    <button id="eulogy-view-more" data-action="showFullEulogy" class="hidden mt-3 text-blue-400 hover:text-blue-300 text-xs font-bold uppercase tracking-wider text-left w-full">View More &rarr;</button>
+                </div>
             </div>
             
             <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 w-full mb-6 shadow-2xl">
@@ -194,53 +204,13 @@ export async function renderDeathScreen(user, cause) {
     
     UI.renderScreen(deathHTML);
 
-    // 5. Fetch the Eulogy in the background
-    try {
-        const compressedLog = GameLogic.compressLifeLog(state.gameState.lifeLog);
-        
-        const response = await fetch('/api/generateEulogy', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ compressedLog, username: user.username })
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-            const eulogyContainer = document.getElementById('eulogy-container');
-            
-            // Guard: user may have navigated away before fetch resolved
-            if (eulogyContainer) {
-                // Remove centering classes so paragraph flows naturally
-                eulogyContainer.classList.remove('flex', 'items-center', 'justify-center');
-                
-                eulogyContainer.innerHTML = `
-                    <h3 class="text-sm font-bold text-slate-400 mb-2 uppercase tracking-wider text-left">Life Summary</h3>
-                    <div class="relative w-full">
-                        <p id="eulogy-text" class="text-slate-300 italic text-sm text-left leading-relaxed line-clamp-5 overflow-hidden">"${data.eulogy}"</p>
-                        <button id="eulogy-view-more" data-action="showFullEulogy" class="hidden mt-3 text-blue-400 hover:text-blue-300 text-xs font-bold uppercase tracking-wider text-left w-full">View More &rarr;</button>
-                    </div>
-                `;
-                
-                state.gameState.currentEulogy = data.eulogy;
-                
-                setTimeout(() => {
-                    const p = document.getElementById('eulogy-text');
-                    const btn = document.getElementById('eulogy-view-more');
-                    if (p && btn && p.scrollHeight > p.clientHeight) {
-                        btn.classList.remove('hidden');
-                    }
-                }, 50);
-            }
-
-        } else {
-            const el = document.getElementById('eulogy-container');
-            if (el) el.style.display = 'none';
+    setTimeout(() => {
+        const p = document.getElementById('eulogy-text');
+        const btn = document.getElementById('eulogy-view-more');
+        if (p && btn && p.scrollHeight > p.clientHeight) {
+            btn.classList.remove('hidden');
         }
-    } catch (e) {
-        console.error("Failed to fetch eulogy", e);
-        const el = document.getElementById('eulogy-container');
-        if (el) el.style.display = 'none';
-    }
+    }, 50);
 }
 
 export function showFullEulogy() {
@@ -274,7 +244,9 @@ export const continueAsChild = (childIndex, inheritedMoney) => {
         inheritedMoney: inheritedMoney,
         appearance: parentState.appearance || null,
         eulogy: state.gameState.currentEulogy || null,
-        generation: parentGen
+        generation: parentGen,
+        city: parentState.city || null,
+        country: parentState.country || null
     };
 
     const existingPastLives = state.gameState.pastLives || parentState.pastLives || [];
@@ -528,7 +500,11 @@ function handleFinances(user) {
 
     // 7. Business auto-quarter (runs silently each age-up)
     if (user.hasBusiness) {
-        autoProcessBusinessQuarter(user);
+        loadModule('businessDashboard').then(m => {
+            if (m && typeof m.autoProcessBusinessQuarter === 'function') {
+                m.autoProcessBusinessQuarter(user);
+            }
+        });
     }
 
     // 8. Mortgage Payments
@@ -894,29 +870,9 @@ export function renderLifeDashboard(maybeGameState) {
     
     //Use the UI Manager to inject the HTML into the game container
     UI.renderScreen(dashboardHTML);
-}
 
-export function addLog(msg, type = 'neutral') {
-    // 1. Get current age from the centralized state
-    const currentAge = state.gameState.user.age;
-    //color for the log
-    let color = 'text-slate-400';
-    if (type === 'good') color = 'text-green-400';
-    else if (type === 'bad') color = 'text-red-400';
-    else if (type === 'major') color = 'text-yellow-400 font-bold';
-    else if (type === 'green') color = 'text-green-400';
-    if (!Array.isArray(state.gameState?.lifeLog)) {
-        if (state.gameState) state.gameState.lifeLog = [];
-        else return;
+    // Conservative context-aware preloading during idle gameplay
+    if (state.gameState) {
+        preloadForContext(state.gameState);
     }
-    //is there a log for this age?
-    let ageLog = state.gameState.lifeLog.find(l => l.age === currentAge);
-    if (ageLog) {
-        ageLog.events.push({ msg, color });
-    } else {
-        state.gameState.lifeLog.unshift({ 
-            age: currentAge, 
-            events: [{ msg, color }] 
-        });
-    }
-};
+}

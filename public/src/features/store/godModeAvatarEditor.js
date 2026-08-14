@@ -1,8 +1,7 @@
-import { state } from '../../core/state.js';
+import { state, hasPurchasedPack } from '../../core/state.js';
 import { UI } from '../../ui/ui.js';
 import { AvatarLogic } from '../../core/avatarLogic.js';
 import { renderAvatar } from '../../ui/avatarRenderer.js';
-import { hasPurchasedPack } from './storeScreen.js';
 import { saveGame } from '../../core/main.js';
 import { renderLifeDashboard } from '../player/mainScreen.js';
 import { renderRelationships } from '../relationships/relationshipScreen.js';

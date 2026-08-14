@@ -1,7 +1,7 @@
 import { state } from '../../core/state.js';
 import { renderActivities } from './occupationScreen.js';
 import { Utils } from '../../ui/utils.js';
-import { PART_TIME_JOBS } from '../../core/main.js';
+import { PART_TIME_JOBS } from '../../core/constants.js';
 import { GameLogic } from '../../core/gameLogic.js';
 
 const get = id => document.getElementById(id);

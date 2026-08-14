@@ -1,5 +1,4 @@
-import { state } from '../public/src/core/state.js';
-import { hasPurchasedPack } from '../public/src/features/store/storeScreen.js';
+import { state, hasPurchasedPack } from '../public/src/core/state.js';
 
 describe('God Mode Entitlement Checks & Avatar Editing', () => {
 

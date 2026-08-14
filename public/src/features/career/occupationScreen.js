@@ -1,11 +1,10 @@
 import { GameLogic } from '../../core/gameLogic.js';
-import { state } from '../../core/state.js';
+import { state, hasPurchasedPack } from '../../core/state.js';
 import { renderLifeDashboard, addLog, refreshClassmates } from '../player/mainScreen.js';
 import { Utils } from '../../ui/utils.js';
-import { MAJORS, CAREER_TRACKS, SPECIAL_CAREER_TRACKS, PART_TIME_JOBS } from '../../core/main.js';
+import { MAJORS, CAREER_TRACKS, SPECIAL_CAREER_TRACKS, PART_TIME_JOBS } from '../../core/constants.js';
 import { UI } from '../../ui/ui.js';
 import { hasInstantDiplomaPerk, grantInstantUniversityDegree, grantInstantGradDegree, renderInstantDiplomaHub } from '../education/instantDiploma.js';
-import { hasPurchasedPack } from '../store/storeScreen.js';
 
 const get = id => document.getElementById(id);
 

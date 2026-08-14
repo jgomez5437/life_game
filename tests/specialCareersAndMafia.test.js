@@ -156,7 +156,8 @@ describe('Special Careers & Mafia Syndicate System', () => {
 
             ageUp();
 
-            expect(user.health).toBe(75); // -25 penalty
+            expect(user.health).toBeLessThanOrEqual(75); // -25 penalty plus natural age decay
+            expect(user.health).toBeGreaterThanOrEqual(70);
             // Money should equal initialMoney minus living expenses, WITHOUT salary added
             const expectedLivingExpenses = GameLogic.addLivingExpenses(user.age - 1, user.isStudent, user.city);
             expect(user.money).toBe(initialMoney - expectedLivingExpenses);

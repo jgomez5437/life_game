@@ -36,3 +36,33 @@ export function hasPurchasedPack(packId) {
     return allPurchases.has(packId);
 }
 
+/**
+ * Adds an event entry to the character's life log in gameState.
+ * @param {string} msg 
+ * @param {'neutral'|'good'|'bad'|'major'|'green'} type 
+ */
+export function addLog(msg, type = 'neutral') {
+    const currentAge = state.gameState?.user?.age ?? 0;
+    let color = 'text-slate-400';
+    if (type === 'good') color = 'text-green-400';
+    else if (type === 'bad') color = 'text-red-400';
+    else if (type === 'major') color = 'text-yellow-400 font-bold';
+    else if (type === 'green') color = 'text-green-400';
+
+    if (!state.gameState) return;
+    if (!Array.isArray(state.gameState.lifeLog)) {
+        state.gameState.lifeLog = [];
+    }
+
+    let ageLog = state.gameState.lifeLog.find(l => l.age === currentAge);
+    if (ageLog) {
+        ageLog.events.push({ msg, color });
+    } else {
+        state.gameState.lifeLog.unshift({ 
+            age: currentAge, 
+            events: [{ msg, color }] 
+        });
+    }
+}
+
+

@@ -1,6 +1,6 @@
 import { UI } from '../public/src/ui/ui.js';
-import { STORE_PACKS, hasPurchasedPack } from '../public/src/features/store/storeScreen.js';
-import { state } from '../public/src/core/state.js';
+import { STORE_PACKS } from '../public/src/features/store/storeScreen.js';
+import { state, hasPurchasedPack } from '../public/src/core/state.js';
 
 describe('Packs & Features Store Catalog & Entitlements', () => {
 
@@ -21,9 +21,9 @@ describe('Packs & Features Store Catalog & Entitlements', () => {
         expect(godMode.status).toBe('available');
         expect(godMode.price).toBe('$2.99');
 
-        const mafia = STORE_PACKS.find(p => p.id === 'mafia_expansion');
+        const mafia = STORE_PACKS.find(p => p.id === 'mafia_syndicate');
         expect(mafia).toBeDefined();
-        expect(mafia.status).toBe('coming_soon');
+        expect(mafia.status).toBe('available');
     });
 
     test('hasPurchasedPack correctly checks user entitlements array', () => {

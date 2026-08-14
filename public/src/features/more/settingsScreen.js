@@ -1,7 +1,6 @@
-import { state } from '../../core/state.js';
+import { state, hasPurchasedPack } from '../../core/state.js';
 import { UI } from '../../ui/ui.js';
 import { saveGame, resetGame } from '../../core/main.js';
-import { hasPurchasedPack } from '../store/storeScreen.js';
 import { renderLifeDashboard } from '../player/mainScreen.js';
 
 export function openSettingsModal() {

@@ -3,7 +3,8 @@ import { renderActivities } from '../career/occupationScreen.js';
 import { renderLifeDashboard, addLog } from '../player/mainScreen.js';
 import { UI } from '../../ui/ui.js';
 import { Utils } from '../../ui/utils.js';
-import { SUPPLIERS, saveGame } from '../../core/main.js';
+import { saveGame } from '../../core/main.js';
+import { SUPPLIERS } from '../../core/constants.js';
 import { HQ_TIERS, BUSINESS_INDUSTRIES, MARKETING_CHANNELS, SPECIALIZED_ROLES, VC_INVESTOR_TYPES, BUSINESS_DECISION_EVENTS } from './businessTypes.js';
 import { GameLogic } from '../../core/gameLogic.js';
 

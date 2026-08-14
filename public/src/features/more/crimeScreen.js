@@ -2,9 +2,7 @@ import { GameLogic } from '../../core/gameLogic.js';
 import { state } from '../../core/state.js';
 import { saveGame } from '../../core/main.js';
 import { renderLifeDashboard, addLog } from '../player/mainScreen.js';
-import { renderMoreDashboard } from './moreScreen.js';
-import { renderPrisonDashboard } from './prisonScreen.js';
-import { renderCareerManager } from '../career/jobCareerManagerScreen.js';
+import { loadModule } from '../../core/moduleLoader.js';
 import { UI } from '../../ui/ui.js';
 import { Utils } from '../../ui/utils.js';
 
@@ -12,7 +10,9 @@ const get = id => document.getElementById(id);
 
 function returnFromCrimeOrArrest(user) {
     if (user && user.careerTrack === 'mafia_syndicate') {
-        renderCareerManager();
+        loadModule('jobCareerManager').then(m => {
+            if (m && typeof m.renderCareerManager === 'function') m.renderCareerManager();
+        });
     } else {
         renderCrimeDashboard();
     }
@@ -24,7 +24,9 @@ export function renderCrimeDashboard() {
 
     if (age < 12) {
         UI.showModal("Too Young", "You must be at least 12 years old to engage in mischief or crime.");
-        renderMoreDashboard();
+        loadModule('more').then(m => {
+            if (m && typeof m.renderMoreDashboard === 'function') m.renderMoreDashboard();
+        });
         return;
     }
 
