@@ -1,6 +1,7 @@
 import { state, hasPurchasedPack } from '../../core/state.js';
 export { hasPurchasedPack };
 import { saveGame } from '../../core/main.js';
+import { getAuthToken } from '../../auth/auth.js';
 import { UI } from '../../ui/ui.js';
 
 const get = id => document.getElementById(id);
@@ -90,23 +91,6 @@ export const STORE_PACKS = [
             'Priority Access to New Expansion Betas'
         ],
         status: 'available'
-    },
-    {
-        id: 'mafia_expansion',
-        title: 'Mafia / Crime Syndicate',
-        category: 'career',
-        price: '$3.99',
-        badge: 'Career Pack',
-        badgeColor: 'bg-red-500/20 text-red-300 border-red-500/40',
-        icon: 'fa-user-ninja text-red-400',
-        desc: 'Climb the criminal ranks from street associate to Godfather. Manage syndicates, rackets, and evade law enforcement.',
-        features: [
-            '5 International Crime Families (Italian, Yakuza, Cartel, Triad, Bratva)',
-            'Extortion, Heists & Bootlegging Operations',
-            'Bribe Judges & Hire Defense Lawyers',
-            'Custom Hideouts, Armories & Loyalty Meters'
-        ],
-        status: 'coming_soon'
     },
     {
         id: 'artist_pack',
@@ -467,6 +451,9 @@ export async function buyPack(packId) {
         if (response.ok) {
             const data = await response.json();
             if (data.url) {
+                if (typeof saveGame === 'function') {
+                    try { await saveGame(); } catch (e) { console.warn("Pre-checkout save warning:", e); }
+                }
                 window.location.href = data.url;
                 return;
             } else if (data.sandbox) {
@@ -574,8 +561,7 @@ export async function restorePurchases() {
     try {
         const userAuthId = state.userAuthId;
         if (userAuthId && state.auth0Client) {
-            let authToken = '';
-            try { authToken = await state.auth0Client.getTokenSilently(); } catch (e) {}
+            const authToken = await getAuthToken();
             const response = await fetch('/api/getPurchases', {
                 headers: { 'Authorization': `Bearer ${authToken}` }
             });

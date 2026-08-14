@@ -28,6 +28,17 @@ export async function configureAuth() {
     }
 };
 
+export async function getAuthToken() {
+    if (!state.auth0Client) return '';
+    try {
+        const claims = await state.auth0Client.getIdTokenClaims();
+        return claims?.__raw || '';
+    } catch (e) {
+        console.warn("Could not retrieve ID token:", e);
+        return '';
+    }
+}
+
 export async function login() {
     if (typeof UI !== 'undefined' && UI.renderLoadingScreen) {
         UI.renderLoadingScreen("Connecting to Auth0...", "Redirecting to secure login portal...");

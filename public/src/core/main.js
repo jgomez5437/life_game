@@ -1,4 +1,4 @@
-import { login, configureAuth } from '../auth/auth.js';
+import { login, configureAuth, getAuthToken } from '../auth/auth.js';
 import { startGuestMode, renderLoginScreen } from '../auth/loginScreen.js';
 import { state } from './state.js';
 import { GameLogic } from './gameLogic.js';
@@ -1006,9 +1006,7 @@ export async function saveGame() {
     // 3. Send to API
     let authToken = '';
     try {
-        if (state.auth0Client) {
-            authToken = await state.auth0Client.getTokenSilently();
-        }
+        authToken = await getAuthToken();
     } catch (e) {
         console.warn('Could not get auth token:', e);
     }
@@ -1066,8 +1064,7 @@ async function syncPurchasesFromCloud(expectedPackId = null, showNotification = 
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-            let authToken = '';
-            try { authToken = await state.auth0Client.getTokenSilently(); } catch (e) {}
+            const authToken = await getAuthToken();
             const response = await fetch('/api/getPurchases', {
                 headers: { 'Authorization': `Bearer ${authToken}` }
             });
@@ -1110,6 +1107,105 @@ async function syncPurchasesFromCloud(expectedPackId = null, showNotification = 
     }
 }
 
+/**
+ * Renders a celebratory confirmation modal when a player returns from a successful Stripe checkout.
+ * @param {string} packId
+ */
+export async function showPurchaseSuccessModal(packId) {
+    let pack = null;
+    try {
+        const storeMod = await import('../features/store/storeScreen.js');
+        if (storeMod && Array.isArray(storeMod.STORE_PACKS)) {
+            pack = storeMod.STORE_PACKS.find(p => p.id === packId);
+        }
+    } catch (e) {}
+
+    const title = pack?.title || (packId ? packId.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Expansion Pack');
+    const icon = pack?.icon || 'fa-gem text-amber-400';
+    const desc = pack?.desc || 'Your purchase was successful and your new features are now active on your account.';
+
+    // Action button customization based on pack
+    let actionBtnHtml = '';
+    if (packId === 'instant_diplomas') {
+        actionBtnHtml = `
+            <button data-action="renderInstantDiplomaHub" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20">
+                <i class="fas fa-graduation-cap"></i> Open Instant Diploma Hub
+            </button>
+        `;
+    } else if (packId === 'vip_supporter') {
+        actionBtnHtml = `
+            <button data-action="renderVipLoungeModal" class="w-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black py-3 rounded-xl text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20">
+                <i class="fas fa-crown"></i> Open VIP Lounge
+            </button>
+        `;
+    } else if (packId === 'god_mode') {
+        actionBtnHtml = `
+            <button data-action="openGodModeHubModal" class="w-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black py-3 rounded-xl text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20">
+                <i class="fas fa-bolt"></i> Open God Mode Editor
+            </button>
+        `;
+    } else if (packId === 'time_machine') {
+        actionBtnHtml = `
+            <button data-action="openSaveSlotManager" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 rounded-xl text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20">
+                <i class="fas fa-hourglass-half"></i> Open Time Machine Slots
+            </button>
+        `;
+    } else if (packId === 'mafia_syndicate' || packId === 'mafia_expansion') {
+        actionBtnHtml = `
+            <button data-action="renderCrimeDashboard" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-xl text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-red-500/20">
+                <i class="fas fa-user-ninja"></i> Open Underworld Hub
+            </button>
+        `;
+    }
+
+    const modalContent = `
+        <div class="space-y-4 text-center py-2">
+            <!-- Celebratory Top Badge -->
+            <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-3xl text-white mx-auto shadow-xl shadow-emerald-900/30">
+                <i class="fas fa-check-circle"></i>
+            </div>
+
+            <div>
+                <div class="text-xs font-black text-emerald-400 uppercase tracking-widest mb-1 flex items-center justify-center gap-1.5">
+                    <i class="fas fa-shield-alt"></i> Payment Confirmed
+                </div>
+                <h3 class="text-2xl font-black text-white tracking-wide">
+                    ${title} Unlocked!
+                </h3>
+                <p class="text-xs text-slate-300 mt-2 max-w-sm mx-auto leading-relaxed">
+                    ${desc}
+                </p>
+            </div>
+
+            <div class="bg-slate-900/90 border border-emerald-500/30 p-3.5 rounded-xl text-left flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-lg shrink-0">
+                    <i class="fas ${icon}"></i>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <div class="text-xs font-bold text-white truncate">${title}</div>
+                    <div class="text-[11px] text-emerald-400 font-semibold flex items-center gap-1">
+                        <i class="fas fa-lock-open text-[9px]"></i> Permanently Active
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-2 pt-1">
+                ${actionBtnHtml}
+                <button data-action="hideModal" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-2.5 rounded-xl text-xs transition">
+                    Continue Playing
+                </button>
+            </div>
+        </div>
+    `;
+
+    UI.showCustomModal({
+        title: "",
+        content: modalContent,
+        confirmText: null,
+        cancelText: null
+    });
+}
+
 // --- Updated Game Initializer ---
 async function initGame() {
     console.log("Initializing Game Logic...");
@@ -1135,22 +1231,77 @@ async function initGame() {
         const guestSave = Utils.guestStorage.loadGame();
         const hasGuestSave = guestSave && guestSave.user && guestSave.user.lifeStatus !== "Deceased";
 
-        // Try to load existing cloud save first
-        let dbUser = null;
-        try {
-            let authToken = '';
-            try { authToken = await state.auth0Client.getTokenSilently(); } catch (e) {}
-            const response = await fetch(`/api/load?auth0_id=${user.sub}`, {
-                headers: { 'Authorization': `Bearer ${authToken}` }
-            });
-            if (response.ok) {
-                const data = await response.json();
-                if (data && data.game_data && Object.keys(data.game_data).length > 0 && (data.game_data.user || data.game_data.stats)) {
-                    dbUser = data;
-                }
+        // Check for Stripe purchase return parameters early
+        const urlParams = new URLSearchParams(window.location.search);
+        const purchaseSuccess = urlParams.get('purchase_success');
+        const purchaseCancelled = urlParams.get('purchase_cancelled');
+        const purchasedPackId = urlParams.get('pack_id');
+
+        if (purchaseSuccess || purchaseCancelled) {
+            window.history.replaceState({}, document.title, '/');
+        }
+
+        // Optimistically record purchased pack locally so entitlements are immediately available
+        if (purchaseSuccess === 'true' && purchasedPackId) {
+            let localP = [];
+            try {
+                const stored = localStorage.getItem('life_game_purchases');
+                if (stored) localP = JSON.parse(stored);
+            } catch (e) {}
+            if (!localP.includes(purchasedPackId)) {
+                localP.push(purchasedPackId);
+                try { localStorage.setItem('life_game_purchases', JSON.stringify(localP)); } catch (e) {}
             }
-        } catch (e) {
-            console.error("Error checking cloud save:", e);
+        }
+
+        // Try to load existing cloud save with retry
+        let dbUser = null;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            try {
+                const authToken = await getAuthToken();
+                if (authToken) {
+                    const response = await fetch(`/api/load?auth0_id=${encodeURIComponent(user.sub)}`, {
+                        headers: { 'Authorization': `Bearer ${authToken}` }
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data && data.game_data && Object.keys(data.game_data).length > 0 && (data.game_data.user || data.game_data.stats)) {
+                            dbUser = data;
+                            break;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error(`Error checking cloud save (attempt ${attempt}):`, e);
+            }
+            if (!dbUser && attempt < 3) {
+                await new Promise(r => setTimeout(r, 600));
+            }
+        }
+
+        // Fallback: If /api/load failed, check if user exists via /api/login in sync mode
+        if (!dbUser) {
+            try {
+                const fallbackResp = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        auth0_id: user.sub,
+                        email: user.email,
+                        username: user.nickname || 'Player',
+                        gender: 'male',
+                        city: 'New York'
+                    })
+                });
+                if (fallbackResp.ok) {
+                    const fallbackData = await fallbackResp.json();
+                    if (fallbackData && fallbackData.game_data && Object.keys(fallbackData.game_data).length > 0 && (fallbackData.game_data.user || fallbackData.game_data.stats)) {
+                        dbUser = fallbackData;
+                    }
+                }
+            } catch (e) {
+                console.warn("Login fallback check skipped:", e);
+            }
         }
 
         // SCENARIO 1: Both Guest Save AND Cloud Save exist -> CONFLICT RESOLUTION MODAL
@@ -1235,20 +1386,20 @@ async function initGame() {
             renderCharCreation();
         }
 
-        // --- Purchase Sync: Detect return from Stripe checkout & auto-sync entitlements ---
-        const urlParams = new URLSearchParams(window.location.search);
-        const purchaseSuccess = urlParams.get('purchase_success');
-        const purchasedPackId = urlParams.get('pack_id');
-
-        // Clean the URL parameters so they don't persist on refresh
-        if (purchaseSuccess || urlParams.get('purchase_cancelled')) {
-            window.history.replaceState({}, document.title, '/');
-        }
-
+        // Apply purchased pack to active user state immediately if returning from Stripe
         if (purchaseSuccess === 'true' && purchasedPackId) {
-            // Returning from a successful Stripe checkout — sync with retry for webhook race condition
+            if (state.gameState?.user) {
+                if (!Array.isArray(state.gameState.user.purchases)) state.gameState.user.purchases = [];
+                if (!state.gameState.user.purchases.includes(purchasedPackId)) {
+                    state.gameState.user.purchases.push(purchasedPackId);
+                    await saveGame();
+                }
+            }
             console.log(`Returning from Stripe checkout for pack: ${purchasedPackId}`);
-            syncPurchasesFromCloud(purchasedPackId, true);
+            showPurchaseSuccessModal(purchasedPackId);
+            syncPurchasesFromCloud(purchasedPackId, false);
+        } else if (purchaseCancelled === 'true') {
+            UI.showModal("Checkout Cancelled", "Your payment session was cancelled. No charges were made.");
         } else if (state.gameState?.user) {
             // Normal login — silently sync purchases in background (no retry, no notification)
             syncPurchasesFromCloud(null, false);
@@ -1618,7 +1769,8 @@ const routeHandlers = {
   loadSaveSlot: loadSlot,
   branchSaveSlot: branchCurrentSave,
   startNewSlotLife: startNewLifeInNewSlot,
-  deleteSaveSlot: deleteSlot
+  deleteSaveSlot: deleteSlot,
+  hideModal: () => UI.hideModal()
 };
 
 document.addEventListener('click', (e) => {
