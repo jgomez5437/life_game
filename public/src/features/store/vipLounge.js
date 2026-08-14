@@ -140,6 +140,8 @@ export function selectTheme(themeName) {
     localStorage.setItem('life_game_theme', themeName);
     applyTheme(themeName);
 
-    // Refresh active lounge or settings modal if open
-    renderVipLoungeModal();
+    // Refresh the appropriate modal based on VIP status
+    if (isVipSupporter()) {
+        renderVipLoungeModal();
+    }
 }

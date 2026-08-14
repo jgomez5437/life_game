@@ -573,8 +573,12 @@ export async function restorePurchases() {
 
     try {
         const userAuthId = state.userAuthId;
-        if (userAuthId) {
-            const response = await fetch(`/api/getPurchases?userAuthId=${encodeURIComponent(userAuthId)}`);
+        if (userAuthId && state.auth0Client) {
+            let authToken = '';
+            try { authToken = await state.auth0Client.getTokenSilently(); } catch (e) {}
+            const response = await fetch('/api/getPurchases', {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
             if (response.ok) {
                 const data = await response.json();
                 if (Array.isArray(data.purchases)) {

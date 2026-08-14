@@ -7,6 +7,7 @@ import { Utils } from '../../ui/utils.js';
 import { UI } from '../../ui/ui.js';
 import { renderAssets, processNextTenantDefaultEvent } from '../assets/assetsScreen.js';
 import { saveGame, resetGame, CAREER_TRACKS, SPECIAL_CAREER_TRACKS } from '../../core/main.js';
+import { hasPurchasedPack } from '../store/storeScreen.js';
 import { checkSchoolActionTaken } from '../education/manageEducationScreen.js';
 import { checkActionTaken } from '../career/jobCareerManagerScreen.js';
 import { autoProcessBusinessQuarter } from '../business/businessDashboard.js';
@@ -834,8 +835,7 @@ export function renderLifeDashboard(maybeGameState) {
 
     //Define Action Variables
     const ageUpText = "Age Up +";
-    const userPurchases = user.purchases || [];
-    const isVip = Array.isArray(userPurchases) && userPurchases.includes('vip_supporter');
+    const isVip = hasPurchasedPack('vip_supporter');
     const vipBannerHtml = isVip ? `
         <div data-action="renderVipLoungeModal" class="bg-slate-800/80 hover:bg-slate-800 p-2.5 rounded-xl border border-amber-500/30 mb-3 flex items-center justify-between cursor-pointer transition shadow-sm">
             <div class="flex items-center gap-2">

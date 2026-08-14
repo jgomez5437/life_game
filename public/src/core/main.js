@@ -1051,6 +1051,65 @@ export const onload = async () => {
     await initGame();
 };
 
+/**
+ * Syncs purchases from the user_purchases database table into the client state.
+ * Handles the Stripe webhook race condition by retrying if an expected pack is missing.
+ * @param {string|null} expectedPackId - If returning from Stripe checkout, the pack_id to wait for.
+ * @param {boolean} showNotification - Whether to show a success modal to the user.
+ */
+async function syncPurchasesFromCloud(expectedPackId = null, showNotification = false) {
+    const user = state.gameState?.user;
+    if (!user || !state.userAuthId || !state.auth0Client) return;
+
+    const maxRetries = expectedPackId ? 4 : 1;
+    const retryDelay = 2500; // ms between retries
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            let authToken = '';
+            try { authToken = await state.auth0Client.getTokenSilently(); } catch (e) {}
+            const response = await fetch('/api/getPurchases', {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (Array.isArray(data.purchases) && data.purchases.length > 0) {
+                    const before = (user.purchases || []).length;
+                    user.purchases = Array.from(new Set([...(user.purchases || []), ...data.purchases]));
+                    const newCount = user.purchases.length - before;
+
+                    // If we're waiting for a specific pack and it's now present, or we're not waiting for anything
+                    if (!expectedPackId || user.purchases.includes(expectedPackId)) {
+                        if (newCount > 0) {
+                            saveGame();
+                            if (showNotification) {
+                                UI.showModal("Purchase Activated!", `${newCount} new pack(s) have been unlocked and synced to your account.`);
+                            }
+                        }
+                        console.log(`Purchase sync complete (attempt ${attempt}): ${user.purchases.length} total packs.`);
+                        return;
+                    }
+                }
+            }
+        } catch (err) {
+            console.warn(`Purchase sync attempt ${attempt} failed:`, err);
+        }
+
+        // If we're waiting for a specific pack and haven't found it, wait and retry
+        if (attempt < maxRetries && expectedPackId) {
+            console.log(`Pack "${expectedPackId}" not found yet. Retrying in ${retryDelay}ms (attempt ${attempt}/${maxRetries})...`);
+            await new Promise(resolve => setTimeout(resolve, retryDelay));
+        }
+    }
+
+    // Final fallback: even if the expected pack wasn't found, save whatever we got
+    if (expectedPackId && showNotification) {
+        saveGame();
+        UI.showModal("Purchase Processing", "Your payment was received! If your pack isn't active yet, use 'Restore Purchases' in the Store in a moment.");
+    }
+}
+
 // --- Updated Game Initializer ---
 async function initGame() {
     console.log("Initializing Game Logic...");
@@ -1174,6 +1233,25 @@ async function initGame() {
         } else {
             console.log("No save file found. Starting Character Creation.");
             renderCharCreation();
+        }
+
+        // --- Purchase Sync: Detect return from Stripe checkout & auto-sync entitlements ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const purchaseSuccess = urlParams.get('purchase_success');
+        const purchasedPackId = urlParams.get('pack_id');
+
+        // Clean the URL parameters so they don't persist on refresh
+        if (purchaseSuccess || urlParams.get('purchase_cancelled')) {
+            window.history.replaceState({}, document.title, '/');
+        }
+
+        if (purchaseSuccess === 'true' && purchasedPackId) {
+            // Returning from a successful Stripe checkout — sync with retry for webhook race condition
+            console.log(`Returning from Stripe checkout for pack: ${purchasedPackId}`);
+            syncPurchasesFromCloud(purchasedPackId, true);
+        } else if (state.gameState?.user) {
+            // Normal login — silently sync purchases in background (no retry, no notification)
+            syncPurchasesFromCloud(null, false);
         }
 
     } else {
