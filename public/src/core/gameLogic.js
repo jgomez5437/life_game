@@ -1,5 +1,4 @@
-import { state } from './state.js';
-import { addLog } from '../features/player/mainScreen.js';
+import { state, addLog } from './state.js';
 import { UI } from '../ui/ui.js';
 import { Utils } from '../ui/utils.js';
 import { AvatarLogic } from './avatarLogic.js';
@@ -451,30 +450,6 @@ function calculateHealthDecay(age, roll = Math.random()) {
     }
 }
 
-function compressLifeLog(lifeLog) {
-    // 1. Create a shallow copy and reverse it to true chronological order (Birth -> Death)
-    const chronologicalLog = [...lifeLog].reverse();
-
-    return chronologicalLog
-        .map(year => {
-            // 2. Filter out UI fluff and annual spam loops
-            const significantEvents = year.events
-                .filter(e => {
-                    const msg = e.msg;
-                    if (msg === "You didn't do much all year.") return false;
-                    if (msg.startsWith("Earned $")) return false; // Ignore annual salary
-                    if (msg.includes("basic living expenses")) return false; // Ignore annual expenses
-                    if (msg.includes("Completed year")) return false; // Ignore mid-degree updates
-                    return true;
-                })
-                .map(e => e.msg)
-                .join(" ");
-            
-            return significantEvents ? `Age ${year.age}: ${significantEvents}` : null;
-        })
-        .filter(Boolean) // Remove years that are now empty after filtering
-        .join("\n");
-};
 
 /**
  * Calculates active health improvements from gym and diet.
@@ -5087,7 +5062,6 @@ export const GameLogic = {
     updateOwnedVehicles,
     checkMortality,
     calculateHealthDecay,
-    compressLifeLog,
     calculateHealthBenefits,
     calculateActiveHealthCosts,
     calculateChildMonthlyOutflow,

@@ -2,6 +2,7 @@ import { state } from '../../core/state.js';
 import { UI } from '../../ui/ui.js';
 import { Utils } from '../../ui/utils.js';
 import { renderAvatar } from '../../ui/avatarRenderer.js';
+import { EulogyGenerator } from '../../core/eulogyGenerator.js';
 
 export function renderGraveyardModal() {
     if (!state.gameState || !state.gameState.user) return;
@@ -35,6 +36,9 @@ export function renderGraveyardModal() {
         const ancestorsCardsHtml = pastLives.map((ancestor, index) => {
             const genNum = ancestor.generation || (pastLives.length - index);
             const avatarHtml = renderAvatar(ancestor);
+            if (!ancestor.eulogy) {
+                ancestor.eulogy = EulogyGenerator.generate(ancestor, [], ancestor.causeOfDeath || 'Natural Causes');
+            }
             const netWorthStr = Utils.formatMoney(ancestor.finalNetWorth || 0);
             const inheritedStr = Utils.formatMoney(ancestor.inheritedMoney || 0);
 
@@ -128,7 +132,10 @@ export function showAncestorEulogy(ancestorId) {
     const pastLives = user.pastLives || state.gameState.pastLives || [];
 
     const ancestor = pastLives.find(a => a.id === ancestorId);
-    if (!ancestor || !ancestor.eulogy) return;
+    if (!ancestor) return;
+    if (!ancestor.eulogy) {
+        ancestor.eulogy = EulogyGenerator.generate(ancestor, [], ancestor.causeOfDeath || 'Natural Causes');
+    }
 
     UI.showModal(
         `${ancestor.name}'s Life Summary`,

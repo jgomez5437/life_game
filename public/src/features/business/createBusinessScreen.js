@@ -3,7 +3,7 @@ import { renderActivities } from '../career/occupationScreen.js';
 import { addLog } from '../player/mainScreen.js';
 import { Utils } from '../../ui/utils.js';
 import { UI } from '../../ui/ui.js';
-import { SUPPLIERS } from '../../core/main.js';
+import { SUPPLIERS } from '../../core/constants.js';
 import { BUSINESS_INDUSTRIES } from './businessTypes.js';
 import { renderBusinessDashboard } from './businessDashboard.js';
 import { GameLogic } from '../../core/gameLogic.js';

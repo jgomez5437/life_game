@@ -1,7 +1,8 @@
-import { state } from '../public/src/core/state.js';
+import { state, hasPurchasedPack } from '../public/src/core/state.js';
 import { captureAnnualSnapshot, rewindToAge, MAX_SNAPSHOTS } from '../public/src/core/timeMachine.js';
 import { getSlotsStore, saveToSlot, loadSlot, branchCurrentSave, deleteSlot, persistSlotsStore, startNewLifeInNewSlot } from '../public/src/core/saveSlotManager.js';
-import { hasPurchasedPack } from '../public/src/features/store/storeScreen.js';
+import '../public/src/features/player/mainScreen.js';
+import '../public/src/features/player/charCreationScreen.js';
 
 describe('Time Machine & Multi-Save Slots Engine', () => {
 
@@ -35,6 +36,9 @@ describe('Time Machine & Multi-Save Slots Engine', () => {
             snapshots: []
         };
         localStorage.clear();
+        window.saveGame = () => {};
+        window.renderLifeDashboard = () => {};
+        window.renderCharCreation = () => {};
     });
 
     describe('Time Machine Snapshot Engine', () => {

@@ -2,9 +2,10 @@ import { state } from '../../core/state.js';
 import { renderActivities } from './occupationScreen.js';
 import { addLog } from '../player/mainScreen.js';
 import { Utils } from '../../ui/utils.js';
-import { CAREER_TRACKS, SPECIAL_CAREER_TRACKS, saveGame } from '../../core/main.js';
+import { CAREER_TRACKS, SPECIAL_CAREER_TRACKS } from '../../core/constants.js';
+import { saveGame } from '../../core/main.js';
 import { GameLogic } from '../../core/gameLogic.js';
-import { showArrestModal } from '../more/crimeScreen.js';
+import { loadModule } from '../../core/moduleLoader.js';
 import { UI } from '../../ui/ui.js';
 
 const get = id => document.getElementById(id);
@@ -319,6 +320,10 @@ export function attemptMafiaCrime(type) {
         renderCareerManager();
     } else if (result.arrested) {
         addLog(result.message, 'bad');
-        showArrestModal(user.pendingTrial.crime);
+        loadModule('crime').then(m => {
+            if (m && typeof m.showArrestModal === 'function') {
+                m.showArrestModal(user.pendingTrial.crime);
+            }
+        });
     }
 }

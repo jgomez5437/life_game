@@ -1,5 +1,4 @@
-import { state } from '../../core/state.js';
-import { addLog } from '../player/mainScreen.js';
+import { state, addLog } from '../../core/state.js';
 import { Utils } from '../../ui/utils.js';
 import { UI } from '../../ui/ui.js';
 import { GameLogic } from '../../core/gameLogic.js';

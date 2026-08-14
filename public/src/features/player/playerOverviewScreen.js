@@ -1,9 +1,8 @@
-import { state } from '../../core/state.js';
+import { state, hasPurchasedPack } from '../../core/state.js';
 import { UI } from '../../ui/ui.js';
 import { Utils } from '../../ui/utils.js';
 import { GameLogic } from '../../core/gameLogic.js';
 import { renderAvatar } from '../../ui/avatarRenderer.js';
-import { hasPurchasedPack } from '../store/storeScreen.js';
 
 export function openPlayerOverviewModal() {
     if (!state.gameState || !state.gameState.user) return;

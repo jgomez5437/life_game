@@ -1,11 +1,10 @@
-import { state } from '../../core/state.js';
+import { state, hasPurchasedPack } from '../../core/state.js';
 import { renderLifeDashboard, addLog } from '../player/mainScreen.js';
 import { GameLogic } from '../../core/gameLogic.js';
 import { Utils } from '../../ui/utils.js';
 import { UI } from '../../ui/ui.js';
 import { AvatarLogic } from '../../core/avatarLogic.js';
 import { renderAvatar } from '../../ui/avatarRenderer.js';
-import { hasPurchasedPack } from '../store/storeScreen.js';
 
 // --- ADD NEW RELATIONSHIP GLOBAL METHOD ---
 // Call this function when befriending someone at school, work, etc.

@@ -1,5 +1,5 @@
-import { state } from '../../core/state.js';
-import { hasPurchasedPack, STORE_PACKS } from './storeScreen.js';
+import { state, hasPurchasedPack } from '../../core/state.js';
+import { STORE_PACKS } from './storeScreen.js';
 import { UI } from '../../ui/ui.js';
 import { applyTheme } from '../more/settingsScreen.js';
 

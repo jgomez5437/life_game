@@ -1,9 +1,8 @@
-import { state } from '../../core/state.js';
-import { hasPurchasedPack } from '../store/storeScreen.js';
+import { state, hasPurchasedPack } from '../../core/state.js';
 import { addLog, refreshClassmates } from '../player/mainScreen.js';
 import { saveGame } from '../../core/main.js';
 import { UI } from '../../ui/ui.js';
-import { MAJORS } from '../../core/main.js';
+import { MAJORS } from '../../core/constants.js';
 import { GRAD_SCHOOLS } from '../career/occupationScreen.js';
 
 /**

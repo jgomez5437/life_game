@@ -3,7 +3,8 @@ import { renderActivities } from './occupationScreen.js';
 import { addLog } from '../player/mainScreen.js';
 import { Utils } from '../../ui/utils.js';
 import { UI } from '../../ui/ui.js';
-import { CAREER_TRACKS, PART_TIME_JOBS, SPECIAL_CAREER_TRACKS, saveGame } from '../../core/main.js';
+import { saveGame } from '../../core/main.js';
+import { CAREER_TRACKS, PART_TIME_JOBS, SPECIAL_CAREER_TRACKS } from '../../core/constants.js';
 import { GameLogic } from '../../core/gameLogic.js';
 
 const get = id => document.getElementById(id);
