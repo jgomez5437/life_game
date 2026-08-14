@@ -73,8 +73,7 @@ export function openPlayerOverviewModal() {
     const currentLooks = user.looks ?? user.stats?.looks ?? 50;
     const healthBadgeColor = currentHealth > 70 ? 'text-green-400' : currentHealth > 30 ? 'text-yellow-400' : 'text-red-500';
 
-    const userPurchases = user.purchases || [];
-    const isVip = Array.isArray(userPurchases) && userPurchases.includes('vip_supporter');
+    const isVip = hasPurchasedPack('vip_supporter');
     const vipBadgeTag = isVip ? `
         <div data-action="renderVipLoungeModal" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-black text-[10px] uppercase shadow border border-amber-300 mt-1 cursor-pointer" title="Open VIP Lounge">
             <i class="fas fa-crown text-[9px]"></i> VIP Supporter

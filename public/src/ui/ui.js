@@ -301,6 +301,31 @@ export const UI = {
         _elements.modalOverlay.classList.add('flex');
     },
 
+    /**
+     * Replaces the current modal's content without pushing to the modal stack.
+     * Used for transitions within the same flow (e.g., spin animation -> result).
+     * @param {string} title
+     * @param {string} htmlContent
+     */
+    replaceModalContent: (title, htmlContent) => {
+        if (_elements.modalTitle) {
+            _elements.modalTitle.innerText = title;
+            if (!title) {
+                _elements.modalTitle.classList.add('hidden');
+            } else {
+                _elements.modalTitle.classList.remove('hidden');
+            }
+        }
+        if (_elements.modalContent) {
+            _elements.modalContent.innerHTML = htmlContent;
+        }
+        // Clear any existing action buttons since this is a content-only replacement
+        if (_elements.modalActions) {
+            _elements.modalActions.innerHTML = '';
+            _elements.modalActions.classList.add('hidden');
+        }
+    },
+
     hideModal: () => {
         _restorePreviousModal();
     },

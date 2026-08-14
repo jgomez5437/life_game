@@ -47,7 +47,7 @@ export function renderCasinoHub() {
                 <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 hover:border-purple-500/50 transition shadow-md">
                     <div class="flex items-center gap-3 mb-3">
                         <div class="w-12 h-12 rounded-xl bg-purple-900/40 border border-purple-600/50 flex items-center justify-center text-purple-300 text-xl shrink-0">
-                            <i class="fas fa-spade"></i>
+                            <span class="font-bold text-2xl leading-none">♠</span>
                         </div>
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center justify-between">
@@ -457,7 +457,7 @@ export function confirmRouletteBet(type, target) {
             </div>
         `;
 
-        UI.showCustomModal("Roulette Outcome", resultHtml);
+        UI.replaceModalContent("Roulette Outcome", resultHtml);
     }, 1200);
 }
 
@@ -582,6 +582,6 @@ export function confirmSlotsSpin(betAmount) {
             </div>
         `;
 
-        UI.showCustomModal("Slot Result", resultHtml);
+        UI.replaceModalContent("Slot Result", resultHtml);
     }, 1200);
 }

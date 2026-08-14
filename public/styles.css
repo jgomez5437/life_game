@@ -287,6 +287,32 @@ body.light-mode .toggle-switch.bg-slate-700\/80 {
     border-color: #94a3b8 !important;
 }
 
+/* VIP Require Message & Badge Visibility in Light Mode */
+body.light-mode .text-amber-200 {
+    color: #b45309 !important; /* Amber 700 — readable on light backgrounds */
+}
+
+body.light-mode .text-amber-400\/60,
+body.light-mode .text-amber-400\/30 {
+    color: #d97706 !important; /* Amber 600 — solid, readable */
+}
+
+body.light-mode .text-yellow-400\/60 {
+    color: #ca8a04 !important; /* Yellow 600 — solid, readable */
+}
+
+/* Protect text inside dark gradient VIP banners from light-mode inversion */
+body.light-mode [class*="from-amber-900"] .text-white,
+body.light-mode [class*="from-amber-900"] .text-slate-300 {
+    color: inherit !important;
+}
+
+/* Dark amber containers should lighten in Light Mode */
+body.light-mode .bg-amber-950\/60,
+body.light-mode .bg-amber-950\/40 {
+    background-color: rgba(254, 243, 199, 0.7) !important; /* Warm amber-50 tint */
+}
+
 /* ==========================================================================
    ONYX & GOLD LUXURY THEME SYSTEM (FLASHY VIP SUPPORTER)
    ========================================================================== */

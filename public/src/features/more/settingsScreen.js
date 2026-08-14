@@ -1,6 +1,7 @@
 import { state } from '../../core/state.js';
 import { UI } from '../../ui/ui.js';
 import { saveGame, resetGame } from '../../core/main.js';
+import { hasPurchasedPack } from '../store/storeScreen.js';
 import { renderLifeDashboard } from '../player/mainScreen.js';
 
 export function openSettingsModal() {
@@ -12,8 +13,7 @@ export function openSettingsModal() {
     const compactMode = localStorage.getItem('life_game_compact') === 'true';
     const currentTheme = localStorage.getItem('life_game_theme') || 'dark';
     
-    const purchases = state.gameState?.user?.purchases || [];
-    const isVip = Array.isArray(purchases) && purchases.includes('vip_supporter');
+    const isVip = hasPurchasedPack('vip_supporter');
 
     const htmlContent = `
         <div class="space-y-4">
