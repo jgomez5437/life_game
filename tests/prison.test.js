@@ -201,13 +201,13 @@ describe('Prison System Logic', () => {
         spyMath.mockRestore();
     });
 
-    test('generateYardInmates creates first-name-only inmates with avatars', () => {
+    test('generateYardInmates creates inmates with full names and avatars', () => {
         const verdict = { verdict: 'guilty', fine: 500, sentenceYears: 3, crime: { id: 'gta', category: 'heist' } };
         GameLogic.initPrisonState(mockUser, verdict);
 
         expect(mockUser.yardInmates.length).toBeGreaterThan(0);
         mockUser.yardInmates.forEach(inmate => {
-            expect(inmate.name.split(' ').length).toBe(1);
+            expect(inmate.name.split(' ').length).toBeGreaterThanOrEqual(2);
             expect(inmate.appearance).toBeDefined();
         });
     });

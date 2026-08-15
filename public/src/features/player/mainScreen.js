@@ -1,15 +1,10 @@
 import { GameLogic } from '../../core/gameLogic.js';
 import { state, hasPurchasedPack, addLog } from '../../core/state.js';
 export { addLog };
-import { renderActivities, GRAD_SCHOOLS } from '../career/occupationScreen.js';
-import { renderRelationships, renderAgeUpCheatingDiscoveredModal } from '../relationships/relationshipScreen.js';
 import { Utils } from '../../ui/utils.js';
 import { UI } from '../../ui/ui.js';
-import { renderAssets, processNextTenantDefaultEvent } from '../assets/assetsScreen.js';
 import { saveGame, resetGame } from '../../core/main.js';
-import { CAREER_TRACKS, SPECIAL_CAREER_TRACKS } from '../../core/constants.js';
-import { checkSchoolActionTaken } from '../education/manageEducationScreen.js';
-import { checkActionTaken } from '../career/jobCareerManagerScreen.js';
+import { CAREER_TRACKS, SPECIAL_CAREER_TRACKS, GRAD_SCHOOLS } from '../../core/constants.js';
 import { AvatarLogic } from '../../core/avatarLogic.js';
 import { renderAvatar } from '../../ui/avatarRenderer.js';
 import { captureAnnualSnapshot } from '../../core/timeMachine.js';
@@ -17,11 +12,19 @@ import { EulogyGenerator } from '../../core/eulogyGenerator.js';
 import { loadModule, preloadForContext } from '../../core/moduleLoader.js';
 const get = id => document.getElementById(id);
 
-// public/screens/mainScreen.js
-//age up function
-// mainScreen.js
+function checkSchoolActionTaken(user) {
+    if (user && user.schoolActions > 0) {
+        user.schoolActions = 0;
+    }
+}
 
-export function ageUp() {
+function checkActionTaken(user) {
+    if (user && user.careerActionTaken) {
+        user.careerActionTaken = false;
+    }
+}
+
+export async function ageUp() {
     const currentState = state.gameState;
     const user = currentState.user;
 
@@ -65,7 +68,7 @@ export function ageUp() {
     handleHealth(user);
     handleSmarts(user);
     handleLooks(user);
-    handleFinances(user);
+    await handleFinances(user);
     handleEducation(user);
     handleMarket(user);
     handleLifeEvents(user);
@@ -75,7 +78,11 @@ export function ageUp() {
 
     const infidelityDiscovery = GameLogic.checkAgeUpInfidelityDiscovery(user);
     if (infidelityDiscovery) {
-        renderAgeUpCheatingDiscoveredModal(infidelityDiscovery);
+        loadModule('relationships').then(m => {
+            if (m && typeof m.renderAgeUpCheatingDiscoveredModal === 'function') {
+                m.renderAgeUpCheatingDiscoveredModal(infidelityDiscovery);
+            }
+        });
     }
 
     // 4. Empty Year Validation (The Fix)
@@ -86,10 +93,14 @@ export function ageUp() {
 
     // 5. Cleanup & Render
     checkSchoolActionTaken(user);
-    checkActionTaken();          
+    checkActionTaken(user);          
     
     // Process tenant default popups first, then funerals, then render dashboard
-    processNextTenantDefaultEvent();
+    loadModule('assets').then(m => {
+        if (m && typeof m.processNextTenantDefaultEvent === 'function') {
+            m.processNextTenantDefaultEvent();
+        }
+    });
     
     captureAnnualSnapshot(currentState);
 
@@ -347,7 +358,7 @@ function handleLooks(user) {
 }
 
 // sub systems that ageup calls
-function handleFinances(user) {
+async function handleFinances(user) {
     // 1. Birthday Money (Kids only)
     if (user.age >= 5 && user.age <= 18) {
         const bdayMoney = GameLogic.calculateBirthdayMoney();
@@ -393,79 +404,79 @@ function handleFinances(user) {
                 addLog(`Earned ${Utils.formatMoney(user.jobSalary)} as a ${user.jobTitle}.`, 'good');
             }
 
-        // Annual cost-of-living raise (~2%, silent)
-        user.jobSalary += Math.max(500, Math.floor(user.jobSalary * 0.02));
+            // Annual cost-of-living raise (~2%, silent)
+            user.jobSalary += Math.max(500, Math.floor(user.jobSalary * 0.02));
 
-        if (user.careerTrack) {
-            // ── Career-track: promotion / demotion system ──────────────────
-            user.yearsInRole = (user.yearsInRole || 0) + 1;
-            const track = CAREER_TRACKS.find(t => t.key === user.careerTrack);
-            const lvlIdx   = user.careerLevel || 0;
-            const level    = track?.levels[lvlIdx];
-            const nextLevel = track?.levels[lvlIdx + 1];
+            if (user.careerTrack) {
+                // ── Career-track: promotion / demotion system ──────────────────
+                user.yearsInRole = (user.yearsInRole || 0) + 1;
+                const track = CAREER_TRACKS.find(t => t.key === user.careerTrack);
+                const lvlIdx   = user.careerLevel || 0;
+                const level    = track?.levels[lvlIdx];
+                const nextLevel = track?.levels[lvlIdx + 1];
 
-            if (track && level) {
-                if (user.jobPerformance <= 20) {
-                    // Poor performance
-                    user.consecutivePoorYears = (user.consecutivePoorYears || 0) + 1;
-                    if (user.consecutivePoorYears >= 2) {
-                        if (lvlIdx > 0) {
-                            user.careerLevel--;
-                            const demoted = track.levels[user.careerLevel];
-                            const demotedSalary = GameLogic.calculateScaledSalary(demoted.salary, user.city);
-                            user.jobTitle  = demoted.title;
-                            user.jobSalary = demotedSalary;
-                            user.consecutivePoorYears = 0;
-                            user.yearsInRole = 0;
-                            addLog(`Demoted to ${demoted.title} due to sustained poor performance. New salary: ${Utils.formatMoney(user.jobSalary)}/yr.`, 'bad');
+                if (track && level) {
+                    if (user.jobPerformance <= 20) {
+                        // Poor performance
+                        user.consecutivePoorYears = (user.consecutivePoorYears || 0) + 1;
+                        if (user.consecutivePoorYears >= 2) {
+                            if (lvlIdx > 0) {
+                                user.careerLevel--;
+                                const demoted = track.levels[user.careerLevel];
+                                const demotedSalary = GameLogic.calculateScaledSalary(demoted.salary, user.city);
+                                user.jobTitle  = demoted.title;
+                                user.jobSalary = demotedSalary;
+                                user.consecutivePoorYears = 0;
+                                user.yearsInRole = 0;
+                                addLog(`Demoted to ${demoted.title} due to sustained poor performance. New salary: ${Utils.formatMoney(user.jobSalary)}/yr.`, 'bad');
+                            } else {
+                                addLog(`Terminated from ${user.jobTitle} due to sustained poor performance.`, 'bad');
+                                user.jobTitle = null; user.jobSalary = 0; user.jobPerformance = 50;
+                                user.careerTrack = null; user.careerLevel = 0; user.yearsInRole = 0;
+                                user.consecutivePoorYears = 0; user.careerActionTaken = false; user.hasSeenJobSalary = false;
+                            }
                         } else {
-                            addLog(`Terminated from ${user.jobTitle} due to sustained poor performance.`, 'bad');
-                            user.jobTitle = null; user.jobSalary = 0; user.jobPerformance = 50;
-                            user.careerTrack = null; user.careerLevel = 0; user.yearsInRole = 0;
-                            user.consecutivePoorYears = 0; user.careerActionTaken = false; user.hasSeenJobSalary = false;
+                            addLog('Your employer issued a formal warning about your performance.', 'bad');
                         }
                     } else {
-                        addLog('Your employer issued a formal warning about your performance.', 'bad');
-                    }
-                } else {
-                    user.consecutivePoorYears = 0;
-                    let promoted = false;
+                        user.consecutivePoorYears = 0;
+                        let promoted = false;
 
-                    // Promotion check
-                    if (nextLevel && level.minYears !== null && user.yearsInRole >= level.minYears && user.jobPerformance >= 75) {
-                        const promoChance = user.jobPerformance >= 95 ? 0.80 : user.jobPerformance >= 85 ? 0.50 : 0.25;
-                        if (Math.random() < promoChance) {
-                            user.careerLevel++;
-                            const nextSalary = GameLogic.calculateScaledSalary(nextLevel.salary, user.city);
-                            user.jobTitle  = nextLevel.title;
-                            user.jobSalary = Math.max(user.jobSalary, nextSalary);
-                            user.yearsInRole = 0;
-                            user.jobPerformance = 60;
-                            addLog(`Promoted to ${nextLevel.title}! New salary: ${Utils.formatMoney(user.jobSalary)}/yr.`, 'major');
-                            promoted = true;
+                        // Promotion check
+                        if (nextLevel && level.minYears !== null && user.yearsInRole >= level.minYears && user.jobPerformance >= 75) {
+                            const promoChance = user.jobPerformance >= 95 ? 0.80 : user.jobPerformance >= 85 ? 0.50 : 0.25;
+                            if (Math.random() < promoChance) {
+                                user.careerLevel++;
+                                const nextSalary = GameLogic.calculateScaledSalary(nextLevel.salary, user.city);
+                                user.jobTitle  = nextLevel.title;
+                                user.jobSalary = Math.max(user.jobSalary, nextSalary);
+                                user.yearsInRole = 0;
+                                user.jobPerformance = 60;
+                                addLog(`Promoted to ${nextLevel.title}! New salary: ${Utils.formatMoney(user.jobSalary)}/yr.`, 'major');
+                                promoted = true;
+                            }
+                        }
+
+                        // Performance raise if not promoted
+                        if (!promoted && user.jobPerformance >= 80) {
+                            const perfBonus = Math.floor(user.jobSalary * 0.05);
+                            user.jobSalary += perfBonus;
+                            addLog(`Outstanding performance! Your salary increased to ${Utils.formatMoney(user.jobSalary)}/yr.`, 'good');
                         }
                     }
-
-                    // Performance raise if not promoted
-                    if (!promoted && user.jobPerformance >= 80) {
-                        const perfBonus = Math.floor(user.jobSalary * 0.05);
-                        user.jobSalary += perfBonus;
-                        addLog(`Outstanding performance! Your salary increased to ${Utils.formatMoney(user.jobSalary)}/yr.`, 'good');
-                    }
+                }
+            } else {
+                // ── Part-time / legacy flat job ────────────────────────────────
+                if (user.jobPerformance >= 80) {
+                    const perfBonus = Math.floor(user.jobSalary * 0.05);
+                    user.jobSalary += perfBonus;
+                    addLog(`Outstanding performance! Your salary increased to ${Utils.formatMoney(user.jobSalary)}/yr.`, 'good');
+                } else if (user.jobPerformance <= 20 && Math.random() < 0.4) {
+                    addLog(`Your employer let you go from ${user.jobTitle} due to poor performance.`, 'bad');
+                    user.jobTitle = null; user.jobSalary = 0; user.jobPerformance = 50;
+                    user.careerActionTaken = false; user.hasSeenJobSalary = false;
                 }
             }
-        } else {
-            // ── Part-time / legacy flat job ────────────────────────────────
-            if (user.jobPerformance >= 80) {
-                const perfBonus = Math.floor(user.jobSalary * 0.05);
-                user.jobSalary += perfBonus;
-                addLog(`Outstanding performance! Your salary increased to ${Utils.formatMoney(user.jobSalary)}/yr.`, 'good');
-            } else if (user.jobPerformance <= 20 && Math.random() < 0.4) {
-                addLog(`Your employer let you go from ${user.jobTitle} due to poor performance.`, 'bad');
-                user.jobTitle = null; user.jobSalary = 0; user.jobPerformance = 50;
-                user.careerActionTaken = false; user.hasSeenJobSalary = false;
-            }
-        }
         }
     }
 
@@ -500,11 +511,14 @@ function handleFinances(user) {
 
     // 7. Business auto-quarter (runs silently each age-up)
     if (user.hasBusiness) {
-        loadModule('businessDashboard').then(m => {
+        try {
+            const m = await loadModule('businessDashboard');
             if (m && typeof m.autoProcessBusinessQuarter === 'function') {
                 m.autoProcessBusinessQuarter(user);
             }
-        });
+        } catch (bErr) {
+            console.error("Error processing business quarter:", bErr);
+        }
     }
 
     // 8. Mortgage Payments
@@ -779,7 +793,11 @@ export function renderLifeDashboard(maybeGameState) {
         return;}
     const user = currentState.user;
     if (user && user.inPrison) {
-        renderPrisonDashboard();
+        loadModule('prison').then(m => {
+            if (m && typeof m.renderPrisonDashboard === 'function') {
+                m.renderPrisonDashboard();
+            }
+        });
         return;
     }
     //Update the Header Bar using the UI Manager

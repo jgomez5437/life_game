@@ -1,15 +1,25 @@
 import { sql } from '@vercel/postgres';
+import { verifyAuth } from './lib/verifyAuth.js';
 
 export default async function handler(request, response) {
     if (request.method !== 'POST') {
         return response.status(405).json({ error: 'Method Not Allowed' });
     }
 
-    // THE FIX: Destructure 'relationships' from the incoming body
-    const { auth0_id, email, username, gender, city, relationships, appearance } = request.body;
+    const { auth0_id, email, username, gender, city, relationships, appearance } = request.body || {};
 
     if (!auth0_id) {
         return response.status(400).json({ error: 'Missing auth0_id' });
+    }
+
+    // Verify authenticated user identity
+    try {
+        const tokenUserId = await verifyAuth(request);
+        if (tokenUserId !== auth0_id) {
+            return response.status(403).json({ error: 'Forbidden: Token does not match requested user ID' });
+        }
+    } catch (authError) {
+        return response.status(401).json({ error: authError.message });
     }
 
     try {

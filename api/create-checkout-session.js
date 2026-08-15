@@ -75,7 +75,7 @@ export default async function handler(request, response) {
         user_auth_id: userAuthId || 'guest',
         pack_id: packId
       },
-      success_url: `${origin}/?purchase_success=true&pack_id=${packId}`,
+      success_url: `${origin}/?session_id={CHECKOUT_SESSION_ID}&purchase_success=true&pack_id=${packId}`,
       cancel_url: `${origin}/?purchase_cancelled=true`
     });
 

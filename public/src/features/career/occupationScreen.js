@@ -2,20 +2,15 @@ import { GameLogic } from '../../core/gameLogic.js';
 import { state, hasPurchasedPack } from '../../core/state.js';
 import { renderLifeDashboard, addLog, refreshClassmates } from '../player/mainScreen.js';
 import { Utils } from '../../ui/utils.js';
-import { MAJORS, CAREER_TRACKS, SPECIAL_CAREER_TRACKS, PART_TIME_JOBS } from '../../core/constants.js';
+import { MAJORS, CAREER_TRACKS, SPECIAL_CAREER_TRACKS, PART_TIME_JOBS, GRAD_SCHOOLS } from '../../core/constants.js';
 import { UI } from '../../ui/ui.js';
 import { hasInstantDiplomaPerk, grantInstantUniversityDegree, grantInstantGradDegree, renderInstantDiplomaHub } from '../education/instantDiploma.js';
 
 const get = id => document.getElementById(id);
 
 //OCCUPATION/EDUCATION/ENTREPRENUER MANAGER SCREEN
+export { GRAD_SCHOOLS };
 
-export const GRAD_SCHOOLS = [
-    { name: "Law School", years: 3, icon: "fa-balance-scale" },
-    { name: "Medical School", years: 4, icon: "fa-user-md" },
-    { name: "Business School", years: 2, icon: "fa-chart-line" },
-    { name: "Psychiatry School", years: 4, icon: "fa-brain" }
-];
 //University Pop up
 export function openUniversityModal() {
     // Reset flags

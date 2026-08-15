@@ -23,6 +23,26 @@ export default async function handler(request, response) {
       return response.status(400).json({ error: 'Missing required fields' });
     }
 
+    // Server-side purchase synchronization for authenticated users
+    if (game_data.user) {
+      try {
+        const verifiedPurchasesResult = await sql`
+          SELECT DISTINCT pack_id FROM user_purchases WHERE auth0_id = ${authUserId}
+        `;
+        const verifiedPacks = verifiedPurchasesResult.rows.map(r => r.pack_id);
+        
+        if (!Array.isArray(game_data.user.purchases)) {
+          game_data.user.purchases = [];
+        }
+        
+        // Ensure all DB-verified packs are included
+        const mergedPurchases = new Set([...game_data.user.purchases, ...verifiedPacks]);
+        game_data.user.purchases = Array.from(mergedPurchases);
+      } catch (dbErr) {
+        // Table might not exist yet or empty; ignore
+      }
+    }
+
     // 4. The "UPSERT" Query
     await sql`
       INSERT INTO users (auth0_id, email, game_data, last_played_at)

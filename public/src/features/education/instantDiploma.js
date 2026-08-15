@@ -2,8 +2,7 @@ import { state, hasPurchasedPack } from '../../core/state.js';
 import { addLog, refreshClassmates } from '../player/mainScreen.js';
 import { saveGame } from '../../core/main.js';
 import { UI } from '../../ui/ui.js';
-import { MAJORS } from '../../core/constants.js';
-import { GRAD_SCHOOLS } from '../career/occupationScreen.js';
+import { MAJORS, GRAD_SCHOOLS } from '../../core/constants.js';
 
 /**
  * Checks if the user owns the Instant Diplomas store perk.
