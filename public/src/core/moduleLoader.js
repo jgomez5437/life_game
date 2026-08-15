@@ -212,6 +212,8 @@ export const ACTION_TO_MODULE = {
     openSettingsModal: 'settings',
     triggerManualSave: 'settings',
     promptResetGame: 'settings',
+    promptSignOut: 'settings',
+    handleSignOut: 'settings',
     toggleSettingSFX: 'settings',
     toggleSettingCompact: 'settings',
     toggleSettingTheme: 'settings',

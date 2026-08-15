@@ -51,11 +51,17 @@ export async function login() {
 };
 
 export async function logout() {
-    await state.auth0Client.logout({
-        logoutParams: {
-            returnTo: window.location.origin
+    if (state.auth0Client && typeof state.auth0Client.logout === 'function') {
+        await state.auth0Client.logout({
+            logoutParams: {
+                returnTo: window.location.origin
+            }
+        });
+    } else {
+        if (typeof window !== 'undefined' && window.location && window.location.origin) {
+            window.location.href = window.location.origin;
         }
-    });
+    }
 };
 
 async function updateAuthUI() {

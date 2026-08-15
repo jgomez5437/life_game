@@ -1,4 +1,4 @@
-import { login, configureAuth, getAuthToken } from '../auth/auth.js';
+import { login, logout, configureAuth, getAuthToken } from '../auth/auth.js';
 import { startGuestMode, renderLoginScreen } from '../auth/loginScreen.js';
 import { state } from './state.js';
 import { GameLogic } from './gameLogic.js';
@@ -243,6 +243,8 @@ export const confirmSlotsSpin = lazy('casino', 'confirmSlotsSpin');
 export const openSettingsModal = lazy('settings', 'openSettingsModal');
 export const triggerManualSave = lazy('settings', 'triggerManualSave');
 export const promptResetGame = lazy('settings', 'promptResetGame');
+export const promptSignOut = lazy('settings', 'promptSignOut');
+export const handleSignOut = lazy('settings', 'handleSignOut');
 export const toggleSettingSFX = lazy('settings', 'toggleSettingSFX');
 export const toggleSettingCompact = lazy('settings', 'toggleSettingCompact');
 export const toggleSettingTheme = lazy('settings', 'toggleSettingTheme');
@@ -1179,6 +1181,7 @@ const routeHandlers = {
   workHarderJob,
   slackOffJob,
   login,
+  logout,
   startGuestMode,
   renderVehicleManager,
   renderLifeDashboard,
@@ -1365,6 +1368,8 @@ const routeHandlers = {
   openSettingsModal,
   triggerManualSave,
   promptResetGame,
+  promptSignOut,
+  handleSignOut,
   toggleSettingSFX,
   toggleSettingCompact,
   toggleSettingTheme,
