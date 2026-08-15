@@ -127,5 +127,28 @@ describe('Underworld, High-Risk & Crime System Engine', () => {
 
         spy.mockRestore();
     });
+    test('calculateTrialVerdict allows free public defender even when player has negative money', () => {
+        user.money = -1500; // In debt
+        user.pendingTrial = { crime: GameLogic.CRIMES.gta, evidenceRating: 50, extraCharges: [] };
+        const spy = jest.spyOn(Math, 'random').mockReturnValue(0.01);
+
+        const result = GameLogic.calculateTrialVerdict(user, 'public_defender');
+
+        expect(result).not.toHaveProperty('error');
+        expect(result.verdict).toBe('not_guilty');
+        expect(user.pendingTrial).toBeNull();
+
+        spy.mockRestore();
+    });
+
+    test('calculateTrialVerdict blocks paid private attorney when player has insufficient funds', () => {
+        user.money = 1000; // Private attorney costs $2,500
+        user.pendingTrial = { crime: GameLogic.CRIMES.gta, evidenceRating: 50, extraCharges: [] };
+
+        const result = GameLogic.calculateTrialVerdict(user, 'private_attorney');
+
+        expect(result).toHaveProperty('error');
+        expect(result.error).toContain('Insufficient funds');
+    });
 
 });

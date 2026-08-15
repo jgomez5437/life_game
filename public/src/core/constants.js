@@ -6,6 +6,13 @@ export const MAJORS = [
     "Political Science", "Criminal Justice", "Communications", "Pharmacy"
 ];
 
+export const GRAD_SCHOOLS = [
+    { name: "Law School", years: 3, icon: "fa-balance-scale" },
+    { name: "Medical School", years: 4, icon: "fa-user-md" },
+    { name: "Business School", years: 2, icon: "fa-chart-line" },
+    { name: "Psychiatry School", years: 4, icon: "fa-brain" }
+];
+
 export const CAREER_TRACKS = [
     // ── NO DEGREE REQUIRED ────────────────────────────────────────────
     {

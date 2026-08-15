@@ -1468,4 +1468,43 @@ describe('Relocation to New Country Pure Functions', () => {
             expect(user.money).toBe(900);
         });
     });
+
+    describe('Relationship Breakup & Ex Lifecycle', () => {
+        test('breakUpWithPartner converts spouse to Ex-Husband/Ex-Wife and category ex', () => {
+            const user = { username: 'Player' };
+            const husband = { name: 'Bob', type: 'Husband', gender: 'male', category: 'spouse', status: 50 };
+            const wife = { name: 'Alice', type: 'Wife', gender: 'female', category: 'spouse', status: 50 };
+
+            GameLogic.breakUpWithPartner(user, husband);
+            expect(husband.category).toBe('ex');
+            expect(husband.type).toBe('Ex-Husband');
+
+            GameLogic.breakUpWithPartner(user, wife);
+            expect(wife.category).toBe('ex');
+            expect(wife.type).toBe('Ex-Wife');
+        });
+
+        test('breakUpWithPartner converts fiancé to Ex-Fiancé and category ex', () => {
+            const user = { username: 'Player' };
+            const fiance = { name: 'Charlie', type: 'Fiancé', gender: 'male', category: 'partner', status: 60 };
+
+            GameLogic.breakUpWithPartner(user, fiance);
+            expect(fiance.category).toBe('ex');
+            expect(fiance.type).toBe('Ex-Fiancé');
+        });
+
+        test('breakUpWithPartner converts boyfriend/girlfriend to Ex-Boyfriend/Ex-Girlfriend and category ex', () => {
+            const user = { username: 'Player' };
+            const gf = { name: 'Diana', type: 'Girlfriend', gender: 'female', category: 'partner', status: 40 };
+
+            GameLogic.breakUpWithPartner(user, gf);
+            expect(gf.category).toBe('ex');
+            expect(gf.type).toBe('Ex-Girlfriend');
+        });
+
+        test('checkRelationshipCategoryShift preserves ex category without shifting to friend or enemy', () => {
+            expect(GameLogic.checkRelationshipCategoryShift('ex', 10, 'Ex-Wife')).toBeNull();
+            expect(GameLogic.checkRelationshipCategoryShift('ex', 90, 'Ex-Husband')).toBeNull();
+        });
+    });
 });

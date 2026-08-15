@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { state, hasPurchasedPack } from '../public/src/core/state.js';
 import { captureAnnualSnapshot, rewindToAge, MAX_SNAPSHOTS } from '../public/src/core/timeMachine.js';
 import { getSlotsStore, saveToSlot, loadSlot, branchCurrentSave, deleteSlot, persistSlotsStore, startNewLifeInNewSlot } from '../public/src/core/saveSlotManager.js';
@@ -186,5 +187,55 @@ describe('Time Machine & Multi-Save Slots Engine', () => {
             expect(content.innerHTML).toContain('Avatar Appearance Studio');
         });
     });
+
+    describe('Modal Stack Event Persistence', () => {
+        test('restoring previous modal re-binds onConfirm and close handlers without freezing', async () => {
+            const { UI } = await import('../public/src/ui/ui.js');
+            const onConfirmModalA = jest.fn();
+
+            // 1. Open Modal A (e.g. Save & Load Slots)
+            UI.showCustomModal({
+                title: "Save & Load Slots",
+                content: "<p>Slots Content</p>",
+                confirmText: "Close",
+                onConfirm: onConfirmModalA
+            });
+
+            const overlay = document.getElementById('modal-overlay');
+            expect(overlay.classList.contains('hidden')).toBe(false);
+            expect(document.getElementById('modal-title').innerText).toBe('Save & Load Slots');
+
+            // 2. Open Modal B on top (e.g. Perk Prompt)
+            const onCancelModalB = jest.fn();
+            UI.showCustomModal({
+                title: "Multi-Save Slots Locked",
+                content: "<p>Perk Content</p>",
+                confirmText: "Unlock ($1.99)",
+                cancelText: "Cancel",
+                onClose: onCancelModalB
+            });
+
+            expect(document.getElementById('modal-title').innerText).toBe('Multi-Save Slots Locked');
+
+            // 3. Click Cancel on Modal B
+            const cancelBtn = document.getElementById('custom-modal-cancel');
+            expect(cancelBtn).not.toBeNull();
+            cancelBtn.click();
+
+            // 4. Modal A should now be restored
+            expect(document.getElementById('modal-title').innerText).toBe('Save & Load Slots');
+            expect(overlay.classList.contains('hidden')).toBe(false);
+
+            // 5. Click Close on restored Modal A
+            const confirmBtnA = document.getElementById('custom-modal-confirm');
+            expect(confirmBtnA).not.toBeNull();
+            confirmBtnA.click();
+
+            // 6. Modal A onConfirm should have been invoked and modal overlay hidden
+            expect(onConfirmModalA).toHaveBeenCalledTimes(1);
+            expect(overlay.classList.contains('hidden')).toBe(true);
+        });
+    });
 });
+
 

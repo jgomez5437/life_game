@@ -1079,11 +1079,16 @@ function executeSingleAutoQuarter(user) {
 
     const prodCost = effectiveProd * (ind.unitCost * supplier.costMod);
     const empWages = user.employees * user.salaryOffer * 3;
-    const ceoWages = user.ceoSalary * 3;
-    const totalExpenses = prodCost + empWages + ceoWages + overhead.totalQuarterly;
+    const ceoWages = (user.ceoSalary || 0) * 3;
+    const operatingExpenses = prodCost + empWages + overhead.totalQuarterly;
 
-    user.compCash = Math.max(0, user.compCash - totalExpenses);
-    user.money   += ceoWages;
+    // Ensure CEO salary cannot exceed available company funds
+    const cashBeforeCEO = Math.max(0, (user.compCash || 0) - operatingExpenses);
+    const payableCeoWages = Math.min(ceoWages, cashBeforeCEO);
+    const totalExpenses = operatingExpenses + payableCeoWages;
+
+    user.compCash = Math.max(0, (user.compCash || 0) - totalExpenses);
+    user.money = (user.money || 0) + payableCeoWages;
 
     const priceRatio = user.sellingPrice > 0 ? ind.unitPrice / user.sellingPrice : 1;
     const priceFactor = Math.pow(priceRatio, 1.4);

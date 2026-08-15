@@ -297,9 +297,19 @@ export async function submitCharacter() {
     try {
         // === IF USER IS LOGGED IN ===
         if (user) {
+            let authToken = null;
+            try {
+                authToken = await state.auth0Client.getTokenSilently();
+            } catch (e) {}
+
+            const headers = { 'Content-Type': 'application/json' };
+            if (authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+            }
+
             const response = await fetch('/api/login', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: headers,
                 body: JSON.stringify({
                     auth0_id: user.sub,
                     email: user.email,
