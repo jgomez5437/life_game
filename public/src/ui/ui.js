@@ -47,6 +47,7 @@ function _restorePreviousModal() {
     const prev = _modalStack.pop();
     if (_elements.modalTitle) {
         _elements.modalTitle.innerText = prev.title;
+        _elements.modalTitle.textContent = prev.title;
         if (prev.titleHidden) _elements.modalTitle.classList.add('hidden');
         else _elements.modalTitle.classList.remove('hidden');
     }
@@ -173,8 +174,11 @@ export const UI = {
      */
     showModal: (title, message, onClose = null) => {
         _pushCurrentModal();
-        _elements.modalTitle.innerText = title;
-        if (_elements.modalTitle) _elements.modalTitle.classList.remove('hidden');
+        if (_elements.modalTitle) {
+            _elements.modalTitle.innerText = title;
+            _elements.modalTitle.textContent = title;
+            _elements.modalTitle.classList.remove('hidden');
+        }
         _elements.modalContent.innerHTML = message;
         
         _elements.modalActions.innerHTML = `
@@ -203,8 +207,11 @@ export const UI = {
      */
     showConfirm: (title, message, confirmText, onConfirm) => {
         _pushCurrentModal();
-        _elements.modalTitle.innerText = title;
-        if (_elements.modalTitle) _elements.modalTitle.classList.remove('hidden');
+        if (_elements.modalTitle) {
+            _elements.modalTitle.innerText = title;
+            _elements.modalTitle.textContent = title;
+            _elements.modalTitle.classList.remove('hidden');
+        }
         _elements.modalContent.innerHTML = message;
 
         _elements.modalActions.innerHTML = `
@@ -258,6 +265,7 @@ export const UI = {
 
         if (_elements.modalTitle) {
             _elements.modalTitle.innerText = title;
+            _elements.modalTitle.textContent = title;
             if (!title) {
                 _elements.modalTitle.classList.add('hidden');
             } else {
@@ -310,6 +318,7 @@ export const UI = {
     replaceModalContent: (title, htmlContent) => {
         if (_elements.modalTitle) {
             _elements.modalTitle.innerText = title;
+            _elements.modalTitle.textContent = title;
             if (!title) {
                 _elements.modalTitle.classList.add('hidden');
             } else {
