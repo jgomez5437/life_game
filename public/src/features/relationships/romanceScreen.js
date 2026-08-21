@@ -2,7 +2,7 @@ import { state, addLog } from '../../core/state.js';
 import { Utils } from '../../ui/utils.js';
 import { UI } from '../../ui/ui.js';
 import { GameLogic } from '../../core/gameLogic.js';
-import { renderPersonInteraction } from './relationshipScreen.js';
+import { renderPersonInteraction, isDeadNPC } from './relationshipScreen.js';
 
 const WEDDING_TIERS = [
     { name: "Courthouse", cost: 200, desc: "A simple, no-frills ceremony" },
@@ -12,9 +12,13 @@ const WEDDING_TIERS = [
 ];
 
 export const openWeddingPlanner = (personId) => {
-    const user = state.gameState.user;
-    const person = user.relationships.find(r => r.id === personId);
-    if (!person) return;
+    const user = state.gameState?.user;
+    if (!user) return;
+    const person = (user.relationships || []).find(r => r.id === personId);
+    if (!person || isDeadNPC(person)) {
+        UI.showModal("Cannot Interact", "This person has passed away.");
+        return;
+    }
 
     const html = WEDDING_TIERS.map((tier, i) => {
         const canAfford = user.money >= tier.cost;
@@ -61,9 +65,13 @@ export const openWeddingPlanner = (personId) => {
 };
 
 export const confirmWeddingPlan = (personId, index) => {
-    const user = state.gameState.user;
-    const person = user.relationships.find(r => r.id === personId);
-    if (!person) return;
+    const user = state.gameState?.user;
+    if (!user) return;
+    const person = (user.relationships || []).find(r => r.id === personId);
+    if (!person || isDeadNPC(person)) {
+        UI.showModal("Cannot Interact", "This person has passed away.");
+        return;
+    }
 
     const tier = WEDDING_TIERS[index];
     if (!tier || user.money < tier.cost) return;
@@ -81,9 +89,10 @@ export const confirmWeddingPlan = (personId, index) => {
 
 // --- POST-WEDDING NAME CHANGE ---
 export const openNameChangeChoice = (personId) => {
-    const user = state.gameState.user;
-    const person = user.relationships.find(r => r.id === personId);
-    if (!person) return;
+    const user = state.gameState?.user;
+    if (!user) return;
+    const person = (user.relationships || []).find(r => r.id === personId);
+    if (!person || isDeadNPC(person)) return;
 
     const yourFirst = GameLogic.getFirstName(user.username);
     const yourLast = GameLogic.getLastName(user.username);
@@ -117,9 +126,10 @@ export const openNameChangeChoice = (personId) => {
 };
 
 export const chooseNameChange = (personId, choice) => {
-    const user = state.gameState.user;
-    const person = user.relationships.find(r => r.id === personId);
-    if (!person) return;
+    const user = state.gameState?.user;
+    if (!user) return;
+    const person = (user.relationships || []).find(r => r.id === personId);
+    if (!person || isDeadNPC(person)) return;
 
     const yourFirst = GameLogic.getFirstName(user.username);
     const yourLast = GameLogic.getLastName(user.username);

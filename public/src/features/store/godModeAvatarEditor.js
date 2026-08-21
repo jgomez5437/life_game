@@ -4,7 +4,7 @@ import { AvatarLogic } from '../../core/avatarLogic.js';
 import { renderAvatar } from '../../ui/avatarRenderer.js';
 import { saveGame } from '../../core/main.js';
 import { renderLifeDashboard } from '../player/mainScreen.js';
-import { renderRelationships } from '../relationships/relationshipScreen.js';
+import { renderRelationships, isDeadNPC } from '../relationships/relationshipScreen.js';
 
 const get = id => document.getElementById(id);
 
@@ -70,10 +70,15 @@ export function renderGodModeAvatarModal(target = 'self', personId = null) {
     if (target === 'person' && personId) {
         const person = (user.relationships || []).find(r => String(r.id) === String(personId));
         if (person) {
+            if (isDeadNPC(person)) {
+                UI.showModal("Cannot Edit", "Cannot edit the appearance of a deceased character.");
+                return;
+            }
             targetObj = person;
             editorTargetName = person.name;
         } else {
-            editorTargetName = 'Person';
+            UI.showModal("Cannot Edit", "This person could not be found or has passed away.");
+            return;
         }
     } else {
         editorTargetName = user.username || user.name || 'Your Character';
@@ -95,43 +100,31 @@ function renderGodModeAvatarModalContent() {
 
     const html = `
         <div class="space-y-4">
-            <p class="text-xs text-slate-300">
-                <i class="fas fa-bolt text-amber-400 mr-1"></i> Customizing appearance for <strong class="text-white">${editorTargetName}</strong>.
-            </p>
-
             <!-- Sticky Live Preview -->
             <div class="bg-slate-900/90 border border-slate-700 rounded-xl p-3 flex items-center gap-3 shadow-md">
                 <div class="w-14 h-14 rounded-full bg-slate-800 border-2 border-amber-400 overflow-hidden shrink-0 flex items-center justify-center">
                     ${avatarSvg}
                 </div>
-                <div class="flex-1 space-y-1">
-                    <div class="text-xs font-bold text-amber-300">Live Preview</div>
-                    <div class="text-[10px] text-slate-400">Gender: <span class="text-white capitalize">${editorGender}</span> • Age: ${editorAge}</div>
-                    <button data-action="randomizeGodModeAvatarTraits" class="px-2.5 py-1 bg-slate-700 hover:bg-slate-600 text-white font-bold text-[10px] rounded-lg transition flex items-center gap-1">
-                        <i class="fas fa-dice"></i> Randomize Appearance
-                    </button>
+                <div>
+                    <div class="text-white font-bold text-sm">${editorTargetName}</div>
+                    <div class="text-xs text-amber-400 font-semibold"><i class="fas fa-sparkles mr-1"></i>Live God Mode Preview</div>
                 </div>
             </div>
 
-            <!-- Traits Editor Accordion Grid -->
-            <div class="max-h-64 overflow-y-auto pr-1 space-y-3">
+            <!-- Appearance Editor Sections -->
+            <div class="max-h-72 overflow-y-auto space-y-4 pr-1 custom-scrollbar">
                 ${APPEARANCE_SECTIONS.map(section => `
-                    <div class="bg-slate-900/70 p-2.5 rounded-xl border border-slate-800">
-                        <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 flex justify-between items-center">
-                            <span>${section.title}</span>
-                        </div>
-                        <div class="space-y-1.5">
-                            ${section.fields.map(f => `
-                                <div class="flex items-center justify-between bg-slate-800 rounded-lg px-2 py-1 border border-slate-700/60">
-                                    <button data-action="cycleGodModeTrait" data-args="'${f.key}', -1" class="text-slate-400 hover:text-white w-7 h-7 flex items-center justify-center rounded hover:bg-slate-700">
-                                        <i class="fas fa-chevron-left text-xs"></i>
-                                    </button>
-                                    <div class="flex-1 text-center text-xs text-slate-300">
-                                        ${labelize(f.key)}: <span class="text-blue-300 font-bold">${labelize(editorDraftAppearance[f.key] || 'None')}</span>
-                                    </div>
-                                    <button data-action="cycleGodModeTrait" data-args="'${f.key}', 1" class="text-slate-400 hover:text-white w-7 h-7 flex items-center justify-center rounded hover:bg-slate-700">
-                                        <i class="fas fa-chevron-right text-xs"></i>
-                                    </button>
+                    <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700">
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">${section.title}</h4>
+                        <div class="space-y-2">
+                            ${section.fields.map(field => `
+                                <div>
+                                    <label class="text-[11px] text-slate-300 font-semibold block mb-1 capitalize">${field.key.replace(/([A-Z])/g, ' $1')}</label>
+                                    <select data-action="updateGodModeAvatarTrait" data-args="&apos;${field.key}&apos;" id="godmode_select_${field.key}" class="w-full bg-slate-900 border border-slate-700 rounded-lg text-white text-xs px-2.5 py-1.5 focus:outline-none focus:border-amber-400">
+                                        ${field.options.map(opt => `
+                                            <option value="${opt}" ${editorDraftAppearance[field.key] === opt ? 'selected' : ''}>${opt}</option>
+                                        `).join('')}
+                                    </select>
                                 </div>
                             `).join('')}
                         </div>
@@ -139,42 +132,25 @@ function renderGodModeAvatarModalContent() {
                 `).join('')}
             </div>
 
-            <!-- Actions -->
-            <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-700">
-                <button data-action="hideModal" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs rounded-xl transition">
-                    Cancel
+            <div class="flex gap-2 pt-2 border-t border-slate-700">
+                <button data-action="randomizeGodModeAvatarTraits" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 rounded-xl py-2 font-bold text-xs transition flex items-center justify-center gap-1.5">
+                    <i class="fas fa-dice text-amber-400"></i> Randomize
                 </button>
-                <button data-action="saveGodModeAvatar" class="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl transition flex items-center gap-1.5 shadow-md shadow-amber-500/20">
-                    <i class="fas fa-check"></i> Save Appearance
+                <button data-action="saveGodModeAvatar" class="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl py-2 font-bold text-xs transition flex items-center justify-center gap-1.5 shadow">
+                    <i class="fas fa-check"></i> Save Changes
                 </button>
             </div>
         </div>
     `;
 
-    UI.showCustomModal({
-        title: `God Mode Avatar Editor: ${editorTargetName}`,
-        content: html
-    });
+    UI.showModal("God Mode Avatar Editor", html);
 }
 
-export function cycleGodModeTrait(key, direction) {
-    const field = findField(key);
-    if (!field || !editorDraftAppearance) return;
+export function updateGodModeAvatarTrait(key) {
+    const el = get(`godmode_select_${key}`);
+    if (!el || !editorDraftAppearance) return;
 
-    let options = field.options;
-    if (key === 'hairStyle' && editorGender === 'female') {
-        options = AvatarLogic.FEMALE_HAIR_STYLES;
-    } else if (key === 'facialHairStyle' && editorGender === 'female') {
-        options = ['none'];
-    } else if ((key === 'lipstickColor' || key === 'blushColor') && editorGender === 'male') {
-        options = ['none'];
-    }
-
-    const currentVal = editorDraftAppearance[key] || options[0];
-    const idx = options.indexOf(currentVal);
-    const nextIdx = (idx + direction + options.length) % options.length;
-    editorDraftAppearance[key] = options[nextIdx];
-
+    editorDraftAppearance[key] = el.value;
     renderGodModeAvatarModalContent();
 }
 
@@ -189,9 +165,13 @@ export function saveGodModeAvatar() {
 
     if (editorTarget === 'person' && editorPersonId) {
         const person = (user.relationships || []).find(r => String(r.id) === String(editorPersonId));
-        if (person) {
+        if (person && !isDeadNPC(person)) {
             person.appearance = { ...editorDraftAppearance };
             person.avatarVersion = (person.avatarVersion || 0) + 1;
+        } else {
+            UI.hideModal();
+            UI.showModal("Cannot Edit", "This character has passed away.");
+            return;
         }
     } else {
         user.appearance = { ...editorDraftAppearance };

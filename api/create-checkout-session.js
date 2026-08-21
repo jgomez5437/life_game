@@ -1,11 +1,26 @@
 import Stripe from 'stripe';
+import { verifyAuth } from './lib/verifyAuth.js';
+import { checkRateLimit } from './lib/rateLimit.js';
 
 export default async function handler(request, response) {
   if (request.method !== 'POST') {
     return response.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { packId, userAuthId } = request.body || {};
+  const { packId } = request.body || {};
+
+  // Derive userAuthId from the verified JWT token — never trust the client body
+  let userAuthId = 'guest';
+  try {
+    userAuthId = await verifyAuth(request);
+  } catch (_) {
+    // Guest checkout is allowed — userAuthId stays 'guest'
+  }
+
+  // Enforce rate limiting: 5 checkout sessions / min per user/IP
+  if (!checkRateLimit(request, response, 'checkout', null, userAuthId !== 'guest' ? userAuthId : null)) {
+    return;
+  }
 
   if (!packId) {
     return response.status(400).json({ error: 'Missing packId' });
@@ -48,10 +63,21 @@ export default async function handler(request, response) {
       politician_pack: 'Politician & Head of State'
     };
 
-    const amount = priceMap[packId] || 299;
-    const name = nameMap[packId] || 'Life Game Expansion Pack';
+    const amount = priceMap[packId];
+    const name = nameMap[packId];
 
-    const origin = request.headers.origin || request.headers.referer || 'http://localhost:3000';
+    // Reject unknown packIds — only server-defined packs are allowed
+    if (!amount || !name) {
+      return response.status(400).json({ error: 'Invalid packId' });
+    }
+
+    const ALLOWED_ORIGINS = [
+        'https://startalife.vercel.app',
+        'http://localhost:3000',
+        'http://localhost:5173'
+    ];
+    const rawOrigin = request.headers.origin || request.headers.referer || '';
+    const origin = ALLOWED_ORIGINS.includes(rawOrigin) ? rawOrigin : 'https://startalife.vercel.app';
 
     const session = await stripe.checkout.sessions.create({
       managed_payments: { enabled: false },

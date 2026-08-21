@@ -6,6 +6,28 @@ import { UI } from '../../ui/ui.js';
 import { AvatarLogic } from '../../core/avatarLogic.js';
 import { renderAvatar } from '../../ui/avatarRenderer.js';
 
+// --- DEAD NPC HELPER ---
+/**
+ * Checks if an NPC is deceased.
+ * @param {object} person
+ * @returns {boolean}
+ */
+export const isDeadNPC = (person) => {
+    if (!person) return true;
+    if (person.isDead === true || person.lifeStatus === 'Deceased' || person.isAlive === false) return true;
+    if (person.deathCause !== undefined || person.deathAge !== undefined) return true;
+    if (person.health !== undefined && person.health <= 0 && person.age !== undefined) return true;
+    const pendingFunerals = state.gameState?.pendingFunerals || [];
+    if (pendingFunerals.some(d => d.id === person.id || (d.name === person.name && d.type === person.type))) {
+        return true;
+    }
+    const deceasedFamily = state.gameState?.user?.deceasedFamily || [];
+    if (deceasedFamily.some(d => d.id === person.id)) {
+        return true;
+    }
+    return false;
+};
+
 // --- ADD NEW RELATIONSHIP GLOBAL METHOD ---
 // Call this function when befriending someone at school, work, etc.
 export const addNewRelationship = (name, age, type, status, category = 'friend') => {
@@ -45,7 +67,6 @@ export const addNewRelationship = (name, age, type, status, category = 'friend')
 };
 
 // --- RENDER SCREEN ---
-// --- RENDER SCREEN ---
 export const renderRelationships = () => {
     const user = state.gameState.user;
 
@@ -53,11 +74,12 @@ export const renderRelationships = () => {
         user.relationships = [];
     }
 
-    // Filter by category directly from state
-    const family = user.relationships.filter(r => r.category === 'family' || r.category === 'spouse' || r.category === 'child');
-    const romance = user.relationships.filter(r => r.category === 'partner');
-    const friends = user.relationships.filter(r => r.category === 'friend');
-    const enemies = user.relationships.filter(r => r.category === 'enemy');
+    // Filter by category directly from state (excluding deceased NPCs)
+    const isLiving = (r) => !isDeadNPC(r);
+    const family = user.relationships.filter(r => (r.category === 'family' || r.category === 'spouse' || r.category === 'child') && isLiving(r));
+    const romance = user.relationships.filter(r => r.category === 'partner' && isLiving(r));
+    const friends = user.relationships.filter(r => r.category === 'friend' && isLiving(r));
+    const enemies = user.relationships.filter(r => r.category === 'enemy' && isLiving(r));
 
     // --- HELPER: Generate Card HTML ---
     const getPersonCard = (person) => {
@@ -689,13 +711,13 @@ export const handleNightOut = () => {
         UI.updateHeader(user);
         UI.showModal('New Friend! 🍻', `You had a fun night out and bonded with ${friend.name} (Age ${friend.age})!`);
     } else if (roll < 0.90) {
-        user.happiness = Math.min(100, (user.happiness || 50) + 10);
+        user.happiness = Math.max(0, Math.min(100, (user.happiness || 50) + 10));
         addLog(`You had an awesome night out enjoying food, music, and atmosphere (+10 Happiness).`, 'good');
         UI.updateHeader(user);
         UI.showModal('Great Night Out! 🎉', `You had a fantastic night out unwinding and having fun! (+10 Happiness)`);
     } else {
-        user.health = Math.max(0, (user.health || 50) - 5);
-        user.happiness = Math.min(100, (user.happiness || 50) + 5);
+        user.health = Math.max(0, Math.min(100, (user.health || 50) - 5));
+        user.happiness = Math.max(0, Math.min(100, (user.happiness || 50) + 5));
         addLog(`Your night out got a little chaotic after a heated argument, but you made it home safely (-5 Health).`, 'bad');
         UI.updateHeader(user);
         UI.showModal('Chaotic Night 😅', `Things got a little rowdy during your night out! You got bumped around (-5 Health), but still had a story to tell.`);
@@ -718,9 +740,14 @@ function getOccupationIcon(type) {
 
 // --- INTERACTION SCREEN ---
 export const renderPersonInteraction = (id, backAction = null) => {
-    const user = state.gameState.user;
-    const person = user.relationships.find(r => r.id === id);
-    if (!person) return;
+    const user = state.gameState?.user;
+    if (!user) return;
+    const person = (user.relationships || []).find(r => r.id === id);
+    if (!person || isDeadNPC(person)) {
+        UI.showModal("Cannot Interact", "This person has passed away.");
+        renderRelationships();
+        return;
+    }
 
     if (!person.occupation) {
         Object.assign(person, GameLogic.generateNPCOccupation(person.age));
@@ -854,9 +881,13 @@ export const renderPersonInteraction = (id, backAction = null) => {
 
 // --- CONFIRM DIALOG LAUNCHER ---
 export const openRelationshipConfirm = (personId, actionKey) => {
-    const user = state.gameState.user;
-    const person = user.relationships.find(r => r.id === personId);
-    if (!person) return;
+    const user = state.gameState?.user;
+    if (!user) return;
+    const person = (user.relationships || []).find(r => r.id === personId);
+    if (!person || isDeadNPC(person)) {
+        UI.showModal("Cannot Interact", "This person has passed away.");
+        return;
+    }
 
     const action = GameLogic.getAvailableInteractions(person, user).find(it => it.key === actionKey);
     if (!action) return;
@@ -893,9 +924,13 @@ export const openRelationshipConfirm = (personId, actionKey) => {
 
 // --- PERFORM ACTION & SHIFT CATEGORY ---
 export const performRelationshipAction = (personId, actionKey) => {
-    const user = state.gameState.user;
-    const person = user.relationships.find(r => r.id === personId);
-    if (!person) return;
+    const user = state.gameState?.user;
+    if (!user) return;
+    const person = (user.relationships || []).find(r => r.id === personId);
+    if (!person || isDeadNPC(person)) {
+        UI.showModal("Cannot Interact", "This person has passed away.");
+        return;
+    }
 
     const action = GameLogic.getAvailableInteractions(person, user).find(it => it.key === actionKey);
     if (!action) return;
@@ -1058,8 +1093,8 @@ export const performRelationshipAction = (personId, actionKey) => {
 
 // --- SPEND TIME WITH ALL ---
 export const spendTimeWithAll = () => {
-    const user = state.gameState.user;
-    if (!user.relationships || user.relationships.length === 0) return;
+    const user = state.gameState?.user;
+    if (!user || !user.relationships || user.relationships.length === 0) return;
     
     // Safety Gate
     if (user.age <= 1) {
@@ -1074,6 +1109,7 @@ export const spendTimeWithAll = () => {
 
     let interactionsCount = 0;
     user.relationships.forEach(person => {
+        if (!person || isDeadNPC(person)) return;
         // Exclude classmates from the global Spend Time With All
         if (person.category === 'classmate') return;
 
@@ -1105,9 +1141,13 @@ export const spendTimeWithAll = () => {
 
 // --- PROPOSAL RING MECHANICS ---
 export const handleProposeAction = (personId) => {
-    const user = state.gameState.user;
+    const user = state.gameState?.user;
+    if (!user) return;
     const person = (user.relationships || []).find(r => r.id === personId);
-    if (!person) return;
+    if (!person || isDeadNPC(person)) {
+        UI.showModal("Cannot Interact", "This person has passed away.");
+        return;
+    }
 
     const rings = (user.assets || []).filter(a => a.category === 'jewelry' && a.type === 'ring');
 
@@ -1137,9 +1177,13 @@ export const handleProposeAction = (personId) => {
 };
 
 export const openRingSelectionModal = (personId) => {
-    const user = state.gameState.user;
+    const user = state.gameState?.user;
+    if (!user) return;
     const person = (user.relationships || []).find(r => r.id === personId);
-    if (!person) return;
+    if (!person || isDeadNPC(person)) {
+        UI.showModal("Cannot Interact", "This person has passed away.");
+        return;
+    }
 
     const rings = (user.assets || []).filter(a => a.category === 'jewelry' && a.type === 'ring');
 
@@ -1188,11 +1232,15 @@ export const openRingSelectionModal = (personId) => {
 };
 
 export const proposeWithRing = (personId, ringAssetId) => {
-    const user = state.gameState.user;
+    const user = state.gameState?.user;
+    if (!user) return;
     const person = (user.relationships || []).find(r => r.id === personId);
     const ringIndex = (user.assets || []).findIndex(a => a.id === ringAssetId);
 
-    if (!person || ringIndex === -1) return;
+    if (!person || ringIndex === -1 || isDeadNPC(person)) {
+        UI.showModal("Cannot Interact", "This person has passed away.");
+        return;
+    }
 
     const ring = user.assets[ringIndex];
     person.interactedThisYear = true;
@@ -1222,9 +1270,13 @@ let currentHookupPersonId = null;
 let currentCheatingPartnerId = null;
 
 export const handleMakeAMove = (personId) => {
-    const user = state.gameState.user;
+    const user = state.gameState?.user;
+    if (!user) return;
     const person = (user.relationships || []).find(r => r.id === personId);
-    if (!person) return;
+    if (!person || isDeadNPC(person)) {
+        UI.showModal("Cannot Interact", "This person has passed away.");
+        return;
+    }
 
     const { blocked, reason } = GameLogic.isInteractionBlocked('make_a_move', person, user);
     if (blocked) {
@@ -1251,7 +1303,9 @@ export const handleMakeAMove = (personId) => {
 };
 
 export const renderSteamyHookupModal = (person, scenarioText) => {
-    const user = state.gameState.user;
+    if (!person || isDeadNPC(person)) return;
+    const user = state.gameState?.user;
+    if (!user) return;
     const partner = (user.relationships || []).find(r => r.category === 'spouse' || r.category === 'partner');
     const isUnfaithful = !!partner && partner.id !== person.id;
 
@@ -1315,11 +1369,14 @@ export const renderSteamyHookupModal = (person, scenarioText) => {
 };
 
 export const confirmHookupChoice = (choice) => {
-    const user = state.gameState.user;
-    if (!currentHookupPersonId) return;
+    const user = state.gameState?.user;
+    if (!user || !currentHookupPersonId) return;
 
     const person = (user.relationships || []).find(r => r.id === currentHookupPersonId);
-    if (!person) return;
+    if (!person || isDeadNPC(person)) {
+        UI.showModal("Cannot Interact", "This person has passed away.");
+        return;
+    }
 
     if (choice === 'end') {
         UI.showModal('Night Ended', `<p class="text-slate-300 text-sm">You decided not to take things further and excused yourself for the night.</p>`);
@@ -1376,9 +1433,13 @@ export const confirmHookupChoice = (choice) => {
 };
 
 export const handleEndAffair = (personId) => {
-    const user = state.gameState.user;
+    const user = state.gameState?.user;
+    if (!user) return;
     const person = (user.relationships || []).find(r => r.id === personId);
-    if (!person) return;
+    if (!person || isDeadNPC(person)) {
+        UI.showModal("Cannot Interact", "This person has passed away.");
+        return;
+    }
 
     person.type = 'Ex-Lover';
     person.status = Math.max(0, (person.status || 0) - 10);
@@ -1392,9 +1453,10 @@ export const handleEndAffair = (personId) => {
 };
 
 export const renderAgeUpCheatingDiscoveredModal = (discoveryInfo) => {
-    const user = state.gameState.user;
+    const user = state.gameState?.user;
+    if (!user || !discoveryInfo) return;
     const partner = (user.relationships || []).find(r => r.id === discoveryInfo.partnerId);
-    if (!partner) return;
+    if (!partner || isDeadNPC(partner)) return;
 
     currentCheatingPartnerId = partner.id;
     partner.status = Math.max(0, (partner.status || 0) - 60);
@@ -1468,12 +1530,13 @@ export const renderAgeUpCheatingDiscoveredModal = (discoveryInfo) => {
 };
 
 export const handleCheatingConfrontationChoice = (choice) => {
-    const user = state.gameState.user;
-    if (!currentCheatingPartnerId) return;
+    const user = state.gameState?.user;
+    if (!user || !currentCheatingPartnerId) return;
 
     const partnerIndex = (user.relationships || []).findIndex(r => r.id === currentCheatingPartnerId);
     if (partnerIndex === -1) return;
     const partner = user.relationships[partnerIndex];
+    if (!partner || isDeadNPC(partner)) return;
 
     if (choice === 'beg') {
         const forgives = Math.random() < 0.50;

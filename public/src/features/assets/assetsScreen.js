@@ -1376,17 +1376,20 @@ export const takeJoyride = (id) => {
     const roll = Math.random();
 
     if (roll < 0.60) {
-        user.stats.happiness = Math.min(100, (user.stats.happiness || 50) + 8);
+        user.happiness = Math.max(0, Math.min(100, (user.happiness || 50) + 8));
+        if (user.stats) user.stats.happiness = user.happiness;
         addLog(`Took your ${vehicle.name} out for a scenic highway cruise. Loved every minute! (+8 Happiness)`, 'good');
         UI.showModal("Scenic Cruise", `You had a fantastic time cruising around in your ${vehicle.name}. People turned their heads! (+8 Happiness)`);
     } else if (roll < 0.85) {
-        user.stats.happiness = Math.min(100, (user.stats.happiness || 50) + 4);
+        user.happiness = Math.max(0, Math.min(100, (user.happiness || 50) + 4));
+        if (user.stats) user.stats.happiness = user.happiness;
         addLog(`Took a quick drive around town in your ${vehicle.name}. (+4 Happiness)`, 'good');
         UI.showModal("Nice Drive", `Enjoyed a relaxing drive around the city in your ${vehicle.name}. (+4 Happiness)`);
     } else if (roll < 0.95) {
         const fine = Math.min(350, Math.floor(vehicle.value * 0.005) + 150);
         user.money = Math.max(0, user.money - fine);
-        user.stats.happiness = Math.max(0, (user.stats.happiness || 50) - 5);
+        user.happiness = Math.max(0, Math.min(100, (user.happiness || 50) - 5));
+        if (user.stats) user.stats.happiness = user.happiness;
         addLog(`Pulled over while driving your ${vehicle.name}! Received a ${Utils.formatMoney(fine)} speeding ticket. (-5 Happiness)`, 'bad');
         UI.showModal("Speeding Ticket!", `A police officer caught you speeding in your ${vehicle.name}! Fined ${Utils.formatMoney(fine)}. (-5 Happiness)`);
     } else {

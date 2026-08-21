@@ -210,6 +210,10 @@ export const Utils = {
         const symbol = info.symbol || '$';
         const formattedSymbol = /[A-Za-z]$/.test(symbol) ? `${symbol} ` : symbol;
 
+        if (absVal >= 1000000000000) {
+            const formatted = parseFloat((absVal / 1000000000000).toFixed(2));
+            return `${sign}${formattedSymbol}${formatted}T`;
+        }
         if (absVal >= 1000000000) {
             const formatted = parseFloat((absVal / 1000000000).toFixed(2));
             return `${sign}${formattedSymbol}${formatted}B`;
@@ -228,6 +232,18 @@ export const Utils = {
     // random integer
     getRandomInt: (min, max) => {
         return Math.floor(Math.random() * (max - min + 1)) + min;
+    },
+
+    // Clamps any numeric value within [min, max]
+    clamp: (val, min = 0, max = 100) => {
+        const num = typeof val === 'number' && !isNaN(val) ? val : min;
+        return Math.max(min, Math.min(max, num));
+    },
+
+    // Standard clamp for character core stats (0 - 100)
+    clampStat: (val, fallback = 50) => {
+        const num = typeof val === 'number' && !isNaN(val) ? val : fallback;
+        return Math.max(0, Math.min(100, num));
     },
 
     // Return the 2-letter ISO country code

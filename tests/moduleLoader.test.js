@@ -3,6 +3,7 @@ import {
     MODULE_REGISTRY,
     ACTION_TO_MODULE,
     loadModule,
+    loadWithRetry,
     preloadModule,
     isModuleLoaded,
     clearModuleCache,
@@ -12,6 +13,9 @@ import {
     attachIntentPreloaders,
     detachIntentPreloaders,
     shouldSkipPreloading,
+    formatModuleName,
+    showModuleLoadError,
+    hideModuleLoadError,
     _resetLoaderForTesting
 } from '../public/src/core/moduleLoader.js';
 
@@ -24,6 +28,11 @@ describe('Central Module Loader & Background Preloader Engine', () => {
         document.body.innerHTML = `
             <div id="game-container"></div>
             <div id="loading-container"></div>
+            <div id="modal-overlay" class="hidden">
+                <div id="modal-title"></div>
+                <div id="modal-content"></div>
+                <div id="modal-actions"></div>
+            </div>
             <button id="btn-assets" data-action="renderAssets">Assets</button>
             <button id="btn-business" data-action="enterBusinessMode">Business</button>
             <button id="btn-casino" data-action="renderCasinoHub">Casino</button>
@@ -210,6 +219,144 @@ describe('Central Module Loader & Background Preloader Engine', () => {
             const nonExistentFn = lazy('assets', 'nonExistentFunction');
             const result = await nonExistentFn();
             expect(result).toBeUndefined();
+        });
+    });
+
+    describe('H-14: Exponential Backoff Retries & Error Recovery', () => {
+        test('loadWithRetry resolves immediately when factory succeeds on first attempt', async () => {
+            const factory = jest.fn().mockResolvedValue({ default: 'ok' });
+            const res = await loadWithRetry(factory, 3, 10);
+            expect(res).toEqual({ default: 'ok' });
+            expect(factory).toHaveBeenCalledTimes(1);
+        });
+
+        test('loadWithRetry retries with backoff and resolves when retry succeeds', async () => {
+            let callCount = 0;
+            const factory = jest.fn().mockImplementation(() => {
+                callCount++;
+                if (callCount < 3) {
+                    return Promise.reject(new Error(`Network timeout attempt ${callCount}`));
+                }
+                return Promise.resolve({ data: 'recovered' });
+            });
+
+            const res = await loadWithRetry(factory, 3, 10);
+            expect(res).toEqual({ data: 'recovered' });
+            expect(factory).toHaveBeenCalledTimes(3); // attempt 0, retry 1, retry 2
+        });
+
+        test('loadWithRetry throws last error when all retries fail', async () => {
+            const factory = jest.fn().mockRejectedValue(new Error('Persistent offline error'));
+
+            await expect(loadWithRetry(factory, 3, 10)).rejects.toThrow('Persistent offline error');
+            expect(factory).toHaveBeenCalledTimes(4); // 1 initial + 3 retries = 4 attempts
+        });
+
+        test('loadModule uses retries and transitions from error state to success on subsequent call', async () => {
+            let attempt = 0;
+            const originalFactory = MODULE_REGISTRY.casino;
+
+            MODULE_REGISTRY.casino = jest.fn().mockImplementation(() => {
+                attempt++;
+                if (attempt <= 4) {
+                    return Promise.reject(new Error('Simulated network drop'));
+                }
+                return Promise.resolve({ casinoReady: true });
+            });
+
+            // First call fails all 3 retries (4 total attempts)
+            await expect(loadModule('casino', { maxRetries: 3, baseDelayMs: 5 })).rejects.toThrow('Simulated network drop');
+            expect(isModuleLoaded('casino')).toBe(false);
+
+            // Subsequent call attempts fresh load cycle and succeeds
+            const recovered = await loadModule('casino', { maxRetries: 3, baseDelayMs: 5 });
+            expect(recovered).toEqual({ casinoReady: true });
+            expect(isModuleLoaded('casino')).toBe(true);
+
+            MODULE_REGISTRY.casino = originalFactory;
+        });
+
+        test('formatModuleName formats known and camelCase module keys', () => {
+            expect(formatModuleName('businessDashboard')).toBe('Business Dashboard');
+            expect(formatModuleName('manageEducation')).toBe('Education');
+            expect(formatModuleName('saveSlotManager')).toBe('Save Slot Manager');
+            expect(formatModuleName('casino')).toBe('Casino');
+            expect(formatModuleName('customScreenTest')).toBe('Custom Screen Test');
+            expect(formatModuleName('')).toBe('Feature');
+        });
+
+        test('showModuleLoadError renders modal with Retry and Dismiss buttons in DOM', () => {
+            const retrySpy = jest.fn();
+            showModuleLoadError({
+                moduleKey: 'businessDashboard',
+                onRetry: retrySpy,
+                error: new Error('Network error')
+            });
+
+            const overlay = document.getElementById('modal-overlay');
+            const title = document.getElementById('modal-title');
+            const content = document.getElementById('modal-content');
+            const retryBtn = document.getElementById('module-error-retry-btn');
+            const dismissBtn = document.getElementById('module-error-dismiss-btn');
+
+            expect(overlay.classList.contains('hidden')).toBe(false);
+            expect(title.innerHTML).toContain('Connection Error');
+            expect(content.innerHTML).toContain('Business Dashboard');
+            expect(retryBtn).not.toBeNull();
+            expect(dismissBtn).not.toBeNull();
+
+            // Clicking Dismiss closes the modal
+            dismissBtn.click();
+            expect(overlay.classList.contains('hidden')).toBe(true);
+
+            // Re-open and test Retry button
+            showModuleLoadError({
+                moduleKey: 'businessDashboard',
+                onRetry: retrySpy
+            });
+            expect(overlay.classList.contains('hidden')).toBe(false);
+            retryBtn.click();
+            expect(retrySpy).toHaveBeenCalledTimes(1);
+            expect(overlay.classList.contains('hidden')).toBe(true);
+        });
+
+        test('lazy proxy shows error modal with Retry button when module load fails', async () => {
+            const originalFactory = MODULE_REGISTRY.crime;
+            let shouldSucceed = false;
+
+            MODULE_REGISTRY.crime = jest.fn().mockImplementation(() => {
+                if (!shouldSucceed) {
+                    return Promise.reject(new Error('Chunk load failed'));
+                }
+                return Promise.resolve({
+                    renderCrimeDashboard: jest.fn().mockReturnValue('Crime screen loaded')
+                });
+            });
+
+            const crimeProxy = lazy('crime', 'renderCrimeDashboard');
+
+            // Trigger proxy which fails
+            await expect(crimeProxy()).rejects.toThrow('Chunk load failed');
+
+            const overlay = document.getElementById('modal-overlay');
+            const content = document.getElementById('modal-content');
+            const retryBtn = document.getElementById('module-error-retry-btn');
+
+            expect(overlay.classList.contains('hidden')).toBe(false);
+            expect(content.innerHTML).toContain('Crime');
+
+            // Network recovers, user clicks Retry in modal
+            shouldSucceed = true;
+            retryBtn.click();
+
+            // Modal is dismissed and retry is triggered
+            expect(overlay.classList.contains('hidden')).toBe(true);
+
+            // Verify module is now loaded after retry
+            await loadModule('crime', { maxRetries: 1, baseDelayMs: 5 });
+            expect(isModuleLoaded('crime')).toBe(true);
+
+            MODULE_REGISTRY.crime = originalFactory;
         });
     });
 });

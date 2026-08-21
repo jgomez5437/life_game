@@ -1,19 +1,57 @@
 import { sql } from '@vercel/postgres';
+import { verifyAuth } from './lib/verifyAuth.js';
+import { checkRateLimit } from './lib/rateLimit.js';
 
 export default async function handler(request, response) {
     if (request.method !== 'POST') {
         return response.status(405).json({ error: 'Method Not Allowed' });
     }
 
-    // THE FIX: Destructure 'relationships' from the incoming body
-    const { auth0_id, email, username, gender, city, relationships, appearance } = request.body;
-
-    if (!auth0_id) {
-        return response.status(400).json({ error: 'Missing auth0_id' });
+    // Verify the caller's JWT token — auth0_id comes from the verified token, not the request body
+    let auth0_id;
+    try {
+        auth0_id = await verifyAuth(request);
+    } catch (error) {
+        return response.status(401).json({ error: 'Authentication required' });
     }
 
+    // Enforce rate limiting: 10 logins / min per user
+    if (!checkRateLimit(request, response, 'login', null, auth0_id)) {
+        return;
+    }
+
+    const { email, username, gender, city, relationships, appearance } = request.body;
+
     try {
+        const slotData = {
+            name: username,
+            gender: gender,
+            city: city,
+            appearance: appearance || null,
+            assets: [],
+            relationships: relationships || [],
+            stats: {
+                health: 100
+            },
+            history: [
+                { 
+                    age: 0, 
+                    events: [{ msg: `Born in ${city}`, color: "text-blue-400" }] 
+                }
+            ],
+            _slotId: 'slot_1'
+        };
+
         const initialGameData = {
+            activeSlotId: 'slot_1',
+            slots: {
+                slot_1: {
+                    id: 'slot_1',
+                    name: username || 'Main Life',
+                    lastSaved: Date.now(),
+                    data: slotData
+                }
+            },
             name: username,
             gender: gender,
             city: city,

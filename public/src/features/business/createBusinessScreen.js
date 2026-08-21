@@ -172,6 +172,7 @@ export function initBusiness() {
     user.marketingLevels      = { social_ads: 0, seo_content: 0, influencers: 0, b2b_sales: 0 };
     user.teamRoles            = { engineering: 2, sales: 1, operations: 1, marketing: 1 };
     user.equityOwned          = 1.0;
+    user.isPublic             = false;
     user.investorShares       = [];
     user.corporateDebt        = { principal: 0, interestRate: 0.08, monthlyPayment: 0 };
     user.customerSatisfaction = 80;

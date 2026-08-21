@@ -187,7 +187,7 @@ describe('Prison System Logic', () => {
         GameLogic.initPrisonState(mockUser, verdict);
 
         mockUser.smarts = 0;
-        mockUser.health = 0;
+        mockUser.health = 10;
 
         const spyMath = jest.spyOn(Math, 'random').mockReturnValue(0.99);
 

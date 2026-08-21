@@ -1468,4 +1468,190 @@ describe('Relocation to New Country Pure Functions', () => {
             expect(user.money).toBe(900);
         });
     });
+
+    describe('H-8: isAlive and Action Guards (Prevent actions at 0 HP or deceased)', () => {
+        test('isAlive returns correct boolean status based on health and life status', () => {
+            expect(GameLogic.isAlive(null)).toBe(false);
+            expect(GameLogic.isAlive(undefined)).toBe(false);
+            expect(GameLogic.isAlive({})).toBe(true); // Defaults to 100 if no health specified
+
+            expect(GameLogic.isAlive({ health: 100 })).toBe(true);
+            expect(GameLogic.isAlive({ health: 1 })).toBe(true);
+            expect(GameLogic.isAlive({ stats: { health: 50 } })).toBe(true);
+
+            expect(GameLogic.isAlive({ health: 0 })).toBe(false);
+            expect(GameLogic.isAlive({ health: -15 })).toBe(false);
+            expect(GameLogic.isAlive({ stats: { health: 0 } })).toBe(false);
+            expect(GameLogic.isAlive({ health: 100, lifeStatus: 'Deceased' })).toBe(false);
+            expect(GameLogic.isAlive({ health: 100, isDead: true })).toBe(false);
+        });
+
+        test('Gambling actions are blocked when user is dead or at 0 HP', () => {
+            const deadUser = { health: 0, money: 10000, age: 25 };
+
+            const lotteryRes = GameLogic.playLotteryTicket('scratch', deadUser);
+            expect(lotteryRes.success).toBe(false);
+            expect(lotteryRes.message).toMatch(/dead|0 HP/i);
+
+            const rouletteRes = GameLogic.playRoulette(deadUser, 'color', 'red', 100);
+            expect(rouletteRes.success).toBe(false);
+            expect(rouletteRes.msg).toMatch(/dead|0 HP/i);
+
+            const slotRes = GameLogic.spinSlotMachine(deadUser, 100);
+            expect(slotRes.success).toBe(false);
+            expect(slotRes.msg).toMatch(/dead|0 HP/i);
+        });
+
+        test('Crime and trial actions are blocked when user is dead or at 0 HP', () => {
+            const deadUser = {
+                health: 0,
+                money: 10000,
+                pendingTrial: { crime: { id: 'gta', name: 'Grand Theft Auto' }, extraCharges: [] }
+            };
+
+            const crimeRes = GameLogic.attemptCrime('pickpocket', deadUser);
+            expect(crimeRes.success).toBe(false);
+            expect(crimeRes.message).toMatch(/dead|0 HP/i);
+
+            const arrestRes = GameLogic.handleArrestAction(deadUser, 'flee');
+            expect(arrestRes.success).toBe(false);
+            expect(arrestRes.message).toMatch(/dead|0 HP/i);
+
+            const trialRes = GameLogic.calculateTrialVerdict(deadUser, 'public_defender');
+            expect(trialRes.error).toMatch(/dead|0 HP/i);
+        });
+
+        test('Investment and banking actions are blocked when user is dead or at 0 HP', () => {
+            const deadUser = { health: 0, money: 10000 };
+
+            const buyRes = GameLogic.buyStock(deadUser, 'AAPL', 10);
+            expect(buyRes.success).toBe(false);
+            expect(buyRes.msg).toMatch(/dead|0 HP/i);
+
+            const sellRes = GameLogic.sellStock(deadUser, 'AAPL', 10);
+            expect(sellRes.success).toBe(false);
+            expect(sellRes.msg).toMatch(/dead|0 HP/i);
+
+            const depositRes = GameLogic.depositSavings(deadUser, 500);
+            expect(depositRes.success).toBe(false);
+            expect(depositRes.msg).toMatch(/dead|0 HP/i);
+
+            const withdrawRes = GameLogic.withdrawSavings(deadUser, 500);
+            expect(withdrawRes.success).toBe(false);
+            expect(withdrawRes.msg).toMatch(/dead|0 HP/i);
+        });
+
+        test('Real estate and property actions are blocked when user is dead or at 0 HP', () => {
+            const deadUser = {
+                health: 0,
+                money: 50000,
+                salary: 60000,
+                assets: [
+                    { id: 'prop_1', name: 'Apartment', category: 'property', value: 200000, condition: 50, maxCondition: 100, isRented: true, tenant: { name: 'Bob' } }
+                ]
+            };
+
+            const mortgageRes = GameLogic.canAffordMortgage(deadUser, 1000);
+            expect(mortgageRes.allowed).toBe(false);
+            expect(mortgageRes.reason).toMatch(/dead|0 HP/i);
+
+            const leaseRes = GameLogic.acceptTenantLease(deadUser, 'prop_1', 'app_1');
+            expect(leaseRes.success).toBe(false);
+            expect(leaseRes.reason).toMatch(/dead|0 HP/i);
+
+            const evictRes = GameLogic.evictTenant(deadUser, 'prop_1');
+            expect(evictRes.success).toBe(false);
+            expect(evictRes.reason).toMatch(/dead|0 HP/i);
+
+            const maintRes = GameLogic.performPropertyMaintenance(deadUser, 'prop_1');
+            expect(maintRes.success).toBe(false);
+            expect(maintRes.reason).toMatch(/dead|0 HP/i);
+
+            const renoRes = GameLogic.renovateProperty(deadUser, 'prop_1', 'minor');
+            expect(renoRes.success).toBe(false);
+            expect(renoRes.reason).toMatch(/dead|0 HP/i);
+
+            const saleRes = GameLogic.completePropertySale(deadUser, 'prop_1', 200000);
+            expect(saleRes.success).toBe(false);
+            expect(saleRes.reason).toMatch(/dead|0 HP/i);
+        });
+
+        test('Business actions and relocation are blocked when user is dead or at 0 HP', () => {
+            const deadUser = {
+                health: 0,
+                money: 1000000,
+                hasBusiness: true,
+                companyValuation: 30000000,
+                equityOwned: 1.0,
+                age: 30,
+                country: 'USA'
+            };
+
+            const bizRes = GameLogic.canProcessBusinessQuarter(deadUser);
+            expect(bizRes.allowed).toBe(false);
+            expect(bizRes.reason).toMatch(/dead|0 HP/i);
+
+            const vcRes = GameLogic.acceptVCOffer(deadUser, 'vc_seed');
+            expect(vcRes.success).toBe(false);
+            expect(vcRes.msg).toMatch(/dead|0 HP/i);
+
+            const ipoRes = GameLogic.launchIPO(deadUser);
+            expect(ipoRes.success).toBe(false);
+            expect(ipoRes.msg).toMatch(/dead|0 HP/i);
+
+            const canMoveRes = GameLogic.canMoveCountry(deadUser, 'Canada');
+            expect(canMoveRes.allowed).toBe(false);
+            expect(canMoveRes.reason).toMatch(/dead|0 HP/i);
+
+            const moveRes = GameLogic.moveCountry(deadUser, 'Canada');
+            expect(moveRes.success).toBe(false);
+            expect(moveRes.message).toMatch(/dead|0 HP/i);
+        });
+
+        test('Prison actions are blocked when user is dead or at 0 HP', () => {
+            const deadUser = {
+                health: 0,
+                inPrison: true,
+                cellmate: { name: 'Spike' },
+                yardInmates: [{ id: 'yard_1', name: 'Brutus', role: 'Yard Boss' }],
+                prisonStats: { solitaryTurns: 0, canteenCash: 100, contraband: ['Contraband Cellphone'] }
+            };
+
+            expect(GameLogic.interactCellmate(deadUser, 'talk').success).toBe(false);
+            expect(GameLogic.interactCellmate(deadUser, 'talk').msg).toMatch(/dead|0 HP/i);
+
+            expect(GameLogic.attackPrisonInmate(deadUser, 'cellmate', 'cellmate').success).toBe(false);
+            expect(GameLogic.attackPrisonInmate(deadUser, 'cellmate', 'cellmate').msg).toMatch(/dead|0 HP/i);
+
+            expect(GameLogic.workoutPrisonYard(deadUser, 'cardio').success).toBe(false);
+            expect(GameLogic.workoutPrisonYard(deadUser, 'cardio').msg).toMatch(/dead|0 HP/i);
+
+            expect(GameLogic.interactYardInmate(deadUser, 'yard_1', 'chat').success).toBe(false);
+            expect(GameLogic.interactYardInmate(deadUser, 'yard_1', 'chat').msg).toMatch(/dead|0 HP/i);
+
+            expect(GameLogic.useContrabandPhone(deadUser, 'legal').success).toBe(false);
+            expect(GameLogic.useContrabandPhone(deadUser, 'legal').msg).toMatch(/dead|0 HP/i);
+
+            expect(GameLogic.doPrisonJob(deadUser, 'Kitchen Duty').success).toBe(false);
+            expect(GameLogic.doPrisonJob(deadUser, 'Kitchen Duty').msg).toMatch(/dead|0 HP/i);
+
+            expect(GameLogic.buyCanteenItem(deadUser, 'ramen').success).toBe(false);
+            expect(GameLogic.buyCanteenItem(deadUser, 'ramen').msg).toMatch(/dead|0 HP/i);
+
+            expect(GameLogic.sellContrabandItem(deadUser, 'Contraband Cellphone').success).toBe(false);
+            expect(GameLogic.sellContrabandItem(deadUser, 'Contraband Cellphone').msg).toMatch(/dead|0 HP/i);
+
+            expect(GameLogic.studyPrisonLaw(deadUser).success).toBe(false);
+            expect(GameLogic.studyPrisonLaw(deadUser).msg).toMatch(/dead|0 HP/i);
+
+            expect(GameLogic.attemptSentenceAppeal(deadUser).success).toBe(false);
+            expect(GameLogic.attemptSentenceAppeal(deadUser).msg).toMatch(/dead|0 HP/i);
+
+            expect(GameLogic.attemptParoleBoard(deadUser).success).toBe(false);
+            expect(GameLogic.attemptParoleBoard(deadUser).msg).toMatch(/dead|0 HP/i);
+
+            expect(GameLogic.attemptPrisonEscape(deadUser, 'tunnel').success).toBe(false);
+            expect(GameLogic.attemptPrisonEscape(deadUser, 'tunnel').msg).toMatch(/dead|0 HP/i);
+        });
+    });
 });

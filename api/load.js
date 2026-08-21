@@ -1,5 +1,6 @@
 import { sql } from '@vercel/postgres';
 import { verifyAuth } from './lib/verifyAuth.js';
+import { checkRateLimit } from './lib/rateLimit.js';
 
 export default async function handler(request, response) {
   if (request.method !== 'GET') {
@@ -11,6 +12,11 @@ export default async function handler(request, response) {
     authUserId = await verifyAuth(request);
   } catch (error) {
     return response.status(401).json({ error: error.message });
+  }
+
+  // Enforce rate limiting: 30 loads / min per authenticated user
+  if (!checkRateLimit(request, response, 'load', null, authUserId)) {
+    return;
   }
 
   try {
@@ -46,6 +52,24 @@ export default async function handler(request, response) {
         } else {
           gameData.purchases = mergedPurchases;
         }
+
+        // Also merge dbPurchases into every slot within gameData.slots
+        if (gameData.slots && typeof gameData.slots === 'object' && !Array.isArray(gameData.slots)) {
+          for (const slotKey of Object.keys(gameData.slots)) {
+            const slot = gameData.slots[slotKey];
+            if (slot && slot.data && typeof slot.data === 'object') {
+              const slotUser = slot.data.user || slot.data;
+              const slotPurchases = Array.isArray(slotUser.purchases) ? slotUser.purchases : [];
+              const slotMerged = Array.from(new Set([...slotPurchases, ...dbPurchases]));
+              if (slot.data.user) {
+                slot.data.user.purchases = slotMerged;
+              } else {
+                slot.data.purchases = slotMerged;
+              }
+            }
+          }
+        }
+
         userData.game_data = gameData;
       }
     } catch (purchaseErr) {

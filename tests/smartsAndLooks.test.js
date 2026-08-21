@@ -1,4 +1,5 @@
 import { GameLogic } from '../public/src/core/gameLogic.js';
+import { Utils } from '../public/src/ui/utils.js';
 
 describe('Smarts & Looks Stats Engine', () => {
 
@@ -43,4 +44,33 @@ describe('Smarts & Looks Stats Engine', () => {
         expect(highSmartsChance).toBeGreaterThan(baseChance);
     });
 
+    test('clampStat correctly clamps out-of-range values and handles invalid inputs', () => {
+        expect(GameLogic.clampStat(120)).toBe(100);
+        expect(GameLogic.clampStat(-25)).toBe(0);
+        expect(GameLogic.clampStat(75)).toBe(75);
+        expect(GameLogic.clampStat(0)).toBe(0);
+        expect(GameLogic.clampStat(100)).toBe(100);
+        expect(GameLogic.clampStat(NaN, 50)).toBe(50);
+        expect(GameLogic.clampStat(undefined, 80)).toBe(80);
+        expect(GameLogic.clampStat(null, 30)).toBe(30);
+    });
+
+    test('Utils.clamp and Utils.clampStat clamp values properly', () => {
+        expect(Utils.clamp(150, 0, 100)).toBe(100);
+        expect(Utils.clamp(-10, 0, 100)).toBe(0);
+        expect(Utils.clamp(45, 10, 50)).toBe(45);
+        expect(Utils.clampStat(105)).toBe(100);
+        expect(Utils.clampStat(-15)).toBe(0);
+    });
+
+    test('calculatePromotionChance safely handles out-of-range stats', () => {
+        const extremeChance = GameLogic.calculatePromotionChance(150, 200);
+        expect(extremeChance).toBeLessThanOrEqual(0.95);
+        expect(extremeChance).toBeGreaterThanOrEqual(0);
+
+        const negativeChance = GameLogic.calculatePromotionChance(-50, -100);
+        expect(negativeChance).toBe(0);
+    });
+
 });
+

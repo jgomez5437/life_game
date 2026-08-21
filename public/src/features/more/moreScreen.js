@@ -306,8 +306,8 @@ export function visitGymOneTime() {
         user.money -= actualCost;
         const healthGain = boost;
         const looksGain = Math.floor(Math.random() * 4) + 2;
-        user.health = Math.min(100, (user.health || 50) + healthGain);
-        user.looks = Math.min(100, (user.looks || 50) + looksGain);
+        user.health = Math.max(0, Math.min(100, (user.health || 50) + healthGain));
+        user.looks = Math.max(0, Math.min(100, (user.looks || 50) + looksGain));
         addLog(`Worked out at the gym! Restored +${healthGain}% Health and gained +${looksGain} Looks.`, 'good');
         UI.updateHeader(user);
         renderMoreDashboard();
@@ -468,49 +468,58 @@ export function openLotteryModal() {
     UI.showCustomModal("Lottery Station", html);
 }
 
+let isLotteryProcessing = false;
+
 export function buyLotteryTicket(ticketTypeId) {
-    const user = state.gameState.user;
-    const result = GameLogic.playLotteryTicket(ticketTypeId, user);
+    if (isLotteryProcessing) return;
+    isLotteryProcessing = true;
+    try {
+        const user = state.gameState?.user;
+        if (!user) return;
+        const result = GameLogic.playLotteryTicket(ticketTypeId, user);
 
-    if (!result.success) {
-        UI.showModal("Lottery Notice", result.message);
-        return;
-    }
+        if (!result.success) {
+            UI.showModal("Lottery Notice", result.message);
+            return;
+        }
 
-    UI.updateHeader(user);
+        UI.updateHeader(user);
 
-    if (result.payout > 0) {
-        addLog(`Won ${Utils.formatMoney(result.payout)} on a ${result.ticketName}!`, 'good');
-    } else {
-        addLog(`Bought a ${result.ticketName} but didn't win anything.`, 'neutral');
-    }
+        if (result.payout > 0) {
+            addLog(`Won ${Utils.formatMoney(result.payout)} on a ${result.ticketName}!`, 'good');
+        } else {
+            addLog(`Bought a ${result.ticketName} but didn't win anything.`, 'neutral');
+        }
 
-    const outcomeHtml = result.payout > 0 ? `
-        <div class="text-center py-3">
-            <div class="text-4xl text-amber-400 mb-2">🎉</div>
-            <h3 class="text-xl font-bold text-emerald-400 mb-1">${result.title}</h3>
-            <p class="text-sm text-slate-300 mb-4">Congratulations! <strong>+${Utils.formatMoney(result.payout)}</strong> has been added to your bank account.</p>
-            <div class="text-xs text-slate-400 mb-4">Tickets remaining this year: ${result.ticketsRemaining}/10</div>
-            <div class="flex gap-2">
-                ${result.ticketsRemaining > 0 ? `<button data-action="openLotteryModal" class="flex-1 bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 rounded-lg text-xs transition">Play Again</button>` : ''}
-                <button data-action="hideModal" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 rounded-lg text-xs transition">Close</button>
+        const outcomeHtml = result.payout > 0 ? `
+            <div class="text-center py-3">
+                <div class="text-4xl text-amber-400 mb-2">🎉</div>
+                <h3 class="text-xl font-bold text-emerald-400 mb-1">${result.title}</h3>
+                <p class="text-sm text-slate-300 mb-4">Congratulations! <strong>+${Utils.formatMoney(result.payout)}</strong> has been added to your bank account.</p>
+                <div class="text-xs text-slate-400 mb-4">Tickets remaining this year: ${result.ticketsRemaining}/10</div>
+                <div class="flex gap-2">
+                    ${result.ticketsRemaining > 0 ? `<button data-action="openLotteryModal" class="flex-1 bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 rounded-lg text-xs transition">Play Again</button>` : ''}
+                    <button data-action="hideModal" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 rounded-lg text-xs transition">Close</button>
+                </div>
             </div>
-        </div>
-    ` : `
-        <div class="text-center py-3">
-            <div class="text-4xl text-slate-500 mb-2">🎟️</div>
-            <h3 class="text-lg font-bold text-slate-300 mb-1">${result.title}</h3>
-            <p class="text-xs text-slate-400 mb-4">Your numbers didn't hit this time.</p>
-            <div class="text-xs text-slate-400 mb-4">Tickets remaining this year: ${result.ticketsRemaining}/10</div>
-            <div class="flex gap-2">
-                ${result.ticketsRemaining > 0 ? `<button data-action="openLotteryModal" class="flex-1 bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 rounded-lg text-xs transition">Try Again</button>` : ''}
-                <button data-action="hideModal" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 rounded-lg text-xs transition">Close</button>
+        ` : `
+            <div class="text-center py-3">
+                <div class="text-4xl text-slate-500 mb-2">🎟️</div>
+                <h3 class="text-lg font-bold text-slate-300 mb-1">${result.title}</h3>
+                <p class="text-xs text-slate-400 mb-4">Your numbers didn't hit this time.</p>
+                <div class="text-xs text-slate-400 mb-4">Tickets remaining this year: ${result.ticketsRemaining}/10</div>
+                <div class="flex gap-2">
+                    ${result.ticketsRemaining > 0 ? `<button data-action="openLotteryModal" class="flex-1 bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 rounded-lg text-xs transition">Try Again</button>` : ''}
+                    <button data-action="hideModal" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 rounded-lg text-xs transition">Close</button>
+                </div>
             </div>
-        </div>
-    `;
+        `;
 
-    UI.showCustomModal("Lottery Reveal", outcomeHtml);
-    renderMoreDashboard();
+        UI.showCustomModal("Lottery Reveal", outcomeHtml);
+        renderMoreDashboard();
+    } finally {
+        isLotteryProcessing = false;
+    }
 }
 
 
@@ -520,7 +529,7 @@ export function visitDoctor() {
     
     if (user.money >= cost) {
         user.money -= cost;
-        user.health = Math.min(100, user.health + boost);
+        user.health = Math.max(0, Math.min(100, (user.health || 50) + boost));
         addLog("You visited the doctor and feel much healthier.", 'good');
         UI.updateHeader(user);
         renderMoreDashboard();
@@ -577,7 +586,7 @@ export function bookTrip(tier) {
     user.money -= outcome.cost;
     user.money += outcome.moneyChange;
     
-    user.health = Math.min(100, user.health + outcome.healthChange);
+    user.health = Math.max(0, Math.min(100, (user.health || 50) + outcome.healthChange));
     
     let moneyMsg = "";
     if (outcome.moneyChange > 0) moneyMsg = `<br><span class="text-green-400">+$${outcome.moneyChange}</span>`;

@@ -439,12 +439,15 @@ export async function buyPack(packId) {
 
     // Attempt Stripe Checkout backend session initiation
     try {
+        const authToken = await getAuthToken();
         const response = await fetch('/api/create-checkout-session', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {})
+            },
             body: JSON.stringify({
-                packId: pack.id,
-                userAuthId: state.userAuthId || 'guest_user'
+                packId: pack.id
             })
         });
 
@@ -676,10 +679,10 @@ export function applyGodModeStats() {
     const sm = document.getElementById('god-smarts');
     const lk = document.getElementById('god-looks');
 
-    if (h) user.health = parseInt(h.value, 10);
-    if (hap) user.happiness = parseInt(hap.value, 10);
-    if (sm) user.smarts = parseInt(sm.value, 10);
-    if (lk) user.looks = parseInt(lk.value, 10);
+    if (h) user.health = Math.max(0, Math.min(100, parseInt(h.value, 10) || 0));
+    if (hap) user.happiness = Math.max(0, Math.min(100, parseInt(hap.value, 10) || 0));
+    if (sm) user.smarts = Math.max(0, Math.min(100, parseInt(sm.value, 10) || 0));
+    if (lk) user.looks = Math.max(0, Math.min(100, parseInt(lk.value, 10) || 0));
 
     saveGame();
     UI.updateHeader(user);

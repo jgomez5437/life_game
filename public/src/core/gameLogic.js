@@ -29,6 +29,19 @@ function sanitizeName(rawInput) {
     return { isValid: true, cleanedName };
 }
 
+function clampStat(val, fallback = 50) {
+    const num = typeof val === 'number' && !isNaN(val) ? val : fallback;
+    return Math.max(0, Math.min(100, num));
+}
+
+export function isAlive(user) {
+    if (!user) return false;
+    if (user.lifeStatus === 'Deceased' || user.isDead === true || user.isAlive === false) return false;
+    if (user.deathCause !== undefined || user.deathAge !== undefined) return false;
+    const health = user.health ?? user.stats?.health ?? 100;
+    return typeof health === 'number' && !isNaN(health) && health > 0;
+}
+
 function generateRandomStats() {
     return {
         health: 100,
@@ -573,6 +586,7 @@ const LOTTERY_TYPES = {
 
 function playLotteryTicket(ticketTypeId, user) {
     if (!user) return { success: false, message: 'Invalid user state.' };
+    if (!isAlive(user)) return { success: false, message: 'Cannot perform actions while dead or at 0 HP.' };
 
     if (typeof user.age === 'number' && user.age < 18) {
         return { success: false, message: 'You must be at least 18 years old to play the lottery.' };
@@ -895,6 +909,9 @@ const ROULETTE_RED_NUMBERS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27,
  * @returns {Object} { success, winningNumber, winningColor, isWin, multiplier, payout, netProfit, msg }
  */
 function playRoulette(user, betType, betTarget, betAmount, injectedNumber = null) {
+    if (!isAlive(user)) {
+        return { success: false, winningNumber: 0, winningColor: 'none', isWin: false, multiplier: 0, payout: 0, netProfit: 0, msg: 'Cannot gamble while dead or at 0 HP.' };
+    }
     const wager = Math.floor(Number(betAmount) || 0);
     if (wager <= 0) {
         return { success: false, msg: 'Please enter a valid bet amount.' };
@@ -1000,6 +1017,9 @@ function getRandomSlotSymbol() {
  * @returns {Object} { success, reels, isWin, isJackpot, multiplier, totalPayout, netProfit, msg }
  */
 function spinSlotMachine(user, betAmount, injectedReels = null) {
+    if (!isAlive(user)) {
+        return { success: false, reels: [], isWin: false, isJackpot: false, multiplier: 0, totalPayout: 0, netProfit: 0, msg: 'Cannot gamble while dead or at 0 HP.' };
+    }
     const wager = Math.floor(Number(betAmount) || 0);
     if (wager <= 0) {
         return { success: false, msg: 'Please select a valid bet amount.' };
@@ -1196,8 +1216,9 @@ const RELATIONSHIP_INTERACTIONS = [
  * @returns {boolean}
  */
 function isHostile(person) {
+    if (!person) return false;
     const isFamilyLike = ['family', 'spouse', 'child'].includes(person.category);
-    return isFamilyLike ? person.status < 15 : person.status < 30;
+    return isFamilyLike ? (person.status || 0) < 15 : (person.status || 0) < 30;
 }
 
 /**
@@ -1209,7 +1230,10 @@ function isHostile(person) {
  * @returns {Array}
  */
 function getAvailableInteractions(person, user) {
-    const hasPartnerOrSpouse = (user.relationships || []).some(r => r.category === 'partner' || r.category === 'spouse');
+    if (!person || !isAlive(person) || person.isDead || person.lifeStatus === 'Deceased' || person.deathCause !== undefined) {
+        return [];
+    }
+    const hasPartnerOrSpouse = (user?.relationships || []).some(r => r.category === 'partner' || r.category === 'spouse');
     return RELATIONSHIP_INTERACTIONS.filter(it => {
         if ((user.age <= 17 && person.age >= 18) || (user.age >= 18 && person.age <= 17)) {
             if (['make_a_move', 'make_love', 'ask_out', 'flirt', 'go_on_date', 'propose', 'get_married'].includes(it.key)) return false;
@@ -1238,6 +1262,9 @@ function getRandomHookupScenario(name) {
 }
 
 function calculateMakeAMoveSuccess(person, user) {
+    if (!person || !isAlive(person) || person.isDead || person.lifeStatus === 'Deceased' || person.deathCause !== undefined) {
+        return false;
+    }
     const status = person.status || 0;
     const chance = Math.min(0.90, Math.max(0.15, status / 100));
     return Math.random() < chance;
@@ -1279,6 +1306,9 @@ function checkAgeUpInfidelityDiscovery(user) {
  * @returns {{blocked: boolean, reason: string}}
  */
 function isInteractionBlocked(interactionKey, person, user) {
+    if (!person || !isAlive(person) || person.isDead || person.lifeStatus === 'Deceased' || person.deathCause !== undefined) {
+        return { blocked: true, reason: 'Deceased' };
+    }
     const it = RELATIONSHIP_INTERACTIONS.find(i => i.key === interactionKey);
     if (!it) return { blocked: true, reason: 'Unknown Action' };
 
@@ -1367,8 +1397,8 @@ function calculateInheritance(age, roll = Math.random()) {
     
     let inheritance = Math.floor(baseSavings * multiplier);
     
-    // Round to nearest 100
-    return Math.round(inheritance / 100) * 100;
+    // Round to nearest 100, guaranteed non-negative
+    return Math.max(0, Math.round(inheritance / 100) * 100);
 }
 
 /**
@@ -1388,8 +1418,76 @@ function calculateSpousalLifeInsurance(roll = Math.random(), amountRoll = Math.r
 
     const payout = 25000 + Math.floor(amountRoll * 175000); // $25,000 - $200,000
 
-    // Round to nearest 100
-    return Math.round(payout / 100) * 100;
+    // Round to nearest 100, guaranteed non-negative
+    return Math.max(0, Math.round(payout / 100) * 100);
+}
+
+/**
+ * Calculates net estate value and non-negative inheritance shares for surviving heirs.
+ * If the deceased had net negative wealth (debt), debt is absorbed by the estate/creditors
+ * and heirs receive $0 (debt is never inherited).
+ * @param {object} user - The deceased character's state.
+ * @returns {object} { totalEstate, distributableEstate, spouseShare, inheritancePerChild, children, spouse, isInsolvent }
+ */
+function calculateEstateDistribution(user) {
+    if (!user) {
+        return {
+            totalEstate: 0,
+            distributableEstate: 0,
+            spouseShare: 0,
+            inheritancePerChild: 0,
+            children: [],
+            spouse: null,
+            isInsolvent: false
+        };
+    }
+
+    const relationships = Array.isArray(user.relationships) ? user.relationships : [];
+    const children = relationships.filter(r => r.type === 'Son' || r.type === 'Daughter');
+    const spouse = relationships.find(r => r.category === 'spouse');
+    const hasChildren = children.length > 0;
+    const hasSpouse = !!spouse;
+
+    const assetValue = Array.isArray(user.assets)
+        ? user.assets.reduce((sum, a) => sum + (Number(a.value) || 0), 0)
+        : 0;
+    const companyCash = (user.hasBusiness && Number(user.compCash) > 0) ? Number(user.compCash) : 0;
+    const rawMoney = Number(user.money) || 0;
+    const totalEstate = rawMoney + assetValue + companyCash;
+
+    if (totalEstate <= 0) {
+        return {
+            totalEstate,
+            distributableEstate: 0,
+            spouseShare: 0,
+            inheritancePerChild: 0,
+            children,
+            spouse,
+            isInsolvent: true
+        };
+    }
+
+    let spouseShare = 0;
+    let remainingEstate = totalEstate;
+
+    if (hasSpouse) {
+        spouseShare = hasChildren ? Math.floor(totalEstate * 0.5) : totalEstate;
+        remainingEstate = Math.max(0, totalEstate - spouseShare);
+    }
+
+    const inheritancePerChild = hasChildren
+        ? Math.max(0, Math.floor(remainingEstate / children.length))
+        : 0;
+
+    return {
+        totalEstate,
+        distributableEstate: totalEstate,
+        spouseShare: Math.max(0, spouseShare),
+        inheritancePerChild,
+        children,
+        spouse,
+        isInsolvent: false
+    };
 }
 
 const FIRST_NAMES_MALE = ['James', 'John', 'Robert', 'Michael', 'William', 'David', 'Richard', 'Joseph', 'Thomas', 'Charles', 'Daniel', 'Matthew', 'Anthony', 'Mark', 'Donald', 'Steven', 'Paul', 'Andrew', 'Joshua', 'Kenneth'];
@@ -1905,13 +2003,15 @@ function calculatePregnancyChance(femaleAge, maleAgeOrRoll = undefined, roll = M
  * @returns {number} Probability of promotion (0.0 to 0.80); 0 means ineligible
  */
 function calculatePromotionChance(performance, smarts = 50) {
+    const clampedPerf = clampStat(performance, 50);
+    const clampedSmarts = clampStat(smarts, 50);
     let bonus = 0;
-    if (smarts >= 80) bonus = 0.10;
-    else if (smarts >= 65) bonus = 0.05;
+    if (clampedSmarts >= 80) bonus = 0.10;
+    else if (clampedSmarts >= 65) bonus = 0.05;
 
-    if (performance >= 95) return Math.min(0.95, 0.80 + bonus);
-    if (performance >= 85) return Math.min(0.85, 0.50 + bonus);
-    if (performance >= 75) return Math.min(0.75, 0.25 + bonus);
+    if (clampedPerf >= 95) return Math.min(0.95, 0.80 + bonus);
+    if (clampedPerf >= 85) return Math.min(0.85, 0.50 + bonus);
+    if (clampedPerf >= 75) return Math.min(0.75, 0.25 + bonus);
     return 0;
 }
 
@@ -1924,6 +2024,10 @@ function calculatePromotionChance(performance, smarts = 50) {
 function canProcessBusinessQuarter(user) {
     if (!user || !user.hasBusiness) {
         return { allowed: false, reason: "No active business." };
+    }
+
+    if (!isAlive(user)) {
+        return { allowed: false, reason: "Cannot run business while dead or at 0 HP." };
     }
 
     if (user.lastCompletedFiscalYearAge === user.age) {
@@ -2216,6 +2320,7 @@ function generateTenantApplicants(property) {
 
 function acceptTenantLease(user, propertyId, applicantId) {
     if (!user || !Array.isArray(user.assets)) return { success: false, reason: "No assets found." };
+    if (!isAlive(user)) return { success: false, reason: "Cannot manage properties while dead or at 0 HP." };
     const property = user.assets.find(a => a.id === propertyId);
     if (!property || property.category !== 'property') return { success: false, reason: "Property not found." };
 
@@ -2351,6 +2456,7 @@ function processTenantEvents(user, stateRef) {
 
 function evictTenant(user, propertyId) {
     if (!user || !Array.isArray(user.assets)) return { success: false, reason: "No assets found." };
+    if (!isAlive(user)) return { success: false, reason: "Cannot evict tenants while dead or at 0 HP." };
     const property = user.assets.find(a => a.id === propertyId);
     if (!property || property.category !== 'property') return { success: false, reason: "Property not found." };
 
@@ -2377,6 +2483,15 @@ function calculateTotalMonthlyMortgages(user) {
 }
 
 function canAffordMortgage(user, newMonthlyPayment) {
+    if (!isAlive(user)) {
+        return {
+            allowed: false,
+            ratio: 1.0,
+            currentMortgages: 0,
+            monthlyIncome: 0,
+            reason: "Cannot apply for a mortgage while dead or at 0 HP."
+        };
+    }
     const monthlyIncome = calculateUserMonthlyIncome(user);
     if (monthlyIncome <= 0) {
         return {
@@ -2503,6 +2618,7 @@ function calculateMaintenanceCost(property) {
 
 function performPropertyMaintenance(user, propertyId) {
     if (!user || !Array.isArray(user.assets)) return { success: false, reason: "No assets found." };
+    if (!isAlive(user)) return { success: false, reason: "Cannot perform maintenance while dead or at 0 HP." };
     const property = user.assets.find(a => a.id === propertyId);
     if (!property || property.category !== 'property') return { success: false, reason: "Property not found." };
 
@@ -2561,6 +2677,7 @@ function calculateRenovationOptions(property) {
 
 function renovateProperty(user, propertyId, optionId) {
     if (!user || !Array.isArray(user.assets)) return { success: false, reason: "No assets found." };
+    if (!isAlive(user)) return { success: false, reason: "Cannot renovate properties while dead or at 0 HP." };
     const property = user.assets.find(a => a.id === propertyId);
     if (!property || property.category !== 'property') return { success: false, reason: "Property not found." };
 
@@ -2682,6 +2799,7 @@ function generatePropertyBuyerOffer(property, tierId) {
 
 function completePropertySale(user, propertyId, offerAmount) {
     if (!user || !Array.isArray(user.assets)) return { success: false, reason: "No assets found." };
+    if (!isAlive(user)) return { success: false, reason: "Cannot sell properties while dead or at 0 HP." };
     const index = user.assets.findIndex(a => a.id === propertyId);
     if (index === -1) return { success: false, reason: "Property not found." };
 
@@ -3264,6 +3382,7 @@ function processInvestmentsAgeUp(user) {
 }
 
 function buyStock(user, symbol, quantity) {
+    if (!isAlive(user)) return { success: false, msg: 'Cannot trade stocks while dead or at 0 HP.' };
     ensureInvestmentState(user);
     const sharesToBuy = parseInt(quantity, 10);
     if (isNaN(sharesToBuy) || sharesToBuy <= 0) {
@@ -3295,6 +3414,7 @@ function buyStock(user, symbol, quantity) {
 }
 
 function sellStock(user, symbol, quantity) {
+    if (!isAlive(user)) return { success: false, msg: 'Cannot trade stocks while dead or at 0 HP.' };
     ensureInvestmentState(user);
     const sharesToSell = parseInt(quantity, 10);
     if (isNaN(sharesToSell) || sharesToSell <= 0) {
@@ -3330,6 +3450,7 @@ function sellStock(user, symbol, quantity) {
 }
 
 function depositSavings(user, amount) {
+    if (!isAlive(user)) return { success: false, msg: 'Cannot manage savings while dead or at 0 HP.' };
     ensureInvestmentState(user);
     const depositAmt = parseInt(amount, 10);
     if (isNaN(depositAmt) || depositAmt <= 0) {
@@ -3350,6 +3471,7 @@ function depositSavings(user, amount) {
 }
 
 function withdrawSavings(user, amount) {
+    if (!isAlive(user)) return { success: false, msg: 'Cannot manage savings while dead or at 0 HP.' };
     ensureInvestmentState(user);
     const withdrawAmt = parseInt(amount, 10);
     if (isNaN(withdrawAmt) || withdrawAmt <= 0) {
@@ -3394,7 +3516,7 @@ function calculatePartnerRelocateAcceptance(partner, rollOverride = null) {
 }
 
 function breakUpWithPartner(user, partner) {
-    if (!partner) return;
+    if (!isAlive(user) || !partner) return;
     partner.category = 'ex';
     if (['Spouse', 'Husband', 'Wife'].includes(partner.type) || partner.category === 'spouse') {
         partner.type = partner.gender === 'male' ? 'Ex-Husband' : 'Ex-Wife';
@@ -3407,6 +3529,7 @@ function breakUpWithPartner(user, partner) {
 
 function canMoveCountry(user, targetCountry, targetCity = null) {
     if (!user) return { allowed: false, reason: "No character data found." };
+    if (!isAlive(user)) return { allowed: false, reason: "Cannot relocate while dead or at 0 HP." };
     if ((user.age || 0) < 18) return { allowed: false, reason: "You must be at least 18 years old to relocate to a new country." };
     if (targetCountry && user.country === targetCountry) return { allowed: false, reason: `You are already living in ${targetCountry}.` };
     if (targetCity && user.city === targetCity) return { allowed: false, reason: `You are already living in ${targetCity}.` };
@@ -3415,6 +3538,7 @@ function canMoveCountry(user, targetCountry, targetCity = null) {
 }
 
 function moveCountry(user, targetCountry, targetCity) {
+    if (!isAlive(user)) return { success: false, message: "Cannot relocate while dead or at 0 HP." };
     const check = canMoveCountry(user, targetCountry, targetCity);
     if (!check.allowed) return { success: false, message: check.reason };
 
@@ -3838,6 +3962,7 @@ function calculateSpousalIncomeContribution(user) {
 function ensureBusinessState(user) {
     if (!user || !user.hasBusiness) return;
 
+    if (typeof user.isPublic !== 'boolean') user.isPublic = false;
     if (!user.hqTier) user.hqTier = 'garage';
     if (!user.marketingLevels) user.marketingLevels = { social_ads: 0, seo_content: 0, influencers: 0, b2b_sales: 0 };
     if (!user.teamRoles) {
@@ -3859,6 +3984,10 @@ function ensureBusinessState(user) {
     if (!Array.isArray(user.businessUpgrades)) user.businessUpgrades = [];
 }
 
+const MAX_COMPANY_VALUATION = 999999999999999; // $999 Trillion (Safe within Number.MAX_SAFE_INTEGER)
+const MAX_COMPANY_CASH = 999999999999999;
+const MAX_PLAYER_MONEY = 999999999999999;
+
 function calculateCompanyValuation(user) {
     if (!user || !user.hasBusiness) return 0;
     ensureBusinessState(user);
@@ -3867,11 +3996,20 @@ function calculateCompanyValuation(user) {
     const ind = BUSINESS_INDUSTRIES[indKey] || BUSINESS_INDUSTRIES.tech_saas || { valuationMultiple: 3.0, startupCost: 50000, unitCost: 10 };
 
     const recentQuarters = (user.businessHistory || []).slice(-4);
-    const annualRevenue = recentQuarters.reduce((sum, q) => sum + (q.revenue || 0), 0);
-    const annualProfit = recentQuarters.reduce((sum, q) => sum + (q.profit || 0), 0);
+    const annualRevenue = recentQuarters.reduce((sum, q) => {
+        const rev = Number(q.revenue);
+        return sum + (isFinite(rev) && rev > 0 ? rev : 0);
+    }, 0);
+    const annualProfit = recentQuarters.reduce((sum, q) => {
+        const prof = Number(q.profit);
+        return sum + (isFinite(prof) && prof > 0 ? prof : 0);
+    }, 0);
 
-    const cashValue = user.compCash || 0;
-    const inventoryValue = (user.inventory || 0) * (ind.unitCost || 10);
+    const rawCash = Number(user.compCash);
+    const cashValue = isFinite(rawCash) ? Math.max(0, Math.min(MAX_COMPANY_CASH, rawCash)) : 0;
+    const rawInventory = Number(user.inventory);
+    const inventoryCount = isFinite(rawInventory) ? Math.max(0, rawInventory) : 0;
+    const inventoryValue = inventoryCount * (ind.unitCost || 10);
     const baseAssetValue = cashValue + inventoryValue;
 
     let revenueValuation = annualRevenue * (ind.valuationMultiple || 3.0);
@@ -3879,10 +4017,16 @@ function calculateCompanyValuation(user) {
         revenueValuation += annualProfit * 2.0;
     }
 
-    const reputationBonus = 1 + ((user.businessReputation || 50) - 50) / 200;
-    const finalValuation = Math.max(
-        (ind.startupCost || 50000) * 1.5,
-        Math.floor((baseAssetValue + revenueValuation) * reputationBonus)
+    const rep = isFinite(Number(user.businessReputation)) ? Number(user.businessReputation) : 50;
+    const reputationBonus = 1 + (rep - 50) / 200;
+    const minValuation = (ind.startupCost || 50000) * 1.5;
+
+    const rawValuation = Math.floor((baseAssetValue + revenueValuation) * reputationBonus);
+    const safeValuation = isFinite(rawValuation) ? rawValuation : minValuation;
+
+    const finalValuation = Math.min(
+        MAX_COMPANY_VALUATION,
+        Math.max(minValuation, safeValuation)
     );
 
     return finalValuation;
@@ -3913,25 +4057,39 @@ function calculateVCInvestorOffers(user) {
     if (!user || !user.hasBusiness) return [];
     ensureBusinessState(user);
 
+    if (user.isPublic) return [];
+
     const valuation = calculateCompanyValuation(user);
+    const acceptedInvestorIds = (user.investorShares || []).map(s => s.investorId);
 
-    return VC_INVESTOR_TYPES.filter(vc => valuation >= vc.minValuation).map(vc => {
-        const investmentAmount = Math.min(vc.maxInvestment, Math.floor(valuation * vc.equityTarget));
-        const postMoneyValuation = valuation + investmentAmount;
-        const actualEquityOffered = Math.round((investmentAmount / postMoneyValuation) * 100) / 100;
+    return VC_INVESTOR_TYPES
+        .filter(vc => valuation >= vc.minValuation && !acceptedInvestorIds.includes(vc.id))
+        .map(vc => {
+            const investmentAmount = Math.min(vc.maxInvestment, Math.floor(valuation * vc.equityTarget));
+            const postMoneyValuation = Math.min(MAX_COMPANY_VALUATION, valuation + investmentAmount);
+            const actualEquityOffered = Math.round((investmentAmount / postMoneyValuation) * 100) / 100;
 
-        return {
-            ...vc,
-            offeredAmount: investmentAmount,
-            equityRequired: actualEquityOffered,
-            postMoneyValuation
-        };
-    });
+            return {
+                ...vc,
+                offeredAmount: investmentAmount,
+                equityRequired: actualEquityOffered,
+                postMoneyValuation
+            };
+        });
 }
 
 function acceptVCOffer(user, investorId) {
     if (!user || !user.hasBusiness) return { success: false, msg: 'No active business.' };
+    if (!isAlive(user)) return { success: false, msg: "Cannot accept investment offers while dead or at 0 HP." };
     ensureBusinessState(user);
+
+    if (user.isPublic) {
+        return { success: false, msg: 'Cannot accept private VC investments after going public.' };
+    }
+
+    if (user.investorShares && user.investorShares.some(s => s.investorId === investorId)) {
+        return { success: false, msg: 'This investment offer has already been accepted.' };
+    }
 
     const offers = calculateVCInvestorOffers(user);
     const offer = offers.find(o => o.id === investorId);
@@ -3943,7 +4101,7 @@ function acceptVCOffer(user, investorId) {
     }
 
     user.equityOwned = Math.round((user.equityOwned - equityPct) * 100) / 100;
-    user.compCash += offer.offeredAmount;
+    user.compCash = Math.min(MAX_COMPANY_CASH, (user.compCash || 0) + offer.offeredAmount);
     user.investorShares.push({
         investorId: offer.id,
         name: offer.name,
@@ -3957,6 +4115,39 @@ function acceptVCOffer(user, investorId) {
         amount: offer.offeredAmount,
         equity: equityPct,
         msg: `Successfully accepted ${Utils.formatMoney(offer.offeredAmount)} investment from ${offer.name} in exchange for ${Math.round(equityPct * 100)}% equity!`
+    };
+}
+
+function launchIPO(user, floatEquity = 0.20) {
+    if (!user || !user.hasBusiness) return { success: false, msg: 'No active business.' };
+    if (!isAlive(user)) return { success: false, msg: "Cannot launch IPO while dead or at 0 HP." };
+    ensureBusinessState(user);
+
+    if (user.isPublic) {
+        return { success: false, msg: 'Company is already publicly traded.' };
+    }
+
+    const valuation = calculateCompanyValuation(user);
+    if (valuation < 25000000) {
+        return { success: false, msg: `Valuation must be at least $25,000,000 to launch an IPO (Current: ${Utils.formatMoney(valuation)}).` };
+    }
+
+    const float = Math.min(user.equityOwned, floatEquity);
+    if (float <= 0) {
+        return { success: false, msg: 'You do not have sufficient equity to float on the public exchange.' };
+    }
+
+    const playerPayout = Math.min(MAX_PLAYER_MONEY, Math.floor(valuation * float));
+    user.money = Math.min(MAX_PLAYER_MONEY, (user.money || 0) + playerPayout);
+    user.equityOwned = Math.max(0, Math.round((user.equityOwned - float) * 100) / 100);
+    user.isPublic = true;
+
+    return {
+        success: true,
+        valuation,
+        floatEquity: float,
+        payout: playerPayout,
+        msg: `Historic IPO! ${user.companyName} listed publicly at ${Utils.formatMoney(valuation)} valuation. You floated ${Math.round(float * 100)}% equity for ${Utils.formatMoney(playerPayout)} cash payout!`
     };
 }
 
@@ -3984,6 +4175,7 @@ const CRIMES = {
 };
 
 function attemptCrime(crimeId, user, targetPersonId = null) {
+    if (!isAlive(user)) return { success: false, message: "Cannot commit crimes while dead or at 0 HP." };
     const crime = CRIMES[crimeId];
     if (!crime) return { success: false, message: "Invalid crime requested." };
 
@@ -3991,7 +4183,7 @@ function attemptCrime(crimeId, user, targetPersonId = null) {
     user.lifetimeCrimesCommitted = (user.lifetimeCrimesCommitted || 0) + 1;
 
     const priorConvictions = user.criminalRecord.filter(r => r.verdict === 'guilty').length;
-    const smartsBonus = ((user.smarts || 50) - 50) * 0.003;
+    const smartsBonus = (clampStat(user.smarts, 50) - 50) * 0.003;
     const priorPenalty = priorConvictions * 0.05;
 
     const finalChance = Math.min(0.92, Math.max(0.10, crime.baseSuccessRate + smartsBonus - priorPenalty));
@@ -4045,11 +4237,11 @@ function attemptCrime(crimeId, user, targetPersonId = null) {
     } else {
         if (crime.category === 'juvenile') {
             let msg = `You were caught performing ${crime.name}! Your parents grounded you and you lost 15 Happiness.`;
-            user.happiness = Math.max(0, (user.happiness || 50) - 15);
+            user.happiness = clampStat((user.happiness || 50) - 15);
 
             if (crime.id === 'prank_call') {
                 msg = `Your prank call was traced by an angry recipient who complained to your parents! You were grounded and lost 10 Happiness.`;
-                user.happiness = Math.max(0, (user.happiness || 50) - 10);
+                user.happiness = clampStat((user.happiness || 50) - 10);
             } else if (crime.id === 'egging_house') {
                 msg = `The homeowner caught you with an egg in hand and made you scrub their front driveway! You lost 15 Happiness.`;
             } else if (crime.id === 'porch_pirate') {
@@ -4093,6 +4285,7 @@ function attemptCrime(crimeId, user, targetPersonId = null) {
 
 function handleArrestAction(user, actionType, bribeAmount = 0) {
     if (!user.pendingTrial) return { success: false, message: "No active arrest." };
+    if (!isAlive(user)) return { success: false, message: "Cannot perform actions while dead or at 0 HP." };
 
     const pending = user.pendingTrial;
 
@@ -4106,7 +4299,7 @@ function handleArrestAction(user, actionType, bribeAmount = 0) {
         }
         user.money -= bribeAmount;
 
-        const looksBonus = ((user.looks || 50) - 50) * 0.003;
+        const looksBonus = (clampStat(user.looks, 50) - 50) * 0.003;
         const bribeRatio = Math.min(1.0, bribeAmount / 10000);
         const bribeChance = Math.min(0.85, (bribeRatio * 0.50) + looksBonus + 0.10);
 
@@ -4120,7 +4313,7 @@ function handleArrestAction(user, actionType, bribeAmount = 0) {
     }
 
     if (actionType === 'flee') {
-        const healthChance = ((user.health || 50) / 100) * 0.55;
+        const healthChance = (clampStat(user.health, 50) / 100) * 0.55;
         if (Math.random() < healthChance) {
             user.pendingTrial = null;
             return { success: true, outcome: 'escaped', message: "You sprinted down an alley, lost the sirens, and escaped police custody!" };
@@ -4135,6 +4328,7 @@ function handleArrestAction(user, actionType, bribeAmount = 0) {
 
 function calculateTrialVerdict(user, lawyerTier) {
     if (!user.pendingTrial) return null;
+    if (!isAlive(user)) return { error: "Cannot stand trial while dead or at 0 HP." };
 
     const pending = user.pendingTrial;
     const crime = pending.crime;
@@ -4160,7 +4354,7 @@ function calculateTrialVerdict(user, lawyerTier) {
 
     user.money -= lawyerCost;
 
-    const smartsBonus = ((user.smarts || 50) - 50) * 0.002;
+    const smartsBonus = (clampStat(user.smarts, 50) - 50) * 0.002;
     const evidencePenalty = (pending.evidenceRating / 100) * 0.30;
     const extraChargePenalty = extraChargesCount * 0.15;
 
@@ -4223,7 +4417,7 @@ function applySentencing(user, verdictResult) {
         }
     }
 
-    user.happiness = Math.max(0, (user.happiness || 50) - 35);
+    user.happiness = clampStat((user.happiness || 50) - 35);
 }
 
 function calculatePrisonSecurity(crimeCategory, crimeId, sentenceYears) {
@@ -4347,8 +4541,8 @@ function processPrisonAgeUp(user) {
     // 2. Solitary Confinement Penalty
     if (stats.solitaryTurns > 0) {
         stats.solitaryTurns--;
-        user.happiness = Math.max(0, (user.happiness || 50) - 20);
-        user.health = Math.max(10, (user.health || 100) - 10);
+        user.happiness = clampStat((user.happiness || 50) - 20);
+        user.health = clampStat((user.health || 100) - 10);
         events.push("Spent another grueling year in solitary confinement.");
     } else {
         // 3. New Cellmate Assignment (if in General Population without a cellmate)
@@ -4470,6 +4664,7 @@ function processPrisonAgeUp(user) {
 
 function interactCellmate(user, actionType) {
     if (!user || !user.cellmate) return { success: false, msg: "No cellmate assigned." };
+    if (!isAlive(user)) return { success: false, msg: "Cannot interact while dead or at 0 HP." };
     const cm = user.cellmate;
     const stats = user.prisonStats;
     if (stats && stats.solitaryTurns > 0) {
@@ -4478,7 +4673,7 @@ function interactCellmate(user, actionType) {
 
     if (actionType === 'talk') {
         cm.status = Math.min(100, (cm.status || 50) + 8);
-        user.happiness = Math.min(100, (user.happiness || 50) + 3);
+        user.happiness = clampStat((user.happiness || 50) + 3);
         return { success: true, msg: `Chatted with ${cm.name}. They shared stories about why they are locked up for ${cm.crime}.` };
     }
 
@@ -4500,6 +4695,7 @@ function interactCellmate(user, actionType) {
 
 function attackPrisonInmate(user, targetType, targetId, weaponType = 'fists') {
     if (!user || !user.inPrison) return { success: false, msg: "Not in prison." };
+    if (!isAlive(user)) return { success: false, msg: "Cannot fight while dead or at 0 HP." };
     const stats = user.prisonStats;
     if (stats && stats.solitaryTurns > 0) {
         return { success: false, msg: "You cannot attack inmates while locked in solitary confinement." };
@@ -4521,7 +4717,7 @@ function attackPrisonInmate(user, targetType, targetId, weaponType = 'fists') {
         return { success: false, msg: "You do not own a Handmade Shank in your cell mattress stash!" };
     }
 
-    const userPower = (user.health || 50) + (user.smarts || 50) + (usingShank ? 40 : 0);
+    const userPower = clampStat(user.health, 50) + clampStat(user.smarts, 50) + (usingShank ? 40 : 0);
     const inmateDefense = Math.floor(Math.random() * 50) + 40;
     const win = Math.random() < (userPower / (userPower + inmateDefense));
 
@@ -4585,8 +4781,8 @@ function attackPrisonInmate(user, targetType, targetId, weaponType = 'fists') {
             }
         }
     } else {
-        user.health = Math.max(5, (user.health || 50) - 35);
-        user.happiness = Math.max(0, (user.happiness || 50) - 20);
+        user.health = clampStat((user.health || 50) - 35);
+        user.happiness = clampStat((user.happiness || 50) - 20);
 
         const guardCaught = Math.random() < 0.35; // 35% chance guards break up lost fight
 
@@ -4615,6 +4811,7 @@ function attackPrisonInmate(user, targetType, targetId, weaponType = 'fists') {
 
 function workoutPrisonYard(user, workoutType) {
     if (!user || !user.inPrison) return { success: false, msg: "Not in prison." };
+    if (!isAlive(user)) return { success: false, msg: "Cannot work out while dead or at 0 HP." };
     const stats = user.prisonStats;
     if (stats && stats.solitaryTurns > 0) {
         return { success: false, msg: "You cannot go to the prison yard while locked in solitary confinement." };
@@ -4622,13 +4819,13 @@ function workoutPrisonYard(user, workoutType) {
 
     if (workoutType === 'bench_press') {
         stats.respect = Math.min(100, (stats.respect || 25) + 5);
-        user.health = Math.min(100, (user.health || 50) + 4);
+        user.health = clampStat((user.health || 50) + 4);
         return { success: true, msg: "Pumped iron at the yard bench press. Built muscle and gained +5 Respect!" };
     }
 
     if (workoutType === 'cardio') {
-        user.health = Math.min(100, (user.health || 50) + 6);
-        user.looks = Math.min(100, (user.looks || 50) + 2);
+        user.health = clampStat((user.health || 50) + 6);
+        user.looks = clampStat((user.looks || 50) + 2);
         return { success: true, msg: "Ran laps around the yard track. Improved Health and Stamina!" };
     }
 
@@ -4637,6 +4834,7 @@ function workoutPrisonYard(user, workoutType) {
 
 function interactYardInmate(user, inmateId, actionType) {
     if (!user || !user.yardInmates) return { success: false, msg: "No inmates available." };
+    if (!isAlive(user)) return { success: false, msg: "Cannot interact while dead or at 0 HP." };
     const inmate = user.yardInmates.find(i => String(i.id) === String(inmateId));
     if (!inmate) return { success: false, msg: "Inmate not found." };
     const stats = user.prisonStats;
@@ -4659,14 +4857,14 @@ function interactYardInmate(user, inmateId, actionType) {
     }
 
     if (actionType === 'challenge_boss') {
-        const userPower = (user.health || 50) + (user.smarts || 50);
+        const userPower = clampStat(user.health, 50) + clampStat(user.smarts, 50);
         if (Math.random() < (userPower / 180)) {
             stats.respect = Math.min(100, (stats.respect || 25) + 40);
             stats.guardRelation = Math.max(0, (stats.guardRelation || 50) - 15);
             return { success: true, msg: `You challenged ${inmate.name} for Yard Supremacy and WON the brawl! Gained +40 Respect!` };
         } else {
-            user.health = Math.max(10, (user.health || 50) - 30);
-            user.happiness = Math.max(0, (user.happiness || 50) - 20);
+            user.health = clampStat((user.health || 50) - 30);
+            user.happiness = clampStat((user.happiness || 50) - 20);
             return { success: false, msg: `${inmate.name} defeated you in the yard brawl! Lost 30 Health and 20 Happiness.` };
         }
     }
@@ -4698,11 +4896,12 @@ function interactYardInmate(user, inmateId, actionType) {
 
     if (actionType === 'frame_snitch') {
         if (!stats.contraband || stats.contraband.length === 0) {
-            return { success: false, msg: "You need at least one piece of contraband to plant on the snitch!" };
+            return { success: false, msg: "You need contraband in your cell stash to plant on the snitch!" };
         }
-        const itemPlanted = stats.contraband.pop();
+        const planted = stats.contraband.pop();
         stats.snitchFramed = true;
-        return { success: true, msg: `Planted your ${itemPlanted} into ${inmate.name}'s cell! Next shakedown will raid their mattress instead of yours.` };
+        stats.respect = Math.min(100, (stats.respect || 25) + 20);
+        return { success: true, msg: `Planted ${planted} in the snitch's bunk! The block cheered your cunning (+20 Respect).` };
     }
 
     if (actionType === 'join_gang') {
@@ -4720,16 +4919,20 @@ function interactYardInmate(user, inmateId, actionType) {
 
 function useContrabandPhone(user, phoneAction, targetId = null) {
     if (!user || !user.inPrison) return { success: false, msg: "Not in prison." };
+    if (!isAlive(user)) return { success: false, msg: "Cannot use phone while dead or at 0 HP." };
     const stats = user.prisonStats;
-    if (!stats || !Array.isArray(stats.contraband) || !stats.contraband.includes('Contraband Cellphone')) {
-        return { success: false, msg: "You do not own a Contraband Cellphone!" };
+    if (!stats || !stats.contraband || !stats.contraband.includes('Contraband Cellphone')) {
+        return { success: false, msg: "You do not possess a Contraband Cellphone in your cell stash." };
     }
 
-    // 15% risk of guard detection while using phone
-    if (Math.random() < 0.15) {
+    // 25% chance guards catch user using phone
+    const caught = Math.random() < 0.25;
+
+    if (caught) {
         stats.contraband = stats.contraband.filter(c => c !== 'Contraband Cellphone');
         stats.solitaryTurns = 1;
-        stats.guardRelation = Math.max(0, (stats.guardRelation || 50) - 25);
+        stats.guardRelation = Math.max(0, (stats.guardRelation || 50) - 30);
+        stats.goodBehaviorPoints = 0;
         user.prisonSentenceRemaining = (user.prisonSentenceRemaining || 1) + 1;
         user.prisonTotalSentence = (user.prisonTotalSentence || 1) + 1;
         return {
@@ -4744,7 +4947,7 @@ function useContrabandPhone(user, phoneAction, targetId = null) {
         if (!rel) return { success: false, msg: "Contact not found." };
 
         rel.status = Math.min(100, (rel.status || 50) + 20);
-        user.happiness = Math.min(100, (user.happiness || 50) + 10);
+        user.happiness = clampStat((user.happiness || 50) + 10);
         return {
             success: true,
             msg: `Secretly texted and called ${rel.name} on your contraband phone! Reconnected outside (+20 status, +10 Happiness)!`
@@ -4753,7 +4956,7 @@ function useContrabandPhone(user, phoneAction, targetId = null) {
 
     if (phoneAction === 'legal') {
         stats.lawStudied = (stats.lawStudied || 0) + 35;
-        user.smarts = Math.min(100, (user.smarts || 50) + 3);
+        user.smarts = clampStat((user.smarts || 50) + 3);
         return {
             success: true,
             msg: "Called your private legal team hotline. Consulted appellate attorneys directly from your cell (+35 Law Study Points, +3 Smarts)!"
@@ -4765,6 +4968,7 @@ function useContrabandPhone(user, phoneAction, targetId = null) {
 
 function doPrisonJob(user, jobId) {
     if (!user || !user.prisonStats) return { success: false, msg: "Not in prison." };
+    if (!isAlive(user)) return { success: false, msg: "Cannot work while dead or at 0 HP." };
     if (user.prisonStats.solitaryTurns > 0) {
         return { success: false, msg: "Your prison job assignment is suspended while locked in solitary confinement." };
     }
@@ -4777,18 +4981,19 @@ function doPrisonJob(user, jobId) {
 
 function doSolitaryActivity(user, actType) {
     if (!user || !user.inPrison) return { success: false, msg: "Not in prison." };
+    if (!isAlive(user)) return { success: false, msg: "Cannot perform activities while dead or at 0 HP." };
     const stats = user.prisonStats;
     if (!stats || stats.solitaryTurns <= 0) return { success: false, msg: "Not in solitary confinement." };
 
     if (actType === 'pushups') {
-        user.health = Math.min(100, (user.health || 50) + 2);
+        user.health = clampStat((user.health || 50) + 2);
         stats.respect = Math.min(100, (stats.respect || 25) + 1);
         return { success: true, msg: "Did 100 cell push-ups in solitary confinement (+2 Health, +1 Respect)." };
     }
 
     if (actType === 'meditate') {
-        user.smarts = Math.min(100, (user.smarts || 50) + 3);
-        user.health = Math.min(100, (user.health || 50) + 1);
+        user.smarts = clampStat((user.smarts || 50) + 3);
+        user.health = clampStat((user.health || 50) + 1);
         return { success: true, msg: "Meditated on your life choices in solitary isolation (+3 Smarts, +1 Health)." };
     }
 
@@ -4797,6 +5002,7 @@ function doSolitaryActivity(user, actType) {
 
 function buyCanteenItem(user, itemId) {
     if (!user || !user.prisonStats) return { success: false, msg: "Not in prison." };
+    if (!isAlive(user)) return { success: false, msg: "Cannot buy items while dead or at 0 HP." };
     const stats = user.prisonStats;
     if (!Array.isArray(stats.contraband)) stats.contraband = [];
 
@@ -4819,7 +5025,7 @@ function buyCanteenItem(user, itemId) {
     stats.canteenCash -= item.price;
 
     if (item.type === 'snack') {
-        user.happiness = Math.min(100, (user.happiness || 50) + 5);
+        user.happiness = clampStat((user.happiness || 50) + 5);
         return { success: true, msg: `Enjoyed a ${item.name}. Gained +5 Happiness!` };
     } else {
         stats.contraband.push(item.name);
@@ -4829,6 +5035,7 @@ function buyCanteenItem(user, itemId) {
 
 function sellContrabandItem(user, itemIndexOrName) {
     if (!user || !user.prisonStats) return { success: false, msg: "Not in prison." };
+    if (!isAlive(user)) return { success: false, msg: "Cannot sell contraband while dead or at 0 HP." };
     const stats = user.prisonStats;
     if (!Array.isArray(stats.contraband) || stats.contraband.length === 0) {
         return { success: false, msg: "You have no contraband items to sell." };
@@ -4868,14 +5075,16 @@ function sellContrabandItem(user, itemIndexOrName) {
 
 function studyPrisonLaw(user) {
     if (!user || !user.prisonStats) return { success: false, msg: "Not in prison." };
+    if (!isAlive(user)) return { success: false, msg: "Cannot study law while dead or at 0 HP." };
     const stats = user.prisonStats;
     stats.lawStudied = (stats.lawStudied || 0) + 15;
-    user.smarts = Math.min(100, (user.smarts || 50) + 2);
+    user.smarts = clampStat((user.smarts || 50) + 2);
     return { success: true, msg: "Spent hours in the prison legal library studying appeal precedent. +15 Law Study points, +2 Smarts!" };
 }
 
 function attemptSentenceAppeal(user, lawyerTier = 'self') {
     if (!user || !user.inPrison) return { success: false, msg: "Not in prison." };
+    if (!isAlive(user)) return { success: false, msg: "Cannot appeal while dead or at 0 HP." };
     const stats = user.prisonStats;
 
     let baseChance = 0.15;
@@ -4883,7 +5092,7 @@ function attemptSentenceAppeal(user, lawyerTier = 'self') {
     if (lawyerTier === 'top') baseChance = 0.75;
 
     const lawBonus = ((stats.lawStudied || 0) / 100) * 0.20;
-    const smartsBonus = ((user.smarts || 50) / 100) * 0.10;
+    const smartsBonus = (clampStat(user.smarts, 50) / 100) * 0.10;
     const winChance = Math.min(0.90, baseChance + lawBonus + smartsBonus);
 
     if (Math.random() < winChance) {
@@ -4906,6 +5115,7 @@ function attemptSentenceAppeal(user, lawyerTier = 'self') {
 
 function attemptParoleBoard(user) {
     if (!user || !user.inPrison) return { success: false, msg: "Not in prison." };
+    if (!isAlive(user)) return { success: false, msg: "Cannot apply for parole while dead or at 0 HP." };
     const total = user.prisonTotalSentence || 1;
     const remaining = user.prisonSentenceRemaining || 1;
     const served = total - remaining;
@@ -4941,13 +5151,14 @@ function attemptParoleBoard(user) {
 
 function attemptPrisonEscape(user, method) {
     if (!user || !user.inPrison) return { success: false, msg: "Not in prison." };
+    if (!isAlive(user)) return { success: false, msg: "Cannot attempt escape while dead or at 0 HP." };
     const stats = user.prisonStats;
 
     let escapeChance = 0.20;
-    if (method === 'tunnel') escapeChance += ((user.smarts || 50) / 100) * 0.35;
+    if (method === 'tunnel') escapeChance += (clampStat(user.smarts, 50) / 100) * 0.35;
     if (method === 'bribe_guard') escapeChance += ((stats.guardRelation || 50) / 100) * 0.45;
-    if (method === 'laundry_cart') escapeChance += ((user.looks || 50) / 100) * 0.30;
-    if (method === 'fence_cut') escapeChance += ((user.health || 50) / 100) * 0.25;
+    if (method === 'laundry_cart') escapeChance += (clampStat(user.looks, 50) / 100) * 0.30;
+    if (method === 'fence_cut') escapeChance += (clampStat(user.health, 50) / 100) * 0.25;
 
     if (Math.random() < escapeChance) {
         user.inPrison = false;
@@ -4975,6 +5186,7 @@ function attemptPrisonEscape(user, method) {
 
 function sendPrisonLetter(user, relId) {
     if (!user || !user.inPrison) return { success: false, msg: "Not in prison." };
+    if (!isAlive(user)) return { success: false, msg: "Cannot send letters while dead or at 0 HP." };
     const stats = user.prisonStats;
     const rel = (user.relationships || []).find(r => String(r.id) === String(relId));
     if (!rel) return { success: false, msg: "Contact not found." };
@@ -4988,7 +5200,7 @@ function sendPrisonLetter(user, relId) {
     }
 
     rel.status = Math.min(100, (rel.status || 50) + 15);
-    user.happiness = Math.min(100, (user.happiness || 50) + 4);
+    user.happiness = clampStat((user.happiness || 50) + 4);
 
     return {
         success: true,
@@ -4998,6 +5210,7 @@ function sendPrisonLetter(user, relId) {
 
 function requestConjugalVisit(user, relId) {
     if (!user || !user.inPrison) return { success: false, msg: "Not in prison." };
+    if (!isAlive(user)) return { success: false, msg: "Cannot request conjugal visit while dead or at 0 HP." };
     const stats = user.prisonStats;
     const rel = (user.relationships || []).find(r => String(r.id) === String(relId));
 
@@ -5014,7 +5227,7 @@ function requestConjugalVisit(user, relId) {
     }
 
     rel.status = Math.min(100, (rel.status || 50) + 25);
-    user.happiness = Math.min(100, (user.happiness || 50) + 15);
+    user.happiness = clampStat((user.happiness || 50) + 15);
 
     let pregnancyOccurred = false;
     const isUserFemale = user.gender === 'female';
@@ -5078,6 +5291,7 @@ export const GameLogic = {
     isInteractionBlocked,
     calculateInheritance,
     calculateSpousalLifeInsurance,
+    calculateEstateDistribution,
     generateSchoolCohort,
     generateReplacementTeacher,
     generateStranger,
@@ -5106,9 +5320,13 @@ export const GameLogic = {
     resetBusinessQuarterTracking,
     ensureBusinessState,
     calculateCompanyValuation,
+    MAX_COMPANY_VALUATION,
+    MAX_COMPANY_CASH,
+    MAX_PLAYER_MONEY,
     calculateBusinessOverhead,
     calculateVCInvestorOffers,
     acceptVCOffer,
+    launchIPO,
     inheritFamilyRelationships,
     CITY_COST_OF_LIVING,
     getCityCostMultiplier,
@@ -5173,7 +5391,8 @@ export const GameLogic = {
     calculateTrialVerdict,
     applySentencing,
     processMafiaCrime: (type) => {
-        const user = state.gameState.user;
+        const user = state.gameState?.user;
+        if (!isAlive(user)) return { success: false, message: "Cannot commit crimes while dead or at 0 HP." };
         let successChance = 0.6;
         let payout = 0;
         let crimeName = '';
@@ -5184,7 +5403,7 @@ export const GameLogic = {
         else if (type === 'bribe') { crimeName = 'Bribery'; successChance = 0.8; payout = 0; }
         else if (type === 'whack') { crimeName = 'Syndicate Hit'; successChance = 0.4; payout = 0; }
 
-        const smartsBonus = ((user.smarts || 50) - 50) * 0.005;
+        const smartsBonus = (clampStat(user.smarts, 50) - 50) * 0.005;
         const finalChance = Math.min(0.95, Math.max(0.1, successChance + smartsBonus));
 
         if (Math.random() < finalChance) {
@@ -5205,6 +5424,9 @@ export const GameLogic = {
             return { success: false, arrested: true, message: `You were caught by the feds while attempting ${crimeName}!` };
         }
     },
+    isAlive,
+    launchIPO,
+    clampStat,
     calculatePrisonSecurity,
     generateCellmate,
     generateYardInmates,

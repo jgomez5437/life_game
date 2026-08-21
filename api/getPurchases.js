@@ -1,5 +1,6 @@
 import { sql } from '@vercel/postgres';
 import { verifyAuth } from './lib/verifyAuth.js';
+import { checkRateLimit } from './lib/rateLimit.js';
 
 export default async function handler(request, response) {
   if (request.method !== 'GET') {
@@ -11,6 +12,11 @@ export default async function handler(request, response) {
     authUserId = await verifyAuth(request);
   } catch (error) {
     return response.status(401).json({ error: error.message });
+  }
+
+  // Enforce rate limiting: 30 requests / min per user
+  if (!checkRateLimit(request, response, 'getPurchases', null, authUserId)) {
+    return;
   }
 
   try {

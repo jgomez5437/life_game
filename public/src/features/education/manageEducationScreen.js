@@ -3,6 +3,7 @@ import { renderActivities, getSchoolName } from '../career/occupationScreen.js';
 import { renderLifeDashboard, addLog, refreshClassmates } from '../player/mainScreen.js';
 import { renderAvatar } from '../../ui/avatarRenderer.js';
 import { hasInstantDiplomaPerk, renderInstantDiplomaHub } from './instantDiploma.js';
+import { isDeadNPC } from '../relationships/relationshipScreen.js';
 
 const get = id => document.getElementById(id);
 
@@ -131,7 +132,7 @@ export function workHarder() {
     user.schoolActions++;
     user.schoolPerformance = Math.min(100, user.schoolPerformance + 20);
     const smartsGain = Math.floor(Math.random() * 3) + 2;
-    user.smarts = Math.min(100, (user.smarts || 50) + smartsGain);
+    user.smarts = Math.max(0, Math.min(100, (user.smarts || 50) + smartsGain));
     addLog(`Studied hard! Improved grades (+20%) and gained +${smartsGain} Smarts.`, 'good');
     renderLifeDashboard(state.gameState);
 }
@@ -148,12 +149,12 @@ export function renderClassmates() {
     const user = state.gameState.user;
     if (!user.relationships) user.relationships = [];
     
-    let classmates = user.relationships.filter(r => r.isCurrentClassmate);
+    let classmates = user.relationships.filter(r => r.isCurrentClassmate && !isDeadNPC(r));
     
     // Lazy-load if they just opened the game
     if (classmates.length === 0) {
         refreshClassmates(user);
-        classmates = user.relationships.filter(r => r.isCurrentClassmate);
+        classmates = user.relationships.filter(r => r.isCurrentClassmate && !isDeadNPC(r));
     }
     
     let content = '';

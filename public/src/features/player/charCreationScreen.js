@@ -8,6 +8,7 @@ import { Utils, COUNTRIES_DATA } from '../../ui/utils.js';
 import { AvatarLogic } from '../../core/avatarLogic.js';
 import { renderAvatar } from '../../ui/avatarRenderer.js';
 import { captureAnnualSnapshot } from '../../core/timeMachine.js';
+import { getAuthToken } from '../../auth/auth.js';
 
 //Character creation screen
 const get = id => document.getElementById(id);
@@ -297,11 +298,14 @@ export async function submitCharacter() {
     try {
         // === IF USER IS LOGGED IN ===
         if (user) {
+            const authToken = await getAuthToken();
             const response = await fetch('/api/login', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
+                },
                 body: JSON.stringify({
-                    auth0_id: user.sub,
                     email: user.email,
                     username: finalName,
                     gender: gender,
@@ -325,10 +329,10 @@ export async function submitCharacter() {
             let initialStats;
             if (hasPurchasedPack('god_mode') && get('god-create-health')) {
                 initialStats = {
-                    health: parseInt(get('god-create-health').value, 10),
-                    happiness: parseInt(get('god-create-happiness').value, 10),
-                    smarts: parseInt(get('god-create-smarts').value, 10),
-                    looks: parseInt(get('god-create-looks').value, 10)
+                    health: Math.max(0, Math.min(100, parseInt(get('god-create-health').value, 10) || 100)),
+                    happiness: Math.max(0, Math.min(100, parseInt(get('god-create-happiness').value, 10) || 100)),
+                    smarts: Math.max(0, Math.min(100, parseInt(get('god-create-smarts').value, 10) || 50)),
+                    looks: Math.max(0, Math.min(100, parseInt(get('god-create-looks').value, 10) || 50))
                 };
             } else {
                 initialStats = GameLogic.generateRandomStats ? GameLogic.generateRandomStats() : {

@@ -118,9 +118,9 @@ const renderFuneralScreen = (deceased) => {
         if (deceased.inheritanceAmt === undefined) {
             // A spouse already shares your household finances — there's no separate
             // "savings" to inherit, only the (uncommon) chance of a life insurance payout.
-            deceased.inheritanceAmt = isSpouse
+            deceased.inheritanceAmt = Math.max(0, isSpouse
                 ? GameLogic.calculateSpousalLifeInsurance()
-                : GameLogic.calculateInheritance(deceased.age);
+                : GameLogic.calculateInheritance(deceased.age));
         }
 
         const inheritanceAmt = deceased.inheritanceAmt;

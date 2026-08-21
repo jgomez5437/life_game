@@ -1,9 +1,29 @@
 import { sql } from '@vercel/postgres';
 import Stripe from 'stripe';
+import { checkRateLimit } from './lib/rateLimit.js';
+
+/**
+ * Buffers the raw request body from the incoming stream.
+ * Required because Vercel auto-parses JSON bodies, but Stripe
+ * signature verification needs the raw string.
+ */
+async function getRawBody(req) {
+    return new Promise((resolve, reject) => {
+        const chunks = [];
+        req.on('data', (chunk) => chunks.push(chunk));
+        req.on('end', () => resolve(Buffer.concat(chunks)));
+        req.on('error', reject);
+    });
+}
 
 export default async function handler(request, response) {
   if (request.method !== 'POST') {
     return response.status(405).json({ error: 'Method Not Allowed' });
+  }
+
+  // Enforce high ceiling rate limit: 120 webhook events / min per IP
+  if (!checkRateLimit(request, response, 'webhook')) {
+    return;
   }
 
   const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
@@ -20,7 +40,8 @@ export default async function handler(request, response) {
     let event;
 
     try {
-      event = stripe.webhooks.constructEvent(request.body, sig, webhookSecret);
+      const rawBody = await getRawBody(request);
+      event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
     } catch (err) {
       console.error('Webhook signature verification failed:', err.message);
       return response.status(400).send(`Webhook Error: ${err.message}`);
@@ -60,3 +81,9 @@ export default async function handler(request, response) {
     return response.status(500).json({ error: 'Webhook processing failed' });
   }
 }
+
+export const config = {
+    api: {
+        bodyParser: false,
+    },
+};
