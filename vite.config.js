@@ -28,7 +28,14 @@ export default defineConfig({
   build: {
     target: 'esnext',
     outDir: '../dist',
-    emptyOutDir: true
+    emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        main: resolve(import.meta.dirname, 'public', 'index.html'),
+        about: resolve(import.meta.dirname, 'public', 'about', 'index.html'),
+        howToPlay: resolve(import.meta.dirname, 'public', 'how-to-play', 'index.html')
+      }
+    }
   }
 });
 

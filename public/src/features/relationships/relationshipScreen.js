@@ -1554,8 +1554,8 @@ export const handleCheatingConfrontationChoice = (choice) => {
             UI.showModal('Forgiven (For Now)', `<p class="text-slate-300 text-sm">${Utils.escapeHtml(partner.name)} agreed to try couples counseling, but trust will take a long time to rebuild. (+20 Relationship Status)</p>`);
         } else {
             addLog(`${partner.name} refused your apology and broke off the relationship!`, 'bad');
-            UI.showModal('Relationship Over 💔', `<p class="text-slate-300 text-sm">${partner.name} could not forgive your betrayal and ended the relationship immediately!</p>`);
-            user.relationships.splice(partnerIndex, 1);
+            UI.showModal('Relationship Over 💔', `<p class="text-slate-300 text-sm">${Utils.escapeHtml(partner.name)} could not forgive your betrayal and ended the relationship immediately!</p>`);
+            GameLogic.breakUpWithPartner(user, partner);
         }
     } else if (choice === 'gift') {
         if ((user.money || 0) < 5000) {
@@ -1570,24 +1570,24 @@ export const handleCheatingConfrontationChoice = (choice) => {
             UI.showModal('Gift Accepted 🎁', `<p class="text-slate-300 text-sm">${Utils.escapeHtml(partner.name)} accepted the expensive gift and agreed to stay together for now.</p>`);
         } else {
             addLog(`${partner.name} threw your $5,000 gift back at you and ended the relationship!`, 'bad');
-            UI.showModal('Gift Rejected 💔', `<p class="text-slate-300 text-sm">${partner.name} threw your gift back at you in anger and ended the relationship!</p>`);
-            user.relationships.splice(partnerIndex, 1);
+            UI.showModal('Gift Rejected 💔', `<p class="text-slate-300 text-sm">${Utils.escapeHtml(partner.name)} threw your gift back at you in anger and ended the relationship!</p>`);
+            GameLogic.breakUpWithPartner(user, partner);
         }
     } else if (choice === 'blame') {
         partner.status = 0;
         const breaksUp = Math.random() < 0.90;
         if (breaksUp) {
             addLog(`You blamed ${partner.name} for your affair. Furious, they immediately divorced/broke up with you!`, 'bad');
-            UI.showModal('Bitter Breakup 💥', `<p class="text-slate-300 text-sm">You blamed ${partner.name}. Outraged by your reaction, they immediately packed their bags and left!</p>`);
-            user.relationships.splice(partnerIndex, 1);
+            UI.showModal('Bitter Breakup 💥', `<p class="text-slate-300 text-sm">You blamed ${Utils.escapeHtml(partner.name)}. Outraged by your reaction, they immediately packed their bags and left!</p>`);
+            GameLogic.breakUpWithPartner(user, partner);
         } else {
             addLog(`You argued with ${partner.name}. The fight was explosive, but you remain together with 0 status.`, 'bad');
             UI.showModal('Explosive Argument 💥', `<p class="text-slate-300 text-sm">You blamed ${Utils.escapeHtml(partner.name)}. You had a massive fight, and your relationship is at rock bottom (Status: 0).</p>`);
         }
     } else if (choice === 'walk_away') {
         addLog(`You walked away from your relationship with ${partner.name}.`, 'bad');
-        UI.showModal('Separated 🚪', `<p class="text-slate-300 text-sm">You walked away and ended your relationship with ${partner.name}.</p>`);
-        user.relationships.splice(partnerIndex, 1);
+        UI.showModal('Separated 🚪', `<p class="text-slate-300 text-sm">You walked away and ended your relationship with ${Utils.escapeHtml(partner.name)}.</p>`);
+        GameLogic.breakUpWithPartner(user, partner);
     }
 
     UI.updateHeader(user);

@@ -84,6 +84,9 @@ export function injectAdSenseScript() {
     script.src = ADSENSE_SCRIPT_SRC;
     script.crossOrigin = 'anonymous';
     script.id = 'adsense-script-tag';
+    script.onerror = () => {
+        // Client ad blocker intercepted AdSense script; non-fatal
+    };
 
     document.head.appendChild(script);
     isScriptInjected = true;

@@ -271,6 +271,7 @@ describe('C-6 Stripe Checkout & Webhook Security Hardening', () => {
                 expect(createdSessionArgs.line_items[0].price_data.product_data.name).toBe('God Mode & Stat Editor');
                 expect(createdSessionArgs.metadata.pack_id).toBe('god_mode');
                 expect(createdSessionArgs.metadata.user_auth_id).toBe('auth0|test_user_123');
+                expect(createdSessionArgs.success_url).toContain('session_id={CHECKOUT_SESSION_ID}');
             } finally {
                 sessionsProto.create = originalCreate;
             }

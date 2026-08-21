@@ -4733,7 +4733,7 @@ function processPrisonAgeUp(user) {
                             user.money = (user.money || 0) + inheritance;
                             deathMsg += ` You inherited ${Utils.formatMoney(inheritance)} held in outside estate accounts.`;
                         }
-                    } else if (rel.category === 'spouse') {
+                    } else if (rel.category === 'spouse' || ['Wife', 'Husband', 'Spouse'].includes(rel.type)) {
                         const lifeInsurance = calculateSpousalLifeInsurance();
                         if (lifeInsurance > 0) {
                             user.money = (user.money || 0) + lifeInsurance;

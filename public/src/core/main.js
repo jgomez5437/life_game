@@ -666,9 +666,10 @@ async function initGame() {
         const purchaseSuccess = urlParams.get('purchase_success');
         const purchaseCancelled = urlParams.get('purchase_cancelled');
         const checkoutSessionId = urlParams.get('session_id');
+        const purchasedPackId = urlParams.get('pack_id');
         let verifiedPackId = null;
 
-        if (purchaseSuccess || purchaseCancelled || checkoutSessionId) {
+        if (purchaseSuccess || purchaseCancelled || checkoutSessionId || purchasedPackId) {
             window.history.replaceState({}, document.title, '/');
         }
 
@@ -702,6 +703,20 @@ async function initGame() {
                 }
             } catch (vErr) {
                 console.error("Stripe session verification failed:", vErr);
+            }
+        }
+
+        // Fallback: If returned with purchase_success and pack_id (e.g. sandbox/direct return)
+        if (!verifiedPackId && purchaseSuccess === 'true' && purchasedPackId) {
+            verifiedPackId = purchasedPackId;
+            let localP = [];
+            try {
+                const stored = localStorage.getItem('life_game_purchases');
+                if (stored) localP = JSON.parse(stored);
+            } catch (e) {}
+            if (!localP.includes(verifiedPackId)) {
+                localP.push(verifiedPackId);
+                try { localStorage.setItem('life_game_purchases', JSON.stringify(localP)); } catch (e) {}
             }
         }
 

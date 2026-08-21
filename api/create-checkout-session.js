@@ -78,7 +78,7 @@ export default async function handler(request, response) {
         user_auth_id: userAuthId,
         pack_id: pack.id
       },
-      success_url: `${origin}/?purchase_success=true&pack_id=${pack.id}`,
+      success_url: `${origin}/?purchase_success=true&pack_id=${pack.id}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/?purchase_cancelled=true`
     });
 
