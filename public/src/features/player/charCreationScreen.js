@@ -301,7 +301,10 @@ export async function submitCharacter() {
             const authToken = await getAuthToken();
             const response = await fetch('/api/login', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
+                },
                 body: JSON.stringify({
                     email: user.email,
                     username: finalName,

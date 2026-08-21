@@ -80,6 +80,7 @@ export const renderRelationships = () => {
     const romance = user.relationships.filter(r => r.category === 'partner' && isLiving(r));
     const friends = user.relationships.filter(r => r.category === 'friend' && isLiving(r));
     const enemies = user.relationships.filter(r => r.category === 'enemy' && isLiving(r));
+    const exes = user.relationships.filter(r => r.category === 'ex' && isLiving(r));
 
     // --- HELPER: Generate Card HTML ---
     const getPersonCard = (person) => {

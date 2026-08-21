@@ -5466,6 +5466,7 @@ export const GameLogic = {
     calculatePregnancyChance,
     calculatePromotionChance,
     getRandomFirstName,
+    getRandomLastName,
     getLastName,
     getFirstName,
     calculateNameChangeAcceptance,

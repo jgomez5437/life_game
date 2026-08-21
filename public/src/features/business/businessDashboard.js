@@ -1205,7 +1205,7 @@ function executeSingleAutoQuarter(user) {
     const totalExpenses = operatingExpenses + payableCeoWages;
 
     user.compCash = Math.min(GameLogic.MAX_COMPANY_CASH || 999999999999999, Math.max(0, user.compCash - totalExpenses));
-    user.money   = Math.min(GameLogic.MAX_PLAYER_MONEY || 999999999999999, (user.money || 0) + ceoWages);
+    user.money   = Math.min(GameLogic.MAX_PLAYER_MONEY || 999999999999999, (user.money || 0) + payableCeoWages);
 
     const priceRatio = user.sellingPrice > 0 ? ind.unitPrice / user.sellingPrice : 1;
     const priceFactor = Math.pow(priceRatio, 1.4);
