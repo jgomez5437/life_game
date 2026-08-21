@@ -42,7 +42,7 @@ export const renderLoginScreen = () => {
         </div>
         
         <div class="mt-8 text-xs text-slate-300 font-medium">
-            © 2026 Start a Life • v1.0.1 • Built with Vanilla JS, Tailwind CSS & Vercel Serverless
+            © 2026 Start a Life • v1.0.10
         </div>
     </div>
     `;

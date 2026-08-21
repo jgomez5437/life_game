@@ -1,6 +1,7 @@
 import { state } from '../core/state.js';
 import { Utils } from '../ui/utils.js';
 import { UI } from '../ui/ui.js';
+import { resetAdState } from '../core/adManager.js';
 
 let auth0Client = null;
 
@@ -51,6 +52,7 @@ export async function login() {
 };
 
 export async function logout() {
+    resetAdState();
     if (state.auth0Client && typeof state.auth0Client.logout === 'function') {
         await state.auth0Client.logout({
             logoutParams: {

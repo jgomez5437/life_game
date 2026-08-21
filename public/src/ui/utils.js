@@ -246,6 +246,9 @@ export const Utils = {
         return Math.max(0, Math.min(100, num));
     },
 
+    // HTML Escaping utility to prevent XSS across template literals & innerHTML
+    escapeHtml,
+
     // Return the 2-letter ISO country code
     getCountryCode: (city) => {
         const info = getCurrencyInfo(city);
@@ -300,3 +303,20 @@ export const Utils = {
         }
     }
 };
+
+/**
+ * Escapes HTML entities in a string to prevent XSS injection attacks.
+ * Converts &, <, >, ", ' into their corresponding HTML character entities.
+ * @param {string|any} str
+ * @returns {string}
+ */
+export function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+

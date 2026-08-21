@@ -51,19 +51,19 @@ export function renderGraveyardModal() {
                         
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center justify-between gap-2">
-                                <h4 class="font-bold text-white text-base truncate">${ancestor.name}</h4>
+                                <h4 class="font-bold text-white text-base truncate">${Utils.escapeHtml(ancestor.name)}</h4>
                                 <span class="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
                                     Gen ${genNum}
                                 </span>
                             </div>
                             
                             <div class="text-xs text-slate-400 font-medium mt-0.5">
-                                Lived to Age <strong class="text-white">${ancestor.ageAtDeath}</strong> • <span class="text-slate-300">${ancestor.causeOfDeath || 'Natural Causes'}</span>
+                                Lived to Age <strong class="text-white">${ancestor.ageAtDeath}</strong> • <span class="text-slate-300">${Utils.escapeHtml(ancestor.causeOfDeath || 'Natural Causes')}</span>
                             </div>
                             
                             <div class="text-xs text-slate-400 mt-1 flex items-center gap-1.5 truncate">
                                 <i class="fas fa-briefcase text-blue-400 text-[11px]"></i>
-                                <span class="text-slate-200">${ancestor.occupation || 'Retired'}</span>
+                                <span class="text-slate-200">${Utils.escapeHtml(ancestor.occupation || 'Retired')}</span>
                             </div>
                         </div>
                     </div>
@@ -105,7 +105,7 @@ export function renderGraveyardModal() {
                         <i class="fas fa-monument"></i>
                     </div>
                     <div>
-                        <h3 class="font-bold text-white text-base">House of ${familyLastName}</h3>
+                        <h3 class="font-bold text-white text-base">House of ${Utils.escapeHtml(familyLastName)}</h3>
                         <div class="text-xs text-amber-400 font-medium">Generation ${currentGen} Lineage • ${pastLives.length} Past ${pastLives.length === 1 ? 'Life' : 'Lives'}</div>
                     </div>
                 </div>
@@ -138,14 +138,14 @@ export function showAncestorEulogy(ancestorId) {
     }
 
     UI.showModal(
-        `${ancestor.name}'s Life Summary`,
+        `${Utils.escapeHtml(ancestor.name)}'s Life Summary`,
         `
         <div class="space-y-3 text-left">
             <div class="bg-slate-900 p-3 rounded-lg border border-slate-700 text-xs text-slate-400 flex justify-between">
                 <span>Age at Death: <strong class="text-white">${ancestor.ageAtDeath}</strong></span>
                 <span>Estate: <strong class="text-emerald-400">${Utils.formatMoney(ancestor.finalNetWorth || 0)}</strong></span>
             </div>
-            <p class="text-slate-300 italic text-sm leading-relaxed">"${ancestor.eulogy}"</p>
+            <p class="text-slate-300 italic text-sm leading-relaxed">"${Utils.escapeHtml(ancestor.eulogy)}"</p>
         </div>
         `
     );

@@ -2,6 +2,8 @@ import { sql } from '@vercel/postgres';
 import { verifyAuth } from './lib/verifyAuth.js';
 import { checkRateLimit } from './lib/rateLimit.js';
 
+import { sanitizeEntitlements, injectVerifiedPurchases } from './lib/validation.js';
+
 export default async function handler(request, response) {
   if (request.method !== 'GET') {
     return response.status(405).json({ error: 'Method Not Allowed' });
@@ -32,49 +34,22 @@ export default async function handler(request, response) {
 
     const userData = result.rows[0];
 
-    // Merge purchases from user_purchases table into game_data
+    // Authoritative entitlement enforcement from user_purchases table
+    let dbPurchases = [];
     try {
       const purchaseResult = await sql`
         SELECT DISTINCT pack_id 
         FROM user_purchases 
         WHERE auth0_id = ${authUserId};
       `;
-      const dbPurchases = purchaseResult.rows.map(row => row.pack_id);
-
-      if (dbPurchases.length > 0 && userData.game_data) {
-        const gameData = userData.game_data;
-        const savedUser = gameData.user || gameData;
-        const existingPurchases = Array.isArray(savedUser.purchases) ? savedUser.purchases : [];
-        const mergedPurchases = Array.from(new Set([...existingPurchases, ...dbPurchases]));
-
-        if (gameData.user) {
-          gameData.user.purchases = mergedPurchases;
-        } else {
-          gameData.purchases = mergedPurchases;
-        }
-
-        // Also merge dbPurchases into every slot within gameData.slots
-        if (gameData.slots && typeof gameData.slots === 'object' && !Array.isArray(gameData.slots)) {
-          for (const slotKey of Object.keys(gameData.slots)) {
-            const slot = gameData.slots[slotKey];
-            if (slot && slot.data && typeof slot.data === 'object') {
-              const slotUser = slot.data.user || slot.data;
-              const slotPurchases = Array.isArray(slotUser.purchases) ? slotUser.purchases : [];
-              const slotMerged = Array.from(new Set([...slotPurchases, ...dbPurchases]));
-              if (slot.data.user) {
-                slot.data.user.purchases = slotMerged;
-              } else {
-                slot.data.purchases = slotMerged;
-              }
-            }
-          }
-        }
-
-        userData.game_data = gameData;
-      }
+      dbPurchases = purchaseResult.rows.map(row => row.pack_id);
     } catch (purchaseErr) {
-      // Silently continue if user_purchases table doesn't exist yet
-      console.warn('Could not merge purchases:', purchaseErr.message);
+      console.warn('Could not query user_purchases on load:', purchaseErr.message);
+    }
+
+    if (userData.game_data) {
+      sanitizeEntitlements(userData.game_data);
+      injectVerifiedPurchases(userData.game_data, dbPurchases);
     }
 
     return response.status(200).json(userData);

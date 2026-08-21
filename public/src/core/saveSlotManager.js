@@ -79,7 +79,7 @@ export function sanitizeGameState(obj, visited = new WeakSet()) {
 
     const sanitized = {};
     for (const key of Object.keys(obj)) {
-        if (['__proto__', 'constructor', 'prototype'].includes(key)) continue;
+        if (['__proto__', 'constructor', 'prototype', 'purchasedPacks', 'godMode', 'isVIP', 'vipLevel'].includes(key)) continue;
         const val = obj[key];
         if (val !== undefined) {
             sanitized[key] = sanitizeGameState(val, visited);
@@ -329,8 +329,10 @@ export function migrateState(rawState) {
     const isExpecting = toBool(u.isExpecting, false);
     const expectingWithId = u.expectingWithId ? toStr(u.expectingWithId, null) : null;
 
-    // 9. Purchases & Lineage
-    const purchases = Array.isArray(u.purchases) ? u.purchases.map(p => toStr(p)).filter(Boolean) : [];
+    // 9. Purchases & Lineage (authoritatively derived from server when logged in)
+    const purchases = Array.isArray(state.verifiedPurchases)
+        ? [...state.verifiedPurchases]
+        : (Array.isArray(u.purchases) ? u.purchases.map(p => toStr(p)).filter(Boolean) : []);
     const pastLives = Array.isArray(u.pastLives) ? u.pastLives.filter(p => p && typeof p === 'object') : [];
     const generation = toNum(u.generation, 1, 1);
 
@@ -941,7 +943,7 @@ export function loadSlot(slotId) {
         }).catch(() => {});
     }
 
-    UI.showModal("Save Slot Loaded", `Loaded "${slot.name}" (Age ${state.gameState.user?.age || 0}) successfully!`);
+    UI.showModal("Save Slot Loaded", `Loaded "${Utils.escapeHtml(slot.name)}" (Age ${state.gameState.user?.age || 0}) successfully!`);
 }
 
 export const MAX_SLOTS = 10;
@@ -994,7 +996,7 @@ export function branchCurrentSave(customName = null) {
     if (typeof window !== 'undefined' && typeof window.saveGame === 'function' && state.userAuthId) {
         window.saveGame();
     }
-    UI.showModal("Branch Created!", `Created new save slot: "${defaultName}".`);
+    UI.showModal("Branch Created!", `Created new save slot: "${Utils.escapeHtml(defaultName)}".`);
 }
 
 /**
@@ -1015,16 +1017,16 @@ export function startNewLifeInNewSlot() {
                             <i class="fas fa-plus-circle"></i>
                         </div>
                         <div>
-                            <div class="text-sm font-bold text-white">Multi-Save Branch Slots</div>
+                            <div class="text-sm font-bold text-white">Start Life in New Slot</div>
                             <div class="text-xs text-cyan-400 font-semibold">$1.99 One-Time Purchase</div>
                         </div>
                     </div>
                     <p class="text-xs text-slate-300 leading-relaxed">
-                        Unlock <strong>Time Machine & Multi-Save Slots</strong> to play up to ${MAX_SLOTS} characters simultaneously in separate save slots.
+                        Keep your current life and start fresh in a brand new slot. Requires <strong>Time Machine & Multi-Save Slots</strong>.
                     </p>
                 </div>
             `,
-            confirmText: "Unlock ($1.99)",
+            confirmText: "Unlock Multi-Save ($1.99)",
             cancelText: "Cancel",
             onConfirm: () => buyPack('time_machine')
         });
@@ -1032,19 +1034,19 @@ export function startNewLifeInNewSlot() {
     }
 
     if (slotCount >= MAX_SLOTS) {
-        UI.showModal("Slot Limit Reached", `You have reached the maximum limit of ${MAX_SLOTS} save slots. Delete an unwanted slot to start a new life.`);
+        UI.showModal("Slot Limit Reached", `You have reached the maximum limit of ${MAX_SLOTS} save slots. Delete an old slot to start a new life.`);
         return;
     }
 
-    // 1. Save current active character to its current slot
+    // 1. Save current active life first
     saveToSlot();
 
-    // 2. Re-read the store AFTER saveToSlot persisted it (avoids stale-store overwrite)
+    // 2. Generate new slot ID and set active pointer
+    const newSlotId = 'slot_' + Date.now();
     const freshStore = getSlotsStore();
-    const newSlotId = `slot_${Date.now()}`;
     freshStore.slots[newSlotId] = {
         id: newSlotId,
-        name: 'New Life',
+        name: "New Life",
         lastSaved: Date.now(),
         data: null
     };
@@ -1098,7 +1100,7 @@ export function deleteSlot(slotId, skipConfirm = false) {
         if (typeof window !== 'undefined' && typeof window.saveGame === 'function' && state.userAuthId) {
             window.saveGame();
         }
-        UI.showModal("Slot Deleted", `Deleted "${slotName}".`);
+        UI.showModal("Slot Deleted", `Deleted "${Utils.escapeHtml(slotName)}".`);
     };
 
     if (skipConfirm || typeof UI === 'undefined' || typeof UI.showConfirm !== 'function' || typeof document === 'undefined') {
@@ -1106,7 +1108,7 @@ export function deleteSlot(slotId, skipConfirm = false) {
     } else {
         UI.showConfirm(
             "Delete Save Slot",
-            `Are you sure you want to delete "${slotName}"? This action cannot be undone.`,
+            `Are you sure you want to delete "${Utils.escapeHtml(slotName)}"? This action cannot be undone.`,
             "Delete",
             doDelete
         );
@@ -1142,12 +1144,12 @@ export function renderSaveSlotManagerModal() {
                     </div>
                     <div>
                         <div class="text-xs font-extrabold text-white flex items-center gap-1.5">
-                            ${slot.name} ${isActive ? '<span class="text-[9px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 px-1.5 py-0.2 rounded font-bold">Active</span>' : ''}
+                            ${Utils.escapeHtml(slot.name)} ${isActive ? '<span class="text-[9px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 px-1.5 py-0.2 rounded font-bold">Active</span>' : ''}
                         </div>
                         <div class="text-[11px] text-slate-400 mt-0.5">
-                            Age ${u.age || 0} • ${u.jobTitle || 'Unemployed'} • <span class="text-emerald-400 font-semibold">${moneyFormatted}</span>
+                            Age ${u.age || 0} • ${Utils.escapeHtml(u.jobTitle || 'Unemployed')} • <span class="text-emerald-400 font-semibold">${moneyFormatted}</span>
                         </div>
-                        <div class="text-[9px] text-slate-500 mt-0.5">Saved: ${dateStr}</div>
+                        <div class="text-[9px] text-slate-500 mt-0.5">Saved: ${Utils.escapeHtml(dateStr)}</div>
                     </div>
                 </div>
 

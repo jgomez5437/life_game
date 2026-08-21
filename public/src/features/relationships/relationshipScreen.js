@@ -114,13 +114,13 @@ export const renderRelationships = () => {
 
                     <div>
                         <div class="flex items-center gap-2 mb-0.5">
-                            <h4 class="font-bold text-white text-sm tracking-wide">${person.name}</h4>
+                            <h4 class="font-bold text-white text-sm tracking-wide">${Utils.escapeHtml(person.name)}</h4>
                             
                             <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider ${badgeStyle}">
-                                ${person.type}
+                                ${Utils.escapeHtml(person.type)}
                             </span>
                         </div>
-                        <div class="text-xs text-slate-400 font-medium">Age: ${person.age}${person.occupation ? ' • ' + person.occupation : ''}</div>
+                        <div class="text-xs text-slate-400 font-medium">Age: ${person.age}${person.occupation ? ' • ' + Utils.escapeHtml(person.occupation) : ''}</div>
                     </div>
                 </div>
 
@@ -494,8 +494,8 @@ export const confirmLuxeMatch = () => {
             <div class="w-20 h-20 mx-auto rounded-full bg-slate-700 border-2 border-amber-400 overflow-hidden mb-3 shadow-lg flex items-center justify-center">
                 ${renderAvatar(match)}
             </div>
-            <h3 class="text-xl font-bold text-white mb-0.5">${match.name}, <span class="text-amber-400">${match.age}</span></h3>
-            <div class="text-xs font-bold text-slate-300 mb-2">${match.occupation}</div>
+            <h3 class="text-xl font-bold text-white mb-0.5">${Utils.escapeHtml(match.name)}, <span class="text-amber-400">${match.age}</span></h3>
+            <div class="text-xs font-bold text-slate-300 mb-2">${Utils.escapeHtml(match.occupation)}</div>
             <div class="inline-block bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold px-3 py-1 rounded-full mb-4">
                 Annual Income: ${Utils.formatMoney(match.income)}/yr
             </div>
@@ -529,14 +529,14 @@ export const handleBlindDate = () => {
         user.relationships.push(datePerson);
         addLog(`You went on a blind date with ${datePerson.name}. You had fantastic chemistry!`, 'good');
         UI.updateHeader(user);
-        UI.showModal('Great Date! 💕', `You went on a blind date with ${datePerson.name} (Age ${datePerson.age}). The conversation flowed effortlessly and you exchanged numbers!`);
+        UI.showModal('Great Date! 💕', `You went on a blind date with ${Utils.escapeHtml(datePerson.name)} (Age ${datePerson.age}). The conversation flowed effortlessly and you exchanged numbers!`);
     } else if (roll < 0.90) {
         const datePerson = GameLogic.generateTargetedStranger(user, 'romantic');
         datePerson.status = 25;
         user.relationships.push(datePerson);
         addLog(`You went on a blind date with ${datePerson.name}. It was a bit awkward, but you exchanged contacts.`, 'neutral');
         UI.updateHeader(user);
-        UI.showModal('Awkward Date 😅', `Your date with ${datePerson.name} had some quiet silences, but you agreed to stay in touch.`);
+        UI.showModal('Awkward Date 😅', `Your date with ${Utils.escapeHtml(datePerson.name)} had some quiet silences, but you agreed to stay in touch.`);
     } else {
         addLog(`You went to the restaurant for your blind date, but you were stood up!`, 'bad');
         UI.updateHeader(user);
@@ -574,13 +574,13 @@ export const renderDatingAppModal = (profiles) => {
                             ${renderAvatar(p)}
                         </div>
                         <div>
-                            <h3 class="font-bold text-white text-lg leading-tight">${p.name}, <span class="text-pink-400 font-normal">${p.age}</span></h3>
-                            <div class="text-xs text-slate-400 font-medium">${p.occupation}</div>
+                            <h3 class="font-bold text-white text-lg leading-tight">${Utils.escapeHtml(p.name)}, <span class="text-pink-400 font-normal">${p.age}</span></h3>
+                            <div class="text-xs text-slate-400 font-medium">${Utils.escapeHtml(p.occupation)}</div>
                         </div>
                     </div>
 
                     <div class="bg-slate-900/60 p-3 rounded-xl mb-3 border border-slate-750">
-                        <p class="text-xs italic text-slate-300">"${p.bio}"</p>
+                        <p class="text-xs italic text-slate-300">"${Utils.escapeHtml(p.bio)}"</p>
                     </div>
 
                     <div class="flex flex-wrap gap-1.5 mb-4">
@@ -655,11 +655,11 @@ export const selectDatingAppMatch = (profileId) => {
         user.relationships.push(newRel);
         addLog(`It's a Match! You matched with ${matchedProfile.name} on LoveSync.`, 'good');
         UI.updateHeader(user);
-        UI.showModal("It's a Match! 💕", `You and ${matchedProfile.name} matched on LoveSync! They were added to your relationships.`);
+        UI.showModal("It's a Match! 💕", `You and ${Utils.escapeHtml(matchedProfile.name)} matched on LoveSync! They were added to your relationships.`);
     } else {
         addLog(`You messaged ${matchedProfile.name} on LoveSync, but they didn't match back.`, 'neutral');
         UI.updateHeader(user);
-        UI.showModal('Left on Read 💔', `You sent a message to ${matchedProfile.name}, but they didn't match back. Don't worry, there are plenty more fish in the sea!`);
+        UI.showModal('Left on Read 💔', `You sent a message to ${Utils.escapeHtml(matchedProfile.name)}, but they didn't match back. Don't worry, there are plenty more fish in the sea!`);
     }
 
     renderRelationships();
@@ -681,7 +681,7 @@ export const handleMeetFriend = () => {
 
     addLog(`You attended a local meetup and became friends with ${friend.name}.`, 'good');
     UI.updateHeader(user);
-    UI.showModal('New Friend! 🤝', `You met ${friend.name} (Age ${friend.age}) at a local hobby group! You exchanged contact info.`);
+    UI.showModal('New Friend! 🤝', `You met ${Utils.escapeHtml(friend.name)} (Age ${friend.age}) at a local hobby group! You exchanged contact info.`);
     renderRelationships();
 };
 
@@ -702,14 +702,14 @@ export const handleNightOut = () => {
         user.relationships.push(datePerson);
         addLog(`You had a great night out and met ${datePerson.name}, who seems very interested in you!`, 'good');
         UI.updateHeader(user);
-        UI.showModal('Met Someone Special! 🍸', `During your night out, you hit it off with ${datePerson.name} (Age ${datePerson.age})!`);
+        UI.showModal('Met Someone Special! 🍸', `During your night out, you hit it off with ${Utils.escapeHtml(datePerson.name)} (Age ${datePerson.age})!`);
     } else if (roll < 0.70) {
         const friend = GameLogic.generateTargetedStranger(user, 'friend');
         if (!user.relationships) user.relationships = [];
         user.relationships.push(friend);
         addLog(`You went out and made a new friend, ${friend.name}!`, 'good');
         UI.updateHeader(user);
-        UI.showModal('New Friend! 🍻', `You had a fun night out and bonded with ${friend.name} (Age ${friend.age})!`);
+        UI.showModal('New Friend! 🍻', `You had a fun night out and bonded with ${Utils.escapeHtml(friend.name)} (Age ${friend.age})!`);
     } else if (roll < 0.90) {
         user.happiness = Math.max(0, Math.min(100, (user.happiness || 50) + 10));
         addLog(`You had an awesome night out enjoying food, music, and atmosphere (+10 Happiness).`, 'good');
@@ -845,15 +845,15 @@ export const renderPersonInteraction = (id, backAction = null) => {
                 <div class="w-16 h-16 rounded-full bg-slate-700 overflow-hidden flex items-center justify-center text-white mx-auto mb-3 text-2xl border border-slate-600 shadow-lg">
                     ${renderAvatar(person)}
                 </div>
-                <h2 class="text-2xl font-bold text-white">${person.name}</h2>
+                <h2 class="text-2xl font-bold text-white">${Utils.escapeHtml(person.name)}</h2>
                 <div class="flex items-center justify-center gap-2 mt-2">
-                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider ${badgeStyle} shadow-sm">${person.type}</span>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider ${badgeStyle} shadow-sm">${Utils.escapeHtml(person.type)}</span>
                     <span class="text-xs text-slate-400 font-medium">Age ${person.age}</span>
                 </div>
 
                 <div class="inline-flex items-center gap-2 mt-3 bg-slate-800/90 px-4 py-1.5 rounded-full border border-slate-700 shadow-sm">
                     <i class="fas ${getOccupationIcon(person.occupationType)} text-xs"></i>
-                    <span class="text-xs font-semibold text-slate-200">${person.occupation || 'Unemployed'}</span>
+                    <span class="text-xs font-semibold text-slate-200">${Utils.escapeHtml(person.occupation || 'Unemployed')}</span>
                 </div>
             </div>
 
@@ -895,16 +895,16 @@ export const openRelationshipConfirm = (personId, actionKey) => {
     const { blocked, reason } = GameLogic.isInteractionBlocked(action.key, person, user);
     if (blocked) {
         if (reason === 'Refuses Contact') {
-            UI.showModal('Refused', `${person.name} is too hostile towards you and refuses to do this.`);
+            UI.showModal('Refused', `${Utils.escapeHtml(person.name)} is too hostile towards you and refuses to do this.`);
         } else if (reason === 'Insufficient Funds') {
             UI.showModal('Insufficient Funds', `You need ${Utils.formatMoney(action.cost)} to ${action.name.toLowerCase()}.`);
         } else if (reason === 'Female Too Old') {
             const isPlayerFemale = user.gender === 'female';
-            const msg = isPlayerFemale ? "You cannot get pregnant at age 45 or above." : `${person.name} cannot get pregnant at age 45 or above.`;
+            const msg = isPlayerFemale ? "You cannot get pregnant at age 45 or above." : `${Utils.escapeHtml(person.name)} cannot get pregnant at age 45 or above.`;
             UI.showModal('Action Blocked', msg);
         } else if (reason === 'Male Too Old') {
             const isPlayerMale = user.gender === 'male';
-            const msg = isPlayerMale ? "You cannot father a baby at age 65 or above." : `${person.name} cannot father a baby at age 65 or above.`;
+            const msg = isPlayerMale ? "You cannot father a baby at age 65 or above." : `${Utils.escapeHtml(person.name)} cannot father a baby at age 65 or above.`;
             UI.showModal('Action Blocked', msg);
         } else if (reason === 'Too Old') {
             UI.showModal('Action Blocked', "Age limit reached for having a baby.");
@@ -914,7 +914,7 @@ export const openRelationshipConfirm = (personId, actionKey) => {
         return;
     }
 
-    const message = `<div class="text-sm text-slate-300 mb-4">Are you sure you want to <strong>${action.name}</strong> ${person.name}?` +
+    const message = `<div class="text-sm text-slate-300 mb-4">Are you sure you want to <strong>${action.name}</strong> ${Utils.escapeHtml(person.name)}?` +
         (action.cost ? `<div class="mt-2 text-xs text-slate-400">This will cost ${Utils.formatMoney(action.cost)}</div>` : '') + `</div>`;
 
     UI.showConfirm(action.name, message, action.name, () => {
@@ -938,16 +938,16 @@ export const performRelationshipAction = (personId, actionKey) => {
     const { blocked, reason } = GameLogic.isInteractionBlocked(action.key, person, user);
     if (blocked) {
         if (reason === 'Refuses Contact') {
-            UI.showModal('Refused', `${person.name} is too hostile towards you and refuses to do this.`);
+            UI.showModal('Refused', `${Utils.escapeHtml(person.name)} is too hostile towards you and refuses to do this.`);
         } else if (reason === 'Insufficient Funds') {
             UI.showModal('Insufficient Funds', `You need ${Utils.formatMoney(action.cost)} to ${action.name.toLowerCase()}.`);
         } else if (reason === 'Female Too Old') {
             const isPlayerFemale = user.gender === 'female';
-            const msg = isPlayerFemale ? "You cannot get pregnant at age 45 or above." : `${person.name} cannot get pregnant at age 45 or above.`;
+            const msg = isPlayerFemale ? "You cannot get pregnant at age 45 or above." : `${Utils.escapeHtml(person.name)} cannot get pregnant at age 45 or above.`;
             UI.showModal('Action Blocked', msg);
         } else if (reason === 'Male Too Old') {
             const isPlayerMale = user.gender === 'male';
-            const msg = isPlayerMale ? "You cannot father a baby at age 65 or above." : `${person.name} cannot father a baby at age 65 or above.`;
+            const msg = isPlayerMale ? "You cannot father a baby at age 65 or above." : `${Utils.escapeHtml(person.name)} cannot father a baby at age 65 or above.`;
             UI.showModal('Action Blocked', msg);
         } else if (reason === 'Too Old') {
             UI.showModal('Action Blocked', "Age limit reached for having a baby.");
@@ -969,14 +969,14 @@ export const performRelationshipAction = (personId, actionKey) => {
             person.category = 'friend';
             person.type = isTeacher ? 'Friend (Teacher)' : 'Friend';
             addLog(`${person.name} accepted your friend request!`, 'good');
-            UI.showModal('Success', `${person.name} is now your friend!`);
+            UI.showModal('Success', `${Utils.escapeHtml(person.name)} is now your friend!`);
             // Refresh screen to show the new category
             setTimeout(() => renderPersonInteraction(personId), 300);
         } else {
             // Rejection penalty of 10 points
             person.status = Math.max(0, person.status - 10);
             addLog(`${person.name} rejected your friend request.`, 'bad');
-            UI.showModal('Rejected', `${person.name} didn't want to be friends. (-10 Status)`);
+            UI.showModal('Rejected', `${Utils.escapeHtml(person.name)} didn't want to be friends. (-10 Status)`);
             setTimeout(() => renderPersonInteraction(personId), 300);
         }
         return; // Skip normal status update and logging
@@ -987,7 +987,7 @@ export const performRelationshipAction = (personId, actionKey) => {
         person.type = person.gender === 'male' ? 'Boyfriend' : 'Girlfriend';
         person.interactedThisYear = true;
         addLog(`You asked ${person.name} to be your ${person.type}, and they said yes!`, 'good');
-        UI.showModal('Success', `${person.name} is now your ${person.type}!`);
+        UI.showModal('Success', `${Utils.escapeHtml(person.name)} is now your ${Utils.escapeHtml(person.type)}!`);
         setTimeout(() => renderPersonInteraction(personId), 300);
         return;
     }
@@ -997,7 +997,7 @@ export const performRelationshipAction = (personId, actionKey) => {
         person.type = person.gender === 'male' ? 'Ex-Boyfriend' : 'Ex-Girlfriend';
         person.interactedThisYear = true;
         addLog(`You broke up with ${person.name}.`, 'bad');
-        UI.showModal('Break Up', `You and ${person.name} have gone your separate ways.`);
+        UI.showModal('Break Up', `You and ${Utils.escapeHtml(person.name)} have gone your separate ways.`);
         setTimeout(() => renderPersonInteraction(personId), 300);
         return;
     }
@@ -1014,7 +1014,7 @@ export const performRelationshipAction = (personId, actionKey) => {
         person.type = person.gender === 'male' ? 'Ex-Husband' : 'Ex-Wife';
         person.interactedThisYear = true;
         addLog(`You divorced ${person.name}, paying ${Utils.formatMoney(alimony)} in the settlement.`, 'bad');
-        UI.showModal('Divorced', `You and ${person.name} are no longer married.`);
+        UI.showModal('Divorced', `You and ${Utils.escapeHtml(person.name)} are no longer married.`);
         UI.updateHeader(user);
         setTimeout(() => renderPersonInteraction(personId), 300);
         return;
@@ -1030,7 +1030,7 @@ export const performRelationshipAction = (personId, actionKey) => {
             user.isExpecting = true;
             user.expectingWithId = person.id;
             addLog(`You and ${person.name} are expecting a baby!`, 'good');
-            UI.showModal('Great News!', `You're expecting a baby with ${person.name}!`);
+            UI.showModal('Great News!', `You're expecting a baby with ${Utils.escapeHtml(person.name)}!`);
         } else {
             addLog(`You and ${person.name} tried for a baby, but no luck this year.`, 'neutral');
             UI.showModal('Not This Time', "No luck this year. Keep trying!");
@@ -1058,7 +1058,7 @@ export const performRelationshipAction = (personId, actionKey) => {
         if (GameLogic.calculatePregnancyChance(femaleAge, maleAge)) {
             user.isExpecting = true;
             user.expectingWithId = person.id;
-            pregnancyAnnouncement = ` You're expecting a baby with ${person.name}!`;
+            pregnancyAnnouncement = ` You're expecting a baby with ${Utils.escapeHtml(person.name)}!`;
             addLog(`You and ${person.name} are expecting a baby!`, 'good');
         }
     }
@@ -1085,7 +1085,7 @@ export const performRelationshipAction = (personId, actionKey) => {
 
     // Feedback modal
     const title = pregnancyAnnouncement ? 'Great News!' : (delta > 0 ? 'Success' : delta < 0 ? 'Oops' : 'Done');
-    UI.showModal(title, `${person.name}'s relationship status is now ${person.status}%.${pregnancyAnnouncement}`);
+    UI.showModal(title, `${Utils.escapeHtml(person.name)}'s relationship status is now ${person.status}%.${pregnancyAnnouncement}`);
 
     // Refresh interaction screen
     setTimeout(() => renderPersonInteraction(personId), 300);
@@ -1158,7 +1158,7 @@ export const handleProposeAction = (personId) => {
                     <i class="fas fa-ring"></i>
                 </div>
                 <h3 class="text-xl font-bold text-white mb-2">You Need a Ring!</h3>
-                <p class="text-sm text-slate-300 mb-6">You must buy a ring before proposing to ${person.name}.</p>
+                <p class="text-sm text-slate-300 mb-6">You must buy a ring before proposing to ${Utils.escapeHtml(person.name)}.</p>
                 <div class="flex flex-col gap-2">
                     <button data-action="renderJewelryDealer" data-args="&apos;ring&apos;" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 px-4 rounded-xl transition flex items-center justify-center gap-2">
                         <i class="fas fa-shopping-cart"></i> Go Ring Shopping
@@ -1196,7 +1196,7 @@ export const openRingSelectionModal = (personId) => {
                         <i class="fas ${style.icon} ${style.color} text-lg"></i>
                     </div>
                     <div class="text-left">
-                        <div class="text-sm font-bold text-white">${ring.name}</div>
+                        <div class="text-sm font-bold text-white">${Utils.escapeHtml(ring.name)}</div>
                         <div class="text-xs text-amber-400 font-semibold">${Utils.formatMoney(ring.value)} Value</div>
                     </div>
                 </div>
@@ -1213,7 +1213,7 @@ export const openRingSelectionModal = (personId) => {
                 <i class="fas fa-ring"></i>
             </div>
             <h3 class="text-lg font-bold text-white">Choose a Ring to Propose</h3>
-            <p class="text-xs text-slate-400">Select which ring you want to propose to ${person.name} with:</p>
+            <p class="text-xs text-slate-400">Select which ring you want to propose to ${Utils.escapeHtml(person.name)} with:</p>
         </div>
         <div class="max-h-56 overflow-y-auto custom-scrollbar pr-1 mb-4">
             ${ringsListHtml}
@@ -1254,11 +1254,11 @@ export const proposeWithRing = (personId, ringAssetId) => {
 
         addLog(`You proposed to ${person.name} with a ${ring.name} (${Utils.formatMoney(ring.value)}), and they said YES!`, 'good');
         const pronoun = person.gender === 'male' ? 'He' : 'She';
-        UI.showModal(`${pronoun} Said Yes!`, `You proposed to ${person.name} with a ${ring.name} and they accepted! You are now engaged!`);
+        UI.showModal(`${pronoun} Said Yes!`, `You proposed to ${Utils.escapeHtml(person.name)} with a ${Utils.escapeHtml(ring.name)} and they accepted! You are now engaged!`);
     } else {
         person.status = Math.max(0, (person.status || 0) - 15);
         addLog(`You proposed to ${person.name} with a ${ring.name}, but they weren't ready.`, 'bad');
-        UI.showModal('Rejected', `${person.name} wasn't ready to accept your proposal. (-15 Relationship Status)`);
+        UI.showModal('Rejected', `${Utils.escapeHtml(person.name)} wasn't ready to accept your proposal. (-15 Relationship Status)`);
     }
 
     UI.updateHeader(user);
@@ -1280,7 +1280,7 @@ export const handleMakeAMove = (personId) => {
 
     const { blocked, reason } = GameLogic.isInteractionBlocked('make_a_move', person, user);
     if (blocked) {
-        UI.showModal('Action Blocked', `You cannot make a move on ${person.name} (${reason}).`);
+        UI.showModal('Action Blocked', `You cannot make a move on ${Utils.escapeHtml(person.name)} (${reason}).`);
         return;
     }
 
@@ -1290,7 +1290,7 @@ export const handleMakeAMove = (personId) => {
     if (!success) {
         person.status = Math.max(0, (person.status || 0) - 15);
         addLog(`You made a move on ${person.name}, but they turned you down.`, 'bad');
-        UI.showModal('Not Tonight 😬', `<p class="text-slate-300 text-sm">${person.name} turned down your move. Things are a bit awkward between you now. (-15 Relationship Status)</p>`);
+        UI.showModal('Not Tonight 😬', `<p class="text-slate-300 text-sm">${Utils.escapeHtml(person.name)} turned down your move. Things are a bit awkward between you now. (-15 Relationship Status)</p>`);
         UI.updateHeader(user);
         if (typeof window.saveGame === 'function') window.saveGame();
         renderPersonInteraction(personId);
@@ -1318,7 +1318,7 @@ export const renderSteamyHookupModal = (person, scenarioText) => {
                 <i class="fas fa-fire-flame-curved text-pink-400"></i> Intimate Moment
             </h3>
             <p class="text-sm italic text-pink-200 bg-pink-950/40 p-3 rounded-xl border border-pink-500/30 mb-4">
-                "${scenarioText}"
+                "${Utils.escapeHtml(scenarioText)}"
             </p>
 
             ${isUnfaithful ? `
@@ -1326,7 +1326,7 @@ export const renderSteamyHookupModal = (person, scenarioText) => {
                 <i class="fas fa-triangle-exclamation text-amber-400 text-base mt-0.5"></i>
                 <div class="text-xs">
                     <span class="font-bold text-amber-300 block">Infidelity Warning</span>
-                    <span class="text-amber-200/80">You are currently in a relationship with <strong class="text-white">${partner.name}</strong>. Hooking up will initiate a Secret Affair and carries a risk of getting caught!</span>
+                    <span class="text-amber-200/80">You are currently in a relationship with <strong class="text-white">${Utils.escapeHtml(partner.name)}</strong>. Hooking up will initiate a Secret Affair and carries a risk of getting caught!</span>
                 </div>
             </div>
             ` : ''}
@@ -1406,7 +1406,7 @@ export const confirmHookupChoice = (choice) => {
         if (femaleAge <= 45 && maleAge <= 65 && Math.random() < pregnancyChance) {
             user.isExpecting = true;
             user.expectingWithId = person.id;
-            pregnancyText = `You conceived a baby with ${person.name}!`;
+            pregnancyText = `You conceived a baby with ${Utils.escapeHtml(person.name)}!`;
             addLog(`You and ${person.name} are expecting a baby from your hookup!`, 'good');
         }
     }
@@ -1422,8 +1422,8 @@ export const confirmHookupChoice = (choice) => {
                 ${renderAvatar(person)}
             </div>
             <h4 class="text-lg font-bold text-white mb-1">Passion in the Air</h4>
-            <p class="text-xs text-slate-300 mb-3">You spent a passionate night with <strong class="text-pink-300">${person.name}</strong>.</p>
-            ${isUnfaithful ? `<div class="text-xs text-amber-400 bg-amber-950/40 p-2 rounded-lg border border-amber-500/30 mb-3 font-semibold">🤫 ${person.name} is now designated as your Secret Affair.</div>` : ''}
+            <p class="text-xs text-slate-300 mb-3">You spent a passionate night with <strong class="text-pink-300">${Utils.escapeHtml(person.name)}</strong>.</p>
+            ${isUnfaithful ? `<div class="text-xs text-amber-400 bg-amber-950/40 p-2 rounded-lg border border-amber-500/30 mb-3 font-semibold">🤫 ${Utils.escapeHtml(person.name)} is now designated as your Secret Affair.</div>` : ''}
             ${pregnancyText ? `<div class="text-xs text-emerald-400 bg-emerald-950/40 p-2 rounded-lg border border-emerald-500/30 font-semibold">${pregnancyText}</div>` : ''}
         </div>
     `;
@@ -1446,7 +1446,7 @@ export const handleEndAffair = (personId) => {
     person.interactedThisYear = true;
 
     addLog(`You ended your secret affair with ${person.name}.`, 'neutral');
-    UI.showModal('Affair Ended', `<p class="text-slate-300 text-sm">You broke off your secret affair with <strong>${person.name}</strong>. They are now an Ex-Lover and intimate options have been disabled.</p>`);
+    UI.showModal('Affair Ended', `<p class="text-slate-300 text-sm">You broke off your secret affair with <strong>${Utils.escapeHtml(person.name)}</strong>. They are now an Ex-Lover and intimate options have been disabled.</p>`);
     UI.updateHeader(user);
     if (typeof window.saveGame === 'function') window.saveGame();
     renderPersonInteraction(personId);
@@ -1472,7 +1472,7 @@ export const renderAgeUpCheatingDiscoveredModal = (discoveryInfo) => {
                 <i class="fas fa-heart-crack"></i> Cheating Discovered!
             </h3>
             <p class="text-xs text-slate-300 mb-3">
-                Your ${partner.type} <strong class="text-white">${partner.name}</strong> found out about your secret affair with <strong class="text-pink-300">${discoveryInfo.affairName}</strong>!
+                Your ${Utils.escapeHtml(partner.type)} <strong class="text-white">${Utils.escapeHtml(partner.name)}</strong> found out about your secret affair with <strong class="text-pink-300">${Utils.escapeHtml(discoveryInfo.affairName)}</strong>!
             </p>
             <div class="bg-red-950/40 border border-red-500/40 text-red-300 text-xs font-bold p-2.5 rounded-xl mb-4">
                 Relationship Status Dropped by -60 (Current Status: ${partner.status})
@@ -1543,10 +1543,10 @@ export const handleCheatingConfrontationChoice = (choice) => {
         if (forgives) {
             partner.status = Math.min(100, partner.status + 20);
             addLog(`You begged ${partner.name} for forgiveness. They reluctantly agreed to stay and attend counseling.`, 'neutral');
-            UI.showModal('Forgiven (For Now)', `<p class="text-slate-300 text-sm">${partner.name} agreed to try couples counseling, but trust will take a long time to rebuild. (+20 Relationship Status)</p>`);
+            UI.showModal('Forgiven (For Now)', `<p class="text-slate-300 text-sm">${Utils.escapeHtml(partner.name)} agreed to try couples counseling, but trust will take a long time to rebuild. (+20 Relationship Status)</p>`);
         } else {
             addLog(`${partner.name} refused your apology and broke off the relationship!`, 'bad');
-            UI.showModal('Relationship Over 💔', `<p class="text-slate-300 text-sm">${partner.name} could not forgive your betrayal and ended the relationship immediately!</p>`);
+            UI.showModal('Relationship Over 💔', `<p class="text-slate-300 text-sm">${Utils.escapeHtml(partner.name)} could not forgive your betrayal and ended the relationship immediately!</p>`);
             user.relationships.splice(partnerIndex, 1);
         }
     } else if (choice === 'gift') {
@@ -1559,10 +1559,10 @@ export const handleCheatingConfrontationChoice = (choice) => {
         if (acceptsGift) {
             partner.status = Math.min(100, partner.status + 15);
             addLog(`You bought ${partner.name} a $5,000 peace offering gift. They accepted it and agreed to stay.`, 'good');
-            UI.showModal('Gift Accepted 🎁', `<p class="text-slate-300 text-sm">${partner.name} accepted the expensive gift and agreed to stay together for now.</p>`);
+            UI.showModal('Gift Accepted 🎁', `<p class="text-slate-300 text-sm">${Utils.escapeHtml(partner.name)} accepted the expensive gift and agreed to stay together for now.</p>`);
         } else {
             addLog(`${partner.name} threw your $5,000 gift back at you and ended the relationship!`, 'bad');
-            UI.showModal('Gift Rejected 💔', `<p class="text-slate-300 text-sm">${partner.name} threw your gift back at you in anger and ended the relationship!</p>`);
+            UI.showModal('Gift Rejected 💔', `<p class="text-slate-300 text-sm">${Utils.escapeHtml(partner.name)} threw your gift back at you in anger and ended the relationship!</p>`);
             user.relationships.splice(partnerIndex, 1);
         }
     } else if (choice === 'blame') {
@@ -1570,15 +1570,15 @@ export const handleCheatingConfrontationChoice = (choice) => {
         const breaksUp = Math.random() < 0.90;
         if (breaksUp) {
             addLog(`You blamed ${partner.name} for your affair. Furious, they immediately divorced/broke up with you!`, 'bad');
-            UI.showModal('Bitter Breakup 💥', `<p class="text-slate-300 text-sm">You blamed ${partner.name}. Outraged by your reaction, they immediately packed their bags and left!</p>`);
+            UI.showModal('Bitter Breakup 💥', `<p class="text-slate-300 text-sm">You blamed ${Utils.escapeHtml(partner.name)}. Outraged by your reaction, they immediately packed their bags and left!</p>`);
             user.relationships.splice(partnerIndex, 1);
         } else {
             addLog(`You argued with ${partner.name}. The fight was explosive, but you remain together with 0 status.`, 'bad');
-            UI.showModal('Explosive Argument 💥', `<p class="text-slate-300 text-sm">You blamed ${partner.name}. You had a massive fight, and your relationship is at rock bottom (Status: 0).</p>`);
+            UI.showModal('Explosive Argument 💥', `<p class="text-slate-300 text-sm">You blamed ${Utils.escapeHtml(partner.name)}. You had a massive fight, and your relationship is at rock bottom (Status: 0).</p>`);
         }
     } else if (choice === 'walk_away') {
         addLog(`You walked away from your relationship with ${partner.name}.`, 'bad');
-        UI.showModal('Separated 🚪', `<p class="text-slate-300 text-sm">You walked away and ended your relationship with ${partner.name}.</p>`);
+        UI.showModal('Separated 🚪', `<p class="text-slate-300 text-sm">You walked away and ended your relationship with ${Utils.escapeHtml(partner.name)}.</p>`);
         user.relationships.splice(partnerIndex, 1);
     }
 

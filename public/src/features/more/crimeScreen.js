@@ -145,7 +145,7 @@ export function openCrimeModal(crimeId) {
             <label class="block text-xs font-bold text-slate-400">Select Specific Victim / Target</label>
             <select id="crime-target-select" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-red-500">
                 <option value="">-- Random Stranger / Target --</option>
-                ${relationships.map(r => `<option value="${r.id}">${r.name} (${r.type || r.category})</option>`).join('')}
+                ${relationships.map(r => `<option value="${r.id}">${Utils.escapeHtml(r.name)} (${Utils.escapeHtml(r.type || r.category)})</option>`).join('')}
             </select>
         </div>
     ` : '';
@@ -334,7 +334,7 @@ export function openBribeModal() {
 export function submitBribeAction() {
     const user = state.gameState.user;
     const input = get('bribe-amount-input');
-    const amount = input ? parseInt(input.value) : 0;
+    const amount = input ? parseInt(input.value, 10) : 0;
 
     const result = GameLogic.handleArrestAction(user, 'bribe', amount);
 

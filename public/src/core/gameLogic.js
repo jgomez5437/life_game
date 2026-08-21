@@ -29,6 +29,30 @@ function sanitizeName(rawInput) {
     return { isValid: true, cleanedName };
 }
 
+function sanitizeBusinessName(rawInput) {
+    if (!rawInput || typeof rawInput !== 'string') {
+        return { isValid: false, error: "Company name cannot be empty." };
+    }
+
+    const cleanedName = rawInput.trim().replace(/\s+/g, ' ');
+
+    if (cleanedName.length < 2) {
+        return { isValid: false, error: "Company name must be at least 2 characters long." };
+    }
+
+    if (cleanedName.length > 35) {
+        return { isValid: false, error: "Keep the company name to 35 characters or less." };
+    }
+
+    const validFormatRegex = /^[A-Za-z0-9][A-Za-z0-9 .,'&,-]*$/;
+
+    if (!validFormatRegex.test(cleanedName)) {
+        return { isValid: false, error: "Company name can only contain letters, numbers, spaces, and standard punctuation (., &, -, ')." };
+    }
+
+    return { isValid: true, cleanedName };
+}
+
 function clampStat(val, fallback = 50) {
     const num = typeof val === 'number' && !isNaN(val) ? val : fallback;
     return Math.max(0, Math.min(100, num));
@@ -242,11 +266,15 @@ function getVehicleIcon(type) {
 }
 
 function calculateAutoLoan(price, downPaymentPercent = 0.15, termYears = 4) {
-    const downPayment = Math.floor(price * downPaymentPercent);
-    const principal = Math.max(0, price - downPayment);
+    const safePrice = (typeof price === 'number' && Number.isFinite(price) && price > 0) ? price : 0;
+    const safeDownPercent = (typeof downPaymentPercent === 'number' && Number.isFinite(downPaymentPercent) && downPaymentPercent >= 0) ? downPaymentPercent : 0.15;
+    const safeTermYears = Math.max(1, (typeof termYears === 'number' && Number.isFinite(termYears)) ? termYears : 4);
+
+    const downPayment = Math.floor(safePrice * safeDownPercent);
+    const principal = Math.max(0, safePrice - downPayment);
     const annualRate = 0.065; // 6.5% interest rate
     const monthlyRate = annualRate / 12;
-    const totalMonths = termYears * 12;
+    const totalMonths = safeTermYears * 12;
 
     let monthlyPayment = 0;
     if (principal > 0) {
@@ -254,12 +282,12 @@ function calculateAutoLoan(price, downPaymentPercent = 0.15, termYears = 4) {
     }
 
     return {
-        price,
+        price: safePrice,
         downPayment,
         principal,
-        termYears,
+        termYears: safeTermYears,
         totalMonths,
-        monthlyPayment,
+        monthlyPayment: Number.isFinite(monthlyPayment) ? monthlyPayment : 0,
         annualRate
     };
 }
@@ -2197,12 +2225,19 @@ function getPropertyIcon(type) {
 }
 
 function calculateMonthlyMortgage(principal, annualRate = 0.065, years = 30) {
-    if (!principal || principal <= 0) return 0;
-    const monthlyRate = annualRate / 12;
-    const numPayments = years * 12;
+    if (!principal || principal <= 0 || !Number.isFinite(principal)) return 0;
+    const safeYears = Math.max(1, (typeof years === 'number' && Number.isFinite(years)) ? years : 30);
+    const safeAnnualRate = (typeof annualRate === 'number' && Number.isFinite(annualRate) && annualRate >= 0) ? annualRate : 0.065;
+    const numPayments = safeYears * 12;
+
+    if (safeAnnualRate === 0) {
+        return Math.round(principal / numPayments);
+    }
+
+    const monthlyRate = safeAnnualRate / 12;
     const factor = Math.pow(1 + monthlyRate, numPayments);
     const monthlyPayment = principal * (monthlyRate * factor) / (factor - 1);
-    return Math.round(monthlyPayment);
+    return Number.isFinite(monthlyPayment) ? Math.round(monthlyPayment) : 0;
 }
 
 function calculateTotalRentalIncome(assets) {
@@ -2342,7 +2377,8 @@ function acceptTenantLease(user, propertyId, applicantId) {
         quality: selected.quality,
         monthlyRent: selected.monthlyRent,
         leaseYears: selected.leaseYears,
-        appearance: selected.appearance
+        appearance: selected.appearance,
+        renewalPending: false
     };
 
     return { success: true, propertyName: property.name, tenant: property.tenant };
@@ -2355,6 +2391,11 @@ function processRentalIncome(user, stateRef) {
 
     user.assets.forEach(asset => {
         if (asset.category === 'property' && asset.isRented && asset.tenant && asset.tenant.monthlyRent) {
+            // If renewal is pending from a prior expired lease, do not collect regular income
+            if (asset.tenant.renewalPending) {
+                return;
+            }
+
             let annualRent = asset.tenant.monthlyRent * 12;
 
             // Partial defaults for risky or good tenants
@@ -2366,17 +2407,22 @@ function processRentalIncome(user, stateRef) {
 
                 if (stateRef && stateRef.gameState) {
                     if (!stateRef.gameState.pendingTenantEvents) stateRef.gameState.pendingTenantEvents = [];
-                    stateRef.gameState.pendingTenantEvents.push({
-                        eventType: 'overdue',
-                        propertyId: asset.id,
-                        propertyName: asset.name,
-                        tenantId: asset.tenant.id,
-                        tenantName: asset.tenant.name,
-                        tenant: asset.tenant,
-                        monthlyRent: asset.tenant.monthlyRent,
-                        missedMonths: 2,
-                        missedAmount
-                    });
+                    const alreadyQueued = stateRef.gameState.pendingTenantEvents.some(
+                        e => e.eventType === 'overdue' && e.propertyId === asset.id
+                    );
+                    if (!alreadyQueued) {
+                        stateRef.gameState.pendingTenantEvents.push({
+                            eventType: 'overdue',
+                            propertyId: asset.id,
+                            propertyName: asset.name,
+                            tenantId: asset.tenant.id,
+                            tenantName: asset.tenant.name,
+                            tenant: asset.tenant,
+                            monthlyRent: asset.tenant.monthlyRent,
+                            missedMonths: 2,
+                            missedAmount
+                        });
+                    }
                 }
             } else if (asset.tenant.quality === 'good' && Math.random() < 0.10) {
                 const missedMonths = 1;
@@ -2402,27 +2448,51 @@ function processTenantEvents(user, stateRef) {
 
     user.assets.forEach(asset => {
         if (asset.category === 'property' && asset.isRented && asset.tenant) {
+            // Check if renewal was already pending from a previous turn or lease was already expired/negative
+            if (asset.tenant.renewalPending || asset.tenant.leaseYears <= 0) {
+                const lapsedTenantName = asset.tenant.name;
+                asset.isRented = false;
+                asset.tenant = null;
+
+                // Clean up any pending lease_expiration events for this property
+                if (stateRef && stateRef.gameState && Array.isArray(stateRef.gameState.pendingTenantEvents)) {
+                    stateRef.gameState.pendingTenantEvents = stateRef.gameState.pendingTenantEvents.filter(
+                        e => !(e.propertyId === asset.id && e.eventType === 'lease_expiration')
+                    );
+                }
+
+                addLog(`Tenant ${lapsedTenantName}'s expired lease on ${asset.name} was not renewed and lapsed. Property is now vacant.`, 'neutral');
+                return;
+            }
+
             asset.tenant.leaseYears -= 1;
 
             if (asset.tenant.leaseYears <= 0) {
+                asset.tenant.leaseYears = 0;
                 // 70% chance tenant wants to renew for 1-3 years
                 if (Math.random() < 0.70 && stateRef && stateRef.gameState) {
+                    asset.tenant.renewalPending = true;
                     const requestedYears = Math.floor(Math.random() * 3) + 1;
                     const currentRent = asset.tenant.monthlyRent;
                     const increasedRent = Math.floor(currentRent * 1.05);
 
                     if (!stateRef.gameState.pendingTenantEvents) stateRef.gameState.pendingTenantEvents = [];
-                    stateRef.gameState.pendingTenantEvents.push({
-                        eventType: 'lease_expiration',
-                        propertyId: asset.id,
-                        propertyName: asset.name,
-                        tenantId: asset.tenant.id,
-                        tenantName: asset.tenant.name,
-                        tenant: asset.tenant,
-                        currentRent,
-                        increasedRent,
-                        requestedYears
-                    });
+                    const alreadyQueued = stateRef.gameState.pendingTenantEvents.some(
+                        e => e.eventType === 'lease_expiration' && e.propertyId === asset.id
+                    );
+                    if (!alreadyQueued) {
+                        stateRef.gameState.pendingTenantEvents.push({
+                            eventType: 'lease_expiration',
+                            propertyId: asset.id,
+                            propertyName: asset.name,
+                            tenantId: asset.tenant.id,
+                            tenantName: asset.tenant.name,
+                            tenant: asset.tenant,
+                            currentRent,
+                            increasedRent,
+                            requestedYears
+                        });
+                    }
                 } else {
                     const expiredTenantName = asset.tenant.name;
                     asset.isRented = false;
@@ -2437,16 +2507,21 @@ function processTenantEvents(user, stateRef) {
 
                     if (stateRef && stateRef.gameState) {
                         if (!stateRef.gameState.pendingTenantEvents) stateRef.gameState.pendingTenantEvents = [];
-                        stateRef.gameState.pendingTenantEvents.push({
-                            eventType: 'damage',
-                            propertyId: asset.id,
-                            propertyName: asset.name,
-                            tenantId: asset.tenant.id,
-                            tenantName: asset.tenant.name,
-                            tenant: asset.tenant,
-                            conditionLoss: 10,
-                            repairCost
-                        });
+                        const alreadyQueued = stateRef.gameState.pendingTenantEvents.some(
+                            e => e.eventType === 'damage' && e.propertyId === asset.id
+                        );
+                        if (!alreadyQueued) {
+                            stateRef.gameState.pendingTenantEvents.push({
+                                eventType: 'damage',
+                                propertyId: asset.id,
+                                propertyName: asset.name,
+                                tenantId: asset.tenant.id,
+                                tenantName: asset.tenant.name,
+                                tenant: asset.tenant,
+                                conditionLoss: 10,
+                                repairCost
+                            });
+                        }
                     }
                 }
             }
@@ -2585,8 +2660,13 @@ function updateOwnedProperties(user) {
 
     user.assets.forEach(asset => {
         if (asset.category === 'property') {
+            delete asset.activeOffer; // Invalidate any unaccepted buyer offers from previous years
+
             if (asset.condition === undefined) asset.condition = 100;
             if (asset.maxCondition === undefined) asset.maxCondition = 100;
+
+            // Reset annual renovation tracking
+            asset.renovatedThisYear = false;
 
             const decay = Math.floor(Math.random() * 3) + 2; // 2-4% condition drop per year
             asset.maxCondition = Math.max(50, asset.maxCondition - 1); // 1% permanent cap degradation per year
@@ -2668,7 +2748,7 @@ function calculateRenovationOptions(property) {
             name: 'Full Gut Renovation',
             cost: Math.floor(val * 0.18),
             condGain: 100,
-            maxCondGain: 100,
+            maxCondGain: 50,
             valueBoostRatio: 0.25,
             desc: 'Complete structural overhaul, luxury high-end finishes, and full system upgrades.'
         }
@@ -2681,6 +2761,19 @@ function renovateProperty(user, propertyId, optionId) {
     const property = user.assets.find(a => a.id === propertyId);
     if (!property || property.category !== 'property') return { success: false, reason: "Property not found." };
 
+    if (property.condition === undefined) property.condition = 100;
+    if (property.maxCondition === undefined) property.maxCondition = 100;
+
+    // Cooldown: 1 renovation per property per year
+    if (property.renovatedThisYear || (user.age !== undefined && property.lastRenovationAge === user.age)) {
+        return { success: false, reason: "You have already renovated this property this year. Wait until next year to perform further renovations." };
+    }
+
+    // Pristine Condition: already at 100% condition and 100% max condition cap
+    if (property.condition >= 100 && property.maxCondition >= 100) {
+        return { success: false, reason: "Property is already in pristine condition (100% condition and max capacity)." };
+    }
+
     const options = calculateRenovationOptions(property);
     const selectedOption = options.find(o => o.id === optionId);
     if (!selectedOption) return { success: false, reason: "Invalid renovation option selected." };
@@ -2689,20 +2782,35 @@ function renovateProperty(user, propertyId, optionId) {
         return { success: false, reason: `Insufficient funds. ${selectedOption.name} costs $${selectedOption.cost.toLocaleString()}.` };
     }
 
-    if (property.condition === undefined) property.condition = 100;
-    if (property.maxCondition === undefined) property.maxCondition = 100;
+    const oldCondition = property.condition;
+    const oldMaxCondition = property.maxCondition;
+
+    let newMaxCondition;
+    let newCondition;
+
+    if (selectedOption.id === 'full') {
+        newMaxCondition = 100;
+        newCondition = 100;
+    } else {
+        newMaxCondition = Math.min(100, oldMaxCondition + selectedOption.maxCondGain);
+        newCondition = Math.min(newMaxCondition, oldCondition + selectedOption.condGain);
+    }
+
+    const condGained = Math.max(0, newCondition - oldCondition);
+    const maxCondGained = Math.max(0, newMaxCondition - oldMaxCondition);
+    const actualRestored = condGained + maxCondGained;
+    const maxPotential = (selectedOption.condGain || 0) + (selectedOption.maxCondGain || 0);
+    const restorationRatio = maxPotential > 0 ? Math.min(1.0, actualRestored / maxPotential) : 0;
 
     user.money -= selectedOption.cost;
 
-    if (selectedOption.id === 'full') {
-        property.maxCondition = 100;
-        property.condition = 100;
-    } else {
-        property.maxCondition = Math.min(100, property.maxCondition + selectedOption.maxCondGain);
-        property.condition = Math.min(property.maxCondition, property.condition + selectedOption.condGain);
-    }
+    property.condition = newCondition;
+    property.maxCondition = newMaxCondition;
+    property.renovatedThisYear = true;
+    property.lastRenovationAge = user.age;
+    delete property.activeOffer; // Invalidate any existing buyer offers since valuation changed
 
-    const valueIncrease = Math.floor(property.value * selectedOption.valueBoostRatio);
+    const valueIncrease = Math.floor(property.value * selectedOption.valueBoostRatio * restorationRatio);
     property.value += valueIncrease;
 
     return {
@@ -2713,7 +2821,8 @@ function renovateProperty(user, propertyId, optionId) {
         newCondition: property.condition,
         newMaxCondition: property.maxCondition,
         newValue: property.value,
-        valueIncrease
+        valueIncrease,
+        restorationRatio
     };
 }
 
@@ -2767,6 +2876,7 @@ function generatePropertyBuyerOffer(property, tierId) {
 
     const roll = Math.random();
     if (roll > selectedTier.chance) {
+        delete property.activeOffer;
         return { hasOffer: false, tierName: selectedTier.name, listPrice: selectedTier.price };
     }
 
@@ -2787,6 +2897,14 @@ function generatePropertyBuyerOffer(property, tierId) {
     const remainingMortgage = (property.mortgage && property.mortgage.remainingBalance > 0) ? property.mortgage.remainingBalance : 0;
     const netProceeds = Math.max(0, offerAmount - remainingMortgage);
 
+    property.activeOffer = {
+        offerAmount,
+        buyer,
+        tierId: selectedTier.id,
+        tierName: selectedTier.name,
+        timestamp: Date.now()
+    };
+
     return {
         hasOffer: true,
         buyer,
@@ -2804,8 +2922,17 @@ function completePropertySale(user, propertyId, offerAmount) {
     if (index === -1) return { success: false, reason: "Property not found." };
 
     const property = user.assets[index];
+
+    // Security check (C-9): Never trust client-supplied offer amounts.
+    // Sale price must strictly come from the verified activeOffer stored on the property state.
+    if (!property.activeOffer || typeof property.activeOffer.offerAmount !== 'number' || !isFinite(property.activeOffer.offerAmount) || property.activeOffer.offerAmount <= 0) {
+        return { success: false, reason: "No valid active offer found for this property." };
+    }
+
+    const verifiedOfferAmount = property.activeOffer.offerAmount;
+    const buyerName = property.activeOffer.buyer?.name || "the buyer";
     const remainingMortgage = (property.mortgage && property.mortgage.remainingBalance > 0) ? property.mortgage.remainingBalance : 0;
-    const netProceeds = offerAmount - remainingMortgage;
+    const netProceeds = verifiedOfferAmount - remainingMortgage;
 
     user.money += netProceeds;
     user.assets.splice(index, 1);
@@ -2813,7 +2940,8 @@ function completePropertySale(user, propertyId, offerAmount) {
     return {
         success: true,
         propertyName: property.name,
-        offerAmount,
+        buyerName,
+        offerAmount: verifiedOfferAmount,
         remainingMortgage,
         netProceeds
     };
@@ -4294,10 +4422,14 @@ function handleArrestAction(user, actionType, bribeAmount = 0) {
     }
 
     if (actionType === 'bribe') {
-        if (user.money < bribeAmount) {
+        if (typeof bribeAmount !== 'number' || !Number.isFinite(bribeAmount) || bribeAmount <= 0) {
+            return { success: false, message: "Invalid bribe amount." };
+        }
+        bribeAmount = Math.floor(bribeAmount);
+        if ((user.money || 0) < bribeAmount) {
             return { success: false, message: "You don't have enough cash for that bribe!" };
         }
-        user.money -= bribeAmount;
+        user.money = (user.money || 0) - bribeAmount;
 
         const looksBonus = (clampStat(user.looks, 50) - 50) * 0.003;
         const bribeRatio = Math.min(1.0, bribeAmount / 10000);
@@ -5265,6 +5397,7 @@ export const GameLogic = {
     progressNPCOccupation,
     calculateSpousalIncomeContribution,
     sanitizeName,
+    sanitizeBusinessName,
     addLivingExpenses,
     calculateBirthdayMoney,
     addStudentLoanPayment,

@@ -644,7 +644,7 @@ export function openMoveCountryModal() {
     const jobWarningHtml = user.jobTitle
         ? `<div class="bg-amber-950/40 border border-amber-800/60 p-2.5 rounded-lg text-amber-300 text-xs flex items-center gap-2">
             <i class="fas fa-exclamation-triangle text-amber-400 shrink-0"></i>
-            <span>Relocating to another country will force you to leave your current position as <strong>${user.jobTitle}</strong>.</span>
+            <span>Relocating to another country will force you to leave your current position as <strong>${Utils.escapeHtml(user.jobTitle)}</strong>.</span>
            </div>`
         : '';
 
@@ -728,10 +728,10 @@ export function confirmMoveCountry() {
     if (partner) {
         const html = `
             <div class="space-y-4 text-left">
-                <p class="text-xs text-slate-300">You are currently in a relationship with <strong>${partner.name}</strong> (${partner.type}). Do you want to ask them to relocate to <strong>${targetCountry}</strong> with you?</p>
+                <p class="text-xs text-slate-300">You are currently in a relationship with <strong>${Utils.escapeHtml(partner.name)}</strong> (${Utils.escapeHtml(partner.type)}). Do you want to ask them to relocate to <strong>${Utils.escapeHtml(targetCountry)}</strong> with you?</p>
                 <div class="space-y-2 pt-2 border-t border-slate-700">
                     <button data-action="askPartnerToMove" data-args="&apos;${targetCountry}&apos;, &apos;${targetCity}&apos;" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-lg text-xs transition">
-                        <i class="fas fa-heart mr-1"></i> Ask ${partner.name} to Move With You
+                        <i class="fas fa-heart mr-1"></i> Ask ${Utils.escapeHtml(partner.name)} to Move With You
                     </button>
                     <button data-action="confirmMoveAlone" data-args="&apos;${targetCountry}&apos;, &apos;${targetCity}&apos;" class="w-full bg-red-900/40 hover:bg-red-800/60 border border-red-700/50 text-red-300 font-bold py-2.5 rounded-lg text-xs transition">
                         <i class="fas fa-user-alt mr-1"></i> Move Alone (End Relationship)
@@ -742,7 +742,7 @@ export function confirmMoveCountry() {
                 </div>
             </div>
         `;
-        UI.showCustomModal(`Relocate with ${partner.name}?`, html);
+        UI.showCustomModal(`Relocate with ${Utils.escapeHtml(partner.name)}?`, html);
         return;
     }
 
@@ -769,7 +769,7 @@ export function askPartnerToMove(targetCountry, targetCity) {
             <div class="space-y-4 text-left">
                 <div class="bg-red-950/40 border border-red-800/60 p-3 rounded-lg text-red-300 text-xs flex items-center gap-2">
                     <i class="fas fa-heart-broken text-red-400 text-base shrink-0"></i>
-                    <span><strong>${partner.name}</strong> does not want to leave their home country and refused to relocate to <strong>${targetCountry}</strong>.</span>
+                    <span><strong>${Utils.escapeHtml(partner.name)}</strong> does not want to leave their home country and refused to relocate to <strong>${Utils.escapeHtml(targetCountry)}</strong>.</span>
                 </div>
                 <p class="text-xs text-slate-300">Would you like to end your relationship and move alone, or cancel and stay?</p>
                 <div class="space-y-2 pt-2 border-t border-slate-700">
@@ -782,7 +782,7 @@ export function askPartnerToMove(targetCountry, targetCity) {
                 </div>
             </div>
         `;
-        UI.showCustomModal(`${partner.name} Refused to Move`, html);
+        UI.showCustomModal(`${Utils.escapeHtml(partner.name)} Refused to Move`, html);
     }
 }
 
@@ -818,18 +818,18 @@ function executeRelocation(user, targetCountry, targetCity, partnerMovedWith, pa
     renderMoreDashboard();
 
     const partnerNoticeHtml = partnerMovedWith && partnerObj
-        ? `<div class="mt-2 text-xs text-emerald-400 bg-emerald-950/40 p-2 rounded-lg border border-emerald-800/50"><i class="fas fa-heart mr-1"></i><strong>${partnerObj.name}</strong> moved with you! (+10 Relationship)</div>`
+        ? `<div class="mt-2 text-xs text-emerald-400 bg-emerald-950/40 p-2 rounded-lg border border-emerald-800/50"><i class="fas fa-heart mr-1"></i><strong>${Utils.escapeHtml(partnerObj.name)}</strong> moved with you! (+10 Relationship)</div>`
         : exPartnerName
-        ? `<div class="mt-2 text-xs text-red-400 bg-red-950/40 p-2 rounded-lg border border-red-800/50"><i class="fas fa-heart-broken mr-1"></i>You broke up with <strong>${exPartnerName}</strong> to move alone.</div>`
+        ? `<div class="mt-2 text-xs text-red-400 bg-red-950/40 p-2 rounded-lg border border-red-800/50"><i class="fas fa-heart-broken mr-1"></i>You broke up with <strong>${Utils.escapeHtml(exPartnerName)}</strong> to move alone.</div>`
         : '';
 
     const jobNoticeHtml = result.hadJob
-        ? `<div class="mt-2 text-xs text-amber-400 bg-amber-950/40 p-2 rounded-lg border border-amber-800/50"><i class="fas fa-exclamation-circle mr-1"></i>You lost your position as <strong>${result.oldJobTitle}</strong> and must apply for a new job.</div>`
+        ? `<div class="mt-2 text-xs text-amber-400 bg-amber-950/40 p-2 rounded-lg border border-amber-800/50"><i class="fas fa-exclamation-circle mr-1"></i>You lost your position as <strong>${Utils.escapeHtml(result.oldJobTitle)}</strong> and must apply for a new job.</div>`
         : '';
 
     UI.showModal("Welcome to Your New Home!", `
         <div class="text-left space-y-2">
-            <p class="text-sm text-slate-200">You have successfully relocated to <strong>${targetCity}, ${targetCountry}</strong>. ${Utils.formatMoney(result.cost)} was deducted for travel expenses.</p>
+            <p class="text-sm text-slate-200">You have successfully relocated to <strong>${Utils.escapeHtml(targetCity)}, ${Utils.escapeHtml(targetCountry)}</strong>. ${Utils.formatMoney(result.cost)} was deducted for travel expenses.</p>
             ${partnerNoticeHtml}
             ${jobNoticeHtml}
         </div>

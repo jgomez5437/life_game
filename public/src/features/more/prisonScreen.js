@@ -81,12 +81,12 @@ export function renderPrisonDashboard() {
                             <i class="fas fa-building-shield"></i>
                         </div>
                         <div>
-                            <h2 class="text-sm font-black text-white leading-tight">${user.facilityName || 'State Penitentiary'}</h2>
+                            <h2 class="text-sm font-black text-white leading-tight">${Utils.escapeHtml(user.facilityName || 'State Penitentiary')}</h2>
                             <div class="text-[11px] text-slate-400">Serving Year ${user.prisonTotalSentence - user.prisonSentenceRemaining + 1} of ${user.prisonTotalSentence}</div>
                         </div>
                     </div>
                     <span class="text-[10px] uppercase font-black px-2.5 py-1 rounded-full border ${securityColor}">
-                        ${user.prisonSecurity || 'Medium'} Security
+                        ${Utils.escapeHtml(user.prisonSecurity || 'Medium')} Security
                     </span>
                 </div>
 
@@ -197,8 +197,8 @@ function renderCellBlockContent(user, stats) {
                         <div class="text-xs font-extrabold text-amber-400 uppercase tracking-wide flex items-center gap-1">
                             Cellmate Profile <i class="fas fa-chevron-right text-[10px] text-slate-500"></i>
                         </div>
-                        <h3 class="text-base font-bold text-white">${cm.name} (${cm.age} y/o)</h3>
-                        <div class="text-xs text-slate-400">Serving time for: <span class="text-slate-200 font-semibold">${cm.crime}</span></div>
+                        <h3 class="text-base font-bold text-white">${Utils.escapeHtml(cm.name)} (${cm.age} y/o)</h3>
+                        <div class="text-xs text-slate-400">Serving time for: <span class="text-slate-200 font-semibold">${Utils.escapeHtml(cm.crime)}</span></div>
                     </div>
                 </div>
                 <div class="text-right">
@@ -233,7 +233,7 @@ function renderCellBlockContent(user, stats) {
                     <div class="flex flex-wrap gap-1.5">
                         ${stats.contraband.map(c => `
                             <span class="text-xs bg-slate-900 text-amber-300 border border-slate-700 px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1">
-                                <i class="fas fa-key text-[10px]"></i> ${c}
+                                <i class="fas fa-key text-[10px]"></i> ${Utils.escapeHtml(c)}
                             </span>
                         `).join('')}
                     </div>
@@ -287,10 +287,10 @@ function renderYardContent(user, stats) {
                                 </div>
                                 <div class="space-y-0.5 min-w-0">
                                     <div class="font-bold text-white text-xs flex items-center gap-2 truncate">
-                                        ${inmate.name}
-                                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-900 text-indigo-300 border border-slate-700 font-bold shrink-0">${inmate.role}</span>
+                                        ${Utils.escapeHtml(inmate.name)}
+                                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-900 text-indigo-300 border border-slate-700 font-bold shrink-0">${Utils.escapeHtml(inmate.role)}</span>
                                     </div>
-                                    <div class="text-[11px] text-slate-400 truncate">Convicted: ${inmate.crime} • ${inmate.perk}</div>
+                                    <div class="text-[11px] text-slate-400 truncate">Convicted: ${Utils.escapeHtml(inmate.crime)} • ${Utils.escapeHtml(inmate.perk)}</div>
                                 </div>
                             </div>
                             <div class="flex items-center gap-1 shrink-0">
@@ -472,8 +472,8 @@ function renderVisitingContent(user, stats) {
                                 <div class="flex items-center justify-between">
                                     <div>
                                         <div class="font-bold text-white text-xs flex items-center gap-1.5">
-                                            ${rel.name}
-                                            <span class="text-[9px] uppercase px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-bold border border-slate-700">${rel.type || rel.category}</span>
+                                            ${Utils.escapeHtml(rel.name)}
+                                            <span class="text-[9px] uppercase px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-bold border border-slate-700">${Utils.escapeHtml(rel.type || rel.category)}</span>
                                         </div>
                                         <div class="text-[10px] text-slate-400">Status: <strong class="text-emerald-400">${rel.status || 50}%</strong></div>
                                     </div>
@@ -570,7 +570,7 @@ export function handleCellmateAction(actionType) {
                 <div class="w-16 h-16 rounded-full bg-slate-900 border border-slate-700 mx-auto overflow-hidden shadow">
                     ${renderAvatar(user.cellmate)}
                 </div>
-                <h4 class="font-bold text-white text-sm">${user.cellmate.name}</h4>
+                <h4 class="font-bold text-white text-sm">${Utils.escapeHtml(user.cellmate.name)}</h4>
                 <p class="text-xs text-slate-300">${result.msg}</p>
             </div>
         `);
@@ -620,7 +620,7 @@ export function handleInmateInteract(inmateId, actionType) {
         <div class="w-16 h-16 rounded-full bg-slate-900 border border-slate-700 mx-auto overflow-hidden shadow">
             ${renderAvatar(inmate)}
         </div>
-        <h4 class="font-bold text-white text-sm">${inmate.name} <span class="text-[10px] text-indigo-400">(${inmate.role})</span></h4>
+        <h4 class="font-bold text-white text-sm">${Utils.escapeHtml(inmate.name)} <span class="text-[10px] text-indigo-400">(${Utils.escapeHtml(inmate.role)})</span></h4>
     ` : '<div class="text-3xl">👥</div>';
 
     if (result.success) {
@@ -748,8 +748,8 @@ export function handlePrisonVisit(relId) {
     UI.showModal("Visiting Hours", `
         <div class="text-center space-y-3">
             <div class="text-4xl">🪟</div>
-            <h3 class="text-lg font-bold text-pink-400">Visit with ${rel.name}</h3>
-            <p class="text-xs text-slate-300">You spent visiting hours catching up with ${rel.name} behind the visitor glass. Relationship boosted!</p>
+            <h3 class="text-lg font-bold text-pink-400">Visit with ${Utils.escapeHtml(rel.name)}</h3>
+            <p class="text-xs text-slate-300">You spent visiting hours catching up with ${Utils.escapeHtml(rel.name)} behind the visitor glass. Relationship boosted!</p>
         </div>
     `);
 
@@ -857,8 +857,8 @@ export function openContrabandPhoneModal() {
                 ${relationships.map(r => `
                     <div class="bg-slate-900 p-2 rounded-lg border border-slate-700 flex items-center justify-between text-xs">
                         <div>
-                            <span class="font-bold text-white">${r.name}</span>
-                            <span class="text-[10px] text-slate-400"> (${r.type || r.category})</span>
+                            <span class="font-bold text-white">${Utils.escapeHtml(r.name)}</span>
+                            <span class="text-[10px] text-slate-400"> (${Utils.escapeHtml(r.type || r.category)})</span>
                         </div>
                         <button data-action="submitContrabandPhoneAction" data-args="contact, ${r.id}" class="bg-purple-700 hover:bg-purple-600 text-white font-bold text-[11px] px-2.5 py-1 rounded-lg transition">
                             Secret Call / Text
@@ -1163,11 +1163,11 @@ export function openInmateDetailModal(inmateId) {
                 </div>
                 <div class="space-y-1 min-w-0 flex-1">
                     <div class="flex items-center gap-2">
-                        <h3 class="text-base font-extrabold text-white truncate">${inmate.name}</h3>
-                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-900 text-indigo-300 border border-slate-700 font-bold shrink-0">${isCellmate ? 'Cellmate' : inmate.role}</span>
+                        <h3 class="text-base font-extrabold text-white truncate">${Utils.escapeHtml(inmate.name)}</h3>
+                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-900 text-indigo-300 border border-slate-700 font-bold shrink-0">${isCellmate ? 'Cellmate' : Utils.escapeHtml(inmate.role)}</span>
                     </div>
-                    <div class="text-xs text-slate-400">Age: ${inmate.age} • Conviction: <span class="text-slate-200 font-semibold">${inmate.crime}</span></div>
-                    <div class="text-xs text-slate-400">${inmate.perk ? inmate.perk : 'Cellmate in your block'}</div>
+                    <div class="text-xs text-slate-400">Age: ${inmate.age} • Conviction: <span class="text-slate-200 font-semibold">${Utils.escapeHtml(inmate.crime)}</span></div>
+                    <div class="text-xs text-slate-400">${inmate.perk ? Utils.escapeHtml(inmate.perk) : 'Cellmate in your block'}</div>
                 </div>
             </div>
 
@@ -1191,7 +1191,7 @@ export function openInmateDetailModal(inmateId) {
         </div>
     `;
 
-    UI.showCustomModal(inmate.name, html);
+    UI.showCustomModal(Utils.escapeHtml(inmate.name), html);
 }
 
 export function openAttackPromptModal(targetType, targetId) {
@@ -1211,9 +1211,9 @@ export function openAttackPromptModal(targetType, targetId) {
         <div class="space-y-4 text-left">
             <div class="bg-red-950/80 border border-red-800 p-3.5 rounded-xl space-y-1">
                 <div class="font-bold text-red-400 text-sm flex items-center gap-2">
-                    <i class="fas fa-hand-fist text-red-400"></i> Attack ${targetName}
+                    <i class="fas fa-hand-fist text-red-400"></i> Attack ${Utils.escapeHtml(targetName)}
                 </div>
-                <p class="text-xs text-slate-300">Select your weapon or method for attacking ${targetName}.</p>
+                <p class="text-xs text-slate-300">Select your weapon or method for attacking ${Utils.escapeHtml(targetName)}.</p>
             </div>
 
             <div class="space-y-2">
@@ -1306,9 +1306,9 @@ export function renderNewCellmateModal(newCm) {
                 ${renderAvatar(newCm)}
             </div>
             <div>
-                <h3 class="text-lg font-extrabold text-white">${newCm.name}</h3>
+                <h3 class="text-lg font-extrabold text-white">${Utils.escapeHtml(newCm.name)}</h3>
                 <div class="text-xs text-amber-400 font-bold uppercase tracking-wider">New Cellmate Assigned</div>
-                <div class="text-xs text-slate-300 mt-1">Age ${newCm.age} • Serving time for <span class="text-white font-semibold">${newCm.crime}</span></div>
+                <div class="text-xs text-slate-300 mt-1">Age ${newCm.age} • Serving time for <span class="text-white font-semibold">${Utils.escapeHtml(newCm.crime)}</span></div>
             </div>
             <p class="text-xs text-slate-400 bg-slate-800 p-3 rounded-xl border border-slate-700">
                 You have been assigned a new cellmate in your block. Introduce yourself or build a relationship!

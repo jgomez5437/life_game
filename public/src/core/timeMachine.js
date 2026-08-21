@@ -190,7 +190,7 @@ export function renderTimeMachineModal() {
                                 Age ${s.age} ${isCurrentAge ? '<span class="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded">Current</span>' : ''}
                             </div>
                             <div class="text-[11px] text-slate-400 mt-0.5">
-                                ${s.summary.jobTitle} • <span class="text-emerald-400 font-semibold">${moneyFormatted}</span>
+                                ${Utils.escapeHtml(s.summary.jobTitle || 'Unemployed')} • <span class="text-emerald-400 font-semibold">${moneyFormatted}</span>
                             </div>
                         </div>
                     </div>

@@ -100,7 +100,7 @@ export function renderBusinessDashboard() {
                     </button>
                     <div class="min-w-0">
                         <h1 class="text-lg sm:text-xl font-bold text-white flex items-center gap-2 truncate">
-                            <span class="truncate">${user.companyName}</span>
+                            <span class="truncate">${Utils.escapeHtml(user.companyName)}</span>
                             <span class="text-xs font-normal px-2 py-0.5 rounded bg-indigo-900/60 text-indigo-300 border border-indigo-500/30 flex-shrink-0">
                                 Y${user.companyYear} Q${user.companyQuarter}
                             </span>
@@ -617,7 +617,7 @@ function renderTabFinance(user, ind, valuation, overhead) {
                         <i class="fas ${isPublic ? 'fa-check-circle' : 'fa-chart-line'}"></i> ${isPublic ? 'Publicly Listed on Stock Exchange' : 'Initial Public Offering (IPO)'}
                     </div>
                     <h3 class="font-bold text-white text-base flex items-center gap-2">
-                        <i class="fas fa-building-columns ${isPublic ? 'text-emerald-400' : 'text-indigo-400'}"></i> ${isPublic ? `${user.companyName} (Public Listing)` : 'Float Company on Stock Exchange'}
+                        <i class="fas fa-building-columns ${isPublic ? 'text-emerald-400' : 'text-indigo-400'}"></i> ${isPublic ? `${Utils.escapeHtml(user.companyName)} (Public Listing)` : 'Float Company on Stock Exchange'}
                     </h3>
                     <div class="text-xs text-slate-300">
                         ${isPublic
@@ -996,7 +996,7 @@ export function launchIPO() {
     if (!user || !user.hasBusiness) return;
 
     if (user.isPublic) {
-        UI.showModal('Already Public', `${user.companyName} is already a publicly traded corporation.`);
+        UI.showModal('Already Public', `${Utils.escapeHtml(user.companyName)} is already a publicly traded corporation.`);
         return;
     }
 
@@ -1018,7 +1018,7 @@ export function launchIPO() {
 
     UI.showConfirm(
         'Initial Public Offering (IPO)',
-        `Take <strong>${user.companyName}</strong> public on the stock exchange?<br><br>` +
+        `Take <strong>${Utils.escapeHtml(user.companyName)}</strong> public on the stock exchange?<br><br>` +
         `Public Listing Valuation: <span class="text-green-400 font-bold font-mono">${Utils.formatMoney(valuation)}</span><br>` +
         `Float 20% Public Shares for <span class="text-yellow-400 font-bold font-mono">${Utils.formatMoney(playerPayout)}</span> Founder Payout.<br>` +
         `<span class="text-xs text-slate-400">Your equity ownership will adjust from ${Math.round(user.equityOwned * 100)}% to ${Math.round((user.equityOwned - float) * 100)}%.</span>`,
@@ -1097,7 +1097,7 @@ export function sellBusiness() {
 
     UI.showConfirm(
         'Sell Company (Corporate Exit)',
-        `Sell <strong>${user.companyName}</strong> for <span class="text-green-400 font-bold">${Utils.formatMoney(playerPayout)}</span>?<br><span class="text-xs text-slate-400">Calculated based on valuation ${Utils.formatMoney(valuation)} × your ${Math.round(user.equityOwned * 100)}% equity ownership.</span>`,
+        `Sell <strong>${Utils.escapeHtml(user.companyName)}</strong> for <span class="text-green-400 font-bold">${Utils.formatMoney(playerPayout)}</span>?<br><span class="text-xs text-slate-400">Calculated based on valuation ${Utils.formatMoney(valuation)} × your ${Math.round(user.equityOwned * 100)}% equity ownership.</span>`,
         'Confirm Exit Sale',
         () => {
             if (isProcessingBusinessAction || !user || !user.hasBusiness) return;

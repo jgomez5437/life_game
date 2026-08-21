@@ -2,6 +2,8 @@ import { sql } from '@vercel/postgres';
 import { verifyAuth } from './lib/verifyAuth.js';
 import { checkRateLimit } from './lib/rateLimit.js';
 
+import { sanitizeEntitlements, injectVerifiedPurchases } from './lib/validation.js';
+
 export default async function handler(request, response) {
     if (request.method !== 'POST') {
         return response.status(405).json({ error: 'Method Not Allowed' });
@@ -69,6 +71,19 @@ export default async function handler(request, response) {
             ]
         };
 
+        // Query authoritative entitlements from user_purchases
+        let dbPurchases = [];
+        try {
+            const purchaseResult = await sql`
+                SELECT DISTINCT pack_id 
+                FROM user_purchases 
+                WHERE auth0_id = ${auth0_id};
+            `;
+            dbPurchases = purchaseResult.rows.map(row => row.pack_id);
+        } catch (purchaseErr) {
+            console.warn('Could not query user_purchases on login:', purchaseErr.message);
+        }
+
         // 1. Check if user exists
         const checkResult = await sql`
             SELECT * FROM users WHERE auth0_id = ${auth0_id}
@@ -80,20 +95,33 @@ export default async function handler(request, response) {
             // If game_data is empty (e.g. wiped after death), initialize it
             if (!existingUser.game_data || Object.keys(existingUser.game_data).length === 0) {
                 console.log('Re-initializing player data for:', auth0_id);
+                sanitizeEntitlements(initialGameData);
+                injectVerifiedPurchases(initialGameData, dbPurchases);
                 const updateResult = await sql`
                     UPDATE users 
                     SET game_data = ${initialGameData}, last_played_at = NOW()
                     WHERE auth0_id = ${auth0_id}
                     RETURNING *;
                 `;
-                return response.status(200).json(updateResult.rows[0]);
+                const updated = updateResult.rows[0];
+                if (updated && updated.game_data) {
+                    sanitizeEntitlements(updated.game_data);
+                    injectVerifiedPurchases(updated.game_data, dbPurchases);
+                }
+                return response.status(200).json(updated);
             }
 
             console.log('Returning player found:', auth0_id);
+            if (existingUser.game_data) {
+                sanitizeEntitlements(existingUser.game_data);
+                injectVerifiedPurchases(existingUser.game_data, dbPurchases);
+            }
             return response.status(200).json(existingUser);
         } 
         
         // 2. If new, create them with the JSONB structure
+        sanitizeEntitlements(initialGameData);
+        injectVerifiedPurchases(initialGameData, dbPurchases);
         const insertResult = await sql`
             INSERT INTO users (auth0_id, email, game_data, last_played_at)
             VALUES (${auth0_id}, ${email}, ${initialGameData}, NOW())
@@ -101,7 +129,12 @@ export default async function handler(request, response) {
         `;
 
         console.log('New Player created:', username);
-        return response.status(200).json(insertResult.rows[0]);
+        const createdUser = insertResult.rows[0];
+        if (createdUser && createdUser.game_data) {
+            sanitizeEntitlements(createdUser.game_data);
+            injectVerifiedPurchases(createdUser.game_data, dbPurchases);
+        }
+        return response.status(200).json(createdUser);
 
     } catch (error) {
         console.error('Login error:', error);

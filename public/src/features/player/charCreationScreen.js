@@ -342,11 +342,9 @@ export async function submitCharacter() {
                     looks: Math.floor(Math.random() * 56) + 40
                 };
             }
-            let savedPurchases = [];
-            try {
-                const storedP = localStorage.getItem('life_game_purchases');
-                if (storedP) savedPurchases = JSON.parse(storedP);
-            } catch (e) {}
+            const savedPurchases = Array.isArray(state.verifiedPurchases)
+                ? [...state.verifiedPurchases]
+                : [];
 
             let activeSlotId = 'slot_1';
             try {
@@ -362,20 +360,19 @@ export async function submitCharacter() {
                 gender: gender,
                 country: country,
                 city: city,
+                age: 0,
+                money: 0,
+                debt: 0,
                 purchases: savedPurchases,
-                _slotId: activeSlotId,
-                stats: {
-                    ...initialStats,
-                    money: 0
-                },
                 health: initialStats.health,
                 happiness: initialStats.happiness,
                 smarts: initialStats.smarts,
                 looks: initialStats.looks,
-                money: 0,
-                is_guest: true,
+                karma: 50,
                 appearance: draftAppearance,
-                relationships: startingFamily // Inject before load
+                relationships: startingFamily,
+                assets: [],
+                lifeLog: []
             };
             loadAndRenderGame(userData);
             if (state.gameState) state.gameState._slotId = activeSlotId;
@@ -422,6 +419,7 @@ export async function submitCharacter() {
 }
 
 export function maxCreationGodStats() {
+    if (!hasPurchasedPack('god_mode')) return;
     ['health', 'happiness', 'smarts', 'looks'].forEach(stat => {
         const input = get(`god-create-${stat}`);
         const val = get(`god-create-${stat}-val`);

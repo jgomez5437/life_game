@@ -172,29 +172,179 @@ export function checkPayloadSize(request) {
 }
 
 /**
- * Canonical set of valid purchasable pack IDs.
- * This must stay in sync with the priceMap in create-checkout-session.js
- * and STORE_PACKS in storeScreen.js.
+ * Server-authoritative pack catalog with fixed pricing, names, and availability.
+ * This is the single source of truth for checkout sessions and webhook verification.
  */
-export const VALID_PACK_IDS = new Set([
-  'god_mode',
-  'instant_diplomas',
-  'time_machine',
-  'vip_supporter',
-  'mafia_syndicate',
-  'mafia_expansion',
-  'artist_pack',
-  'athlete_pack',
-  'politician_pack'
-]);
+export const PACK_CATALOG = {
+  god_mode: {
+    id: 'god_mode',
+    name: 'God Mode & Stat Editor',
+    amount: 299,
+    currency: 'usd',
+    available: true,
+    priceId: process.env.STRIPE_PRICE_GOD_MODE || 'price_god_mode'
+  },
+  instant_diplomas: {
+    id: 'instant_diplomas',
+    name: 'Instant Diplomas',
+    amount: 199,
+    currency: 'usd',
+    available: true,
+    priceId: process.env.STRIPE_PRICE_INSTANT_DIPLOMAS || 'price_instant_diplomas'
+  },
+  time_machine: {
+    id: 'time_machine',
+    name: 'Time Machine & Multi-Save Slots',
+    amount: 199,
+    currency: 'usd',
+    available: true,
+    priceId: process.env.STRIPE_PRICE_TIME_MACHINE || 'price_time_machine'
+  },
+  vip_supporter: {
+    id: 'vip_supporter',
+    name: 'VIP Supporter & Unique Theme',
+    amount: 499,
+    currency: 'usd',
+    available: true,
+    priceId: process.env.STRIPE_PRICE_VIP_SUPPORTER || 'price_vip_supporter'
+  },
+  mafia_syndicate: {
+    id: 'mafia_syndicate',
+    name: 'Start a Life Expansion: Mafia Pack',
+    amount: 299,
+    currency: 'usd',
+    available: true,
+    priceId: process.env.STRIPE_PRICE_MAFIA_SYNDICATE || 'price_mafia_syndicate'
+  },
+  mafia_expansion: {
+    id: 'mafia_expansion',
+    name: 'Start a Life Expansion: Mafia Pack',
+    amount: 299,
+    currency: 'usd',
+    available: true,
+    priceId: process.env.STRIPE_PRICE_MAFIA_EXPANSION || 'price_mafia_expansion'
+  },
+  artist_pack: {
+    id: 'artist_pack',
+    name: 'Artist & Creative Industry',
+    amount: 399,
+    currency: 'usd',
+    available: false,
+    priceId: process.env.STRIPE_PRICE_ARTIST_PACK || 'price_artist_pack'
+  },
+  athlete_pack: {
+    id: 'athlete_pack',
+    name: 'Athlete & Pro Sports',
+    amount: 399,
+    currency: 'usd',
+    available: false,
+    priceId: process.env.STRIPE_PRICE_ATHLETE_PACK || 'price_athlete_pack'
+  },
+  politician_pack: {
+    id: 'politician_pack',
+    name: 'Politician & Head of State',
+    amount: 399,
+    currency: 'usd',
+    available: false,
+    priceId: process.env.STRIPE_PRICE_POLITICIAN_PACK || 'price_politician_pack'
+  }
+};
 
 /**
- * Strips all `purchases` arrays from game_data at every location where
- * the client could inject entitlements:
- *   - game_data.purchases
- *   - game_data.user.purchases
- *   - game_data.slots[*].data.purchases
- *   - game_data.slots[*].data.user.purchases
+ * Server-side mapping of Stripe price IDs to internal pack IDs.
+ */
+export const PRICE_TO_PACK = Object.entries(PACK_CATALOG).reduce((acc, [packId, config]) => {
+  if (config.priceId) {
+    acc[config.priceId] = packId;
+  }
+  return acc;
+}, {});
+
+/**
+ * Looks up a pack by its packId in the authoritative catalog.
+ */
+export function getPackById(packId) {
+  if (!packId || typeof packId !== 'string') return null;
+  return PACK_CATALOG[packId] || null;
+}
+
+/**
+ * Looks up a pack by its Stripe priceId in the authoritative catalog.
+ */
+export function getPackByPriceId(priceId) {
+  if (!priceId || typeof priceId !== 'string') return null;
+  const mappedPackId = PRICE_TO_PACK[priceId];
+  if (mappedPackId && PACK_CATALOG[mappedPackId]) {
+    return PACK_CATALOG[mappedPackId];
+  }
+  for (const pack of Object.values(PACK_CATALOG)) {
+    if (pack.priceId === priceId) return pack;
+  }
+  return null;
+}
+
+/**
+ * Authoritatively resolves and validates pack selection from client input.
+ * Rejects mismatched priceId/packId pairs, unknown packs, and unreleased packs.
+ *
+ * @param {string|null} packId - Pack ID sent by client
+ * @param {string|null} priceId - Stripe Price ID sent by client
+ * @returns {{ pack?: object, error?: string, status?: number }}
+ */
+export function resolvePack(packId, priceId) {
+  let resolvedByPrice = null;
+  let resolvedById = null;
+
+  if (priceId !== undefined && priceId !== null) {
+    if (typeof priceId !== 'string' || !priceId.trim()) {
+      return { error: 'Invalid priceId', status: 400 };
+    }
+    resolvedByPrice = getPackByPriceId(priceId.trim());
+    if (!resolvedByPrice) {
+      return { error: 'Invalid priceId: price not found in catalog', status: 400 };
+    }
+  }
+
+  if (packId !== undefined && packId !== null) {
+    if (typeof packId !== 'string' || !packId.trim()) {
+      return { error: 'Invalid packId', status: 400 };
+    }
+    resolvedById = getPackById(packId.trim());
+    if (!resolvedById) {
+      return { error: 'Invalid packId: pack not found in catalog', status: 400 };
+    }
+  }
+
+  if (!resolvedById && !resolvedByPrice) {
+    return { error: 'Missing packId or priceId', status: 400 };
+  }
+
+  if (resolvedById && resolvedByPrice && resolvedById.id !== resolvedByPrice.id) {
+    return { error: 'Price ID does not match pack ID', status: 400 };
+  }
+
+  const finalPack = resolvedById || resolvedByPrice;
+
+  if (!finalPack.available) {
+    return { error: `Pack '${finalPack.name}' is not currently available for purchase`, status: 400 };
+  }
+
+  return { pack: finalPack };
+}
+
+/**
+ * Canonical set of valid purchasable pack IDs.
+ * Derived directly from PACK_CATALOG to prevent drift.
+ */
+export const VALID_PACK_IDS = new Set(Object.keys(PACK_CATALOG));
+
+/**
+ * Strips all entitlement fields from game_data at every location where
+ * the client could inject unauthorized perks:
+ *   - game_data.purchases, game_data.purchasedPacks, game_data.godMode, game_data.isVIP, game_data.vipLevel
+ *   - game_data.user.*
+ *   - game_data.slots[*].data.* and game_data.slots[*].data.user.*
+ *   - game_data.snapshots[*].data.*
  *
  * After stripping, the caller should inject the DB-authoritative purchases.
  * Mutates game_data in place and returns it.
@@ -202,22 +352,62 @@ export const VALID_PACK_IDS = new Set([
 export function sanitizeEntitlements(gameData) {
   if (!gameData || typeof gameData !== 'object') return gameData;
 
-  // Strip top-level purchases
-  delete gameData.purchases;
+  const entitlementKeys = ['purchases', 'purchasedPacks', 'godMode', 'isVIP', 'vipLevel'];
 
-  // Strip user.purchases
+  const stripKeys = (target) => {
+    if (!target || typeof target !== 'object') return;
+    for (const key of entitlementKeys) {
+      delete target[key];
+    }
+  };
+
+  // Strip top-level fields
+  stripKeys(gameData);
+
+  // Strip user fields
   if (gameData.user && typeof gameData.user === 'object') {
-    delete gameData.user.purchases;
+    stripKeys(gameData.user);
   }
 
-  // Strip purchases inside every save slot
+  // Strip snapshots if present
+  if (Array.isArray(gameData.snapshots)) {
+    for (const snapshot of gameData.snapshots) {
+      if (snapshot && typeof snapshot === 'object') {
+        stripKeys(snapshot);
+        if (snapshot.data && typeof snapshot.data === 'object') {
+          stripKeys(snapshot.data);
+          if (snapshot.data.user && typeof snapshot.data.user === 'object') {
+            stripKeys(snapshot.data.user);
+          }
+        }
+      }
+    }
+  }
+
+  // Strip fields inside every save slot
   if (gameData.slots && typeof gameData.slots === 'object' && !Array.isArray(gameData.slots)) {
     for (const slotKey of Object.keys(gameData.slots)) {
       const slot = gameData.slots[slotKey];
-      if (slot && slot.data && typeof slot.data === 'object') {
-        delete slot.data.purchases;
-        if (slot.data.user && typeof slot.data.user === 'object') {
-          delete slot.data.user.purchases;
+      if (slot && typeof slot === 'object') {
+        stripKeys(slot);
+        if (slot.data && typeof slot.data === 'object') {
+          stripKeys(slot.data);
+          if (slot.data.user && typeof slot.data.user === 'object') {
+            stripKeys(slot.data.user);
+          }
+          if (Array.isArray(slot.data.snapshots)) {
+            for (const s of slot.data.snapshots) {
+              if (s && typeof s === 'object') {
+                stripKeys(s);
+                if (s.data && typeof s.data === 'object') {
+                  stripKeys(s.data);
+                  if (s.data.user && typeof s.data.user === 'object') {
+                    stripKeys(s.data.user);
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -233,7 +423,6 @@ export function sanitizeEntitlements(gameData) {
  *   - game_data.purchases (top-level fallback)
  *   - game_data.slots[*].data.user.purchases / game_data.slots[*].data.purchases
  *
- * Mirrors the merge logic in load.js so saved state stays consistent with loads.
  * Mutates game_data in place and returns it.
  */
 export function injectVerifiedPurchases(gameData, verifiedPurchases) {
@@ -248,7 +437,7 @@ export function injectVerifiedPurchases(gameData, verifiedPurchases) {
     gameData.purchases = purchases;
   }
 
-  // Inject into every save slot (mirrors load.js merge logic)
+  // Inject into every save slot
   if (gameData.slots && typeof gameData.slots === 'object' && !Array.isArray(gameData.slots)) {
     for (const slotKey of Object.keys(gameData.slots)) {
       const slot = gameData.slots[slotKey];
@@ -264,3 +453,4 @@ export function injectVerifiedPurchases(gameData, verifiedPurchases) {
 
   return gameData;
 }
+

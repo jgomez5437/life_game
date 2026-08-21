@@ -2,6 +2,7 @@ import { state, hasPurchasedPack } from '../../core/state.js';
 import { addLog, refreshClassmates } from '../player/mainScreen.js';
 import { saveGame } from '../../core/main.js';
 import { UI } from '../../ui/ui.js';
+import { Utils } from '../../ui/utils.js';
 import { MAJORS } from '../../core/constants.js';
 import { GRAD_SCHOOLS } from '../career/occupationScreen.js';
 
@@ -132,8 +133,8 @@ export function renderInstantDiplomaHub() {
     }
 
     const hasHighSchool = user.age >= 18 || user.highSchoolGraduated || (user.universityGraduated && !user.highSchoolRetained);
-    const universityStatus = user.universityGraduated ? `Bachelor's in ${user.major}` : 'Not Earned';
-    const gradStatus = user.gradSchoolDegree ? `${user.gradSchoolDegree} Graduate` : 'Not Earned';
+    const universityStatus = user.universityGraduated ? `Bachelor's in ${Utils.escapeHtml(user.major)}` : 'Not Earned';
+    const gradStatus = user.gradSchoolDegree ? `${Utils.escapeHtml(user.gradSchoolDegree)} Graduate` : 'Not Earned';
 
     const hubHTML = `
         <div class="space-y-4">

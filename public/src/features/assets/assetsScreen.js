@@ -287,7 +287,7 @@ export const renderVehicleManager = (id) => {
                     <i class="fas ${style.icon} ${style.color} text-3xl"></i>
                 </div>
                 <div class="flex items-center justify-center gap-2 mb-1">
-                    <h2 class="text-2xl font-bold text-white">${vehicle.name}</h2>
+                    <h2 class="text-2xl font-bold text-white">${Utils.escapeHtml(vehicle.name)}</h2>
                     ${vehicle.isPrimary ? `<span class="bg-blue-900/80 text-blue-300 text-xs font-bold px-2 py-0.5 rounded border border-blue-700">Primary Ride</span>` : ''}
                 </div>
                 <div class="text-green-400 font-bold text-xl">${Utils.formatMoney(vehicle.value)}</div>
@@ -435,9 +435,18 @@ export const renderPropertyManager = (id) => {
     const maintenanceCost = GameLogic.calculateMaintenanceCost(property);
     const canMaintain = user.money >= maintenanceCost && property.condition < property.maxCondition;
     const renovationOptions = GameLogic.calculateRenovationOptions(property);
+    const isRenovatedThisYear = property.renovatedThisYear || (user.age !== undefined && property.lastRenovationAge === user.age);
+    const isPristine = property.condition >= 100 && property.maxCondition >= 100;
 
     const renovationHtml = renovationOptions.map(opt => {
         const canAffordRenov = user.money >= opt.cost;
+        const canRenovate = canAffordRenov && !isRenovatedThisYear && !isPristine;
+
+        let btnText = 'Renovate';
+        if (isRenovatedThisYear) btnText = 'Done This Year';
+        else if (isPristine) btnText = 'Pristine (100%)';
+        else if (!canAffordRenov) btnText = "Can't Afford";
+
         return `
             <div class="bg-slate-900 p-3 rounded-lg border border-slate-700 flex flex-col gap-2">
                 <div class="flex justify-between items-start">
@@ -453,12 +462,12 @@ export const renderPropertyManager = (id) => {
                     <div>
                         <span class="text-blue-400 font-bold">+${opt.condGain}% Cond</span> • 
                         <span class="text-purple-400 font-bold">+${opt.maxCondGain}% Cap</span> • 
-                        <span class="text-green-400 font-bold">+${opt.valueBoostRatio * 100}% Value</span>
+                        <span class="text-green-400 font-bold">Up to +${opt.valueBoostRatio * 100}% Value</span>
                     </div>
                     <button data-action="doPropertyRenovation" data-args="${property.id}, '${opt.id}'"
-                        ${canAffordRenov ? '' : 'disabled'}
-                        class="${canAffordRenov ? 'bg-amber-600 hover:bg-amber-500 text-white' : 'bg-slate-800 text-slate-500 cursor-not-allowed'} px-2.5 py-1 rounded font-bold text-xs transition">
-                        Renovate
+                        ${canRenovate ? '' : 'disabled'}
+                        class="${canRenovate ? 'bg-amber-600 hover:bg-amber-500 text-white' : 'bg-slate-800 text-slate-500 cursor-not-allowed'} px-2.5 py-1 rounded font-bold text-xs transition">
+                        ${btnText}
                     </button>
                 </div>
             </div>
@@ -511,7 +520,7 @@ export const renderPropertyManager = (id) => {
                 <h3 class="font-bold text-white text-base mb-1 flex items-center gap-2">
                     <i class="fas fa-hammer text-amber-400"></i> Property Renovations
                 </h3>
-                <p class="text-xs text-slate-400 mb-3">Renovations restore condition, raise maximum quality caps, and increase property market value.</p>
+                <p class="text-xs text-slate-400 mb-3">Renovations restore condition, raise quality caps, and boost market value proportionally. Limited to once per year per property.</p>
                 <div class="space-y-2">
                     ${renovationHtml}
                 </div>
@@ -537,10 +546,10 @@ export const renderPropertyManager = (id) => {
                         </div>
                         <div class="flex-1 space-y-1">
                             <div class="flex justify-between items-center">
-                                <h4 class="font-bold text-white text-base">${property.tenant.name}</h4>
+                                <h4 class="font-bold text-white text-base">${Utils.escapeHtml(property.tenant.name)}</h4>
                                 <span class="font-bold ${property.tenant.quality === 'excellent' ? 'text-green-400' : property.tenant.quality === 'good' ? 'text-blue-400' : 'text-amber-400'} uppercase text-[10px] bg-slate-800 px-2 py-0.5 rounded border border-slate-700">${property.tenant.quality}</span>
                             </div>
-                            <div class="text-xs text-blue-400 font-semibold">${property.tenant.type}</div>
+                            <div class="text-xs text-blue-400 font-semibold">${Utils.escapeHtml(property.tenant.type)}</div>
                             <div class="flex justify-between items-center text-xs pt-1 border-t border-slate-800">
                                 <span class="text-slate-400">Rent: <span class="font-bold text-green-400">${Utils.formatMoney(property.tenant.monthlyRent)}/mo</span></span>
                                 <span class="text-slate-400">Lease: <span class="font-bold text-slate-200">${property.tenant.leaseYears} yr${property.tenant.leaseYears === 1 ? '' : 's'}</span></span>
@@ -624,7 +633,7 @@ export const doPropertyMaintenance = (id) => {
         saveGame();
         UI.updateHeader(user);
         renderPropertyManager(id);
-        UI.showModal("Maintenance Completed", `Restored ${result.propertyName}'s condition to ${result.restoredCondition}% (Max cap: ${result.maxCondition}%).`);
+        UI.showModal("Maintenance Completed", `Restored ${Utils.escapeHtml(result.propertyName)}'s condition to ${result.restoredCondition}% (Max cap: ${result.maxCondition}%).`);
     } else {
         UI.showModal("Maintenance Failed", result.reason);
     }
@@ -639,7 +648,7 @@ export const doPropertyRenovation = (id, optionId) => {
         saveGame();
         UI.updateHeader(user);
         renderPropertyManager(id);
-        UI.showModal("Renovation Complete!", `Your ${result.propertyName} underwent a ${result.optionName}! Condition is now ${result.newCondition}% (Max: ${result.newMaxCondition}%) and property value increased to ${Utils.formatMoney(result.newValue)}.`);
+        UI.showModal("Renovation Complete!", `Your ${Utils.escapeHtml(result.propertyName)} underwent a ${Utils.escapeHtml(result.optionName)}! Condition is now ${result.newCondition}% (Max: ${result.newMaxCondition}%) and property value increased to ${Utils.formatMoney(result.newValue)}.`);
     } else {
         UI.showModal("Renovation Failed", result.reason);
     }
@@ -660,7 +669,7 @@ export const payOffMortgage = (id) => {
         saveGame();
         UI.updateHeader(user);
         renderPropertyManager(id);
-        UI.showModal("Mortgage Paid Off!", `You now own ${property.name} free and clear!`);
+        UI.showModal("Mortgage Paid Off!", `You now own ${Utils.escapeHtml(property.name)} free and clear!`);
     }
 };
 
@@ -689,7 +698,7 @@ export const openSellPropertyModal = (id) => {
             <div class="bg-slate-900 p-4 rounded-xl border border-slate-700 text-center">
                 <div class="text-xs text-slate-400 font-bold uppercase">Estimated Market Value</div>
                 <div class="text-2xl font-bold text-green-400 mt-1">${Utils.formatMoney(property.value)}</div>
-                <div class="text-xs text-slate-400 mt-1">${property.name}</div>
+                <div class="text-xs text-slate-400 mt-1">${Utils.escapeHtml(property.name)}</div>
             </div>
 
             <p class="text-xs text-slate-300 text-center">Select a listing price point to market your property to potential buyers:</p>
@@ -700,7 +709,7 @@ export const openSellPropertyModal = (id) => {
         </div>
     `;
 
-    UI.showModal(`Sell Property - ${property.name}`, modalHtml);
+    UI.showModal(`Sell Property - ${Utils.escapeHtml(property.name)}`, modalHtml);
 };
 
 export const submitPropertyListing = (propertyId, tierId) => {
@@ -711,6 +720,7 @@ export const submitPropertyListing = (propertyId, tierId) => {
     const result = GameLogic.generatePropertyBuyerOffer(property, tierId);
 
     if (result.hasOffer) {
+        saveGame();
         const buyer = result.buyer;
         const modalHtml = `
             <div class="space-y-4">
@@ -720,7 +730,7 @@ export const submitPropertyListing = (propertyId, tierId) => {
                     </div>
                     <h3 class="text-white font-bold text-lg">Offer Received!</h3>
                     <p class="text-slate-300 text-sm mt-1">
-                        <span class="font-bold text-white">${buyer.name}</span> submitted an offer to purchase <span class="font-bold text-white">${property.name}</span>.
+                        <span class="font-bold text-white">${Utils.escapeHtml(buyer.name)}</span> submitted an offer to purchase <span class="font-bold text-white">${Utils.escapeHtml(property.name)}</span>.
                     </p>
                     <div class="mt-3 bg-slate-900 p-3 rounded-lg border border-slate-700 space-y-1.5 text-xs text-left">
                         <div class="flex justify-between">
@@ -741,28 +751,30 @@ export const submitPropertyListing = (propertyId, tierId) => {
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
-                    <button data-action="acceptBuyerOffer" data-args="${property.id}, ${result.offerAmount}, '${buyer.name}'" class="bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-xl text-xs transition">
+                    <button data-action="acceptBuyerOffer" data-args="${property.id}" class="bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-xl text-xs transition">
                         Accept Offer
                     </button>
-                    <button onclick="document.getElementById('modal-overlay').classList.add('hidden')" class="bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-3 rounded-xl text-xs transition">
+                    <button data-action="rejectBuyerOffer" data-args="${property.id}" class="bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-3 rounded-xl text-xs transition">
                         Reject Offer
                     </button>
                 </div>
             </div>
         `;
 
-        UI.showCustomModal(`Buyer Offer - ${property.name}`, modalHtml);
+        UI.showCustomModal(`Buyer Offer - ${Utils.escapeHtml(property.name)}`, modalHtml);
     } else {
+        saveGame();
         addLog(`Listed ${property.name} at ${result.tierName} (${Utils.formatMoney(result.listPrice)}), but no buyers submitted an offer.`, 'neutral');
-        UI.showModal("No Offers Received", `No buyers submitted an offer for ${property.name} at this price point. You can try listing it again at a different price point.`);
+        UI.showModal("No Offers Received", `No buyers submitted an offer for ${Utils.escapeHtml(property.name)} at this price point. You can try listing it again at a different price point.`);
     }
 };
 
-export const acceptBuyerOffer = (propertyId, offerAmount, buyerName) => {
+export const acceptBuyerOffer = (propertyId) => {
     const user = state.gameState.user;
-    const result = GameLogic.completePropertySale(user, propertyId, offerAmount);
+    const result = GameLogic.completePropertySale(user, propertyId);
 
     if (result.success) {
+        const buyerName = result.buyerName || "the buyer";
         if (result.remainingMortgage > 0) {
             addLog(`Sold ${result.propertyName} to ${buyerName} for ${Utils.formatMoney(result.offerAmount)}, paying off ${Utils.formatMoney(result.remainingMortgage)} mortgage. Net proceeds: ${Utils.formatMoney(result.netProceeds)}.`, 'good');
         } else {
@@ -773,10 +785,20 @@ export const acceptBuyerOffer = (propertyId, offerAmount, buyerName) => {
         UI.hideModal();
         UI.updateHeader(user);
         renderAssets();
-        UI.showModal("Property Sold!", `Congratulations! You sold ${result.propertyName} to ${buyerName} for ${Utils.formatMoney(result.offerAmount)}. Net proceeds: ${Utils.formatMoney(result.netProceeds)}.`);
+        UI.showModal("Property Sold!", `Congratulations! You sold ${Utils.escapeHtml(result.propertyName)} to ${Utils.escapeHtml(buyerName)} for ${Utils.formatMoney(result.offerAmount)}. Net proceeds: ${Utils.formatMoney(result.netProceeds)}.`);
     } else {
         UI.showModal("Sale Error", result.reason);
     }
+};
+
+export const rejectBuyerOffer = (propertyId) => {
+    const user = state.gameState.user;
+    const property = (user?.assets || []).find(a => a.id === propertyId);
+    if (property) {
+        delete property.activeOffer;
+        saveGame();
+    }
+    UI.hideModal();
 };
 
 export const repairVehicle = (id, cost) => {
@@ -835,15 +857,15 @@ export const openTenantScreening = (propertyId) => {
             <div class="flex-1 space-y-1">
                 <div class="flex justify-between items-start">
                     <div>
-                        <h4 class="font-bold text-white text-base">${app.name}</h4>
-                        <span class="text-xs text-blue-400 font-semibold">${app.type}</span>
+                        <h4 class="font-bold text-white text-base">${Utils.escapeHtml(app.name)}</h4>
+                        <span class="text-xs text-blue-400 font-semibold">${Utils.escapeHtml(app.type)}</span>
                     </div>
                     <div class="text-right">
                         <div class="text-green-400 font-bold text-base">${Utils.formatMoney(app.monthlyRent)}/mo</div>
                         <div class="text-[11px] text-slate-400">${app.leaseYears}-Year Lease</div>
                     </div>
                 </div>
-                <p class="text-xs text-slate-300">${app.desc}</p>
+                <p class="text-xs text-slate-300">${Utils.escapeHtml(app.desc)}</p>
                 <div class="flex items-center justify-between pt-2 border-t border-slate-700">
                     <span class="text-xs ${app.quality === 'excellent' ? 'text-green-400' : app.quality === 'good' ? 'text-blue-400' : 'text-amber-400'} font-bold uppercase">Credit: ${app.quality}</span>
                     <button data-action="acceptTenantLease" data-args="${property.id}, '${app.id}'" class="bg-green-600 hover:bg-green-500 text-white px-3.5 py-1.5 rounded-lg font-bold text-xs transition">
@@ -856,14 +878,14 @@ export const openTenantScreening = (propertyId) => {
 
     const modalHtml = `
         <div class="space-y-4">
-            <p class="text-slate-300 text-sm">Screen and select a tenant for <span class="font-bold text-white">${property.name}</span>:</p>
+            <p class="text-slate-300 text-sm">Screen and select a tenant for <span class="font-bold text-white">${Utils.escapeHtml(property.name)}</span>:</p>
             <div class="space-y-3 max-h-[350px] overflow-y-auto pr-1">
                 ${applicantsHtml}
             </div>
         </div>
     `;
 
-    UI.showModal(`Screen Applicants - ${property.name}`, modalHtml);
+    UI.showModal(`Screen Applicants - ${Utils.escapeHtml(property.name)}`, modalHtml);
 };
 
 export const acceptTenantLease = (propertyId, applicantId) => {
@@ -876,7 +898,7 @@ export const acceptTenantLease = (propertyId, applicantId) => {
         UI.hideModal();
         UI.updateHeader(user);
         renderPropertyManager(propertyId);
-        UI.showModal("Lease Signed!", `You rented ${result.propertyName} to ${result.tenant.name} for ${Utils.formatMoney(result.tenant.monthlyRent)}/month!`);
+        UI.showModal("Lease Signed!", `You rented ${Utils.escapeHtml(result.propertyName)} to ${Utils.escapeHtml(result.tenant.name)} for ${Utils.formatMoney(result.tenant.monthlyRent)}/month!`);
     } else {
         UI.showModal("Lease Error", result.reason);
     }
@@ -891,7 +913,7 @@ export const evictTenantAction = (propertyId) => {
         saveGame();
         UI.updateHeader(user);
         renderPropertyManager(propertyId);
-        UI.showModal("Tenant Evicted", `You evicted ${result.tenantName} from ${result.propertyName}.`);
+        UI.showModal("Tenant Evicted", `You evicted ${Utils.escapeHtml(result.tenantName)} from ${Utils.escapeHtml(result.propertyName)}.`);
     } else {
         UI.showModal("Eviction Failed", result.reason);
     }
@@ -905,6 +927,16 @@ export const processNextTenantDefaultEvent = () => {
     }
 
     const event = queue[0];
+    const user = state.gameState.user;
+    const property = (user && user.assets || []).find(a => a.id === event.propertyId);
+
+    // Stale event validation: if property is gone, not rented, or has no tenant, purge and skip
+    if (!property || !property.isRented || !property.tenant || (event.tenantId && property.tenant.id !== event.tenantId)) {
+        queue.shift();
+        processNextTenantDefaultEvent();
+        return;
+    }
+
     const tenantAvatarObj = event.tenant || { name: event.tenantName, age: 35 };
 
     if (event.eventType === 'lease_expiration') {
@@ -914,9 +946,9 @@ export const processNextTenantDefaultEvent = () => {
                     <div class="w-16 h-16 rounded-full overflow-hidden border-2 border-blue-400 bg-slate-800 mx-auto mb-2 shadow-md">
                         ${renderAvatar(tenantAvatarObj)}
                     </div>
-                    <h3 class="text-white font-bold text-lg">${event.tenantName} Wants to Renew!</h3>
+                    <h3 class="text-white font-bold text-lg">${Utils.escapeHtml(event.tenantName)} Wants to Renew!</h3>
                     <p class="text-slate-300 text-sm mt-1">
-                        Your tenant in <span class="font-bold text-white">${event.propertyName}</span> reached the end of their lease and would like to renew for <span class="text-blue-400 font-bold">${event.requestedYears} year${event.requestedYears === 1 ? '' : 's'}</span>.
+                        Your tenant in <span class="font-bold text-white">${Utils.escapeHtml(event.propertyName)}</span> reached the end of their lease and would like to renew for <span class="text-blue-400 font-bold">${event.requestedYears} year${event.requestedYears === 1 ? '' : 's'}</span>.
                     </p>
                     <div class="mt-3 text-blue-300 font-bold text-base bg-blue-950/60 py-2 rounded-lg border border-blue-800/60">
                         Current Rent: ${Utils.formatMoney(event.currentRent)}/mo
@@ -944,7 +976,7 @@ export const processNextTenantDefaultEvent = () => {
             </div>
         `;
 
-        UI.showCustomModal(`Lease Expiration - ${event.propertyName}`, modalHtml);
+        UI.showCustomModal(`Lease Expiration - ${Utils.escapeHtml(event.propertyName)}`, modalHtml);
         return;
     }
 
@@ -955,9 +987,9 @@ export const processNextTenantDefaultEvent = () => {
                     <div class="w-16 h-16 rounded-full overflow-hidden border-2 border-amber-400 bg-slate-800 mx-auto mb-2 shadow-md">
                         ${renderAvatar(tenantAvatarObj)}
                     </div>
-                    <h3 class="text-white font-bold text-lg">${event.tenantName} Caused Damage!</h3>
+                    <h3 class="text-white font-bold text-lg">${Utils.escapeHtml(event.tenantName)} Caused Damage!</h3>
                     <p class="text-slate-300 text-sm mt-1">
-                        Your tenant in <span class="font-bold text-white">${event.propertyName}</span> caused property damage (-10% condition).
+                        Your tenant in <span class="font-bold text-white">${Utils.escapeHtml(event.propertyName)}</span> caused property damage (-10% condition).
                     </p>
                     <div class="mt-3 text-amber-300 font-bold text-base bg-amber-950/60 py-2 rounded-lg border border-amber-800/60">
                         Estimated Repair Cost: ${Utils.formatMoney(event.repairCost)}
@@ -968,7 +1000,7 @@ export const processNextTenantDefaultEvent = () => {
 
                 <div class="space-y-2">
                     <button data-action="demandTenantRepairPayment" data-args="${event.propertyId}, '${event.tenantId}', ${event.repairCost}" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl text-xs flex items-center justify-between px-4 transition">
-                        <span class="flex items-center gap-2"><i class="fas fa-wrench"></i> Ask ${event.tenantName} to Pay for Repairs</span>
+                        <span class="flex items-center gap-2"><i class="fas fa-wrench"></i> Ask ${Utils.escapeHtml(event.tenantName)} to Pay for Repairs</span>
                         <span class="text-[11px] text-blue-200">Attempt Recovery</span>
                     </button>
 
@@ -985,7 +1017,7 @@ export const processNextTenantDefaultEvent = () => {
             </div>
         `;
 
-        UI.showCustomModal(`Tenant Damage - ${event.propertyName}`, modalHtml);
+        UI.showCustomModal(`Tenant Damage - ${Utils.escapeHtml(event.propertyName)}`, modalHtml);
         return;
     }
 
@@ -995,9 +1027,9 @@ export const processNextTenantDefaultEvent = () => {
                 <div class="w-16 h-16 rounded-full overflow-hidden border-2 border-red-400 bg-slate-800 mx-auto mb-2 shadow-md">
                     ${renderAvatar(tenantAvatarObj)}
                 </div>
-                <h3 class="text-white font-bold text-lg">${event.tenantName} is Overdue!</h3>
+                <h3 class="text-white font-bold text-lg">${Utils.escapeHtml(event.tenantName)} is Overdue!</h3>
                 <p class="text-slate-300 text-sm mt-1">
-                    Your tenant in <span class="font-bold text-white">${event.propertyName}</span> has fallen <span class="text-red-400 font-bold">2 months behind</span> on rent.
+                    Your tenant in <span class="font-bold text-white">${Utils.escapeHtml(event.propertyName)}</span> has fallen <span class="text-red-400 font-bold">2 months behind</span> on rent.
                 </p>
                 <div class="mt-3 text-red-300 font-bold text-base bg-red-950/60 py-2 rounded-lg border border-red-800/60">
                     Overdue Amount: ${Utils.formatMoney(event.missedAmount)}
@@ -1008,7 +1040,7 @@ export const processNextTenantDefaultEvent = () => {
 
             <div class="space-y-2">
                 <button data-action="demandTenantRentPayment" data-args="${event.propertyId}, '${event.tenantId}', ${event.missedAmount}" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl text-xs flex items-center justify-between px-4 transition">
-                    <span class="flex items-center gap-2"><i class="fas fa-hand-holding-usd"></i> Ask ${event.tenantName} to Pay</span>
+                    <span class="flex items-center gap-2"><i class="fas fa-hand-holding-usd"></i> Ask ${Utils.escapeHtml(event.tenantName)} to Pay</span>
                     <span class="text-[11px] text-blue-200">Attempt Recovery</span>
                 </button>
 
@@ -1025,7 +1057,7 @@ export const processNextTenantDefaultEvent = () => {
         </div>
     `;
 
-    UI.showCustomModal(`Tenant Overdue - ${event.propertyName}`, modalHtml);
+    UI.showCustomModal(`Tenant Overdue - ${Utils.escapeHtml(event.propertyName)}`, modalHtml);
 };
 
 export const demandTenantRepairPayment = (propertyId, tenantId, repairCost) => {
@@ -1037,12 +1069,12 @@ export const demandTenantRepairPayment = (propertyId, tenantId, repairCost) => {
     if (roll < 0.70) {
         addLog(`Asked tenant ${event ? event.tenantName : 'tenant'} to pay for repairs on ${event ? event.propertyName : 'property'}. They agreed and paid ${Utils.formatMoney(repairCost)}!`, 'good');
         UI.updateHeader(user);
-        UI.showModal("Repairs Covered!", `Tenant ${event ? event.tenantName : ''} agreed to pay the ${Utils.formatMoney(repairCost)} for property repairs.`, () => processNextTenantDefaultEvent());
+        UI.showModal("Repairs Covered!", `Tenant ${event ? Utils.escapeHtml(event.tenantName) : ''} agreed to pay the ${Utils.formatMoney(repairCost)} for property repairs.`, () => processNextTenantDefaultEvent());
     } else {
         const prop = (user.assets || []).find(a => a.id === propertyId);
         if (prop) prop.condition = Math.max(0, (prop.condition || 100) - 10);
         addLog(`Asked tenant ${event ? event.tenantName : 'tenant'} to pay for repairs, but they refused. Property condition decreased by 10%.`, 'bad');
-        UI.showModal("Payment Refused", `Tenant ${event ? event.tenantName : ''} refused to pay for repairs. Property condition decreased by 10%.`, () => processNextTenantDefaultEvent());
+        UI.showModal("Payment Refused", `Tenant ${event ? Utils.escapeHtml(event.tenantName) : ''} refused to pay for repairs. Property condition decreased by 10%.`, () => processNextTenantDefaultEvent());
     }
 };
 
@@ -1069,10 +1101,10 @@ export const demandTenantRentPayment = (propertyId, tenantId, missedAmount) => {
         user.money += missedAmount;
         addLog(`Demanded overdue rent from ${event ? event.tenantName : 'tenant'}. They paid back ${Utils.formatMoney(missedAmount)}!`, 'good');
         UI.updateHeader(user);
-        UI.showModal("Rent Recovered!", `Tenant ${event ? event.tenantName : ''} apologized and paid the full ${Utils.formatMoney(missedAmount)} in overdue rent.`, () => processNextTenantDefaultEvent());
+        UI.showModal("Rent Recovered!", `Tenant ${event ? Utils.escapeHtml(event.tenantName) : ''} apologized and paid the full ${Utils.formatMoney(missedAmount)} in overdue rent.`, () => processNextTenantDefaultEvent());
     } else {
         addLog(`Demanded overdue rent from ${event ? event.tenantName : 'tenant'}, but they were unable to pay ${Utils.formatMoney(missedAmount)}.`, 'bad');
-        UI.showModal("Payment Refused", `Tenant ${event ? event.tenantName : ''} claimed they cannot afford to pay the overdue rent.`, () => processNextTenantDefaultEvent());
+        UI.showModal("Payment Refused", `Tenant ${event ? Utils.escapeHtml(event.tenantName) : ''} claimed they cannot afford to pay the overdue rent.`, () => processNextTenantDefaultEvent());
     }
 };
 
@@ -1097,6 +1129,9 @@ export const evictTenantFromEvent = (propertyId) => {
     }
 
     const result = GameLogic.evictTenant(user, propertyId);
+    if (state.gameState && Array.isArray(state.gameState.pendingTenantEvents)) {
+        state.gameState.pendingTenantEvents = state.gameState.pendingTenantEvents.filter(e => e.propertyId !== propertyId);
+    }
     if (result.success) {
         addLog(`Evicted tenant ${result.tenantName} from ${result.propertyName}. Property is now vacant.`, 'bad');
         UI.updateHeader(user);
@@ -1114,6 +1149,7 @@ export const renewLeaseSameRate = (propertyId, tenantId, requestedYears, current
     const property = (user.assets || []).find(a => a.id === propertyId);
     if (property && property.tenant) {
         property.tenant.leaseYears = requestedYears;
+        property.tenant.renewalPending = false;
     }
 
     addLog(`Renewed ${event ? event.tenantName : 'tenant'}'s lease on ${event ? event.propertyName : 'property'} for ${requestedYears} year(s) at ${Utils.formatMoney(currentRent)}/mo.`, 'good');
@@ -1133,12 +1169,16 @@ export const renewLeaseWithIncrease = (propertyId, tenantId, requestedYears, inc
         if (property && property.tenant) {
             property.tenant.leaseYears = requestedYears;
             property.tenant.monthlyRent = increasedRent;
+            property.tenant.renewalPending = false;
         }
         addLog(`Tenant ${event ? event.tenantName : 'tenant'} accepted the 5% rent increase (${Utils.formatMoney(increasedRent)}/mo) for a ${requestedYears}-year lease on ${event ? event.propertyName : 'property'}!`, 'good');
         UI.updateHeader(user);
         UI.showModal("Increase Accepted!", `Tenant ${event ? event.tenantName : ''} accepted the 5% rent increase to ${Utils.formatMoney(increasedRent)}/month.`, () => processNextTenantDefaultEvent());
     } else {
         GameLogic.evictTenant(user, propertyId);
+        if (state.gameState && Array.isArray(state.gameState.pendingTenantEvents)) {
+            state.gameState.pendingTenantEvents = state.gameState.pendingTenantEvents.filter(e => e.propertyId !== propertyId);
+        }
         addLog(`Tenant ${event ? event.tenantName : 'tenant'} rejected the 5% rent increase and moved out of ${event ? event.propertyName : 'property'}.`, 'neutral');
         UI.updateHeader(user);
         UI.showModal("Increase Rejected", `Tenant ${event ? event.tenantName : ''} rejected the 5% rent increase and moved out. The property is now vacant.`, () => processNextTenantDefaultEvent());
@@ -1151,6 +1191,9 @@ export const declineLeaseRenewal = (propertyId) => {
     const event = queue.shift();
 
     GameLogic.evictTenant(user, propertyId);
+    if (state.gameState && Array.isArray(state.gameState.pendingTenantEvents)) {
+        state.gameState.pendingTenantEvents = state.gameState.pendingTenantEvents.filter(e => e.propertyId !== propertyId);
+    }
     addLog(`Declined lease renewal for tenant ${event ? event.tenantName : 'tenant'} on ${event ? event.propertyName : 'property'}. Property is now vacant.`, 'neutral');
     UI.updateHeader(user);
     UI.hideModal();
@@ -1268,7 +1311,7 @@ export const sellJewelry = (id) => {
     saveGame();
     UI.updateHeader(user);
     renderAssets();
-    UI.showModal("Item Sold", `You sold ${item.name} for ${Utils.formatMoney(item.value)}.`);
+    UI.showModal("Item Sold", `You sold ${Utils.escapeHtml(item.name)} for ${Utils.formatMoney(item.value)}.`);
 };
 
 export const openGiftJewelryModal = (id) => {
@@ -1285,8 +1328,8 @@ export const openGiftJewelryModal = (id) => {
     const relHtml = relationships.map(rel => `
         <button data-action="confirmGiftJewelry" data-args="&apos;${item.id}&apos;, &apos;${rel.id}&apos;" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-pink-500 text-white font-bold p-3 rounded-xl mb-2 flex items-center justify-between transition">
             <div class="text-left">
-                <div class="text-sm text-white font-bold">${rel.name}</div>
-                <div class="text-xs text-slate-400 capitalize">${rel.type} • ${rel.status}% Relationship</div>
+                <div class="text-sm text-white font-bold">${Utils.escapeHtml(rel.name)}</div>
+                <div class="text-xs text-slate-400 capitalize">${Utils.escapeHtml(rel.type)} • ${rel.status}% Relationship</div>
             </div>
             <i class="fas fa-gift text-pink-400"></i>
         </button>
@@ -1294,7 +1337,7 @@ export const openGiftJewelryModal = (id) => {
 
     const modalHtml = `
         <div class="text-center mb-4">
-            <h3 class="text-lg font-bold text-white">Gift ${item.name}</h3>
+            <h3 class="text-lg font-bold text-white">Gift ${Utils.escapeHtml(item.name)}</h3>
             <p class="text-xs text-slate-400">Who would you like to give this to?</p>
         </div>
         <div class="max-h-60 overflow-y-auto custom-scrollbar pr-1">
@@ -1323,7 +1366,7 @@ export const confirmGiftJewelry = (jewelryId, relationshipId) => {
     saveGame();
     UI.hideModal();
     renderAssets();
-    UI.showModal("Gift Received!", `${person.name} was thrilled to receive the ${item.name}! Your relationship improved by +${statusBoost}%.`);
+    UI.showModal("Gift Received!", `${Utils.escapeHtml(person.name)} was thrilled to receive the ${Utils.escapeHtml(item.name)}! Your relationship improved by +${statusBoost}%.`);
 };
 
 export const setPrimaryVehicle = (id) => {
@@ -1379,28 +1422,28 @@ export const takeJoyride = (id) => {
         user.happiness = Math.max(0, Math.min(100, (user.happiness || 50) + 8));
         if (user.stats) user.stats.happiness = user.happiness;
         addLog(`Took your ${vehicle.name} out for a scenic highway cruise. Loved every minute! (+8 Happiness)`, 'good');
-        UI.showModal("Scenic Cruise", `You had a fantastic time cruising around in your ${vehicle.name}. People turned their heads! (+8 Happiness)`);
+        UI.showModal("Scenic Cruise", `You had a fantastic time cruising around in your ${Utils.escapeHtml(vehicle.name)}. People turned their heads! (+8 Happiness)`);
     } else if (roll < 0.85) {
         user.happiness = Math.max(0, Math.min(100, (user.happiness || 50) + 4));
         if (user.stats) user.stats.happiness = user.happiness;
         addLog(`Took a quick drive around town in your ${vehicle.name}. (+4 Happiness)`, 'good');
-        UI.showModal("Nice Drive", `Enjoyed a relaxing drive around the city in your ${vehicle.name}. (+4 Happiness)`);
+        UI.showModal("Nice Drive", `Enjoyed a relaxing drive around the city in your ${Utils.escapeHtml(vehicle.name)}. (+4 Happiness)`);
     } else if (roll < 0.95) {
         const fine = Math.min(350, Math.floor(vehicle.value * 0.005) + 150);
         user.money = Math.max(0, user.money - fine);
         user.happiness = Math.max(0, Math.min(100, (user.happiness || 50) - 5));
         if (user.stats) user.stats.happiness = user.happiness;
         addLog(`Pulled over while driving your ${vehicle.name}! Received a ${Utils.formatMoney(fine)} speeding ticket. (-5 Happiness)`, 'bad');
-        UI.showModal("Speeding Ticket!", `A police officer caught you speeding in your ${vehicle.name}! Fined ${Utils.formatMoney(fine)}. (-5 Happiness)`);
+        UI.showModal("Speeding Ticket!", `A police officer caught you speeding in your ${Utils.escapeHtml(vehicle.name)}! Fined ${Utils.formatMoney(fine)}. (-5 Happiness)`);
     } else {
         const scratch = Math.floor(Math.random() * 8) + 5;
         vehicle.condition = Math.max(0, vehicle.condition - scratch);
         if (vehicle.insured) {
             addLog(`Minor fender bender in your ${vehicle.name}! Insured policy covered all major repairs. (-${scratch}% condition)`, 'bad');
-            UI.showModal("Fender Bender!", `You clipped a curb in your ${vehicle.name}. Fortunately, your auto insurance policy covered the repair process!`);
+            UI.showModal("Fender Bender!", `You clipped a curb in your ${Utils.escapeHtml(vehicle.name)}. Fortunately, your auto insurance policy covered the repair process!`);
         } else {
             addLog(`Scratched your ${vehicle.name} while parking! (-${scratch}% condition)`, 'bad');
-            UI.showModal("Car Scratch!", `You accidentally scraped your ${vehicle.name} against a pillar. (-${scratch}% condition)`);
+            UI.showModal("Car Scratch!", `You accidentally scraped your ${Utils.escapeHtml(vehicle.name)} against a pillar. (-${scratch}% condition)`);
         }
     }
 
@@ -1422,13 +1465,13 @@ export const openGiftVehicleModal = (id) => {
 
     const html = `
         <div class="space-y-4">
-            <p class="text-sm text-slate-300">Choose who to gift your <strong class="text-white">${vehicle.name}</strong> to:</p>
+            <p class="text-sm text-slate-300">Choose who to gift your <strong class="text-white">${Utils.escapeHtml(vehicle.name)}</strong> to:</p>
             <div class="max-h-60 overflow-y-auto space-y-2">
                 ${rels.map(r => `
                     <div class="flex items-center justify-between bg-slate-800 p-3 rounded-lg border border-slate-700">
                         <div>
-                            <div class="font-bold text-white text-sm">${r.name}</div>
-                            <div class="text-xs text-slate-400 capitalize">${r.type || r.relationship} • Status: ${r.status}%</div>
+                            <div class="font-bold text-white text-sm">${Utils.escapeHtml(r.name)}</div>
+                            <div class="text-xs text-slate-400 capitalize">${Utils.escapeHtml(r.type || r.relationship)} • Status: ${r.status}%</div>
                         </div>
                         <button data-action="confirmGiftVehicle" data-args="${vehicle.id}, '${r.id}'" class="bg-amber-600 hover:bg-amber-500 text-white font-bold px-3 py-1 rounded text-xs transition">
                             Gift Car
@@ -1442,7 +1485,7 @@ export const openGiftVehicleModal = (id) => {
         </div>
     `;
 
-    UI.showModal(`Gift ${vehicle.name}`, html);
+    UI.showModal(`Gift ${Utils.escapeHtml(vehicle.name)}`, html);
 };
 
 export const confirmGiftVehicle = (vehicleId, personId) => {
@@ -1462,7 +1505,7 @@ export const confirmGiftVehicle = (vehicleId, personId) => {
     saveGame();
     UI.hideModal();
     addLog(`Gifted your ${vehicle.name} to ${person.name}! (+${boost}% Relationship Status)`, 'good');
-    UI.showModal("Vehicle Gifted!", `You gave your ${vehicle.name} to ${person.name}! They were overwhelmed with gratitude (+${boost}% Relationship).`);
+    UI.showModal("Vehicle Gifted!", `You gave your ${Utils.escapeHtml(vehicle.name)} to ${Utils.escapeHtml(person.name)}! They were overwhelmed with gratitude (+${boost}% Relationship).`);
     renderAssets();
 };
 

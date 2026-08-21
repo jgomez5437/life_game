@@ -131,12 +131,15 @@ export function selectSupplier(id) {
 
 export function initBusiness() {
     const user = state.gameState.user;
-    const name = get('inp-comp-name')?.value?.trim();
+    const name = get('inp-comp-name')?.value;
+    const validation = GameLogic.sanitizeBusinessName(name);
 
-    if (!name) {
-        UI.showModal('Missing Name', 'Enter a company name before launching.');
+    if (!validation.isValid) {
+        UI.showModal('Invalid Company Name', validation.error);
         return;
     }
+
+    const finalCompanyName = validation.cleanedName;
 
     const indKey = user.industry || 'tech_saas';
     const ind = BUSINESS_INDUSTRIES[indKey];
@@ -154,7 +157,7 @@ export function initBusiness() {
     }
 
     user.money               -= ind.startupCost;
-    user.companyName          = name;
+    user.companyName          = finalCompanyName;
     user.hasBusiness          = true;
     user.compCash             = ind.startupCost;
     user.companyYear          = 1;

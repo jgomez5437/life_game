@@ -129,7 +129,7 @@ export function renderDeathScreen(user, cause) {
         }
     } else {
         const shares = [];
-        if (spouseShare > 0 && spouse) shares.push(`<span class="text-green-400 font-bold">+$${spouseShare.toLocaleString()}</span> to your spouse, ${spouse.name}`);
+        if (spouseShare > 0 && spouse) shares.push(`<span class="text-green-400 font-bold">+$${spouseShare.toLocaleString()}</span> to your spouse, ${Utils.escapeHtml(spouse.name)}`);
         if (inheritancePerChild > 0) shares.push(`<span class="text-green-400 font-bold">+$${inheritancePerChild.toLocaleString()} each</span> to your ${children.length} children`);
 
         if (shares.length > 0) {
@@ -144,7 +144,7 @@ export function renderDeathScreen(user, cause) {
     if (hasChildren) {
         childrenOptionsHtml = children.map((child, index) => `
             <button data-action="continueAsChild" data-args="${index}, ${inheritancePerChild}" class="w-full btn-nav text-white font-bold py-3 rounded-xl mb-2 shadow hover:bg-slate-700 transition">
-                Play as ${child.name} (Age ${child.age})
+                Play as ${Utils.escapeHtml(child.name)} (Age ${child.age})
             </button>
         `).join('');
     }
@@ -158,12 +158,12 @@ export function renderDeathScreen(user, cause) {
         <div class="fade-in max-w-md mx-auto min-h-full py-8 flex flex-col justify-center items-center text-center px-4">
             <i class="fas fa-skull text-6xl text-slate-500 mb-6"></i>
             <h1 class="text-4xl font-bold text-red-500 mb-2">You Died</h1>
-            <p class="text-slate-300 text-lg mb-6">Age ${user.age} • Cause: ${cause}</p>
+            <p class="text-slate-300 text-lg mb-6">Age ${user.age} • Cause: ${Utils.escapeHtml(cause)}</p>
             
             <div id="eulogy-container" class="bg-slate-800 p-6 rounded-xl border border-slate-700 w-full mb-6 shadow-2xl">
                 <h3 class="text-sm font-bold text-slate-400 mb-2 uppercase tracking-wider text-left">Life Summary</h3>
                 <div class="relative w-full">
-                    <p id="eulogy-text" class="text-slate-300 italic text-sm text-left leading-relaxed line-clamp-5 overflow-hidden">"${eulogy}"</p>
+                    <p id="eulogy-text" class="text-slate-300 italic text-sm text-left leading-relaxed line-clamp-5 overflow-hidden">"${Utils.escapeHtml(eulogy)}"</p>
                     <button id="eulogy-view-more" data-action="showFullEulogy" class="hidden mt-3 text-blue-400 hover:text-blue-300 text-xs font-bold uppercase tracking-wider text-left w-full">View More &rarr;</button>
                 </div>
             </div>
@@ -198,7 +198,7 @@ export function renderDeathScreen(user, cause) {
 
 export function showFullEulogy() {
     if (state.gameState.currentEulogy) {
-        UI.showModal("Life Summary", `<p class="text-slate-300 italic text-sm leading-relaxed">"${state.gameState.currentEulogy}"</p>`);
+        UI.showModal("Life Summary", `<p class="text-slate-300 italic text-sm leading-relaxed">"${Utils.escapeHtml(state.gameState.currentEulogy)}"</p>`);
     }
 }
 //allows user to continue as their child, implements
@@ -792,7 +792,7 @@ export function renderLifeDashboard(maybeGameState) {
             <div class="${isCompact ? 'pl-3 border-l border-slate-700/50 ml-3 space-y-0.5 pb-0' : 'pl-4 border-l border-slate-700/50 ml-4 space-y-2 pb-1'}">
                 ${l.events.map(e => `
                     <div class="${e.color} ${isCompact ? 'text-xs py-0 leading-snug' : 'text-sm py-0.5'} transition-transform duration-200 hover:translate-x-1">
-                        ${e.msg}
+                        ${Utils.escapeHtml(e.msg)}
                     </div>
                 `).join('')}
             </div>

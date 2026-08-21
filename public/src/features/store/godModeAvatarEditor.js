@@ -1,5 +1,6 @@
 import { state, hasPurchasedPack } from '../../core/state.js';
 import { UI } from '../../ui/ui.js';
+import { Utils } from '../../ui/utils.js';
 import { AvatarLogic } from '../../core/avatarLogic.js';
 import { renderAvatar } from '../../ui/avatarRenderer.js';
 import { saveGame } from '../../core/main.js';
@@ -106,7 +107,7 @@ function renderGodModeAvatarModalContent() {
                     ${avatarSvg}
                 </div>
                 <div>
-                    <div class="text-white font-bold text-sm">${editorTargetName}</div>
+                    <div class="text-white font-bold text-sm">${Utils.escapeHtml(editorTargetName)}</div>
                     <div class="text-xs text-amber-400 font-semibold"><i class="fas fa-sparkles mr-1"></i>Live God Mode Preview</div>
                 </div>
             </div>
@@ -147,6 +148,7 @@ function renderGodModeAvatarModalContent() {
 }
 
 export function updateGodModeAvatarTrait(key) {
+    if (!hasPurchasedPack('god_mode')) return;
     const el = get(`godmode_select_${key}`);
     if (!el || !editorDraftAppearance) return;
 
@@ -155,11 +157,18 @@ export function updateGodModeAvatarTrait(key) {
 }
 
 export function randomizeGodModeAvatarTraits() {
+    if (!hasPurchasedPack('god_mode')) return;
     editorDraftAppearance = AvatarLogic.generateRandomAppearance('godmode_draft_' + Math.random(), editorGender);
     renderGodModeAvatarModalContent();
 }
 
 export function saveGodModeAvatar() {
+    if (!hasPurchasedPack('god_mode')) {
+        UI.hideModal();
+        UI.showModal("God Mode Locked", "You must unlock God Mode from The Spot store to edit avatars.");
+        return;
+    }
+
     const user = state.gameState?.user;
     if (!user || !editorDraftAppearance) return;
 
@@ -184,7 +193,7 @@ export function saveGodModeAvatar() {
 
     if (editorTarget === 'person') {
         renderRelationships();
-        UI.showModal("Appearance Saved", `Updated appearance for ${editorTargetName}!`);
+        UI.showModal("Appearance Saved", `Updated appearance for ${Utils.escapeHtml(editorTargetName)}!`);
     } else {
         renderLifeDashboard(state.gameState);
         UI.showModal("Appearance Saved", "Updated your character appearance!");

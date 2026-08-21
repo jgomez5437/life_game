@@ -4,6 +4,7 @@ import { renderLifeDashboard, addLog, refreshClassmates } from '../player/mainSc
 import { renderAvatar } from '../../ui/avatarRenderer.js';
 import { hasInstantDiplomaPerk, renderInstantDiplomaHub } from './instantDiploma.js';
 import { isDeadNPC } from '../relationships/relationshipScreen.js';
+import { Utils } from '../../ui/utils.js';
 
 const get = id => document.getElementById(id);
 
@@ -39,7 +40,7 @@ export function renderEducation() {
     const schoolName = getSchoolName();
     let majorDisplay = "";
     if (user.universityEnrolled) {
-        majorDisplay = `<div class="text-sm text-blue-300 mt-1">Major: ${user.major}</div>`;
+        majorDisplay = `<div class="text-sm text-blue-300 mt-1">Major: ${Utils.escapeHtml(user.major)}</div>`;
     }
 
     const perkActive = hasInstantDiplomaPerk();
@@ -60,7 +61,7 @@ export function renderEducation() {
                 <div class="w-16 h-16 rounded-full bg-green-900/50 flex items-center justify-center text-green-400 mx-auto mb-3 text-2xl">
                     <i class="fas fa-school"></i>
                 </div>
-                <h2 class="text-2xl font-bold text-white">${schoolName}</h2>
+                <h2 class="text-2xl font-bold text-white">${Utils.escapeHtml(schoolName)}</h2>
                 ${majorDisplay}
                 <p class="text-slate-400 text-sm">Attendance: Full-Time</p>
                 <p class="text-slate-500 text-xs mt-1">Actions Remaining: ${remainingActions}/2</p>
@@ -172,9 +173,9 @@ export function renderClassmates() {
                         </div>
                         <div>
                             <div class="flex items-center gap-2 mb-0.5">
-                                <h4 class="font-bold text-white text-sm tracking-wide">${person.name}</h4>
+                                <h4 class="font-bold text-white text-sm tracking-wide">${Utils.escapeHtml(person.name)}</h4>
                                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider bg-slate-600 text-slate-100 border-slate-500">
-                                    ${person.type}
+                                    ${Utils.escapeHtml(person.type)}
                                 </span>
                             </div>
                             <div class="text-xs text-slate-400 font-medium">Age: ${person.age}</div>

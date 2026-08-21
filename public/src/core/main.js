@@ -1,10 +1,11 @@
 import { login, logout, configureAuth, getAuthToken } from '../auth/auth.js';
 import { startGuestMode, renderLoginScreen } from '../auth/loginScreen.js';
-import { state } from './state.js';
+import { state, setVerifiedPurchases } from './state.js';
 import { GameLogic } from './gameLogic.js';
 import { Utils } from '../ui/utils.js';
 import { UI } from '../ui/ui.js';
 import { deepClone, sanitizeGameState, migrateState, hydrateSlotsStoreFromCloud, buildCloudSavePayload } from './saveSlotManager.js';
+import { resolveAdState, onVipPurchased, resetAdState, isAdFree, getAdState } from './adManager.js';
 
 // --- Dynamic Module Loader & Background Preloader ---
 import { lazy, preloadForContext, attachIntentPreloaders } from './moduleLoader.js';
@@ -103,6 +104,7 @@ export const payOffMortgage = lazy('assets', 'payOffMortgage');
 export const openSellPropertyModal = lazy('assets', 'openSellPropertyModal');
 export const submitPropertyListing = lazy('assets', 'submitPropertyListing');
 export const acceptBuyerOffer = lazy('assets', 'acceptBuyerOffer');
+export const rejectBuyerOffer = lazy('assets', 'rejectBuyerOffer');
 export const doPropertyMaintenance = lazy('assets', 'doPropertyMaintenance');
 export const doPropertyRenovation = lazy('assets', 'doPropertyRenovation');
 export const openTenantScreening = lazy('assets', 'openTenantScreening');
@@ -324,6 +326,15 @@ export function updateGameInfo(dbUser) {
     console.log("Updating game state from DB...");
     const rawData = dbUser.game_data || {};
 
+    // Authoritative entitlement hydration from server
+    const serverPurchases = rawData.user?.purchases || rawData.purchases;
+    if (Array.isArray(serverPurchases)) {
+        setVerifiedPurchases(serverPurchases);
+        resolveAdState(serverPurchases);
+    } else {
+        resolveAdState([]);
+    }
+
     // Hydrate all slots into localStorage store from cloud payload
     const store = hydrateSlotsStoreFromCloud(rawData);
 
@@ -434,9 +445,6 @@ export async function saveGame() {
 
         if (response.ok) {
             console.log("Save Complete!");
-            
-            // Optional: Visual Feedback (Toast)
-            // showToast("Game Saved"); 
         } else {
             console.error("❌ Save Failed:", await response.text());
         }
@@ -473,8 +481,7 @@ export const onload = async () => {
  * @param {boolean} showNotification - Whether to show a success modal to the user.
  */
 async function syncPurchasesFromCloud(expectedPackId = null, showNotification = false) {
-    const user = state.gameState?.user;
-    if (!user || !state.userAuthId || !state.auth0Client) return;
+    if (!state.userAuthId || !state.auth0Client) return;
 
     const maxRetries = expectedPackId ? 4 : 1;
     const retryDelay = 2500; // ms between retries
@@ -488,22 +495,19 @@ async function syncPurchasesFromCloud(expectedPackId = null, showNotification = 
 
             if (response.ok) {
                 const data = await response.json();
-                if (Array.isArray(data.purchases) && data.purchases.length > 0) {
-                    const before = (user.purchases || []).length;
-                    user.purchases = Array.from(new Set([...(user.purchases || []), ...data.purchases]));
-                    const newCount = user.purchases.length - before;
+                const verifiedPurchases = Array.isArray(data.purchases) ? data.purchases : [];
+                const before = (state.verifiedPurchases || []).length;
+                setVerifiedPurchases(verifiedPurchases);
+                resolveAdState(verifiedPurchases);
+                const newCount = verifiedPurchases.length - before;
 
-                    // If we're waiting for a specific pack and it's now present, or we're not waiting for anything
-                    if (!expectedPackId || user.purchases.includes(expectedPackId)) {
-                        if (newCount > 0) {
-                            saveGame();
-                            if (showNotification) {
-                                UI.showModal("Purchase Activated!", `${newCount} new pack(s) have been unlocked and synced to your account.`);
-                            }
-                        }
-                        console.log(`Purchase sync complete (attempt ${attempt}): ${user.purchases.length} total packs.`);
-                        return;
+                // If we're waiting for a specific pack and it's now present, or we're not waiting for anything
+                if (!expectedPackId || verifiedPurchases.includes(expectedPackId)) {
+                    if (newCount > 0 && showNotification) {
+                        UI.showModal("Purchase Activated!", `${newCount} new pack(s) have been unlocked and synced to your account.`);
                     }
+                    console.log(`Purchase sync complete (attempt ${attempt}): ${verifiedPurchases.length} total packs.`);
+                    return;
                 }
             }
         } catch (err) {
@@ -517,9 +521,8 @@ async function syncPurchasesFromCloud(expectedPackId = null, showNotification = 
         }
     }
 
-    // Final fallback: even if the expected pack wasn't found, save whatever we got
+    // Final fallback: even if the expected pack wasn't found
     if (expectedPackId && showNotification) {
-        saveGame();
         UI.showModal("Purchase Processing", "Your payment was received! If your pack isn't active yet, use 'Restore Purchases' in the Store in a moment.");
     }
 }
@@ -537,9 +540,15 @@ export async function showPurchaseSuccessModal(packId) {
         }
     } catch (e) {}
 
+    if (packId === 'vip_supporter') {
+        onVipPurchased();
+    }
+
     const title = pack?.title || (packId ? packId.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Expansion Pack');
     const icon = pack?.icon || 'fa-gem text-amber-400';
-    const desc = pack?.desc || 'Your purchase was successful and your new features are now active on your account.';
+    const desc = packId === 'vip_supporter' 
+        ? '⭐ VIP Supporter — Ad-Free Active. Your 100% ad-free experience is now active.'
+        : (pack?.desc || 'Your purchase was successful and your new features are now active on your account.');
 
     // Action button customization based on pack
     let actionBtnHtml = '';
@@ -729,10 +738,10 @@ async function initGame() {
             console.log("Conflict detected: Active guest character AND existing cloud save found.");
             
             const cloudUser = dbUser.game_data.user || dbUser.game_data;
-            const cloudName = cloudUser.username || cloudUser.name || "Account Character";
+            const cloudName = Utils.escapeHtml(cloudUser.username || cloudUser.name || "Account Character");
             const cloudAge = dbUser.game_data.stats?.age || cloudUser.age || 0;
             
-            const guestName = guestSave.user.username || guestSave.user.name || "Guest Character";
+            const guestName = Utils.escapeHtml(guestSave.user.username || guestSave.user.name || "Guest Character");
             const guestAge = guestSave.user.age || 0;
 
             const modalMsg = `
@@ -797,7 +806,7 @@ async function initGame() {
 
             if (typeof renderLifeDashboard === "function") {
                 renderLifeDashboard(state.gameState);
-                UI.showModal("Character Saved!", `Welcome ${user.nickname || 'Player'}! Your character has been saved to your account.`);
+                UI.showModal("Character Saved!", `Welcome ${Utils.escapeHtml(user.nickname || 'Player')}! Your character has been saved to your account.`);
             }
             return;
         }
@@ -830,8 +839,9 @@ async function initGame() {
         }
 
     } else {
-        // Guest Mode - Check Multi-Save Slots Store first
+        // Guest Mode - Resolve ads for guest and check Multi-Save Slots Store first
         console.log("Guest mode detected.");
+        resolveAdState([]);
         
         let loadedState = null;
         let activeSlotId = 'slot_1';
