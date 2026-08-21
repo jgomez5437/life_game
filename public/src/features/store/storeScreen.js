@@ -491,23 +491,29 @@ export async function buyPack(packId) {
                 }
                 window.location.href = data.url;
                 return;
-            } else if (data.sandbox) {
-                console.warn("Stripe key not detected on backend. Running sandbox fallback.");
+            } else if (data.sandbox && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+                console.warn("Stripe key not detected on backend. Running sandbox fallback for local development.");
+                simulateSandboxPurchase(pack);
+                return;
+            } else {
+                UI.showModal("Checkout Unavailable", "Payment service is currently unavailable. Please try again later.");
+                return;
             }
         } else {
             const errData = await response.json().catch(() => ({}));
             console.error("Stripe API Error:", errData);
-            if (errData.error) {
-                UI.showModal("Stripe Error", `Failed to start checkout: ${errData.error}`);
-                return;
-            }
+            UI.showModal("Checkout Error", errData.error || "Failed to initiate payment session.");
+            return;
         }
     } catch (err) {
-        console.warn("Stripe Checkout API offline or network error. Falling back to Sandbox Mode execution:", err);
+        console.error("Stripe Checkout Network Error:", err);
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            console.warn("Running sandbox fallback for local dev offline test.");
+            simulateSandboxPurchase(pack);
+            return;
+        }
+        UI.showModal("Connection Error", "Could not connect to payment gateway. Please check your internet connection and try again.");
     }
-
-    // Fallback Sandbox Mode for instant testing/demo execution before live keys are configured
-    simulateSandboxPurchase(pack);
 }
 
 /**

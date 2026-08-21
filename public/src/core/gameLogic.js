@@ -1533,14 +1533,19 @@ function getRandomFirstName(gender, roll = Math.random()) {
     return pool[Math.floor(roll * pool.length)];
 }
 
+function getRandomLastName(roll = Math.random()) {
+    return LAST_NAMES[Math.floor(roll * LAST_NAMES.length)];
+}
+
 /**
  * Extracts the last word of a full name, treated as the surname.
  * @param {string} fullName
  * @returns {string}
  */
 function getLastName(fullName) {
+    if (!fullName) return getRandomLastName();
     const parts = (fullName || '').trim().split(' ');
-    return parts[parts.length - 1];
+    return parts[parts.length - 1] || getRandomLastName();
 }
 
 /**
@@ -2307,9 +2312,9 @@ function generateTenantApplicants(property) {
     const val = property.value;
     const seedTime = `${property.id}_${Date.now()}_${Math.random()}`;
 
-    const maleName1 = `${getRandomFirstName('male')} ${getLastName()}`;
-    const femaleName2 = `${getRandomFirstName('female')} ${getLastName()}`;
-    const maleName3 = `${getRandomFirstName('male')} ${getLastName()}`;
+    const maleName1 = `${getRandomFirstName('male')} ${getRandomLastName()}`;
+    const femaleName2 = `${getRandomFirstName('female')} ${getRandomLastName()}`;
+    const maleName3 = `${getRandomFirstName('male')} ${getRandomLastName()}`;
 
     const app1 = {
         id: 'applicant_reliable',
@@ -4480,7 +4485,7 @@ function calculateTrialVerdict(user, lawyerTier) {
         lawyerName = "High-Powered Defense Firm";
     }
 
-    if (user.money < lawyerCost) {
+    if (lawyerCost > 0 && (user.money || 0) < lawyerCost) {
         return { error: `Insufficient funds for ${lawyerName}. You need ${Utils.formatMoney(lawyerCost)}.` };
     }
 
@@ -4567,7 +4572,7 @@ function calculatePrisonSecurity(crimeCategory, crimeId, sentenceYears) {
 function generateCellmate(securityLevel) {
     const isMale = Math.random() < 0.5;
     const firstName = getRandomFirstName(isMale ? 'male' : 'female');
-    const lastName = getLastName('Cellmate');
+    const lastName = getRandomLastName();
     const crimes = ['Armed Robbery', 'Grand Theft', 'Assault', 'Racketeering', 'Burglary', 'Tax Evasion', 'Extortion'];
     const personalities = ['chill', 'volatile', 'scholar', 'intimidating', 'trader'];
     const id = 'cellmate_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
@@ -4597,13 +4602,14 @@ function generateYardInmates(securityLevel) {
     return roles.map((r, idx) => {
         const isMale = Math.random() < 0.5;
         const firstName = getRandomFirstName(isMale ? 'male' : 'female');
+        const lastName = getRandomLastName();
         const id = `yard_inmate_${idx}_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
         const gender = isMale ? 'male' : 'female';
         const age = Math.floor(Math.random() * 30) + 20;
 
         return {
             id,
-            name: firstName,
+            name: `${firstName} ${lastName}`,
             gender,
             age,
             role: r.role,
@@ -4718,7 +4724,24 @@ function processPrisonAgeUp(user) {
                 const deathCheck = checkMortality(rel.age, rel.health ?? 100);
                 if (deathCheck.isDead) {
                     rel.deathCause = deathCheck.cause;
-                    events.push(`Your ${rel.type} ${rel.name} passed away at age ${rel.age} from ${deathCheck.cause}.`);
+                    let deathMsg = `Your ${rel.type} ${rel.name} passed away at age ${rel.age} from ${deathCheck.cause}.`;
+                    
+                    // Inheritance / spousal insurance award while incarcerated
+                    if (rel.type === 'Mother' || rel.type === 'Father' || rel.category === 'family') {
+                        const inheritance = calculateInheritance(rel.age);
+                        if (inheritance > 0) {
+                            user.money = (user.money || 0) + inheritance;
+                            deathMsg += ` You inherited ${Utils.formatMoney(inheritance)} held in outside estate accounts.`;
+                        }
+                    } else if (rel.category === 'spouse') {
+                        const lifeInsurance = calculateSpousalLifeInsurance();
+                        if (lifeInsurance > 0) {
+                            user.money = (user.money || 0) + lifeInsurance;
+                            deathMsg += ` Spousal life insurance policy paid out ${Utils.formatMoney(lifeInsurance)}.`;
+                        }
+                    }
+
+                    events.push(deathMsg);
                     user.relationships.splice(i, 1);
                     continue;
                 }
@@ -4740,7 +4763,7 @@ function processPrisonAgeUp(user) {
 
             const spouse = user.relationships.find(r => r.category === 'spouse' || r.category === 'partner');
             if (spouse && spouse.status < 30 && Math.random() < 0.25) {
-                user.relationships = user.relationships.filter(r => r.id !== spouse.id);
+                breakUpWithPartner(user, spouse);
                 events.push(`Your partner ${spouse.name} filed for divorce/breakup while you were incarcerated.`);
             }
         }

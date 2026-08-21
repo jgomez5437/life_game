@@ -98,4 +98,4 @@ export default async function handler(request, response) {
     console.error('Database Error:', error);
     return response.status(500).json({ error: 'Internal Server Error' });
   }
-}
+}

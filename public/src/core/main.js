@@ -452,6 +452,10 @@ export async function saveGame() {
         console.error("Network Error:", e);
     }
 };
+if (typeof window !== 'undefined') {
+    window.saveGame = saveGame;
+}
+
 // --- Unified Entry Point ---
 export const onload = async () => {
     try {
@@ -661,22 +665,43 @@ async function initGame() {
         const urlParams = new URLSearchParams(window.location.search);
         const purchaseSuccess = urlParams.get('purchase_success');
         const purchaseCancelled = urlParams.get('purchase_cancelled');
-        const purchasedPackId = urlParams.get('pack_id');
+        const checkoutSessionId = urlParams.get('session_id');
+        let verifiedPackId = null;
 
-        if (purchaseSuccess || purchaseCancelled) {
+        if (purchaseSuccess || purchaseCancelled || checkoutSessionId) {
             window.history.replaceState({}, document.title, '/');
         }
 
-        // Optimistically record purchased pack locally so entitlements are immediately available
-        if (purchaseSuccess === 'true' && purchasedPackId) {
-            let localP = [];
+        // Verify Stripe purchase server-side if session_id is present
+        if (checkoutSessionId) {
             try {
-                const stored = localStorage.getItem('life_game_purchases');
-                if (stored) localP = JSON.parse(stored);
-            } catch (e) {}
-            if (!localP.includes(purchasedPackId)) {
-                localP.push(purchasedPackId);
-                try { localStorage.setItem('life_game_purchases', JSON.stringify(localP)); } catch (e) {}
+                const authToken = await getAuthToken();
+                const headers = { 'Content-Type': 'application/json' };
+                if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+
+                const verifyRes = await fetch('/api/verify-checkout-session', {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ sessionId: checkoutSessionId })
+                });
+
+                if (verifyRes.ok) {
+                    const verifyData = await verifyRes.json();
+                    if (verifyData.verified && verifyData.packId) {
+                        verifiedPackId = verifyData.packId;
+                        let localP = [];
+                        try {
+                            const stored = localStorage.getItem('life_game_purchases');
+                            if (stored) localP = JSON.parse(stored);
+                        } catch (e) {}
+                        if (!localP.includes(verifiedPackId)) {
+                            localP.push(verifiedPackId);
+                            try { localStorage.setItem('life_game_purchases', JSON.stringify(localP)); } catch (e) {}
+                        }
+                    }
+                }
+            } catch (vErr) {
+                console.error("Stripe session verification failed:", vErr);
             }
         }
 
@@ -819,18 +844,18 @@ async function initGame() {
             renderCharCreation();
         }
 
-        // Apply purchased pack to active user state immediately if returning from Stripe
-        if (purchaseSuccess === 'true' && purchasedPackId) {
+        // Apply verified purchased pack to active user state immediately if verified
+        if (verifiedPackId) {
             if (state.gameState?.user) {
                 if (!Array.isArray(state.gameState.user.purchases)) state.gameState.user.purchases = [];
-                if (!state.gameState.user.purchases.includes(purchasedPackId)) {
-                    state.gameState.user.purchases.push(purchasedPackId);
+                if (!state.gameState.user.purchases.includes(verifiedPackId)) {
+                    state.gameState.user.purchases.push(verifiedPackId);
                     await saveGame();
                 }
             }
-            console.log(`Returning from Stripe checkout for pack: ${purchasedPackId}`);
-            showPurchaseSuccessModal(purchasedPackId);
-            syncPurchasesFromCloud(purchasedPackId, false);
+            console.log(`Verified Stripe checkout completed for pack: ${verifiedPackId}`);
+            showPurchaseSuccessModal(verifiedPackId);
+            syncPurchasesFromCloud(verifiedPackId, false);
         } else if (purchaseCancelled === 'true') {
             UI.showModal("Checkout Cancelled", "Your payment session was cancelled. No charges were made.");
         } else if (state.gameState?.user) {

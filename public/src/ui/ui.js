@@ -24,38 +24,159 @@ const _elements = {
 
 // Modal stack to prevent callback loss when modals overlap
 const _modalStack = [];
+let _currentModalConfig = null;
 
 function _pushCurrentModal() {
     // Only push if a modal is currently visible
-    if (_elements.modalOverlay && !_elements.modalOverlay.classList.contains('hidden')) {
-        _modalStack.push({
-            title: _elements.modalTitle?.innerText || '',
-            titleHidden: _elements.modalTitle?.classList.contains('hidden') || false,
-            content: _elements.modalContent?.innerHTML || '',
-            actions: _elements.modalActions?.innerHTML || '',
-            actionsHidden: _elements.modalActions?.classList.contains('hidden') || false
-        });
+    if (_elements.modalOverlay && !_elements.modalOverlay.classList.contains('hidden') && _currentModalConfig) {
+        _modalStack.push({ ..._currentModalConfig });
+    }
+}
+
+function _renderInfoModal(title, message, onClose = null) {
+    if (_elements.modalTitle) {
+        _elements.modalTitle.innerText = title;
+        _elements.modalTitle.textContent = title;
+        _elements.modalTitle.classList.remove('hidden');
+    }
+    if (_elements.modalContent) {
+        _elements.modalContent.innerHTML = message;
+    }
+    
+    if (_elements.modalActions) {
+        _elements.modalActions.innerHTML = `
+            <button id="modal-btn" class="w-full btn-primary text-white font-bold py-3 rounded-lg">Dismiss</button>
+        `;
+        _elements.modalActions.classList.remove('hidden');
+    }
+
+    const newDismissBtn = document.getElementById('modal-btn');
+    if (newDismissBtn) {
+        newDismissBtn.onclick = () => {
+            UI.hideModal();
+            if (onClose) onClose();
+        };
+    }
+
+    if (_elements.modalOverlay) {
+        _elements.modalOverlay.classList.remove('hidden');
+        _elements.modalOverlay.classList.add('flex');
+    }
+}
+
+function _renderConfirmModal(title, message, confirmText, onConfirm, cancelText = 'Cancel', onCancel = null) {
+    if (_elements.modalTitle) {
+        _elements.modalTitle.innerText = title;
+        _elements.modalTitle.textContent = title;
+        _elements.modalTitle.classList.remove('hidden');
+    }
+    if (_elements.modalContent) {
+        _elements.modalContent.innerHTML = message;
+    }
+
+    if (_elements.modalActions) {
+        _elements.modalActions.innerHTML = `
+            <div class="w-full grid grid-cols-1 gap-2">
+                <button id="modal-confirm" class="w-full btn-primary text-white font-bold py-3 rounded-lg">${confirmText}</button>
+                <button id="modal-cancel" class="w-full border border-slate-700 text-slate-300 font-bold py-3 rounded-lg bg-slate-800">${cancelText}</button>
+            </div>
+        `;
+        _elements.modalActions.classList.remove('hidden');
+    }
+
+    const confirmBtn = document.getElementById('modal-confirm');
+    const cancelBtn = document.getElementById('modal-cancel');
+
+    if (confirmBtn) {
+        confirmBtn.onclick = () => {
+            UI.hideModal();
+            if (onConfirm) onConfirm();
+        };
+    }
+
+    if (cancelBtn) {
+        cancelBtn.onclick = () => {
+            UI.hideModal();
+            if (onCancel) onCancel();
+        };
+    }
+
+    if (_elements.modalOverlay) {
+        _elements.modalOverlay.classList.remove('hidden');
+        _elements.modalOverlay.classList.add('flex');
+    }
+}
+
+function _renderCustomModal(opts) {
+    const { title, content, confirmText, cancelText, onConfirm, onClose } = opts;
+
+    if (_elements.modalTitle) {
+        _elements.modalTitle.innerText = title;
+        _elements.modalTitle.textContent = title;
+        if (!title) {
+            _elements.modalTitle.classList.add('hidden');
+        } else {
+            _elements.modalTitle.classList.remove('hidden');
+        }
+    }
+    if (_elements.modalContent) {
+        _elements.modalContent.innerHTML = content;
+    }
+
+    if (_elements.modalActions) {
+        if (confirmText || onConfirm) {
+            _elements.modalActions.innerHTML = `
+                <div class="w-full grid ${cancelText ? 'grid-cols-2' : 'grid-cols-1'} gap-2">
+                    ${cancelText ? `<button id="custom-modal-cancel" class="w-full border border-slate-700 text-slate-300 font-bold py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 transition text-sm">${cancelText}</button>` : ''}
+                    <button id="custom-modal-confirm" class="w-full btn-primary text-white font-bold py-2.5 rounded-xl text-sm">${confirmText || 'Confirm'}</button>
+                </div>
+            `;
+            _elements.modalActions.classList.remove('hidden');
+
+            const confirmBtn = document.getElementById('custom-modal-confirm');
+            const cancelBtn = document.getElementById('custom-modal-cancel');
+
+            if (confirmBtn) {
+                confirmBtn.onclick = () => {
+                    UI.hideModal();
+                    if (onConfirm) onConfirm();
+                };
+            }
+            if (cancelBtn) {
+                cancelBtn.onclick = () => {
+                    UI.hideModal();
+                    if (onClose) onClose();
+                };
+            }
+        } else {
+            _elements.modalActions.innerHTML = '';
+            _elements.modalActions.classList.add('hidden');
+        }
+    }
+
+    if (_elements.modalOverlay) {
+        _elements.modalOverlay.classList.remove('hidden');
+        _elements.modalOverlay.classList.add('flex');
     }
 }
 
 function _restorePreviousModal() {
     if (_modalStack.length === 0) {
-        _elements.modalOverlay.classList.add('hidden');
-        _elements.modalOverlay.classList.remove('flex');
+        _currentModalConfig = null;
+        if (_elements.modalOverlay) {
+            _elements.modalOverlay.classList.add('hidden');
+            _elements.modalOverlay.classList.remove('flex');
+        }
         return;
     }
     const prev = _modalStack.pop();
-    if (_elements.modalTitle) {
-        _elements.modalTitle.innerText = prev.title;
-        _elements.modalTitle.textContent = prev.title;
-        if (prev.titleHidden) _elements.modalTitle.classList.add('hidden');
-        else _elements.modalTitle.classList.remove('hidden');
-    }
-    if (_elements.modalContent) _elements.modalContent.innerHTML = prev.content;
-    if (_elements.modalActions) {
-        _elements.modalActions.innerHTML = prev.actions;
-        if (prev.actionsHidden) _elements.modalActions.classList.add('hidden');
-        else _elements.modalActions.classList.remove('hidden');
+    _currentModalConfig = prev;
+    if (prev.type === 'custom' && prev.options) {
+        _renderCustomModal(prev.options);
+    } else if (prev.type === 'confirm') {
+        _renderConfirmModal(prev.title, prev.message, prev.confirmText, prev.onConfirm, prev.cancelText, prev.onCancel);
+    } else if (prev.type === 'info') {
+        _renderInfoModal(prev.title, prev.message, prev.onClose);
     }
 }
 
@@ -168,29 +289,8 @@ export const UI = {
      */
     showModal: (title, message, onClose = null) => {
         _pushCurrentModal();
-        if (_elements.modalTitle) {
-            _elements.modalTitle.innerText = title;
-            _elements.modalTitle.textContent = title;
-            _elements.modalTitle.classList.remove('hidden');
-        }
-        _elements.modalContent.innerHTML = message;
-        
-        _elements.modalActions.innerHTML = `
-            <button id="modal-btn" class="w-full btn-primary text-white font-bold py-3 rounded-lg">Dismiss</button>
-        `;
-        _elements.modalActions.classList.remove('hidden');
-
-        const newDismissBtn = document.getElementById('modal-btn');
-        
-        newDismissBtn.onclick = () => {
-            _elements.modalOverlay.classList.add('hidden');
-            _elements.modalOverlay.classList.remove('flex');
-            _modalStack.length = 0; // Info modals clear the stack on dismiss
-            if (onClose) onClose();
-        }
-
-        _elements.modalOverlay.classList.remove('hidden');
-        _elements.modalOverlay.classList.add('flex');
+        _currentModalConfig = { type: 'info', title, message, onClose };
+        _renderInfoModal(title, message, onClose);
     },
 
     /**
@@ -198,40 +298,13 @@ export const UI = {
      * @param {string} message 
      * @param {string} confirmText
      * @param {function} onConfirm
+     * @param {string} [cancelText='Cancel']
+     * @param {function} [onCancel=null]
      */
-    showConfirm: (title, message, confirmText, onConfirm) => {
+    showConfirm: (title, message, confirmText, onConfirm, cancelText = 'Cancel', onCancel = null) => {
         _pushCurrentModal();
-        if (_elements.modalTitle) {
-            _elements.modalTitle.innerText = title;
-            _elements.modalTitle.textContent = title;
-            _elements.modalTitle.classList.remove('hidden');
-        }
-        _elements.modalContent.innerHTML = message;
-
-        _elements.modalActions.innerHTML = `
-            <div class="w-full grid grid-cols-1 gap-2">
-                <button id="modal-confirm" class="w-full btn-primary text-white font-bold py-3 rounded-lg">${confirmText}</button>
-                <button id="modal-cancel" class="w-full border border-slate-700 text-slate-300 font-bold py-3 rounded-lg bg-slate-800">Cancel</button>
-            </div>
-        `;
-        _elements.modalActions.classList.remove('hidden');
-
-        const confirmBtn = document.getElementById('modal-confirm');
-        const cancelBtn = document.getElementById('modal-cancel');
-
-        confirmBtn.onclick = () => {
-            _elements.modalOverlay.classList.add('hidden');
-            _elements.modalOverlay.classList.remove('flex');
-            _modalStack.length = 0;
-            if (onConfirm) onConfirm();
-        };
-
-        cancelBtn.onclick = () => {
-            _restorePreviousModal();
-        };
-
-        _elements.modalOverlay.classList.remove('hidden');
-        _elements.modalOverlay.classList.add('flex');
+        _currentModalConfig = { type: 'confirm', title, message, confirmText, onConfirm, cancelText, onCancel };
+        _renderConfirmModal(title, message, confirmText, onConfirm, cancelText, onCancel);
     },
 
     /**
@@ -257,50 +330,9 @@ export const UI = {
             content = htmlContent || '';
         }
 
-        if (_elements.modalTitle) {
-            _elements.modalTitle.innerText = title;
-            _elements.modalTitle.textContent = title;
-            if (!title) {
-                _elements.modalTitle.classList.add('hidden');
-            } else {
-                _elements.modalTitle.classList.remove('hidden');
-            }
-        }
-        if (_elements.modalContent) {
-            _elements.modalContent.innerHTML = content;
-        }
-
-        if (confirmText || onConfirm) {
-            _elements.modalActions.innerHTML = `
-                <div class="w-full grid ${cancelText ? 'grid-cols-2' : 'grid-cols-1'} gap-2">
-                    ${cancelText ? `<button id="custom-modal-cancel" class="w-full border border-slate-700 text-slate-300 font-bold py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 transition text-sm">${cancelText}</button>` : ''}
-                    <button id="custom-modal-confirm" class="w-full btn-primary text-white font-bold py-2.5 rounded-xl text-sm">${confirmText || 'Confirm'}</button>
-                </div>
-            `;
-            _elements.modalActions.classList.remove('hidden');
-
-            const confirmBtn = document.getElementById('custom-modal-confirm');
-            const cancelBtn = document.getElementById('custom-modal-cancel');
-
-            if (confirmBtn) {
-                confirmBtn.onclick = () => {
-                    UI.hideModal();
-                    if (onConfirm) onConfirm();
-                };
-            }
-            if (cancelBtn) {
-                cancelBtn.onclick = () => {
-                    UI.hideModal();
-                    if (onClose) onClose();
-                };
-            }
-        } else {
-            _elements.modalActions.innerHTML = '';
-            _elements.modalActions.classList.add('hidden');
-        }
-
-        _elements.modalOverlay.classList.remove('hidden');
-        _elements.modalOverlay.classList.add('flex');
+        const opts = { title, content, confirmText, cancelText, onConfirm, onClose };
+        _currentModalConfig = { type: 'custom', options: opts };
+        _renderCustomModal(opts);
     },
 
     /**
@@ -310,6 +342,17 @@ export const UI = {
      * @param {string} htmlContent
      */
     replaceModalContent: (title, htmlContent) => {
+        if (_currentModalConfig) {
+            if (_currentModalConfig.type === 'custom' && _currentModalConfig.options) {
+                _currentModalConfig.options.title = title;
+                _currentModalConfig.options.content = htmlContent;
+                _currentModalConfig.options.confirmText = null;
+                _currentModalConfig.options.cancelText = null;
+            } else {
+                _currentModalConfig.title = title;
+                _currentModalConfig.message = htmlContent;
+            }
+        }
         if (_elements.modalTitle) {
             _elements.modalTitle.innerText = title;
             _elements.modalTitle.textContent = title;
@@ -331,6 +374,15 @@ export const UI = {
 
     hideModal: () => {
         _restorePreviousModal();
+    },
+
+    closeAllModals: () => {
+        _modalStack.length = 0;
+        _currentModalConfig = null;
+        if (_elements.modalOverlay) {
+            _elements.modalOverlay.classList.add('hidden');
+            _elements.modalOverlay.classList.remove('flex');
+        }
     },
 
     /**

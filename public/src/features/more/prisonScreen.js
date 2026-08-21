@@ -1,6 +1,7 @@
 import { GameLogic } from '../../core/gameLogic.js';
 import { state } from '../../core/state.js';
 import { renderLifeDashboard, addLog } from '../player/mainScreen.js';
+import { saveGame } from '../../core/main.js';
 import { UI } from '../../ui/ui.js';
 import { Utils } from '../../ui/utils.js';
 import { renderAvatar } from '../../ui/avatarRenderer.js';
@@ -720,6 +721,7 @@ export function handleFileAppeal(lawyerTier) {
 
     if (result.released) {
         addLog(result.msg, 'good');
+        if (typeof saveGame === 'function') saveGame();
         UI.showModal("Conviction Overturned!", `
             <div class="text-center space-y-3">
                 <div class="text-4xl">⚖️</div>
@@ -730,6 +732,7 @@ export function handleFileAppeal(lawyerTier) {
         renderLifeDashboard();
     } else {
         addLog(result.msg, 'bad');
+        if (typeof saveGame === 'function') saveGame();
         UI.showModal("Appeal Denied", result.msg);
         renderPrisonDashboard();
     }
@@ -804,6 +807,7 @@ export function handleParoleHearing() {
 
     if (result.released) {
         addLog(result.msg, 'good');
+        if (typeof saveGame === 'function') saveGame();
         UI.showModal("Parole Granted!", `
             <div class="text-center space-y-3">
                 <div class="text-4xl">📜</div>
@@ -814,6 +818,7 @@ export function handleParoleHearing() {
         renderLifeDashboard();
     } else {
         addLog(result.msg, 'bad');
+        if (typeof saveGame === 'function') saveGame();
         UI.showModal("Parole Denied", result.msg);
         renderPrisonDashboard();
     }
@@ -825,6 +830,7 @@ export function handlePrisonEscapeAction(method) {
 
     if (result.escaped) {
         addLog(result.msg, 'good');
+        if (typeof saveGame === 'function') saveGame();
         UI.showModal("Escaped Prison!", `
             <div class="text-center space-y-3">
                 <div class="text-4xl">🚨</div>
@@ -835,6 +841,7 @@ export function handlePrisonEscapeAction(method) {
         renderLifeDashboard();
     } else {
         addLog(result.msg, 'bad');
+        if (typeof saveGame === 'function') saveGame();
         UI.showModal("Escape Failed!", `
             <div class="text-center space-y-3">
                 <div class="text-4xl">🚨</div>
@@ -924,6 +931,7 @@ export function submitContrabandPhoneAction(action, targetId) {
         UI.showModal("Phone Error", result.msg);
     }
 
+    if (typeof saveGame === 'function') saveGame();
     renderPrisonDashboard();
 }
 

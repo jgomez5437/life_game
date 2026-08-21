@@ -103,6 +103,8 @@ export const renderRelationships = () => {
             badgeStyle = "bg-emerald-600 text-white border-emerald-400 shadow-sm shadow-emerald-900/20";
         } else if (person.category === 'enemy') {
             badgeStyle = "bg-red-600 text-white border-red-400 shadow-sm shadow-red-900/20";
+        } else if (person.category === 'ex') {
+            badgeStyle = "bg-slate-700 text-slate-300 border-slate-500 shadow-sm shadow-slate-900/20";
         }
 
         return `
@@ -161,6 +163,12 @@ export const renderRelationships = () => {
     if (enemies.length > 0) {
         content += `<h3 class="text-slate-400 font-bold text-xs uppercase mb-3 mt-6 pl-1 flex items-center gap-2"><i class="fas fa-skull-crossbones text-red-400"></i> Enemies</h3>`;
         content += enemies.map(p => getPersonCard(p)).join('');
+    }
+
+    // E. Past Relationships / Exes Section
+    if (exes.length > 0) {
+        content += `<h3 class="text-slate-400 font-bold text-xs uppercase mb-3 mt-6 pl-1 flex items-center gap-2"><i class="fas fa-heart-crack text-slate-400"></i> Past Relationships</h3>`;
+        content += exes.map(p => getPersonCard(p)).join('');
     }
 
     const btnClass = user.hasSpentTimeWithAll ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600 transition';
@@ -993,8 +1001,7 @@ export const performRelationshipAction = (personId, actionKey) => {
     }
 
     if (action.key === 'break_up') {
-        person.category = 'ex';
-        person.type = person.gender === 'male' ? 'Ex-Boyfriend' : 'Ex-Girlfriend';
+        GameLogic.breakUpWithPartner(user, person);
         person.interactedThisYear = true;
         addLog(`You broke up with ${person.name}.`, 'bad');
         UI.showModal('Break Up', `You and ${Utils.escapeHtml(person.name)} have gone your separate ways.`);
@@ -1546,7 +1553,7 @@ export const handleCheatingConfrontationChoice = (choice) => {
             UI.showModal('Forgiven (For Now)', `<p class="text-slate-300 text-sm">${Utils.escapeHtml(partner.name)} agreed to try couples counseling, but trust will take a long time to rebuild. (+20 Relationship Status)</p>`);
         } else {
             addLog(`${partner.name} refused your apology and broke off the relationship!`, 'bad');
-            UI.showModal('Relationship Over 💔', `<p class="text-slate-300 text-sm">${Utils.escapeHtml(partner.name)} could not forgive your betrayal and ended the relationship immediately!</p>`);
+            UI.showModal('Relationship Over 💔', `<p class="text-slate-300 text-sm">${partner.name} could not forgive your betrayal and ended the relationship immediately!</p>`);
             user.relationships.splice(partnerIndex, 1);
         }
     } else if (choice === 'gift') {
@@ -1562,7 +1569,7 @@ export const handleCheatingConfrontationChoice = (choice) => {
             UI.showModal('Gift Accepted 🎁', `<p class="text-slate-300 text-sm">${Utils.escapeHtml(partner.name)} accepted the expensive gift and agreed to stay together for now.</p>`);
         } else {
             addLog(`${partner.name} threw your $5,000 gift back at you and ended the relationship!`, 'bad');
-            UI.showModal('Gift Rejected 💔', `<p class="text-slate-300 text-sm">${Utils.escapeHtml(partner.name)} threw your gift back at you in anger and ended the relationship!</p>`);
+            UI.showModal('Gift Rejected 💔', `<p class="text-slate-300 text-sm">${partner.name} threw your gift back at you in anger and ended the relationship!</p>`);
             user.relationships.splice(partnerIndex, 1);
         }
     } else if (choice === 'blame') {
@@ -1570,7 +1577,7 @@ export const handleCheatingConfrontationChoice = (choice) => {
         const breaksUp = Math.random() < 0.90;
         if (breaksUp) {
             addLog(`You blamed ${partner.name} for your affair. Furious, they immediately divorced/broke up with you!`, 'bad');
-            UI.showModal('Bitter Breakup 💥', `<p class="text-slate-300 text-sm">You blamed ${Utils.escapeHtml(partner.name)}. Outraged by your reaction, they immediately packed their bags and left!</p>`);
+            UI.showModal('Bitter Breakup 💥', `<p class="text-slate-300 text-sm">You blamed ${partner.name}. Outraged by your reaction, they immediately packed their bags and left!</p>`);
             user.relationships.splice(partnerIndex, 1);
         } else {
             addLog(`You argued with ${partner.name}. The fight was explosive, but you remain together with 0 status.`, 'bad');
@@ -1578,7 +1585,7 @@ export const handleCheatingConfrontationChoice = (choice) => {
         }
     } else if (choice === 'walk_away') {
         addLog(`You walked away from your relationship with ${partner.name}.`, 'bad');
-        UI.showModal('Separated 🚪', `<p class="text-slate-300 text-sm">You walked away and ended your relationship with ${Utils.escapeHtml(partner.name)}.</p>`);
+        UI.showModal('Separated 🚪', `<p class="text-slate-300 text-sm">You walked away and ended your relationship with ${partner.name}.</p>`);
         user.relationships.splice(partnerIndex, 1);
     }
 

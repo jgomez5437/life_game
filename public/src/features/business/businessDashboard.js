@@ -1196,8 +1196,13 @@ function executeSingleAutoQuarter(user) {
 
     const prodCost = effectiveProd * (ind.unitCost * supplier.costMod);
     const empWages = user.employees * user.salaryOffer * 3;
-    const ceoWages = user.ceoSalary * 3;
-    const totalExpenses = prodCost + empWages + ceoWages + overhead.totalQuarterly;
+    const ceoWages = (user.ceoSalary || 0) * 3;
+    const operatingExpenses = prodCost + empWages + overhead.totalQuarterly;
+
+    // Ensure CEO salary cannot exceed available company funds
+    const cashBeforeCEO = Math.max(0, (user.compCash || 0) - operatingExpenses);
+    const payableCeoWages = Math.min(ceoWages, cashBeforeCEO);
+    const totalExpenses = operatingExpenses + payableCeoWages;
 
     user.compCash = Math.min(GameLogic.MAX_COMPANY_CASH || 999999999999999, Math.max(0, user.compCash - totalExpenses));
     user.money   = Math.min(GameLogic.MAX_PLAYER_MONEY || 999999999999999, (user.money || 0) + ceoWages);

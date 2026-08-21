@@ -73,22 +73,29 @@ export const FamilyFactory = (() => {
                 else if (siblingRoll < 0.70) siblingCount = 3; // 10% chance of 3 siblings
                 // Base case: 30% chance of 0 siblings.
 
-                for (let i = 0; i < siblingCount; i++) {
-                    const isMale = Math.random() > 0.5;
-                    const id = getUUID();
-                    const age = getInt(1, 15);
-                    const occ = GameLogic.generateNPCOccupation(age);
-                    family.push({
-                        id,
-                        name: `${getName(isMale ? 'male' : 'female')} ${lastName}`,
-                        age, // Siblings are strictly older than the Age 0 player
-                        type: isMale ? 'Brother' : 'Sister',
-                        gender: isMale ? 'male' : 'female',
-                        status: getInt(50, 100),
-                        category: 'family',
-                        appearance: AvatarLogic.generateRandomAppearance(id, isMale ? 'male' : 'female'),
-                        ...occ
-                    });
+                const motherAge = family.find(f => f.type === 'Mother')?.age;
+                const fatherAge = family.find(f => f.type === 'Father')?.age;
+                const minParentAge = Math.min(...[motherAge, fatherAge].filter(Boolean));
+                const maxSiblingAge = Math.min(15, (minParentAge || 30) - 16);
+
+                if (maxSiblingAge >= 1) {
+                    for (let i = 0; i < siblingCount; i++) {
+                        const isMale = Math.random() > 0.5;
+                        const id = getUUID();
+                        const age = getInt(1, maxSiblingAge);
+                        const occ = GameLogic.generateNPCOccupation(age);
+                        family.push({
+                            id,
+                            name: `${getName(isMale ? 'male' : 'female')} ${lastName}`,
+                            age, // Siblings are strictly older than the Age 0 player
+                            type: isMale ? 'Brother' : 'Sister',
+                            gender: isMale ? 'male' : 'female',
+                            status: getInt(50, 100),
+                            category: 'family',
+                            appearance: AvatarLogic.generateRandomAppearance(id, isMale ? 'male' : 'female'),
+                            ...occ
+                        });
+                    }
                 }
             }
 

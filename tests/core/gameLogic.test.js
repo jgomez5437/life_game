@@ -2177,4 +2177,4 @@ describe('Relocation to New Country Pure Functions', () => {
             expect(user.money).toBe(5000);
         });
     });
-});
+});
