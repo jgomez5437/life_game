@@ -123,41 +123,24 @@ function handleDeath(user, cause) {
 }
 //renders death screen
 export function renderDeathScreen(user, cause) {
-    // 1. Calculate Inheritance
-    const children = user.relationships.filter(r => r.type === 'Son' || r.type === 'Daughter');
-    const spouse = user.relationships.find(r => r.category === 'spouse');
+    // 1. Calculate Estate Distribution using pure engine
+    const distribution = GameLogic.calculateEstateDistribution(user);
+    const { totalEstate, spouseShare, inheritancePerChild, children, spouse, isInsolvent } = distribution;
     const hasChildren = children.length > 0;
-    const hasSpouse = !!spouse;
-
-    // Liquidate assets into net worth before splitting (include company cash if applicable)
-    const assetValue  = user.assets ? user.assets.reduce((sum, a) => sum + (a.value || 0), 0) : 0;
-    const companyCash = (user.hasBusiness && user.compCash > 0) ? user.compCash : 0;
-    const totalEstate = user.money + assetValue + companyCash;
-
-    // A surviving spouse takes half the estate (or all of it, with no children); children split the remainder
-    let spouseShare = 0;
-    let remainingEstate = totalEstate;
-    if (hasSpouse && totalEstate > 0) {
-        spouseShare = hasChildren ? Math.floor(totalEstate * 0.5) : totalEstate;
-        remainingEstate = totalEstate - spouseShare;
-    }
-
-    // Prevent debt from being inherited
-    const inheritancePerChild = (hasChildren && remainingEstate > 0) ? Math.floor(remainingEstate / children.length) : 0;
 
     // 2. Build Estate Messaging
     let estateMessage = '';
     const moneyColorClass = totalEstate >= 0 ? 'text-green-400' : 'text-red-500';
 
-    if (totalEstate < 0) {
+    if (isInsolvent || totalEstate < 0) {
         if (hasChildren) {
-            estateMessage = `<p class="text-slate-300 text-sm mb-4">You died in debt. Creditors seized the estate, leaving your ${children.length} children with nothing.</p>`;
+            estateMessage = `<p class="text-slate-300 text-sm mb-4">You died in debt. Creditors absorbed the loss and seized estate assets, leaving your ${children.length} children debt-free with $0.</p>`;
         } else {
             estateMessage = `<p class="text-slate-400 text-sm mb-4 italic">You died in debt. Your creditors absorbed the loss.</p>`;
         }
     } else {
         const shares = [];
-        if (spouseShare > 0) shares.push(`<span class="text-green-400 font-bold">+$${spouseShare.toLocaleString()}</span> to your spouse, ${spouse.name}`);
+        if (spouseShare > 0 && spouse) shares.push(`<span class="text-green-400 font-bold">+$${spouseShare.toLocaleString()}</span> to your spouse, ${Utils.escapeHtml(spouse.name)}`);
         if (inheritancePerChild > 0) shares.push(`<span class="text-green-400 font-bold">+$${inheritancePerChild.toLocaleString()} each</span> to your ${children.length} children`);
 
         if (shares.length > 0) {
@@ -172,7 +155,7 @@ export function renderDeathScreen(user, cause) {
     if (hasChildren) {
         childrenOptionsHtml = children.map((child, index) => `
             <button data-action="continueAsChild" data-args="${index}, ${inheritancePerChild}" class="w-full btn-nav text-white font-bold py-3 rounded-xl mb-2 shadow hover:bg-slate-700 transition">
-                Play as ${child.name} (Age ${child.age})
+                Play as ${Utils.escapeHtml(child.name)} (Age ${child.age})
             </button>
         `).join('');
     }
@@ -186,12 +169,12 @@ export function renderDeathScreen(user, cause) {
         <div class="fade-in max-w-md mx-auto min-h-full py-8 flex flex-col justify-center items-center text-center px-4">
             <i class="fas fa-skull text-6xl text-slate-500 mb-6"></i>
             <h1 class="text-4xl font-bold text-red-500 mb-2">You Died</h1>
-            <p class="text-slate-300 text-lg mb-6">Age ${user.age} • Cause: ${cause}</p>
+            <p class="text-slate-300 text-lg mb-6">Age ${user.age} • Cause: ${Utils.escapeHtml(cause)}</p>
             
             <div id="eulogy-container" class="bg-slate-800 p-6 rounded-xl border border-slate-700 w-full mb-6 shadow-2xl">
                 <h3 class="text-sm font-bold text-slate-400 mb-2 uppercase tracking-wider text-left">Life Summary</h3>
                 <div class="relative w-full">
-                    <p id="eulogy-text" class="text-slate-300 italic text-sm text-left leading-relaxed line-clamp-5 overflow-hidden">"${eulogy}"</p>
+                    <p id="eulogy-text" class="text-slate-300 italic text-sm text-left leading-relaxed line-clamp-5 overflow-hidden">"${Utils.escapeHtml(eulogy)}"</p>
                     <button id="eulogy-view-more" data-action="showFullEulogy" class="hidden mt-3 text-blue-400 hover:text-blue-300 text-xs font-bold uppercase tracking-wider text-left w-full">View More &rarr;</button>
                 </div>
             </div>
@@ -226,7 +209,7 @@ export function renderDeathScreen(user, cause) {
 
 export function showFullEulogy() {
     if (state.gameState.currentEulogy) {
-        UI.showModal("Life Summary", `<p class="text-slate-300 italic text-sm leading-relaxed">"${state.gameState.currentEulogy}"</p>`);
+        UI.showModal("Life Summary", `<p class="text-slate-300 italic text-sm leading-relaxed">"${Utils.escapeHtml(state.gameState.currentEulogy)}"</p>`);
     }
 }
 //allows user to continue as their child, implements
@@ -235,6 +218,7 @@ export const continueAsChild = (childIndex, inheritedMoney) => {
     const children = parentState.relationships.filter(r => r.type === 'Son' || r.type === 'Daughter');
     const selectedChild = children[childIndex];
 
+    const safeInheritedMoney = Math.max(0, Number(inheritedMoney) || 0);
     const inheritedRelationships = GameLogic.inheritFamilyRelationships(parentState.relationships, selectedChild.id);
 
     // Calculate parent estate value
@@ -252,7 +236,7 @@ export const continueAsChild = (childIndex, inheritedMoney) => {
         causeOfDeath: parentState.deathCause || 'Natural Causes',
         occupation: parentState.jobTitle || (parentState.hasBusiness ? `Founder of ${parentState.companyName}` : 'Unemployed'),
         finalNetWorth: parentTotalEstate,
-        inheritedMoney: inheritedMoney,
+        inheritedMoney: safeInheritedMoney,
         appearance: parentState.appearance || null,
         eulogy: state.gameState.currentEulogy || null,
         generation: parentGen,
@@ -279,7 +263,7 @@ export const continueAsChild = (childIndex, inheritedMoney) => {
         gender: selectedChild.type === 'Son' ? 'male' : 'female',
         city: parentState.city, // Inherits physical location
         age: selectedChild.age,
-        money: inheritedMoney,
+        money: safeInheritedMoney,
         health: 100,
         happiness: 100,
         smarts: childStats.smarts,
@@ -298,6 +282,7 @@ export const continueAsChild = (childIndex, inheritedMoney) => {
         jobSalary: 0,
         jobPerformance: 50,
         hasBusiness: false,
+        corporateDebt: { principal: 0, interestRate: 0.08, monthlyPayment: 0 },
         assets: [],
         relationships: inheritedRelationships,
         appearance: AvatarLogic.ensureAppearance(selectedChild),
@@ -312,11 +297,16 @@ export const continueAsChild = (childIndex, inheritedMoney) => {
     state.gameState.pastLives = updatedPastLives;
     
     // 3. Purge and restart Life Log at child's chronological age
+    const inheritanceLogMsg = safeInheritedMoney > 0
+        ? `Inherited ${Utils.formatMoney(safeInheritedMoney)} from the estate.`
+        : `Started your new life with a clean financial slate ($0 debt).`;
+    const inheritanceLogColor = safeInheritedMoney > 0 ? "text-green-400" : "text-slate-300";
+
     state.gameState.lifeLog = [{
         age: newUserState.age,
         events: [
             { msg: `You took over the life of ${newUserState.username} following your parent's death.`, color: "text-blue-400 font-bold" },
-            { msg: `Inherited ${Utils.formatMoney(inheritedMoney)} from the estate.`, color: "text-green-400" }
+            { msg: inheritanceLogMsg, color: inheritanceLogColor }
         ]
     }];
 
@@ -333,7 +323,7 @@ function handleHealth(user) {
     const benefits = GameLogic.calculateHealthBenefits(user.gymMembership, user.hasBetterDiet);
 
     // Mutate state with a hard floor of 0 and cap of 100
-    user.health = Math.min(100, Math.max(0, user.health - decay + benefits));
+    user.health = Math.max(0, Math.min(100, user.health - decay + benefits));
 
     // Execute UI side-effects
     if (user.health < 30 && (user.health + decay - benefits) >= 30) {
@@ -345,7 +335,7 @@ function handleSmarts(user) {
     if (typeof user.smarts !== 'number') user.smarts = 50;
     const delta = GameLogic.calculateSmartsDelta(user.age, user.isStudent);
     if (delta !== 0) {
-        user.smarts = Math.min(100, Math.max(0, user.smarts + delta));
+        user.smarts = Math.max(0, Math.min(100, user.smarts + delta));
     }
 }
 
@@ -353,7 +343,7 @@ function handleLooks(user) {
     if (typeof user.looks !== 'number') user.looks = 50;
     const delta = GameLogic.calculateLooksDelta(user.age);
     if (delta !== 0) {
-        user.looks = Math.min(100, Math.max(0, user.looks + delta));
+        user.looks = Math.max(0, Math.min(100, user.looks + delta));
     }
 }
 
@@ -372,7 +362,7 @@ async function handleFinances(user) {
             const crimes = user.mafiaCrimesThisYear || 0;
             if (crimes < 3) {
                 addLog(`You failed to meet your Syndicate quota (${crimes}/3). The boss had you beaten. No pay this year.`, 'bad');
-                user.health = Math.max(0, (user.health || 100) - 25);
+                user.health = Math.max(0, Math.min(100, (user.health || 100) - 25));
                 user.yearsInRole = (user.yearsInRole || 0); // No progress
             } else {
                 user.money += user.jobSalary;
@@ -820,7 +810,7 @@ export function renderLifeDashboard(maybeGameState) {
             <div class="${isCompact ? 'pl-3 border-l border-slate-700/50 ml-3 space-y-0.5 pb-0' : 'pl-4 border-l border-slate-700/50 ml-4 space-y-2 pb-1'}">
                 ${l.events.map(e => `
                     <div class="${e.color} ${isCompact ? 'text-xs py-0 leading-snug' : 'text-sm py-0.5'} transition-transform duration-200 hover:translate-x-1">
-                        ${e.msg}
+                        ${Utils.escapeHtml(e.msg)}
                     </div>
                 `).join('')}
             </div>

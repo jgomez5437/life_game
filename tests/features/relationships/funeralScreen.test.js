@@ -1,21 +1,21 @@
 import { jest } from '@jest/globals';
 
-jest.unstable_mockModule('../public/src/features/player/mainScreen.js', () => ({
+jest.unstable_mockModule('../../../public/src/features/player/mainScreen.js', () => ({
     renderLifeDashboard: jest.fn(),
     addLog: jest.fn()
 }));
 
-jest.unstable_mockModule('../public/src/core/main.js', () => ({
+jest.unstable_mockModule('../../../public/src/core/main.js', () => ({
     saveGame: jest.fn()
 }));
 
-jest.unstable_mockModule('../public/src/ui/avatarRenderer.js', () => ({
+jest.unstable_mockModule('../../../public/src/ui/avatarRenderer.js', () => ({
     renderAvatar: jest.fn(() => '<svg></svg>')
 }));
 
-const { state } = await import('../public/src/core/state.js');
-const { UI } = await import('../public/src/ui/ui.js');
-const { processNextFuneral } = await import('../public/src/features/relationships/funeralScreen.js');
+const { state } = await import('../../../public/src/core/state.js');
+const { UI } = await import('../../../public/src/ui/ui.js');
+const { processNextFuneral } = await import('../../../public/src/features/relationships/funeralScreen.js');
 
 describe('Funeral Screen Minor vs Adult Logic', () => {
     beforeEach(() => {

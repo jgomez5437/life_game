@@ -1,5 +1,8 @@
 import { sql } from '@vercel/postgres';
 import { verifyAuth } from './lib/verifyAuth.js';
+import { checkRateLimit } from './lib/rateLimit.js';
+
+import { sanitizeEntitlements, injectVerifiedPurchases } from './lib/validation.js';
 
 export default async function handler(request, response) {
   if (request.method !== 'GET') {
@@ -11,6 +14,11 @@ export default async function handler(request, response) {
     authUserId = await verifyAuth(request);
   } catch (error) {
     return response.status(401).json({ error: error.message });
+  }
+
+  // Enforce rate limiting: 30 loads / min per authenticated user
+  if (!checkRateLimit(request, response, 'load', null, authUserId)) {
+    return;
   }
 
   try {
@@ -26,31 +34,22 @@ export default async function handler(request, response) {
 
     const userData = result.rows[0];
 
-    // Merge purchases from user_purchases table into game_data
+    // Authoritative entitlement enforcement from user_purchases table
+    let dbPurchases = [];
     try {
       const purchaseResult = await sql`
         SELECT DISTINCT pack_id 
         FROM user_purchases 
         WHERE auth0_id = ${authUserId};
       `;
-      const dbPurchases = purchaseResult.rows.map(row => row.pack_id);
-
-      if (dbPurchases.length > 0 && userData.game_data) {
-        const gameData = userData.game_data;
-        const savedUser = gameData.user || gameData;
-        const existingPurchases = Array.isArray(savedUser.purchases) ? savedUser.purchases : [];
-        const mergedPurchases = Array.from(new Set([...existingPurchases, ...dbPurchases]));
-
-        if (gameData.user) {
-          gameData.user.purchases = mergedPurchases;
-        } else {
-          gameData.purchases = mergedPurchases;
-        }
-        userData.game_data = gameData;
-      }
+      dbPurchases = purchaseResult.rows.map(row => row.pack_id);
     } catch (purchaseErr) {
-      // Silently continue if user_purchases table doesn't exist yet
-      console.warn('Could not merge purchases:', purchaseErr.message);
+      console.warn('Could not query user_purchases on load:', purchaseErr.message);
+    }
+
+    if (userData.game_data) {
+      sanitizeEntitlements(userData.game_data);
+      injectVerifiedPurchases(userData.game_data, dbPurchases);
     }
 
     return response.status(200).json(userData);

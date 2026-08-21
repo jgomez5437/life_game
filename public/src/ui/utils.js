@@ -210,6 +210,10 @@ export const Utils = {
         const symbol = info.symbol || '$';
         const formattedSymbol = /[A-Za-z]$/.test(symbol) ? `${symbol} ` : symbol;
 
+        if (absVal >= 1000000000000) {
+            const formatted = parseFloat((absVal / 1000000000000).toFixed(2));
+            return `${sign}${formattedSymbol}${formatted}T`;
+        }
         if (absVal >= 1000000000) {
             const formatted = parseFloat((absVal / 1000000000).toFixed(2));
             return `${sign}${formattedSymbol}${formatted}B`;
@@ -229,6 +233,21 @@ export const Utils = {
     getRandomInt: (min, max) => {
         return Math.floor(Math.random() * (max - min + 1)) + min;
     },
+
+    // Clamps any numeric value within [min, max]
+    clamp: (val, min = 0, max = 100) => {
+        const num = typeof val === 'number' && !isNaN(val) ? val : min;
+        return Math.max(min, Math.min(max, num));
+    },
+
+    // Standard clamp for character core stats (0 - 100)
+    clampStat: (val, fallback = 50) => {
+        const num = typeof val === 'number' && !isNaN(val) ? val : fallback;
+        return Math.max(0, Math.min(100, num));
+    },
+
+    // HTML Escaping utility to prevent XSS across template literals & innerHTML
+    escapeHtml,
 
     // Return the 2-letter ISO country code
     getCountryCode: (city) => {
@@ -284,3 +303,20 @@ export const Utils = {
         }
     }
 };
+
+/**
+ * Escapes HTML entities in a string to prevent XSS injection attacks.
+ * Converts &, <, >, ", ' into their corresponding HTML character entities.
+ * @param {string|any} str
+ * @returns {string}
+ */
+export function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+

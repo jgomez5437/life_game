@@ -1,6 +1,6 @@
 {
   "name": "game",
-  "version": "1.0.1",
+  "version": "1.0.10",
   "description": "",
   "main": "game-file.js",
   "packageManager": "npm@10.8.2",
@@ -9,6 +9,10 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:api": "node --experimental-vm-modules node_modules/jest/bin/jest.js tests/api",
+    "test:core": "node --experimental-vm-modules node_modules/jest/bin/jest.js tests/core",
+    "test:features": "node --experimental-vm-modules node_modules/jest/bin/jest.js tests/features",
+    "test:ui": "node --experimental-vm-modules node_modules/jest/bin/jest.js tests/ui",
     "build:css": "npx tailwindcss@3 -i ./public/tailwind-input.css -o ./public/styles.bundle.css --content \"./public/**/*.{html,js}\" --minify"
   },
   "keywords": [],

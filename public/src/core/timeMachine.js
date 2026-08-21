@@ -1,6 +1,7 @@
 import { state, hasPurchasedPack } from './state.js';
 import { UI } from '../ui/ui.js';
 import { Utils } from '../ui/utils.js';
+import { deepClone, sanitizeGameState, migrateState } from './saveSlotManager.js';
 
 const buyPack = async (...args) => (await import('../features/store/storeScreen.js')).buyPack(...args);
 
@@ -20,10 +21,15 @@ export function captureAnnualSnapshot(gameState) {
     }
 
     // Clone state excluding snapshots to prevent recursive bloat
-    const clonedState = JSON.parse(JSON.stringify(gameState));
+    const clonedState = deepClone(sanitizeGameState(gameState));
     delete clonedState.snapshots;
 
     const currentAge = gameState.user.age;
+
+    // Prune lifeLog inside snapshot to only events up to the snapshot's age
+    if (Array.isArray(clonedState.lifeLog)) {
+        clonedState.lifeLog = clonedState.lifeLog.filter(l => l.age <= currentAge);
+    }
     
     // Remove any existing snapshot for the exact same age
     gameState.snapshots = gameState.snapshots.filter(s => s.age !== currentAge);
@@ -91,8 +97,12 @@ export function rewindToAge(targetAge) {
         return;
     }
 
-    // Restore state from snapshot
-    const restoredState = JSON.parse(JSON.stringify(snapshotObj.data));
+    // Restore state from snapshot using schema validation and migration
+    const restoredState = migrateState(snapshotObj.data);
+    if (!restoredState || !restoredState.user) {
+        UI.showModal("Timeline Error", `Corrupted timeline data for Age ${targetAge}.`);
+        return;
+    }
 
     // Restore surviving status if deceased
     if (restoredState.user) {
@@ -180,7 +190,7 @@ export function renderTimeMachineModal() {
                                 Age ${s.age} ${isCurrentAge ? '<span class="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded">Current</span>' : ''}
                             </div>
                             <div class="text-[11px] text-slate-400 mt-0.5">
-                                ${s.summary.jobTitle} • <span class="text-emerald-400 font-semibold">${moneyFormatted}</span>
+                                ${Utils.escapeHtml(s.summary.jobTitle || 'Unemployed')} • <span class="text-emerald-400 font-semibold">${moneyFormatted}</span>
                             </div>
                         </div>
                     </div>

@@ -1,5 +1,6 @@
 import { state, hasPurchasedPack } from '../../core/state.js';
 import { UI } from '../../ui/ui.js';
+import { Utils } from '../../ui/utils.js';
 import { saveGame, resetGame } from '../../core/main.js';
 import { renderLifeDashboard } from '../player/mainScreen.js';
 import { logout } from '../../auth/auth.js';
@@ -61,7 +62,7 @@ export function openSettingsModal() {
                     <div class="flex items-center justify-between text-xs">
                         <div class="text-slate-400 flex items-center gap-1.5 truncate">
                             <i class="fas fa-user-circle text-blue-400 shrink-0"></i>
-                            <span class="truncate text-slate-300 font-medium">${state.userEmail || state.gameState?.user?.username || 'Cloud Account'}</span>
+                            <span class="truncate text-slate-300 font-medium">${Utils.escapeHtml(state.userEmail || state.gameState?.user?.username || 'Cloud Account')}</span>
                         </div>
                     </div>
                     <button data-action="promptSignOut" id="btn-settings-signout" class="w-full bg-slate-700/80 hover:bg-red-950/50 hover:text-red-300 hover:border-red-700/60 border border-slate-600/80 text-slate-300 font-bold py-2 px-3 rounded-lg text-xs transition flex items-center justify-center gap-2">
@@ -137,7 +138,7 @@ export function openSettingsModal() {
 
             <!-- Footer -->
             <div class="flex justify-between items-center pt-2 border-t border-slate-700 text-xs text-slate-500">
-                <span>Version 1.0.1</span>
+                <span>Version 1.0.10</span>
                 <button data-action="hideModal" class="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs rounded-lg transition">
                     Close
                 </button>

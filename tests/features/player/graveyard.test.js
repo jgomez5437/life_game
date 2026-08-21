@@ -1,8 +1,8 @@
 import { jest } from '@jest/globals';
-import { state } from '../public/src/core/state.js';
-import { continueAsChild } from '../public/src/features/player/mainScreen.js';
-import { renderGraveyardModal, showAncestorEulogy } from '../public/src/features/player/graveyardScreen.js';
-import { UI } from '../public/src/ui/ui.js';
+import { state } from '../../../public/src/core/state.js';
+import { continueAsChild } from '../../../public/src/features/player/mainScreen.js';
+import { renderGraveyardModal, showAncestorEulogy } from '../../../public/src/features/player/graveyardScreen.js';
+import { UI } from '../../../public/src/ui/ui.js';
 
 describe('Family Graveyard & Past Lives Suite', () => {
     beforeEach(() => {

@@ -53,6 +53,8 @@ export const ACTION_TO_MODULE = {
     layoffEmployee: 'businessDashboard',
     sellBusiness: 'businessDashboard',
     purchaseUpgrade: 'businessDashboard',
+    acceptVCPitch: 'businessDashboard',
+    launchIPO: 'businessDashboard',
     selectIndustry: 'createBusiness',
     selectSupplier: 'createBusiness',
     renderBusinessSetup: 'createBusiness',
@@ -343,12 +345,163 @@ export function isModuleLoaded(moduleKey) {
 }
 
 /**
- * Loads a module dynamically, caching both the promise and the resolved module.
- * Never executes duplicate fetches.
+ * Friendly display name formatter for module keys.
  * @param {string} moduleKey 
+ * @returns {string}
+ */
+export function formatModuleName(moduleKey) {
+    if (!moduleKey) return 'Feature';
+    const names = {
+        charCreation: 'Character Creation',
+        mainScreen: 'Main Screen',
+        playerOverview: 'Player Overview',
+        relationships: 'Relationships',
+        manageEducation: 'Education',
+        instantDiploma: 'Instant Diploma',
+        careerJobs: 'Careers & Jobs',
+        jobCareerManager: 'Career Manager',
+        partTimeJobs: 'Part-Time Jobs',
+        occupation: 'Occupation',
+        assets: 'Assets',
+        goShopping: 'Shopping',
+        saveSlotManager: 'Save Slot Manager',
+        timeMachine: 'Time Machine',
+        businessDashboard: 'Business Dashboard',
+        createBusiness: 'Create Business',
+        investments: 'Investments',
+        romance: 'Romance',
+        funeral: 'Funeral',
+        store: 'Store',
+        godModeAvatar: 'God Mode Avatar',
+        vipLounge: 'VIP Lounge',
+        more: 'Activities',
+        settings: 'Settings',
+        graveyard: 'Graveyard',
+        casino: 'Casino',
+        crime: 'Crime',
+        prison: 'Prison'
+    };
+    if (names[moduleKey]) return names[moduleKey];
+    return moduleKey
+        .replace(/([A-Z])/g, ' $1')
+        .replace(/^./, str => str.toUpperCase())
+        .trim();
+}
+
+/**
+ * Executes an import factory with exponential backoff retries.
+ * @param {Function} importFactory 
+ * @param {number} maxRetries 
+ * @param {number} baseDelayMs 
  * @returns {Promise<any>}
  */
-export function loadModule(moduleKey) {
+export async function loadWithRetry(importFactory, maxRetries = 3, baseDelayMs = 300) {
+    let lastError = null;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+            return await importFactory();
+        } catch (err) {
+            lastError = err;
+            if (attempt < maxRetries) {
+                const delay = baseDelayMs * Math.pow(2, attempt);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+    }
+    throw lastError;
+}
+
+/**
+ * Displays a user-friendly error modal with a "Retry" button when module loading fails.
+ * @param {Object} options 
+ * @param {string} options.moduleKey 
+ * @param {Function} [options.onRetry] 
+ * @param {Error} [options.error] 
+ */
+export function showModuleLoadError({ moduleKey, onRetry, error }) {
+    if (typeof document === 'undefined') return;
+
+    const overlay = document.getElementById('modal-overlay');
+    const title = document.getElementById('modal-title');
+    const content = document.getElementById('modal-content');
+    const actions = document.getElementById('modal-actions');
+
+    const friendlyName = formatModuleName(moduleKey);
+
+    if (overlay && title && content && actions) {
+        title.innerHTML = `<i class="fas fa-wifi text-red-400 mr-2"></i> Connection Error`;
+        title.classList.remove('hidden');
+
+        content.innerHTML = `
+            <div class="text-center py-2">
+                <div class="w-12 h-12 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center mx-auto mb-3 border border-red-500/20">
+                    <i class="fas fa-exclamation-triangle text-xl"></i>
+                </div>
+                <p class="text-white font-semibold mb-1">Failed to load ${friendlyName}</p>
+                <p class="text-slate-400 text-xs leading-relaxed">
+                    A network error occurred while loading this feature. Please check your internet connection and try again.
+                </p>
+            </div>
+        `;
+
+        actions.innerHTML = `
+            <div class="w-full grid grid-cols-2 gap-2">
+                <button id="module-error-dismiss-btn" class="w-full border border-slate-700 text-slate-300 font-bold py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 transition text-sm">
+                    Dismiss
+                </button>
+                <button id="module-error-retry-btn" class="w-full btn-primary text-white font-bold py-2.5 rounded-xl text-sm flex items-center justify-center gap-1.5 shadow-lg shadow-blue-500/20">
+                    <i class="fas fa-redo-alt text-xs"></i> Retry
+                </button>
+            </div>
+        `;
+        actions.classList.remove('hidden');
+
+        const retryBtn = document.getElementById('module-error-retry-btn');
+        const dismissBtn = document.getElementById('module-error-dismiss-btn');
+
+        if (retryBtn) {
+            retryBtn.onclick = () => {
+                hideModuleLoadError();
+                if (typeof onRetry === 'function') {
+                    onRetry();
+                }
+            };
+        }
+
+        if (dismissBtn) {
+            dismissBtn.onclick = () => {
+                hideModuleLoadError();
+            };
+        }
+
+        overlay.classList.remove('hidden');
+        overlay.classList.add('flex');
+    }
+}
+
+/**
+ * Hides the module load error modal.
+ */
+export function hideModuleLoadError() {
+    if (typeof document === 'undefined') return;
+    const overlay = document.getElementById('modal-overlay');
+    if (overlay) {
+        overlay.classList.add('hidden');
+        overlay.classList.remove('flex');
+    }
+}
+
+/**
+ * Loads a module dynamically with automated retries and exponential backoff.
+ * Caches both the promise and the resolved module.
+ * @param {string} moduleKey 
+ * @param {Object} [options]
+ * @param {number} [options.maxRetries=3]
+ * @param {number} [options.baseDelayMs=300]
+ * @returns {Promise<any>}
+ */
+export function loadModule(moduleKey, options = {}) {
+    const { maxRetries = 3, baseDelayMs = 300 } = options;
     const entry = _moduleCache.get(moduleKey);
     if (entry) {
         if (entry.status === 'loaded') {
@@ -364,7 +517,7 @@ export function loadModule(moduleKey) {
         return Promise.reject(new Error(`[ModuleLoader] Unknown module: "${moduleKey}"`));
     }
 
-    const promise = importFactory()
+    const promise = loadWithRetry(importFactory, maxRetries, baseDelayMs)
         .then(mod => {
             _moduleCache.set(moduleKey, {
                 module: mod,
@@ -380,7 +533,7 @@ export function loadModule(moduleKey) {
                 status: 'error',
                 error: err
             });
-            console.error(`[ModuleLoader] Failed to load module "${moduleKey}":`, err);
+            console.error(`[ModuleLoader] Failed to load module "${moduleKey}" after ${maxRetries} retries:`, err);
             throw err;
         });
 
@@ -434,13 +587,13 @@ function hideSubtleLoading() {
 /**
  * Creates a lazy function proxy that resolves the module on invocation.
  * Shows a subtle loading bar only if the chunk fetch takes longer than 300ms.
- * If already preloaded / in cache, invocation is instantaneous.
+ * Displays a recovery error modal with a "Retry" button if chunk loading fails.
  * @param {string} moduleKey 
  * @param {string} exportName 
  * @returns {Function}
  */
 export function lazy(moduleKey, exportName) {
-    return async function(...args) {
+    const lazyProxy = async function(...args) {
         if (isModuleLoaded(moduleKey)) {
             const entry = _moduleCache.get(moduleKey);
             const fn = entry.module[exportName];
@@ -477,9 +630,15 @@ export function lazy(moduleKey, exportName) {
                 _activeLoadingCount = Math.max(0, _activeLoadingCount - 1);
             }
             hideSubtleLoading();
+            showModuleLoadError({
+                moduleKey,
+                onRetry: () => lazyProxy(...args),
+                error: err
+            });
             throw err;
         }
     };
+    return lazyProxy;
 }
 
 /**
@@ -605,6 +764,7 @@ export function detachIntentPreloaders() {
 export function _resetLoaderForTesting() {
     clearModuleCache();
     detachIntentPreloaders();
+    hideModuleLoadError();
 }
 
 export const ModuleLoader = {
@@ -612,11 +772,15 @@ export const ModuleLoader = {
     ACTION_TO_MODULE,
     isModuleLoaded,
     loadModule,
+    loadWithRetry,
     preloadModule,
     lazy,
     preloadModulesPaced,
     preloadForContext,
     attachIntentPreloaders,
     detachIntentPreloaders,
+    formatModuleName,
+    showModuleLoadError,
+    hideModuleLoadError,
     _resetLoaderForTesting
 };

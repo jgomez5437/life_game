@@ -9,6 +9,7 @@ import { HQ_TIERS, BUSINESS_INDUSTRIES, MARKETING_CHANNELS, SPECIALIZED_ROLES, V
 import { GameLogic } from '../../core/gameLogic.js';
 
 let activeBusinessTab = 'overview';
+let isProcessingBusinessAction = false;
 
 // ─── UPGRADES ─────────────────────────────────────────────────────────────
 
@@ -99,7 +100,7 @@ export function renderBusinessDashboard() {
                     </button>
                     <div class="min-w-0">
                         <h1 class="text-lg sm:text-xl font-bold text-white flex items-center gap-2 truncate">
-                            <span class="truncate">${user.companyName}</span>
+                            <span class="truncate">${Utils.escapeHtml(user.companyName)}</span>
                             <span class="text-xs font-normal px-2 py-0.5 rounded bg-indigo-900/60 text-indigo-300 border border-indigo-500/30 flex-shrink-0">
                                 Y${user.companyYear} Q${user.companyQuarter}
                             </span>
@@ -527,6 +528,7 @@ function renderTabHR(user, ind) {
 
 function renderTabFinance(user, ind, valuation, overhead) {
     const vcOffers = GameLogic.calculateVCInvestorOffers(user);
+    const isPublic = Boolean(user.isPublic);
 
     // VC Cards
     const vcCards = vcOffers.map(vc => `
@@ -562,6 +564,9 @@ function renderTabFinance(user, ind, valuation, overhead) {
         </tr>
     `).join('');
 
+    const canIPO = !isPublic && valuation >= 25000000 && user.equityOwned >= 0.20;
+    const ipoFloatAmount = Math.floor(valuation * 0.20);
+
     return `
         <div class="space-y-6">
             <!-- VC Investor Pitching Room -->
@@ -571,13 +576,18 @@ function renderTabFinance(user, ind, valuation, overhead) {
                         <h3 class="font-bold text-white text-lg flex items-center gap-2">
                             <i class="fas fa-handshake text-indigo-400"></i> Venture Capital Pitch Room
                         </h3>
-                        <div class="text-xs text-slate-300">Raise equity funding to accelerate scale. Current Valuation: ${Utils.formatMoney(valuation)}</div>
+                        <div class="text-xs text-slate-300">${isPublic ? 'Company is publicly traded. Early-stage VC funding rounds are closed.' : `Raise equity funding to accelerate scale. Current Valuation: ${Utils.formatMoney(valuation)}`}</div>
                     </div>
                     <div class="text-xs font-bold text-indigo-300 bg-indigo-900/60 px-3 py-1.5 rounded-lg border border-indigo-500/30">
                         Remaining Equity: ${Math.round(user.equityOwned * 100)}%
                     </div>
                 </div>
-                ${vcOffers.length > 0 ? `<div class="grid grid-cols-1 md:grid-cols-2 gap-4">${vcCards}</div>` : '<div class="text-xs text-slate-400 italic">Scale your company revenue to unlock institutional VC offers.</div>'}
+                ${isPublic
+                    ? '<div class="text-xs text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 p-3 rounded-lg"><i class="fas fa-check-circle mr-1"></i> Public Corporation: Early venture rounds are concluded. Financing is available through public equity and corporate bonds.</div>'
+                    : (vcOffers.length > 0
+                        ? `<div class="grid grid-cols-1 md:grid-cols-2 gap-4">${vcCards}</div>`
+                        : '<div class="text-xs text-slate-400 italic">Scale your company revenue to unlock institutional VC offers, or you have accepted all current rounds.</div>')
+                }
             </div>
 
             <!-- Financial P&L Statement History -->
@@ -598,6 +608,31 @@ function renderTabFinance(user, ind, valuation, overhead) {
                         <tbody>${historyRows.length > 0 ? historyRows : '<tr><td colspan="4" class="py-3 text-xs text-slate-500 italic">No quarterly financial records yet.</td></tr>'}</tbody>
                     </table>
                 </div>
+            </div>
+
+            <!-- Initial Public Offering (IPO) Section -->
+            <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border ${isPublic ? 'border-emerald-500/50' : 'border-slate-700'} p-5 rounded-xl shadow-lg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <div class="text-[10px] ${isPublic ? 'text-emerald-400' : 'text-indigo-400'} uppercase font-bold tracking-wider mb-1 flex items-center gap-1.5">
+                        <i class="fas ${isPublic ? 'fa-check-circle' : 'fa-chart-line'}"></i> ${isPublic ? 'Publicly Listed on Stock Exchange' : 'Initial Public Offering (IPO)'}
+                    </div>
+                    <h3 class="font-bold text-white text-base flex items-center gap-2">
+                        <i class="fas fa-building-columns ${isPublic ? 'text-emerald-400' : 'text-indigo-400'}"></i> ${isPublic ? `${Utils.escapeHtml(user.companyName)} (Public Listing)` : 'Float Company on Stock Exchange'}
+                    </h3>
+                    <div class="text-xs text-slate-300">
+                        ${isPublic
+                            ? `Company is publicly traded. Market Capitalization: ${Utils.formatMoney(valuation)}.`
+                            : `Float 20% equity shares on the public exchange for an immediate founder cashout. Requires $25M+ valuation.`
+                        }
+                    </div>
+                </div>
+                ${isPublic
+                    ? `<span class="text-xs font-bold text-emerald-300 bg-emerald-900/60 px-4 py-2 rounded-lg border border-emerald-500/30 whitespace-nowrap"><i class="fas fa-check mr-1"></i> Publicly Traded</span>`
+                    : `<button data-action="launchIPO"
+                               class="px-4 py-2.5 rounded-lg text-xs font-bold whitespace-nowrap shadow-md transition ${canIPO ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white cursor-pointer' : 'bg-slate-700 text-slate-500 cursor-not-allowed'}">
+                           <i class="fas fa-bullhorn mr-1"></i> Launch IPO (${Utils.formatMoney(ipoFloatAmount)})
+                       </button>`
+                }
             </div>
 
             <!-- Exit Options & Company Sale -->
@@ -726,8 +761,8 @@ export function processQuarter() {
         return;
     }
 
-    user.compCash -= totalExpenses;
-    user.money    += ceoWages;
+    user.compCash = Math.min(GameLogic.MAX_COMPANY_CASH || 999999999999999, Math.max(0, user.compCash - totalExpenses));
+    user.money    = Math.min(GameLogic.MAX_PLAYER_MONEY || 999999999999999, (user.money || 0) + ceoWages);
 
     // Check random decision event
     let activeEvent = null;
@@ -758,7 +793,7 @@ export function processQuarter() {
     user.inventory = Math.min(available - sold, maxInventory);
 
     const revenue = sold * user.sellingPrice;
-    user.compCash += revenue;
+    user.compCash = Math.min(GameLogic.MAX_COMPANY_CASH || 999999999999999, user.compCash + revenue);
     const profit = revenue - totalExpenses;
 
     user.businessHistory.push({
@@ -925,16 +960,88 @@ export function adjustRoleCount(roleId, deltaStr) {
 }
 
 export function acceptVCPitch(investorId) {
-    const user = state.gameState.user;
-    const res = GameLogic.acceptVCOffer(user, investorId);
-    if (res.success) {
-        addLog(res.msg, 'major');
-        if (typeof saveGame === 'function') saveGame();
-        UI.showModal('Investment Secured!', res.msg);
-    } else {
-        UI.showModal('Offer Failed', res.msg);
+    if (isProcessingBusinessAction) return;
+    isProcessingBusinessAction = true;
+
+    try {
+        const user = state.gameState?.user;
+        if (!user || !user.hasBusiness) return;
+
+        if (user.isPublic) {
+            UI.showModal('Public Company', 'Publicly traded corporations cannot accept private early-stage VC investments.');
+            return;
+        }
+
+        if (user.investorShares && user.investorShares.some(s => s.investorId === investorId)) {
+            UI.showModal('Offer Already Accepted', 'You have already secured funding from this investor.');
+            return;
+        }
+
+        const res = GameLogic.acceptVCOffer(user, investorId);
+        if (res.success) {
+            addLog(res.msg, 'major');
+            if (typeof saveGame === 'function') saveGame();
+            UI.showModal('Investment Secured!', res.msg);
+        } else {
+            UI.showModal('Offer Failed', res.msg);
+        }
+        renderBusinessDashboard();
+    } finally {
+        isProcessingBusinessAction = false;
     }
-    renderBusinessDashboard();
+}
+
+export function launchIPO() {
+    const user = state.gameState?.user;
+    if (!user || !user.hasBusiness) return;
+
+    if (user.isPublic) {
+        UI.showModal('Already Public', `${Utils.escapeHtml(user.companyName)} is already a publicly traded corporation.`);
+        return;
+    }
+
+    if (isProcessingBusinessAction) return;
+
+    const valuation = GameLogic.calculateCompanyValuation(user);
+    if (valuation < 25000000) {
+        UI.showModal('IPO Ineligible', `Your company needs an estimated valuation of at least $25,000,000 to file for an Initial Public Offering (Current: ${Utils.formatMoney(valuation)}).`);
+        return;
+    }
+
+    const float = 0.20;
+    if (user.equityOwned < float) {
+        UI.showModal('Insufficient Equity', `You need at least ${Math.round(float * 100)}% equity to float on the public stock exchange.`);
+        return;
+    }
+
+    const playerPayout = Math.floor(valuation * float);
+
+    UI.showConfirm(
+        'Initial Public Offering (IPO)',
+        `Take <strong>${Utils.escapeHtml(user.companyName)}</strong> public on the stock exchange?<br><br>` +
+        `Public Listing Valuation: <span class="text-green-400 font-bold font-mono">${Utils.formatMoney(valuation)}</span><br>` +
+        `Float 20% Public Shares for <span class="text-yellow-400 font-bold font-mono">${Utils.formatMoney(playerPayout)}</span> Founder Payout.<br>` +
+        `<span class="text-xs text-slate-400">Your equity ownership will adjust from ${Math.round(user.equityOwned * 100)}% to ${Math.round((user.equityOwned - float) * 100)}%.</span>`,
+        'Ring the Bell (Launch IPO)',
+        () => {
+            if (isProcessingBusinessAction) return;
+            if (!user.hasBusiness || user.isPublic) return;
+            isProcessingBusinessAction = true;
+            try {
+                const res = GameLogic.launchIPO(user, float);
+                if (res.success) {
+                    addLog(res.msg, 'major');
+                    if (typeof saveGame === 'function') saveGame();
+                    UI.showModal('🎉 Historic IPO Listing!', res.msg);
+                } else {
+                    UI.showModal('IPO Failed', res.msg);
+                }
+                renderBusinessDashboard();
+            } finally {
+                isProcessingBusinessAction = false;
+            }
+        }
+    );
 }
 
 export function hireEmployee() {
@@ -982,41 +1089,51 @@ export function layoffEmployee() {
 
 export function sellBusiness() {
     const user = state.gameState.user;
+    if (!user || !user.hasBusiness || isProcessingBusinessAction) return;
+
+    const MAX_PLAYER_MONEY = GameLogic.MAX_PLAYER_MONEY || 999999999999999;
     const valuation = GameLogic.calculateCompanyValuation(user);
-    const playerPayout = Math.floor(valuation * user.equityOwned);
+    const playerPayout = Math.min(MAX_PLAYER_MONEY, Math.floor(valuation * user.equityOwned));
 
     UI.showConfirm(
         'Sell Company (Corporate Exit)',
-        `Sell <strong>${user.companyName}</strong> for <span class="text-green-400 font-bold">${Utils.formatMoney(playerPayout)}</span>?<br><span class="text-xs text-slate-400">Calculated based on valuation ${Utils.formatMoney(valuation)} × your ${Math.round(user.equityOwned * 100)}% equity ownership.</span>`,
+        `Sell <strong>${Utils.escapeHtml(user.companyName)}</strong> for <span class="text-green-400 font-bold">${Utils.formatMoney(playerPayout)}</span>?<br><span class="text-xs text-slate-400">Calculated based on valuation ${Utils.formatMoney(valuation)} × your ${Math.round(user.equityOwned * 100)}% equity ownership.</span>`,
         'Confirm Exit Sale',
         () => {
-            user.money += playerPayout;
-            addLog(`Completed acquisition sale of ${user.companyName} for ${Utils.formatMoney(playerPayout)}!`, 'major');
+            if (isProcessingBusinessAction || !user || !user.hasBusiness) return;
+            isProcessingBusinessAction = true;
+            try {
+                user.money = Math.min(MAX_PLAYER_MONEY, (user.money || 0) + playerPayout);
+                addLog(`Completed acquisition sale of ${user.companyName} for ${Utils.formatMoney(playerPayout)}!`, 'major');
 
-            user.hasBusiness        = false;
-            user.companyName        = null;
-            user.compCash           = 0;
-            user.companyYear        = 1;
-            user.companyQuarter     = 1;
-            user.employees          = 0;
-            user.businessReputation = 0;
-            user.inventory          = 0;
-            user.productionTarget   = 0;
-            user.sellingPrice       = 0;
-            user.salaryOffer        = 0;
-            user.ceoSalary          = 0;
-            user.supplierId         = null;
-            user.industry           = null;
-            user.hqTier             = 'garage';
-            user.marketingLevels    = { social_ads: 0, seo_content: 0, influencers: 0, b2b_sales: 0 };
-            user.teamRoles          = { engineering: 0, sales: 0, operations: 0, marketing: 0 };
-            user.equityOwned        = 1.0;
-            user.investorShares     = [];
-            user.businessHistory    = [];
-            user.businessUpgrades   = [];
-            GameLogic.resetBusinessQuarterTracking(user);
-            if (typeof saveGame === 'function') saveGame();
-            renderActivities();
+                user.hasBusiness        = false;
+                user.isPublic           = false;
+                user.companyName        = null;
+                user.compCash           = 0;
+                user.companyYear        = 1;
+                user.companyQuarter     = 1;
+                user.employees          = 0;
+                user.businessReputation = 0;
+                user.inventory          = 0;
+                user.productionTarget   = 0;
+                user.sellingPrice       = 0;
+                user.salaryOffer        = 0;
+                user.ceoSalary          = 0;
+                user.supplierId         = null;
+                user.industry           = null;
+                user.hqTier             = 'garage';
+                user.marketingLevels    = { social_ads: 0, seo_content: 0, influencers: 0, b2b_sales: 0 };
+                user.teamRoles          = { engineering: 0, sales: 0, operations: 0, marketing: 0 };
+                user.equityOwned        = 1.0;
+                user.investorShares     = [];
+                user.businessHistory    = [];
+                user.businessUpgrades   = [];
+                GameLogic.resetBusinessQuarterTracking(user);
+                if (typeof saveGame === 'function') saveGame();
+                renderActivities();
+            } finally {
+                isProcessingBusinessAction = false;
+            }
         }
     );
 }
@@ -1087,8 +1204,8 @@ function executeSingleAutoQuarter(user) {
     const payableCeoWages = Math.min(ceoWages, cashBeforeCEO);
     const totalExpenses = operatingExpenses + payableCeoWages;
 
-    user.compCash = Math.max(0, (user.compCash || 0) - totalExpenses);
-    user.money = (user.money || 0) + payableCeoWages;
+    user.compCash = Math.min(GameLogic.MAX_COMPANY_CASH || 999999999999999, Math.max(0, user.compCash - totalExpenses));
+    user.money   = Math.min(GameLogic.MAX_PLAYER_MONEY || 999999999999999, (user.money || 0) + ceoWages);
 
     const priceRatio = user.sellingPrice > 0 ? ind.unitPrice / user.sellingPrice : 1;
     const priceFactor = Math.pow(priceRatio, 1.4);
@@ -1111,7 +1228,7 @@ function executeSingleAutoQuarter(user) {
     user.inventory = Math.min(available - sold, maxInventory);
 
     const revenue = sold * user.sellingPrice;
-    user.compCash += revenue;
+    user.compCash = Math.min(GameLogic.MAX_COMPANY_CASH || 999999999999999, user.compCash + revenue);
     const profit = revenue - totalExpenses;
 
     user.businessHistory.push({

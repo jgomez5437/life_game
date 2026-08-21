@@ -1,12 +1,12 @@
-import { state, hasPurchasedPack } from '../public/src/core/state.js';
+import { state, hasPurchasedPack } from '../../../public/src/core/state.js';
 import { 
     hasInstantDiplomaPerk, 
     grantInstantHighSchool, 
     grantInstantUniversityDegree, 
     grantInstantGradDegree 
-} from '../public/src/features/education/instantDiploma.js';
-import { STORE_PACKS } from '../public/src/features/store/storeScreen.js';
-import { applyForCareerTrack } from '../public/src/features/career/careerJobsScreen.js';
+} from '../../../public/src/features/education/instantDiploma.js';
+import { STORE_PACKS } from '../../../public/src/features/store/storeScreen.js';
+import { applyForCareerTrack } from '../../../public/src/features/career/careerJobsScreen.js';
 
 describe('Instant Diplomas Perk & Entitlements', () => {
 

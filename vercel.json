@@ -3,5 +3,10 @@
   "installCommand": "npm install",
   "devCommand": "npm run dev",
   "outputDirectory": "dist",
-  "cleanUrls": true
+  "functions": {
+    "api/**": {
+      "maxDuration": 10,
+      "memory": 256
+    }
+  }
 }

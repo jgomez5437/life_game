@@ -306,8 +306,8 @@ export function visitGymOneTime() {
         user.money -= actualCost;
         const healthGain = boost;
         const looksGain = Math.floor(Math.random() * 4) + 2;
-        user.health = Math.min(100, (user.health || 50) + healthGain);
-        user.looks = Math.min(100, (user.looks || 50) + looksGain);
+        user.health = Math.max(0, Math.min(100, (user.health || 50) + healthGain));
+        user.looks = Math.max(0, Math.min(100, (user.looks || 50) + looksGain));
         addLog(`Worked out at the gym! Restored +${healthGain}% Health and gained +${looksGain} Looks.`, 'good');
         UI.updateHeader(user);
         renderMoreDashboard();
@@ -468,49 +468,58 @@ export function openLotteryModal() {
     UI.showCustomModal("Lottery Station", html);
 }
 
+let isLotteryProcessing = false;
+
 export function buyLotteryTicket(ticketTypeId) {
-    const user = state.gameState.user;
-    const result = GameLogic.playLotteryTicket(ticketTypeId, user);
+    if (isLotteryProcessing) return;
+    isLotteryProcessing = true;
+    try {
+        const user = state.gameState?.user;
+        if (!user) return;
+        const result = GameLogic.playLotteryTicket(ticketTypeId, user);
 
-    if (!result.success) {
-        UI.showModal("Lottery Notice", result.message);
-        return;
-    }
+        if (!result.success) {
+            UI.showModal("Lottery Notice", result.message);
+            return;
+        }
 
-    UI.updateHeader(user);
+        UI.updateHeader(user);
 
-    if (result.payout > 0) {
-        addLog(`Won ${Utils.formatMoney(result.payout)} on a ${result.ticketName}!`, 'good');
-    } else {
-        addLog(`Bought a ${result.ticketName} but didn't win anything.`, 'neutral');
-    }
+        if (result.payout > 0) {
+            addLog(`Won ${Utils.formatMoney(result.payout)} on a ${result.ticketName}!`, 'good');
+        } else {
+            addLog(`Bought a ${result.ticketName} but didn't win anything.`, 'neutral');
+        }
 
-    const outcomeHtml = result.payout > 0 ? `
-        <div class="text-center py-3">
-            <div class="text-4xl text-amber-400 mb-2">🎉</div>
-            <h3 class="text-xl font-bold text-emerald-400 mb-1">${result.title}</h3>
-            <p class="text-sm text-slate-300 mb-4">Congratulations! <strong>+${Utils.formatMoney(result.payout)}</strong> has been added to your bank account.</p>
-            <div class="text-xs text-slate-400 mb-4">Tickets remaining this year: ${result.ticketsRemaining}/10</div>
-            <div class="flex gap-2">
-                ${result.ticketsRemaining > 0 ? `<button data-action="openLotteryModal" class="flex-1 bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 rounded-lg text-xs transition">Play Again</button>` : ''}
-                <button data-action="hideModal" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 rounded-lg text-xs transition">Close</button>
+        const outcomeHtml = result.payout > 0 ? `
+            <div class="text-center py-3">
+                <div class="text-4xl text-amber-400 mb-2">🎉</div>
+                <h3 class="text-xl font-bold text-emerald-400 mb-1">${result.title}</h3>
+                <p class="text-sm text-slate-300 mb-4">Congratulations! <strong>+${Utils.formatMoney(result.payout)}</strong> has been added to your bank account.</p>
+                <div class="text-xs text-slate-400 mb-4">Tickets remaining this year: ${result.ticketsRemaining}/10</div>
+                <div class="flex gap-2">
+                    ${result.ticketsRemaining > 0 ? `<button data-action="openLotteryModal" class="flex-1 bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 rounded-lg text-xs transition">Play Again</button>` : ''}
+                    <button data-action="hideModal" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 rounded-lg text-xs transition">Close</button>
+                </div>
             </div>
-        </div>
-    ` : `
-        <div class="text-center py-3">
-            <div class="text-4xl text-slate-500 mb-2">🎟️</div>
-            <h3 class="text-lg font-bold text-slate-300 mb-1">${result.title}</h3>
-            <p class="text-xs text-slate-400 mb-4">Your numbers didn't hit this time.</p>
-            <div class="text-xs text-slate-400 mb-4">Tickets remaining this year: ${result.ticketsRemaining}/10</div>
-            <div class="flex gap-2">
-                ${result.ticketsRemaining > 0 ? `<button data-action="openLotteryModal" class="flex-1 bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 rounded-lg text-xs transition">Try Again</button>` : ''}
-                <button data-action="hideModal" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 rounded-lg text-xs transition">Close</button>
+        ` : `
+            <div class="text-center py-3">
+                <div class="text-4xl text-slate-500 mb-2">🎟️</div>
+                <h3 class="text-lg font-bold text-slate-300 mb-1">${result.title}</h3>
+                <p class="text-xs text-slate-400 mb-4">Your numbers didn't hit this time.</p>
+                <div class="text-xs text-slate-400 mb-4">Tickets remaining this year: ${result.ticketsRemaining}/10</div>
+                <div class="flex gap-2">
+                    ${result.ticketsRemaining > 0 ? `<button data-action="openLotteryModal" class="flex-1 bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 rounded-lg text-xs transition">Try Again</button>` : ''}
+                    <button data-action="hideModal" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 rounded-lg text-xs transition">Close</button>
+                </div>
             </div>
-        </div>
-    `;
+        `;
 
-    UI.showCustomModal("Lottery Reveal", outcomeHtml);
-    renderMoreDashboard();
+        UI.showCustomModal("Lottery Reveal", outcomeHtml);
+        renderMoreDashboard();
+    } finally {
+        isLotteryProcessing = false;
+    }
 }
 
 
@@ -520,7 +529,7 @@ export function visitDoctor() {
     
     if (user.money >= cost) {
         user.money -= cost;
-        user.health = Math.min(100, user.health + boost);
+        user.health = Math.max(0, Math.min(100, (user.health || 50) + boost));
         addLog("You visited the doctor and feel much healthier.", 'good');
         UI.updateHeader(user);
         renderMoreDashboard();
@@ -577,7 +586,7 @@ export function bookTrip(tier) {
     user.money -= outcome.cost;
     user.money += outcome.moneyChange;
     
-    user.health = Math.min(100, user.health + outcome.healthChange);
+    user.health = Math.max(0, Math.min(100, (user.health || 50) + outcome.healthChange));
     
     let moneyMsg = "";
     if (outcome.moneyChange > 0) moneyMsg = `<br><span class="text-green-400">+$${outcome.moneyChange}</span>`;
@@ -635,7 +644,7 @@ export function openMoveCountryModal() {
     const jobWarningHtml = user.jobTitle
         ? `<div class="bg-amber-950/40 border border-amber-800/60 p-2.5 rounded-lg text-amber-300 text-xs flex items-center gap-2">
             <i class="fas fa-exclamation-triangle text-amber-400 shrink-0"></i>
-            <span>Relocating to another country will force you to leave your current position as <strong>${user.jobTitle}</strong>.</span>
+            <span>Relocating to another country will force you to leave your current position as <strong>${Utils.escapeHtml(user.jobTitle)}</strong>.</span>
            </div>`
         : '';
 
@@ -719,10 +728,10 @@ export function confirmMoveCountry() {
     if (partner) {
         const html = `
             <div class="space-y-4 text-left">
-                <p class="text-xs text-slate-300">You are currently in a relationship with <strong>${partner.name}</strong> (${partner.type}). Do you want to ask them to relocate to <strong>${targetCountry}</strong> with you?</p>
+                <p class="text-xs text-slate-300">You are currently in a relationship with <strong>${Utils.escapeHtml(partner.name)}</strong> (${Utils.escapeHtml(partner.type)}). Do you want to ask them to relocate to <strong>${Utils.escapeHtml(targetCountry)}</strong> with you?</p>
                 <div class="space-y-2 pt-2 border-t border-slate-700">
                     <button data-action="askPartnerToMove" data-args="&apos;${targetCountry}&apos;, &apos;${targetCity}&apos;" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-lg text-xs transition">
-                        <i class="fas fa-heart mr-1"></i> Ask ${partner.name} to Move With You
+                        <i class="fas fa-heart mr-1"></i> Ask ${Utils.escapeHtml(partner.name)} to Move With You
                     </button>
                     <button data-action="confirmMoveAlone" data-args="&apos;${targetCountry}&apos;, &apos;${targetCity}&apos;" class="w-full bg-red-900/40 hover:bg-red-800/60 border border-red-700/50 text-red-300 font-bold py-2.5 rounded-lg text-xs transition">
                         <i class="fas fa-user-alt mr-1"></i> Move Alone (End Relationship)
@@ -733,7 +742,7 @@ export function confirmMoveCountry() {
                 </div>
             </div>
         `;
-        UI.showCustomModal(`Relocate with ${partner.name}?`, html);
+        UI.showCustomModal(`Relocate with ${Utils.escapeHtml(partner.name)}?`, html);
         return;
     }
 
@@ -760,7 +769,7 @@ export function askPartnerToMove(targetCountry, targetCity) {
             <div class="space-y-4 text-left">
                 <div class="bg-red-950/40 border border-red-800/60 p-3 rounded-lg text-red-300 text-xs flex items-center gap-2">
                     <i class="fas fa-heart-broken text-red-400 text-base shrink-0"></i>
-                    <span><strong>${partner.name}</strong> does not want to leave their home country and refused to relocate to <strong>${targetCountry}</strong>.</span>
+                    <span><strong>${Utils.escapeHtml(partner.name)}</strong> does not want to leave their home country and refused to relocate to <strong>${Utils.escapeHtml(targetCountry)}</strong>.</span>
                 </div>
                 <p class="text-xs text-slate-300">Would you like to end your relationship and move alone, or cancel and stay?</p>
                 <div class="space-y-2 pt-2 border-t border-slate-700">
@@ -773,7 +782,7 @@ export function askPartnerToMove(targetCountry, targetCity) {
                 </div>
             </div>
         `;
-        UI.showCustomModal(`${partner.name} Refused to Move`, html);
+        UI.showCustomModal(`${Utils.escapeHtml(partner.name)} Refused to Move`, html);
     }
 }
 
@@ -809,18 +818,18 @@ function executeRelocation(user, targetCountry, targetCity, partnerMovedWith, pa
     renderMoreDashboard();
 
     const partnerNoticeHtml = partnerMovedWith && partnerObj
-        ? `<div class="mt-2 text-xs text-emerald-400 bg-emerald-950/40 p-2 rounded-lg border border-emerald-800/50"><i class="fas fa-heart mr-1"></i><strong>${partnerObj.name}</strong> moved with you! (+10 Relationship)</div>`
+        ? `<div class="mt-2 text-xs text-emerald-400 bg-emerald-950/40 p-2 rounded-lg border border-emerald-800/50"><i class="fas fa-heart mr-1"></i><strong>${Utils.escapeHtml(partnerObj.name)}</strong> moved with you! (+10 Relationship)</div>`
         : exPartnerName
-        ? `<div class="mt-2 text-xs text-red-400 bg-red-950/40 p-2 rounded-lg border border-red-800/50"><i class="fas fa-heart-broken mr-1"></i>You broke up with <strong>${exPartnerName}</strong> to move alone.</div>`
+        ? `<div class="mt-2 text-xs text-red-400 bg-red-950/40 p-2 rounded-lg border border-red-800/50"><i class="fas fa-heart-broken mr-1"></i>You broke up with <strong>${Utils.escapeHtml(exPartnerName)}</strong> to move alone.</div>`
         : '';
 
     const jobNoticeHtml = result.hadJob
-        ? `<div class="mt-2 text-xs text-amber-400 bg-amber-950/40 p-2 rounded-lg border border-amber-800/50"><i class="fas fa-exclamation-circle mr-1"></i>You lost your position as <strong>${result.oldJobTitle}</strong> and must apply for a new job.</div>`
+        ? `<div class="mt-2 text-xs text-amber-400 bg-amber-950/40 p-2 rounded-lg border border-amber-800/50"><i class="fas fa-exclamation-circle mr-1"></i>You lost your position as <strong>${Utils.escapeHtml(result.oldJobTitle)}</strong> and must apply for a new job.</div>`
         : '';
 
     UI.showModal("Welcome to Your New Home!", `
         <div class="text-left space-y-2">
-            <p class="text-sm text-slate-200">You have successfully relocated to <strong>${targetCity}, ${targetCountry}</strong>. ${Utils.formatMoney(result.cost)} was deducted for travel expenses.</p>
+            <p class="text-sm text-slate-200">You have successfully relocated to <strong>${Utils.escapeHtml(targetCity)}, ${Utils.escapeHtml(targetCountry)}</strong>. ${Utils.formatMoney(result.cost)} was deducted for travel expenses.</p>
             ${partnerNoticeHtml}
             ${jobNoticeHtml}
         </div>

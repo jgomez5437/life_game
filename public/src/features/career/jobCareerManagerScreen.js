@@ -85,7 +85,7 @@ export function renderCareerManager() {
                 <div class="w-16 h-16 rounded-full bg-blue-900/50 flex items-center justify-center text-blue-400 mx-auto mb-3 text-2xl">
                     <i class="fas fa-briefcase"></i>
                 </div>
-                <h2 class="text-2xl font-bold text-white">${user.jobTitle}</h2>
+                <h2 class="text-2xl font-bold text-white">${Utils.escapeHtml(user.jobTitle)}</h2>
                 <p class="text-green-400 text-sm font-bold">${Utils.formatMoney(user.jobSalary)} / year</p>
                 <p class="text-slate-500 text-xs mt-1">${actionTaken ? "Action Taken This Year" : "Actions Available"}</p>
             </div>
@@ -165,7 +165,7 @@ export function confirmQuitCareer() {
     const user = state.gameState.user;
     const m = get('modal-overlay');
     get('modal-title').innerText = "Quit Career?";
-    get('modal-content').innerHTML = `Are you sure you want to resign from your position as <strong>${user.jobTitle}</strong>? You will lose your steady income.`;
+    get('modal-content').innerHTML = `Are you sure you want to resign from your position as <strong>${Utils.escapeHtml(user.jobTitle)}</strong>? You will lose your steady income.`;
     
     get('modal-actions').innerHTML = `
         <div class="grid grid-cols-2 gap-3">
@@ -238,7 +238,7 @@ function renderMafiaManager() {
                 <div class="w-16 h-16 rounded-full bg-red-900/50 flex items-center justify-center text-red-500 mx-auto mb-3 text-2xl border border-red-500/30">
                     <i class="fas fa-user-ninja"></i>
                 </div>
-                <h2 class="text-2xl font-bold text-white uppercase tracking-widest">${user.jobTitle}</h2>
+                <h2 class="text-2xl font-bold text-white uppercase tracking-widest">${Utils.escapeHtml(user.jobTitle)}</h2>
                 <p class="text-red-400 text-sm font-bold">${Utils.formatMoney(user.jobSalary)} / year cut</p>
             </div>
             

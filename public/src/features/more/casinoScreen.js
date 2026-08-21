@@ -113,6 +113,9 @@ export function renderCasinoHub() {
 // ==========================================
 
 let activeBlackjackState = null;
+let isBlackjackProcessing = false;
+let isRouletteSpinning = false;
+let isSlotsSpinning = false;
 
 export function openBlackjackBetting() {
     const user = state.gameState.user;
@@ -160,37 +163,44 @@ export function openBlackjackBetting() {
 }
 
 export function startBlackjackGame() {
+    if (isBlackjackProcessing) return;
     const slider = document.getElementById('blackjackBetSlider');
     if (!slider) return;
     
     const betAmount = Number(slider.value);
-    const user = state.gameState.user;
+    const user = state.gameState?.user;
+    if (!user) return;
     
     if (user.money < betAmount) {
         UI.showModal("Error", "You don't have enough money.");
         return;
     }
     
-    user.money -= betAmount;
-    UI.updateHeader(user);
-    
-    const deck = GameLogic.getDeck();
-    const playerHand = [deck.pop(), deck.pop()];
-    const dealerHand = [deck.pop(), deck.pop()];
-    
-    activeBlackjackState = {
-        deck,
-        playerHand,
-        dealerHand,
-        betAmount,
-        status: 'playing'
-    };
-    
-    const playerTotal = GameLogic.calculateBlackjackHand(playerHand);
-    if (playerTotal === 21) {
-        finishBlackjackGame(true);
-    } else {
-        renderBlackjackGame();
+    isBlackjackProcessing = true;
+    try {
+        user.money -= betAmount;
+        UI.updateHeader(user);
+        
+        const deck = GameLogic.getDeck();
+        const playerHand = [deck.pop(), deck.pop()];
+        const dealerHand = [deck.pop(), deck.pop()];
+        
+        activeBlackjackState = {
+            deck,
+            playerHand,
+            dealerHand,
+            betAmount,
+            status: 'playing'
+        };
+        
+        const playerTotal = GameLogic.calculateBlackjackHand(playerHand);
+        if (playerTotal === 21) {
+            finishBlackjackGame(true);
+        } else {
+            renderBlackjackGame();
+        }
+    } finally {
+        isBlackjackProcessing = false;
     }
 }
 
@@ -272,19 +282,30 @@ export function renderBlackjackGame() {
 }
 
 export function blackjackHit() {
-    if (!activeBlackjackState) return;
-    const { playerHand, deck } = activeBlackjackState;
-    playerHand.push(deck.pop());
-    
-    if (GameLogic.calculateBlackjackHand(playerHand) > 21) {
-        finishBlackjackGame(false);
-    } else {
-        renderBlackjackGame();
+    if (isBlackjackProcessing || !activeBlackjackState || activeBlackjackState.status !== 'playing') return;
+    isBlackjackProcessing = true;
+    try {
+        const { playerHand, deck } = activeBlackjackState;
+        playerHand.push(deck.pop());
+        
+        if (GameLogic.calculateBlackjackHand(playerHand) > 21) {
+            finishBlackjackGame(false);
+        } else {
+            renderBlackjackGame();
+        }
+    } finally {
+        isBlackjackProcessing = false;
     }
 }
 
 export function blackjackStand() {
-    finishBlackjackGame(false);
+    if (isBlackjackProcessing || !activeBlackjackState || activeBlackjackState.status !== 'playing') return;
+    isBlackjackProcessing = true;
+    try {
+        finishBlackjackGame(false);
+    } finally {
+        isBlackjackProcessing = false;
+    }
 }
 
 function finishBlackjackGame(playerNaturalBlackjack) {
@@ -404,10 +425,12 @@ export function confirmRouletteSingleNumberBet() {
 }
 
 export function confirmRouletteBet(type, target) {
+    if (isRouletteSpinning) return;
     const amtInp = get('roulette-bet-amt');
     if (!amtInp) return;
     const betAmount = parseInt(amtInp.value, 10);
-    const user = state.gameState.user;
+    const user = state.gameState?.user;
+    if (!user) return;
 
     if (isNaN(betAmount) || betAmount < 25) {
         UI.showModal("Invalid Bet", `Minimum roulette bet is ${Utils.formatMoney(25)}.`);
@@ -417,6 +440,8 @@ export function confirmRouletteBet(type, target) {
         UI.showModal("Insufficient Cash", `You need ${Utils.formatMoney(betAmount)} to place this bet.`);
         return;
     }
+
+    isRouletteSpinning = true;
 
     // Spin animation sequence
     UI.showCustomModal("Spinning Roulette Wheel...", `
@@ -429,35 +454,39 @@ export function confirmRouletteBet(type, target) {
     `);
 
     setTimeout(() => {
-        const result = GameLogic.playRoulette(user, type, target, betAmount);
-        saveGame();
-        UI.updateHeader(user);
+        try {
+            const result = GameLogic.playRoulette(user, type, target, betAmount);
+            saveGame();
+            UI.updateHeader(user);
 
-        if (result.isWin) {
-            addLog(`Roulette Win! ${result.msg}`, 'good');
-        } else {
-            addLog(`Roulette Loss. ${result.msg}`, 'bad');
+            if (result.isWin) {
+                addLog(`Roulette Win! ${result.msg}`, 'good');
+            } else {
+                addLog(`Roulette Loss. ${result.msg}`, 'bad');
+            }
+
+            const colorBadge = result.winningColor === 'red' ? 'bg-red-600' : result.winningColor === 'black' ? 'bg-slate-900 border border-slate-700' : 'bg-green-600';
+
+            const resultHtml = `
+                <div class="text-center py-4 space-y-4">
+                    <div class="w-20 h-20 rounded-full ${colorBadge} mx-auto flex items-center justify-center text-3xl font-extrabold text-white shadow-2xl border-4 border-amber-400">
+                        ${result.winningNumber}
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold ${result.isWin ? 'text-emerald-400' : 'text-red-400'}">${result.isWin ? 'WINNER!' : 'NO MATCH'}</h3>
+                        <p class="text-sm text-slate-300 mt-1">${result.msg}</p>
+                    </div>
+                    <div class="flex gap-2 pt-2">
+                        <button data-action="openRouletteModal" class="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 rounded-xl text-xs transition">Spin Again</button>
+                        <button data-action="hideModal" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-2.5 rounded-xl text-xs transition">Back</button>
+                    </div>
+                </div>
+            `;
+
+            UI.replaceModalContent("Roulette Outcome", resultHtml);
+        } finally {
+            isRouletteSpinning = false;
         }
-
-        const colorBadge = result.winningColor === 'red' ? 'bg-red-600' : result.winningColor === 'black' ? 'bg-slate-900 border border-slate-700' : 'bg-green-600';
-
-        const resultHtml = `
-            <div class="text-center py-4 space-y-4">
-                <div class="w-20 h-20 rounded-full ${colorBadge} mx-auto flex items-center justify-center text-3xl font-extrabold text-white shadow-2xl border-4 border-amber-400">
-                    ${result.winningNumber}
-                </div>
-                <div>
-                    <h3 class="text-xl font-bold ${result.isWin ? 'text-emerald-400' : 'text-red-400'}">${result.isWin ? 'WINNER!' : 'NO MATCH'}</h3>
-                    <p class="text-sm text-slate-300 mt-1">${result.msg}</p>
-                </div>
-                <div class="flex gap-2 pt-2">
-                    <button data-action="openRouletteModal" class="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 rounded-xl text-xs transition">Spin Again</button>
-                    <button data-action="hideModal" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-2.5 rounded-xl text-xs transition">Back</button>
-                </div>
-            </div>
-        `;
-
-        UI.replaceModalContent("Roulette Outcome", resultHtml);
     }, 1200);
 }
 
@@ -526,13 +555,22 @@ export function openSlotsModal() {
 }
 
 export function confirmSlotsSpin(betAmount) {
+    if (isSlotsSpinning) return;
     const wager = parseInt(betAmount, 10);
-    const user = state.gameState.user;
+    const user = state.gameState?.user;
+    if (!user) return;
+
+    if (isNaN(wager) || wager < 10) {
+        UI.showModal("Invalid Bet", `Minimum slots wager is ${Utils.formatMoney(10)}.`);
+        return;
+    }
 
     if (user.money < wager) {
         UI.showModal("Insufficient Cash", `You need ${Utils.formatMoney(wager)} to spin.`);
         return;
     }
+
+    isSlotsSpinning = true;
 
     // Animated reel spin phase
     UI.showCustomModal("Spinning Reels...", `
@@ -547,41 +585,45 @@ export function confirmSlotsSpin(betAmount) {
     `);
 
     setTimeout(() => {
-        const result = GameLogic.spinSlotMachine(user, wager);
-        saveGame();
-        UI.updateHeader(user);
+        try {
+            const result = GameLogic.spinSlotMachine(user, wager);
+            saveGame();
+            UI.updateHeader(user);
 
-        if (result.isWin) {
-            addLog(`Slots Win! ${result.msg}`, 'good');
-        } else {
-            addLog(`Slots Loss. ${result.msg}`, 'bad');
+            if (result.isWin) {
+                addLog(`Slots Win! ${result.msg}`, 'good');
+            } else {
+                addLog(`Slots Loss. ${result.msg}`, 'bad');
+            }
+
+            const reelsHtml = result.reels.map(r => `
+                <div class="w-16 h-20 bg-slate-900 border-2 ${result.isWin ? 'border-amber-400' : 'border-slate-700'} rounded-xl flex items-center justify-center text-4xl shadow-md">
+                    ${r.icon}
+                </div>
+            `).join('');
+
+            const resultHtml = `
+                <div class="text-center py-4 space-y-4">
+                    <div class="flex justify-center items-center gap-3">
+                        ${reelsHtml}
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold ${result.isWin ? 'text-amber-300' : 'text-slate-400'}">
+                            ${result.isJackpot ? '🎉 MEGA JACKPOT! 🎉' : result.isWin ? 'WINNER!' : 'NO MATCH'}
+                        </h3>
+                        <p class="text-sm text-slate-300 mt-1">${result.msg}</p>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 pt-2">
+                        <button data-action="confirmSlotsSpin" data-args="${wager}" class="bg-amber-600 hover:bg-amber-500 text-white font-bold py-2.5 rounded-xl text-xs transition">Spin (${Utils.formatMoney(wager)})</button>
+                        <button data-action="openSlotsModal" class="bg-slate-700 hover:bg-slate-600 text-white font-bold py-2.5 rounded-xl text-xs transition">Change Bet</button>
+                        <button data-action="hideModal" class="bg-slate-800 hover:bg-slate-750 text-slate-300 font-bold py-2.5 rounded-xl text-xs transition">Exit Machine</button>
+                    </div>
+                </div>
+            `;
+
+            UI.replaceModalContent("Slot Result", resultHtml);
+        } finally {
+            isSlotsSpinning = false;
         }
-
-        const reelsHtml = result.reels.map(r => `
-            <div class="w-16 h-20 bg-slate-900 border-2 ${result.isWin ? 'border-amber-400' : 'border-slate-700'} rounded-xl flex items-center justify-center text-4xl shadow-md">
-                ${r.icon}
-            </div>
-        `).join('');
-
-        const resultHtml = `
-            <div class="text-center py-4 space-y-4">
-                <div class="flex justify-center items-center gap-3">
-                    ${reelsHtml}
-                </div>
-                <div>
-                    <h3 class="text-xl font-bold ${result.isWin ? 'text-amber-300' : 'text-slate-400'}">
-                        ${result.isJackpot ? '🎉 MEGA JACKPOT! 🎉' : result.isWin ? 'WINNER!' : 'NO MATCH'}
-                    </h3>
-                    <p class="text-sm text-slate-300 mt-1">${result.msg}</p>
-                </div>
-                <div class="grid grid-cols-3 gap-2 pt-2">
-                    <button data-action="confirmSlotsSpin" data-args="${wager}" class="bg-amber-600 hover:bg-amber-500 text-white font-bold py-2.5 rounded-xl text-xs transition">Spin (${Utils.formatMoney(wager)})</button>
-                    <button data-action="openSlotsModal" class="bg-slate-700 hover:bg-slate-600 text-white font-bold py-2.5 rounded-xl text-xs transition">Change Bet</button>
-                    <button data-action="hideModal" class="bg-slate-800 hover:bg-slate-750 text-slate-300 font-bold py-2.5 rounded-xl text-xs transition">Exit Machine</button>
-                </div>
-            </div>
-        `;
-
-        UI.replaceModalContent("Slot Result", resultHtml);
     }, 1200);
 }

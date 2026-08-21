@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals';
 
-jest.unstable_mockModule('../public/src/features/player/mainScreen.js', () => ({
+jest.unstable_mockModule('../../public/src/features/player/mainScreen.js', () => ({
     addLog: jest.fn(),
     renderLifeDashboard: jest.fn(),
     renderDeathScreen: jest.fn(),
@@ -9,7 +9,7 @@ jest.unstable_mockModule('../public/src/features/player/mainScreen.js', () => ({
     ageUp: jest.fn()
 }));
 
-jest.unstable_mockModule('../public/src/ui/ui.js', () => ({
+jest.unstable_mockModule('../../public/src/ui/ui.js', () => ({
     UI: {
         renderScreen: jest.fn(),
         updateHeader: jest.fn(),
@@ -17,7 +17,7 @@ jest.unstable_mockModule('../public/src/ui/ui.js', () => ({
     }
 }));
 
-const { GameLogic } = await import('../public/src/core/gameLogic.js');
+const { GameLogic } = await import('../../public/src/core/gameLogic.js');
 
 describe('City Cost-of-Living Salary Scaling', () => {
     test('getCityCostMultiplier calculates correct city multipliers', () => {

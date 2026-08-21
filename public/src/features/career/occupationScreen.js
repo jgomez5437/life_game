@@ -325,7 +325,7 @@ export const renderActivities = () => {
             </div>
              <div class="text-right">
                 <h3 class="text-slate-400 text-xs uppercase font-bold mb-1">Residence</h3>
-                <div class="text-sm font-bold text-white">${user.city}</div>
+                <div class="text-sm font-bold text-white">${Utils.escapeHtml(user.city)}</div>
             </div>
         </div>
     `;
@@ -335,7 +335,7 @@ export const renderActivities = () => {
             <div class="mb-6">
                  <h3 class="font-bold text-white mb-2">My Company</h3>
                 <button data-action="enterBusinessMode" class="w-full btn-primary text-white font-bold py-4 rounded-xl mb-2 flex items-center justify-between px-6 shadow-lg">
-                    <span class="flex items-center gap-3"><i class="fas fa-building"></i> Manage ${user.companyName}</span>
+                    <span class="flex items-center gap-3"><i class="fas fa-building"></i> Manage ${Utils.escapeHtml(user.companyName)}</span>
                     <i class="fas fa-chevron-right"></i>
                 </button>
                 <div class="text-xs text-slate-400 px-1">Go to office to manage production, pricing and staff.</div>
@@ -367,7 +367,7 @@ export const renderActivities = () => {
                         <div class="w-8 h-8 rounded-full bg-purple-900/50 flex items-center justify-center text-purple-400">
                             <i class="fas fa-university"></i>
                         </div>
-                        <h3 class="font-bold text-white">${user.gradSchoolType}</h3>
+                        <h3 class="font-bold text-white">${Utils.escapeHtml(user.gradSchoolType)}</h3>
                     </div>
                     <div class="px-2 py-1 rounded bg-slate-900 text-xs font-bold ${user.schoolPerformance > 75 ? 'text-green-400' : 'text-yellow-400'}">
                         ${user.schoolPerformance}%
@@ -428,7 +428,7 @@ export const renderActivities = () => {
                 </div>
                 <div class="bg-slate-900 p-3 rounded border border-slate-700 flex justify-between items-center">
                     <div>
-                        <div class="text-sm text-white font-bold">${getSchoolName()}</div>
+                        <div class="text-sm text-white font-bold">${Utils.escapeHtml(getSchoolName())}</div>
                         <div class="text-xs text-green-400">Enrolled</div>
                     </div>
                     <i class="fas fa-chevron-right text-slate-600"></i>
@@ -452,7 +452,7 @@ export const renderActivities = () => {
                     </div>
                     <div class="bg-slate-900 p-3 rounded border border-slate-700 flex justify-between items-center">
                         <div>
-                            <div class="text-sm text-white font-bold">${user.major}</div>
+                            <div class="text-sm text-white font-bold">${Utils.escapeHtml(user.major)}</div>
                             <div class="text-xs text-blue-400">Enrolled</div>
                         </div>
                         <i class="fas fa-chevron-right text-slate-600"></i>
@@ -504,7 +504,7 @@ if (user.age < 15) {
                 </div>
                 <div class="bg-slate-900 p-3 rounded border border-slate-700 flex justify-between items-center">
                      <div>
-                        <div class="text-sm text-white font-bold">${user.jobTitle}</div>
+                        <div class="text-sm text-white font-bold">${Utils.escapeHtml(user.jobTitle)}</div>
                         <div class="text-xs text-green-400">${Utils.formatMoney(user.jobSalary)}/yr</div>
                      </div>
                      <i class="fas fa-chevron-right text-slate-600"></i>
@@ -558,7 +558,7 @@ if (user.age < 15) {
                 </div>
                 <div class="bg-slate-900 p-3 rounded border border-slate-700 flex justify-between items-center">
                      <div>
-                        <div class="text-sm text-white font-bold">${user.jobTitle}</div>
+                        <div class="text-sm text-white font-bold">${Utils.escapeHtml(user.jobTitle)}</div>
                         <div class="text-xs text-green-400">${Utils.formatMoney(user.jobSalary)}/yr</div>
                      </div>
                      <i class="fas fa-chevron-right text-slate-600"></i>

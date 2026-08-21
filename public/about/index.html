@@ -9,8 +9,29 @@
 
     <link rel="canonical" href="https://startalife.vercel.app/about">
     <meta name="google-site-verification" content="googledf776645404b02c1" />
+    <script>
+        (function() {
+            try {
+                var slotsRaw = localStorage.getItem('life_game_slots');
+                if (slotsRaw) {
+                    var store = JSON.parse(slotsRaw);
+                    var activeSlot = store.slots && store.activeSlotId && store.slots[store.activeSlotId];
+                    var purchases = (activeSlot && activeSlot.data && activeSlot.data.user && activeSlot.data.user.purchases) || [];
+                    if (purchases.indexOf('vip_supporter') !== -1) {
+                        return;
+                    }
+                }
+            } catch(e) {}
+            var s = document.createElement('script');
+            s.async = true;
+            s.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2356499284480204';
+            s.crossOrigin = 'anonymous';
+            document.head.appendChild(s);
+        })();
+    </script>
 
     <!-- Open Graph / Facebook -->
+    <meta property="og:site_name" content="Start a Life">
     <meta property="og:title" content="About Start a Life - Free Online Life Simulator Game">
     <meta property="og:description" content="Learn all about Start a Life, a free online browser life simulator. Build custom characters, manage careers, start businesses, buy real estate, and make life choices.">
     <meta property="og:type" content="website">
@@ -43,7 +64,7 @@
     <header class="bg-slate-800/90 border-b border-slate-700 p-4 sticky top-0 z-50 backdrop-blur-md">
         <div class="max-w-4xl mx-auto flex justify-between items-center">
             <a href="https://startalife.vercel.app" class="flex items-center gap-2 font-bold text-white text-xl tracking-wide hover:opacity-90 transition">
-                <svg class="inline-block fill-currentColor align-middle text-blue-400" viewBox="0 0 24 24" width="1em" height="1em"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 18a8 8 0 01-7.9-7c.4 0 .9-.1 1.3-.3a5 5 0 002.3-2.1c.3-.5.9-.8 1.5-.8h.8c.6 0 1.1-.5 1.1-1.1v-.8c0-.6.5-1.1 1.1-1.1h1.1c.6 0 1.1-.5 1.1-1.1v-.3c1.3.6 2.4 1.6 3.1 2.9a8 8 0 01-5.5 10.6z" fill="currentColor"/></svg>
+                <i class="fas fa-globe-americas text-blue-400"></i>
                 <span>Start a Life</span>
             </a>
             <div class="flex items-center gap-3">
@@ -62,7 +83,7 @@
         <!-- Hero Section -->
         <section class="text-center py-8 sm:py-12 border-b border-slate-800">
             <div class="inline-block p-4 rounded-full bg-blue-500/10 mb-4 border border-blue-500/20">
-                <svg class="inline-block fill-currentColor align-middle text-5xl text-blue-400" viewBox="0 0 24 24" width="1em" height="1em"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 18a8 8 0 01-7.9-7c.4 0 .9-.1 1.3-.3a5 5 0 002.3-2.1c.3-.5.9-.8 1.5-.8h.8c.6 0 1.1-.5 1.1-1.1v-.8c0-.6.5-1.1 1.1-1.1h1.1c.6 0 1.1-.5 1.1-1.1v-.3c1.3.6 2.4 1.6 3.1 2.9a8 8 0 01-5.5 10.6z" fill="currentColor"/></svg>
+                <i class="fas fa-globe-americas text-5xl text-blue-400"></i>
             </div>
             <h1 class="text-3xl sm:text-5xl font-extrabold text-white mb-4 tracking-tight">
                 About <span class="text-blue-400">Start a Life</span>

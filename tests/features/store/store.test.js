@@ -1,6 +1,7 @@
-import { UI } from '../public/src/ui/ui.js';
-import { STORE_PACKS } from '../public/src/features/store/storeScreen.js';
-import { state, hasPurchasedPack } from '../public/src/core/state.js';
+import { jest } from '@jest/globals';
+import { UI } from '../../../public/src/ui/ui.js';
+import { STORE_PACKS } from '../../../public/src/features/store/storeScreen.js';
+import { state, hasPurchasedPack } from '../../../public/src/core/state.js';
 
 describe('Packs & Features Store Catalog & Entitlements', () => {
 
@@ -57,5 +58,36 @@ describe('Packs & Features Store Catalog & Entitlements', () => {
         expect(document.getElementById('modal-title').innerText).toBe('Test Pack Title');
         expect(document.getElementById('modal-content').innerHTML).toBe('<div>Pack Details Content</div>');
         expect(document.getElementById('modal-actions').innerHTML).toContain('Unlock for $2.99');
+    });
+
+    test('buyPack prompts login modal when user is unauthenticated', async () => {
+        const { buyPack } = await import('../../../public/src/features/store/storeScreen.js');
+        const customModalSpy = jest.spyOn(UI, 'showCustomModal').mockImplementation(() => {});
+
+        state.userAuthId = null;
+        await buyPack('god_mode');
+
+        expect(customModalSpy).toHaveBeenCalled();
+        const callArgs = customModalSpy.mock.calls[0][0];
+        expect(callArgs.title).toBe('Sign In Required to Purchase');
+        expect(callArgs.confirmText).toBe('Sign In / Create Account');
+        expect(callArgs.cancelText).toBe('Continue Playing as Guest');
+        expect(callArgs.content).toContain('Please sign in or create an account to unlock packs');
+
+        customModalSpy.mockRestore();
+    });
+
+    test('buyPack shows already unlocked modal when pack is already owned', async () => {
+        const { buyPack } = await import('../../../public/src/features/store/storeScreen.js');
+        const showModalSpy = jest.spyOn(UI, 'showModal').mockImplementation(() => {});
+
+        state.userAuthId = 'auth0|123';
+        state.gameState.user.purchases = ['god_mode'];
+
+        await buyPack('god_mode');
+
+        expect(showModalSpy).toHaveBeenCalledWith('Already Unlocked', expect.stringContaining('already own'));
+
+        showModalSpy.mockRestore();
     });
 });

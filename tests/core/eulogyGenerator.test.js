@@ -1,4 +1,4 @@
-import { EulogyGenerator, harvestLifeProfile, classifyArchetype } from '../public/src/core/eulogyGenerator.js';
+import { EulogyGenerator, harvestLifeProfile, classifyArchetype } from '../../public/src/core/eulogyGenerator.js';
 
 describe('Procedural Eulogy Generator Suite', () => {
     test('Harvests life profile with correct pronouns, estate, and categories', () => {
@@ -219,4 +219,3 @@ describe('Procedural Eulogy Generator Suite', () => {
         });
     });
 });
-

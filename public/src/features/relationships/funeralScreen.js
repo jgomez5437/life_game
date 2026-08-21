@@ -49,7 +49,7 @@ export const processNextTeacherReplacement = () => {
             <div class="text-xs font-bold uppercase tracking-wider text-amber-400 mb-1">Classroom Update</div>
             <h1 class="text-3xl font-bold text-white mb-2">New Teacher Assigned</h1>
             <p class="text-slate-300 text-sm mb-6">
-                Following the tragic passing of <span class="font-bold text-amber-300">${item.deceasedTeacherName}</span>, your new teacher is <span class="font-bold text-white">${newTeacher.name}</span> (Age ${newTeacher.age}).
+                Following the tragic passing of <span class="font-bold text-amber-300">${Utils.escapeHtml(item.deceasedTeacherName)}</span>, your new teacher is <span class="font-bold text-white">${Utils.escapeHtml(newTeacher.name)}</span> (Age ${newTeacher.age}).
             </p>
             
             <div class="w-full space-y-3">
@@ -68,7 +68,7 @@ export const processNextTeacherReplacement = () => {
                     <div class="flex items-center gap-3">
                         <i class="fas fa-eye text-xl text-amber-400"></i>
                         <div class="text-left">
-                            <div class="font-bold text-sm text-white">Give ${newTeacher.name} the side eye</div>
+                            <div class="font-bold text-sm text-white">Give ${Utils.escapeHtml(newTeacher.name)} the side eye</div>
                             <div class="text-[11px] text-slate-400">Skeptical & distant reaction (-15 Status)</div>
                         </div>
                     </div>
@@ -118,9 +118,9 @@ const renderFuneralScreen = (deceased) => {
         if (deceased.inheritanceAmt === undefined) {
             // A spouse already shares your household finances — there's no separate
             // "savings" to inherit, only the (uncommon) chance of a life insurance payout.
-            deceased.inheritanceAmt = isSpouse
+            deceased.inheritanceAmt = Math.max(0, isSpouse
                 ? GameLogic.calculateSpousalLifeInsurance()
-                : GameLogic.calculateInheritance(deceased.age);
+                : GameLogic.calculateInheritance(deceased.age));
         }
 
         const inheritanceAmt = deceased.inheritanceAmt;
@@ -226,7 +226,7 @@ const renderFuneralScreen = (deceased) => {
             </div>
             <i class="fas fa-tombstone text-4xl text-slate-600 mb-6"></i>
             <h1 class="text-3xl font-bold text-white mb-2">Tragedy Strikes</h1>
-            <p class="text-slate-300 text-sm mb-6">Your ${deceased.type}, ${deceased.name}, died at age ${deceased.age} from ${deceased.deathCause}</p>
+            <p class="text-slate-300 text-sm mb-6">Your ${Utils.escapeHtml(deceased.type)}, ${Utils.escapeHtml(deceased.name)}, died at age ${deceased.age} from ${Utils.escapeHtml(deceased.deathCause)}</p>
             
             <div class="w-full">
                 ${inheritanceMsg}
@@ -281,7 +281,7 @@ export const chooseFuneralType = () => {
         <div class="fade-in max-w-md mx-auto min-h-full py-8 flex flex-col justify-center items-center text-center px-4">
             <i class="fas fa-church text-6xl text-slate-600 mb-6"></i>
             <h1 class="text-3xl font-bold text-white mb-2">Plan Funeral</h1>
-            <p class="text-slate-300 text-sm mb-6">Choose how to lay ${deceased.name} to rest.</p>
+            <p class="text-slate-300 text-sm mb-6">Choose how to lay ${Utils.escapeHtml(deceased.name)} to rest.</p>
             <div class="w-full mb-6 text-right">
                 <span class="text-slate-400 text-xs font-bold uppercase tracking-widest">Bank Balance</span><br>
                 <span class="text-green-400 font-bold text-xl">${Utils.formatMoney(user.money)}</span>
@@ -330,7 +330,7 @@ export const donateBody = () => {
 export const lookTheOtherWay = () => {
     const deceased = state.gameState.pendingFunerals[0];
     addLog(`You ignored the responsibility of ${deceased.name}'s remains. The state handled it.`, 'bad');
-    UI.showModal("Shameful", `You turned a blind eye to your own ${deceased.type}'s remains. The city handled a pauper's grave for them.`);
+    UI.showModal("Shameful", `You turned a blind eye to your own ${Utils.escapeHtml(deceased.type)}'s remains. The city handled a pauper's grave for them.`);
     finishFuneralAndNext(deceased);
 };
 

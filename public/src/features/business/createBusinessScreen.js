@@ -131,12 +131,15 @@ export function selectSupplier(id) {
 
 export function initBusiness() {
     const user = state.gameState.user;
-    const name = get('inp-comp-name')?.value?.trim();
+    const name = get('inp-comp-name')?.value;
+    const validation = GameLogic.sanitizeBusinessName(name);
 
-    if (!name) {
-        UI.showModal('Missing Name', 'Enter a company name before launching.');
+    if (!validation.isValid) {
+        UI.showModal('Invalid Company Name', validation.error);
         return;
     }
+
+    const finalCompanyName = validation.cleanedName;
 
     const indKey = user.industry || 'tech_saas';
     const ind = BUSINESS_INDUSTRIES[indKey];
@@ -154,7 +157,7 @@ export function initBusiness() {
     }
 
     user.money               -= ind.startupCost;
-    user.companyName          = name;
+    user.companyName          = finalCompanyName;
     user.hasBusiness          = true;
     user.compCash             = ind.startupCost;
     user.companyYear          = 1;
@@ -172,6 +175,7 @@ export function initBusiness() {
     user.marketingLevels      = { social_ads: 0, seo_content: 0, influencers: 0, b2b_sales: 0 };
     user.teamRoles            = { engineering: 2, sales: 1, operations: 1, marketing: 1 };
     user.equityOwned          = 1.0;
+    user.isPublic             = false;
     user.investorShares       = [];
     user.corporateDebt        = { principal: 0, interestRate: 0.08, monthlyPayment: 0 };
     user.customerSatisfaction = 80;

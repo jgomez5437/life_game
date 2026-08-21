@@ -1,8 +1,9 @@
 import { state, hasPurchasedPack } from '../../core/state.js';
 export { hasPurchasedPack };
 import { saveGame } from '../../core/main.js';
-import { getAuthToken } from '../../auth/auth.js';
+import { getAuthToken, login } from '../../auth/auth.js';
 import { UI } from '../../ui/ui.js';
+import { onVipPurchased } from '../../core/adManager.js';
 
 const get = id => document.getElementById(id);
 
@@ -437,14 +438,48 @@ export async function buyPack(packId) {
         }
     }
 
+    // Enforce login requirement before purchasing
+    const authToken = await getAuthToken();
+    if (!state.userAuthId || !authToken) {
+        UI.showCustomModal({
+            title: "Sign In Required to Purchase",
+            content: `
+                <div class="space-y-3 text-left">
+                    <div class="bg-slate-900 p-3.5 rounded-xl border border-amber-500/40 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-amber-950/60 text-amber-400 border border-amber-500/40 flex items-center justify-center text-lg shrink-0">
+                            <i class="fas fa-lock"></i>
+                        </div>
+                        <div>
+                            <div class="text-sm font-bold text-white">${pack.title}</div>
+                            <div class="text-xs text-amber-400 font-semibold">${pack.price} Expansion Pack</div>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Please sign in or create an account to unlock packs so your purchases are permanently saved to your account and accessible across all devices.
+                    </p>
+                </div>
+            `,
+            confirmText: "Sign In / Create Account",
+            cancelText: "Continue Playing as Guest",
+            onConfirm: () => {
+                if (typeof login === 'function') {
+                    login();
+                }
+            }
+        });
+        return;
+    }
+
     // Attempt Stripe Checkout backend session initiation
     try {
         const response = await fetch('/api/create-checkout-session', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {})
+            },
             body: JSON.stringify({
-                packId: pack.id,
-                userAuthId: state.userAuthId || 'guest_user'
+                packId: pack.id
             })
         });
 
@@ -527,6 +562,10 @@ function simulateSandboxPurchase(pack) {
         }
     }).catch(() => {});
 
+    if (pack.id === 'vip_supporter') {
+        onVipPurchased();
+    }
+
     const celebrationHTML = `
         <div class="text-center py-2 space-y-3">
             <div class="w-16 h-16 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center text-3xl mx-auto animate-bounce">
@@ -534,7 +573,7 @@ function simulateSandboxPurchase(pack) {
             </div>
             <h3 class="text-lg font-extrabold text-white">Pack Unlocked!</h3>
             <p class="text-xs text-slate-300">
-                You have successfully unlocked <strong>${pack.title}</strong>! All included features are now active for your character.
+                ${pack.id === 'vip_supporter' ? '⭐ <strong>VIP Supporter — Ad-Free Active</strong>. Your 100% ad-free experience is now active.' : `You have successfully unlocked <strong>${pack.title}</strong>! All included features are now active for your character.`}
             </p>
             <div class="bg-slate-900 p-3 rounded-xl border border-slate-800 text-xs text-amber-300 font-semibold text-left">
                 <i class="fas fa-gift mr-1"></i> Added to your account entitlements.
@@ -597,6 +636,11 @@ export async function restorePurchases() {
  * Renders the God Mode Stat Editor Modal
  */
 export function renderGodModeModal() {
+    if (!hasPurchasedPack('god_mode')) {
+        openGodModeHubModal();
+        return;
+    }
+
     const user = state.gameState?.user;
     if (!user) return;
 
@@ -663,6 +707,10 @@ export function renderGodModeModal() {
 }
 
 export function maxGodModeStats() {
+    if (!hasPurchasedPack('god_mode')) {
+        UI.showModal("God Mode Locked", "You must unlock God Mode from The Spot store to use this cheat.");
+        return;
+    }
     const user = state.gameState?.user;
     if (!user) return;
     user.health = 100;
@@ -675,6 +723,10 @@ export function maxGodModeStats() {
 }
 
 export function applyGodModeStats() {
+    if (!hasPurchasedPack('god_mode')) {
+        UI.showModal("God Mode Locked", "You must unlock God Mode from The Spot store to edit character stats.");
+        return;
+    }
     const user = state.gameState?.user;
     if (!user) return;
     const h = document.getElementById('god-health');
@@ -682,10 +734,10 @@ export function applyGodModeStats() {
     const sm = document.getElementById('god-smarts');
     const lk = document.getElementById('god-looks');
 
-    if (h) user.health = parseInt(h.value, 10);
-    if (hap) user.happiness = parseInt(hap.value, 10);
-    if (sm) user.smarts = parseInt(sm.value, 10);
-    if (lk) user.looks = parseInt(lk.value, 10);
+    if (h) user.health = Math.max(0, Math.min(100, parseInt(h.value, 10) || 0));
+    if (hap) user.happiness = Math.max(0, Math.min(100, parseInt(hap.value, 10) || 0));
+    if (sm) user.smarts = Math.max(0, Math.min(100, parseInt(sm.value, 10) || 0));
+    if (lk) user.looks = Math.max(0, Math.min(100, parseInt(lk.value, 10) || 0));
 
     saveGame();
     UI.updateHeader(user);

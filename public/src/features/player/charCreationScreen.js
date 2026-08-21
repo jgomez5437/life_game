@@ -8,6 +8,7 @@ import { Utils, COUNTRIES_DATA } from '../../ui/utils.js';
 import { AvatarLogic } from '../../core/avatarLogic.js';
 import { renderAvatar } from '../../ui/avatarRenderer.js';
 import { captureAnnualSnapshot } from '../../core/timeMachine.js';
+import { getAuthToken } from '../../auth/auth.js';
 
 //Character creation screen
 const get = id => document.getElementById(id);
@@ -297,21 +298,11 @@ export async function submitCharacter() {
     try {
         // === IF USER IS LOGGED IN ===
         if (user) {
-            let authToken = null;
-            try {
-                authToken = await state.auth0Client.getTokenSilently();
-            } catch (e) {}
-
-            const headers = { 'Content-Type': 'application/json' };
-            if (authToken) {
-                headers['Authorization'] = `Bearer ${authToken}`;
-            }
-
+            const authToken = await getAuthToken();
             const response = await fetch('/api/login', {
                 method: 'POST',
-                headers: headers,
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    auth0_id: user.sub,
                     email: user.email,
                     username: finalName,
                     gender: gender,
@@ -335,10 +326,10 @@ export async function submitCharacter() {
             let initialStats;
             if (hasPurchasedPack('god_mode') && get('god-create-health')) {
                 initialStats = {
-                    health: parseInt(get('god-create-health').value, 10),
-                    happiness: parseInt(get('god-create-happiness').value, 10),
-                    smarts: parseInt(get('god-create-smarts').value, 10),
-                    looks: parseInt(get('god-create-looks').value, 10)
+                    health: Math.max(0, Math.min(100, parseInt(get('god-create-health').value, 10) || 100)),
+                    happiness: Math.max(0, Math.min(100, parseInt(get('god-create-happiness').value, 10) || 100)),
+                    smarts: Math.max(0, Math.min(100, parseInt(get('god-create-smarts').value, 10) || 50)),
+                    looks: Math.max(0, Math.min(100, parseInt(get('god-create-looks').value, 10) || 50))
                 };
             } else {
                 initialStats = GameLogic.generateRandomStats ? GameLogic.generateRandomStats() : {
@@ -348,11 +339,9 @@ export async function submitCharacter() {
                     looks: Math.floor(Math.random() * 56) + 40
                 };
             }
-            let savedPurchases = [];
-            try {
-                const storedP = localStorage.getItem('life_game_purchases');
-                if (storedP) savedPurchases = JSON.parse(storedP);
-            } catch (e) {}
+            const savedPurchases = Array.isArray(state.verifiedPurchases)
+                ? [...state.verifiedPurchases]
+                : [];
 
             let activeSlotId = 'slot_1';
             try {
@@ -368,20 +357,19 @@ export async function submitCharacter() {
                 gender: gender,
                 country: country,
                 city: city,
+                age: 0,
+                money: 0,
+                debt: 0,
                 purchases: savedPurchases,
-                _slotId: activeSlotId,
-                stats: {
-                    ...initialStats,
-                    money: 0
-                },
                 health: initialStats.health,
                 happiness: initialStats.happiness,
                 smarts: initialStats.smarts,
                 looks: initialStats.looks,
-                money: 0,
-                is_guest: true,
+                karma: 50,
                 appearance: draftAppearance,
-                relationships: startingFamily // Inject before load
+                relationships: startingFamily,
+                assets: [],
+                lifeLog: []
             };
             loadAndRenderGame(userData);
             if (state.gameState) state.gameState._slotId = activeSlotId;
@@ -428,6 +416,7 @@ export async function submitCharacter() {
 }
 
 export function maxCreationGodStats() {
+    if (!hasPurchasedPack('god_mode')) return;
     ['health', 'happiness', 'smarts', 'looks'].forEach(stat => {
         const input = get(`god-create-${stat}`);
         const val = get(`god-create-${stat}-val`);

@@ -193,13 +193,7 @@ export const UI = {
 
         // 1. NAME & FLAG UPDATE
         const displayNameRaw = stats.username || stats.name || "Player";
-        // Sanitize to prevent XSS
-        const displayName = String(displayNameRaw)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
+        const displayName = Utils.escapeHtml(displayNameRaw);
 
         const countryCode = Utils.getCountryCode(stats.city);
         
@@ -209,7 +203,7 @@ export const UI = {
             flagHtml = `<img src="https://flagcdn.com/w20/${countryCode}.png" 
                              srcset="https://flagcdn.com/w40/${countryCode}.png 2x" 
                              width="20" 
-                             alt="${stats.city}" 
+                             alt="${Utils.escapeHtml(stats.city || '')}" 
                              class="ml-2 inline-block shadow-sm rounded-sm" 
                              style="vertical-align: text-bottom;">`;
         }

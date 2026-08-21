@@ -1,4 +1,4 @@
-import { state } from '../../core/state.js';
+import { state, hasPurchasedPack } from '../../core/state.js';
 import { renderActivities } from './occupationScreen.js';
 import { addLog } from '../player/mainScreen.js';
 import { Utils } from '../../ui/utils.js';
@@ -417,6 +417,11 @@ export function joinSpecialCareer(trackKey) {
     const track = SPECIAL_CAREER_TRACKS.find(t => t.key === trackKey);
     if (!track) return;
 
+    if (track.premiumPack && !hasPurchasedPack(track.premiumPack)) {
+        UI.showModal("Syndicate Expansion Required", "You must unlock the Mafia Syndicate Expansion Pack in The Spot store to join organized crime.");
+        return;
+    }
+
     // Prerequisite check for Mafia: at least 3 lifetime crimes from the Crime section
     if (trackKey === 'mafia_syndicate') {
         const crimes = user.lifetimeCrimesCommitted || 0;
@@ -469,6 +474,11 @@ export function confirmJoinSpecialCareer(trackKey) {
 
     const track = SPECIAL_CAREER_TRACKS.find(t => t.key === trackKey);
     if (!track) return;
+
+    if (track.premiumPack && !hasPurchasedPack(track.premiumPack)) {
+        UI.showModal("Syndicate Expansion Required", "You must unlock the Mafia Syndicate Expansion Pack in The Spot store to join organized crime.");
+        return;
+    }
 
     user.careerTrack = trackKey;
     user.careerLevel = 0;

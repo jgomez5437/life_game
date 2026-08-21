@@ -1,9 +1,11 @@
 import { login, logout, configureAuth, getAuthToken } from '../auth/auth.js';
 import { startGuestMode, renderLoginScreen } from '../auth/loginScreen.js';
-import { state } from './state.js';
+import { state, setVerifiedPurchases } from './state.js';
 import { GameLogic } from './gameLogic.js';
 import { Utils } from '../ui/utils.js';
 import { UI } from '../ui/ui.js';
+import { deepClone, sanitizeGameState, migrateState, hydrateSlotsStoreFromCloud, buildCloudSavePayload } from './saveSlotManager.js';
+import { resolveAdState, onVipPurchased, resetAdState, isAdFree, getAdState } from './adManager.js';
 
 // --- Dynamic Module Loader & Background Preloader ---
 import { lazy, preloadForContext, attachIntentPreloaders } from './moduleLoader.js';
@@ -31,6 +33,7 @@ export const upgradeHQTier = lazy('businessDashboard', 'upgradeHQTier');
 export const upgradeMarketingChannel = lazy('businessDashboard', 'upgradeMarketingChannel');
 export const adjustRoleCount = lazy('businessDashboard', 'adjustRoleCount');
 export const acceptVCPitch = lazy('businessDashboard', 'acceptVCPitch');
+export const launchIPO = lazy('businessDashboard', 'launchIPO');
 export const chooseEventChoice = lazy('businessDashboard', 'chooseEventChoice');
 
 export const selectIndustry = lazy('createBusiness', 'selectIndustry');
@@ -101,6 +104,7 @@ export const payOffMortgage = lazy('assets', 'payOffMortgage');
 export const openSellPropertyModal = lazy('assets', 'openSellPropertyModal');
 export const submitPropertyListing = lazy('assets', 'submitPropertyListing');
 export const acceptBuyerOffer = lazy('assets', 'acceptBuyerOffer');
+export const rejectBuyerOffer = lazy('assets', 'rejectBuyerOffer');
 export const doPropertyMaintenance = lazy('assets', 'doPropertyMaintenance');
 export const doPropertyRenovation = lazy('assets', 'doPropertyRenovation');
 export const openTenantScreening = lazy('assets', 'openTenantScreening');
@@ -320,260 +324,61 @@ const API_URL = '/api'
 //updates game info
 export function updateGameInfo(dbUser) {
     console.log("Updating game state from DB...");
-    const data = dbUser.game_data;
-    const savedUser = data.user || data; 
-    //Set Global Auth Variables
+    const rawData = dbUser.game_data || {};
+
+    // Authoritative entitlement hydration from server
+    const serverPurchases = rawData.user?.purchases || rawData.purchases;
+    if (Array.isArray(serverPurchases)) {
+        setVerifiedPurchases(serverPurchases);
+        resolveAdState(serverPurchases);
+    } else {
+        resolveAdState([]);
+    }
+
+    // Hydrate all slots into localStorage store from cloud payload
+    const store = hydrateSlotsStoreFromCloud(rawData);
+
+    // Extract active slot data
+    const activeSlotId = store.activeSlotId || rawData.activeSlotId || rawData._slotId || 'slot_1';
+    const activeSlotData = store.slots[activeSlotId]?.data || rawData;
+    const data = activeSlotData || dbUser;
+
     state.userAuthId = dbUser.auth0_id;
     state.userEmail = dbUser.email;
 
-    const rawHistory = data.history || [];
-    
-    const cleanHistory = rawHistory.map(entry => {
-        if (typeof entry === 'object' && entry.events) {
-            return entry;
-        }
-        return {
-            age: savedUser.age || 0,
-            events: [{ msg: entry, color: "text-gray-400" }]
-        };
-    });
-    //CONSTRUCT state.gameState
-    state.gameState = {
-        user: {
-            ...savedUser,
-            // --- IDENTITY ---
-            username: savedUser.username || savedUser.name || "Player",
-            gender: savedUser.gender || "male",
-            city: savedUser.city || "New York",
-            appearance: savedUser.appearance || null,
-            avatarVersion: savedUser.avatarVersion || 0,
+    state.gameState = migrateState(data);
+    if (state.gameState) {
+        state.gameState._slotId = activeSlotId;
+    }
+    if (state.gameState?.user) {
+        GameLogic.backfillRelationshipGender(state.gameState.user.relationships);
+    }
 
-            // --- CORE STATS ---
-            age: data.stats?.age || savedUser.age || 0,
-            health: data.stats?.health || savedUser.health || 100,
-            happiness: data.stats?.happiness || savedUser.happiness || 100,
-            smarts: data.stats?.smarts || savedUser.smarts || Math.floor(Math.random() * 41) + 40,
-            looks: data.stats?.looks || savedUser.looks || Math.floor(Math.random() * 41) + 40,
-            money: data.money || savedUser.money || 0,
-            lifeStatus: savedUser.lifeStatus || "Baby",
-            isDead: savedUser.isDead || false,
-
-            // --- EDUCATION (Undergrad) ---
-            isStudent: savedUser.isStudent || false,
-            universityEnrolled: savedUser.universityEnrolled || false,
-            universitySchoolYear: savedUser.universitySchoolYear || 0,
-            universityGraduated: savedUser.universityGraduated || false,
-            major: savedUser.major || '',
-            schoolActions: savedUser.schoolActions || 0,
-            schoolPerformance: savedUser.schoolPerformance || 50,
-            highSchoolRetained: savedUser.highSchoolRetained || false,
-            
-            // --- EDUCATION (Grad School) ---
-            gradSchoolEnrolled: savedUser.gradSchoolEnrolled || false,
-            gradSchoolType: savedUser.gradSchoolType || null,
-            gradSchoolYear: savedUser.gradSchoolYear || 0,
-            gradSchoolDegree: savedUser.gradSchoolDegree || null,
-            parentsTried: savedUser.parents_tried || false,
-
-            // --- CAREER & FINANCE ---
-            jobTitle: savedUser.jobTitle || (data.job ? data.job.title : ""),
-            jobSalary: savedUser.jobSalary || (data.job ? data.job.salary : 0),
-            jobPerformance: savedUser.jobPerformance || 50,
-            careerActionTaken: savedUser.careerActionTaken || 0,
-            careerTrack: savedUser.careerTrack || null,
-            careerLevel: savedUser.careerLevel ?? 0,
-            yearsInRole: savedUser.yearsInRole || 0,
-            consecutivePoorYears: savedUser.consecutivePoorYears || 0,
-            monthlyOutflow: savedUser.monthlyOutflow || 0,
-            studentLoans: savedUser.studentLoans || 0,
-            monthlyLivingExpense: savedUser.monthlyLivingExpense || 0,
-            
-            // --- BUSINESS ---
-            hasBusiness:         savedUser.hasBusiness         || false,
-            companyName:         savedUser.companyName         || null,
-            ceoSalary:           savedUser.ceoSalary           || 0,
-            industry:            savedUser.industry            || null,
-            compCash:            savedUser.compCash            || 0,
-            companyYear:         savedUser.companyYear         || 1,
-            companyQuarter:      savedUser.companyQuarter      || 1,
-            employees:           savedUser.employees           || 0,
-            businessReputation:  savedUser.businessReputation  || 0,
-            inventory:           savedUser.inventory           || 0,
-            productionTarget:    savedUser.productionTarget    || 0,
-            sellingPrice:        savedUser.sellingPrice        || 0,
-            salaryOffer:         savedUser.salaryOffer         || 0,
-            supplierId:          savedUser.supplierId          || null,
-            hqTier:              savedUser.hqTier               || 'garage',
-            marketingLevels:     savedUser.marketingLevels      || { social_ads: 0, seo_content: 0, influencers: 0, b2b_sales: 0 },
-            teamRoles:           savedUser.teamRoles            || { engineering: 2, sales: 1, operations: 1, marketing: 1 },
-            equityOwned:         savedUser.equityOwned          ?? 1.0,
-            investorShares:      savedUser.investorShares       || [],
-            corporateDebt:       savedUser.corporateDebt        || { principal: 0, interestRate: 0.08, monthlyPayment: 0 },
-            customerSatisfaction:savedUser.customerSatisfaction ?? 75,
-            employeeMorale:      savedUser.employeeMorale       ?? 80,
-            activeResearch:      savedUser.activeResearch       || [],
-            businessHistory:     savedUser.businessHistory     || [],
-            businessUpgrades:    savedUser.businessUpgrades    || [],
-            lastCompletedFiscalYearAge: savedUser.lastCompletedFiscalYearAge ?? null,
-            lastBusinessAge:      savedUser.lastBusinessAge      ?? null,
-            quartersProcessedThisAge: savedUser.quartersProcessedThisAge || 0,
-            purchases:           savedUser.purchases           || [],
-            pastLives:           savedUser.pastLives           || [],
-            generation:          savedUser.generation          || 1,
-
-            // --- FLAGS & UNDERWORLD ---
-            hasSeenExpenseMsg: savedUser.hasSeenExpenseMsg || false,
-            hasSeenJobSalary: savedUser.hasSeenJobSalary || false,
-            gymMembership: savedUser.gymMembership || false,
-            hasBetterDiet: savedUser.hasBetterDiet || false,
-            lifetimeCrimesCommitted: savedUser.lifetimeCrimesCommitted || 0,
-            mafiaCrimesThisYear: savedUser.mafiaCrimesThisYear || 0,
-
-            // --- ASSETS & INVESTMENTS ---
-            assets: savedUser.assets || [],
-            investments: savedUser.investments || null,
-
-            // --- RELATIONSHIPS ---
-            relationships: savedUser.relationships || [],
-            isExpecting: savedUser.isExpecting || false,
-            expectingWithId: savedUser.expectingWithId || null,
-
-            // --- PRISON STATE ---
-            inPrison: savedUser.inPrison || false,
-            prisonSentenceRemaining: savedUser.prisonSentenceRemaining || 0,
-            prisonTotalSentence: savedUser.prisonTotalSentence || 0,
-            prisonSecurity: savedUser.prisonSecurity || 'Minimum',
-            facilityName: savedUser.facilityName || null,
-            prisonStats: savedUser.prisonStats || null,
-            cellmate: savedUser.cellmate || null,
-            yardInmates: savedUser.yardInmates || []
-        },
-        
-        // --- ASSETS & HISTORY ---
-        lifeLog: cleanHistory,
-
-        // --- TIME MACHINE SNAPSHOTS ---
-        snapshots: Array.isArray(data.snapshots) ? data.snapshots : []
-    };
-    GameLogic.backfillRelationshipGender(state.gameState.user.relationships);
-    // 5. Render
-   if (state.gameState.user.lifeStatus === "Deceased") {
+    // Render
+    if (state.gameState?.user?.lifeStatus === "Deceased") {
         console.log("Dead character detected. Locking to death screen.");
         const cause = state.gameState.user.deathCause || "natural causes";
         if (typeof renderDeathScreen === "function") {
             renderDeathScreen(state.gameState.user, cause);
         }
     } else if (typeof renderLifeDashboard === "function") {
-        renderLifeDashboard(); 
+        renderLifeDashboard(state.gameState); 
     } else {
         console.error("❌ renderLifeDashboard function not found!");
     }
 
     console.log("✅ Game Loaded & Ready");
-};
+}
+
 //Loads and renders the game
 export const loadAndRenderGame = (userData) => {
-    console.log("Loading game for:", userData.username);
-
-    // Initialize the Single Source of Truth
-    state.gameState = {
-        user: {
-            ...userData,
-            money: userData.money || 0,
-            age: userData.age || 0,
-            health: userData.health ?? userData.stats?.health ?? 100,
-            happiness: userData.happiness ?? userData.stats?.happiness ?? 100,
-            smarts: userData.smarts ?? userData.stats?.smarts ?? Math.floor(Math.random() * 41) + 40,
-            looks: userData.looks ?? userData.stats?.looks ?? Math.floor(Math.random() * 41) + 40,
-            gender: userData.gender || 'male',
-            city: userData.city || "New York",
-            appearance: userData.appearance || null,
-            avatarVersion: userData.avatarVersion || 0,
-            isDead: userData.is_dead || false,
-            //education
-            isStudent: userData.is_student || false,
-            universityEnrolled: userData.university_enrolled || false,
-            universitySchoolYear: userData.university_school_year || 0,
-            universityGraduated: userData.universityGraduated || false,
-            major: userData.major || '',
-            parentsTried: userData.parents_tried || false,
-            schoolActions: userData.school_actions || 0,
-            careerActionTaken: userData.career_action_taken || 0,
-            monthlyOutflow: userData.monthly_outflow || 0,
-            monthlyLivingExpense: userData.monthlyLivingExpense || 0,
-            studentLoans: userData.student_loans || 0,
-            gradSchoolEnrolled: userData.grad_school_enrolled || false,
-            gradSchoolType: userData.grad_school_type || null,
-            gradSchoolYear: userData.grad_school_year || 0,
-            gradSchoolDegree: userData.grad_school_degree || null,
-            hasSeenExpenseMsg: userData.has_seen_expense_message || false,
-            //job
-            jobTitle: userData.job_title || '',
-            jobSalary: userData.job_salary || 0,
-            jobPerformance: userData.jobPerformance || 50,
-            hasSeenJobSalary: userData.has_seen_job_salary || false,
-            careerTrack: userData.careerTrack || null,
-            careerLevel: userData.careerLevel ?? 0,
-            yearsInRole: userData.yearsInRole || 0,
-            consecutivePoorYears: userData.consecutivePoorYears || 0,
-            gymMembership: userData.gymMembership || false,
-            hasBetterDiet: userData.hasBetterDiet || false,
-            schoolPerformance: userData.school_performance || 50,
-            schoolActions: userData.schoolActions || 0,
-            highSchoolRetained: userData.high_school_retained || false,
-            //ceo / business
-            hasBusiness:         userData.has_business         || false,
-            companyName:         userData.companyName          || null,
-            ceoSalary:           userData.ceoSalary            || 0,
-            industry:            userData.industry             || null,
-            compCash:            userData.compCash             || 0,
-            companyYear:         userData.companyYear          || 1,
-            companyQuarter:      userData.companyQuarter       || 1,
-            employees:           userData.employees            || 0,
-            businessReputation:  userData.businessReputation   || 0,
-            inventory:           userData.inventory            || 0,
-            productionTarget:    userData.productionTarget     || 0,
-            sellingPrice:        userData.sellingPrice         || 0,
-            salaryOffer:         userData.salaryOffer          || 0,
-            supplierId:          userData.supplierId           || null,
-            hqTier:              userData.hqTier               || 'garage',
-            marketingLevels:     userData.marketingLevels      || { social_ads: 0, seo_content: 0, influencers: 0, b2b_sales: 0 },
-            teamRoles:           userData.teamRoles            || { engineering: 2, sales: 1, operations: 1, marketing: 1 },
-            equityOwned:         userData.equityOwned          ?? 1.0,
-            investorShares:      userData.investorShares       || [],
-            corporateDebt:       userData.corporateDebt        || { principal: 0, interestRate: 0.08, monthlyPayment: 0 },
-            customerSatisfaction:userData.customerSatisfaction ?? 75,
-            employeeMorale:      userData.employeeMorale       ?? 80,
-            activeResearch:      userData.activeResearch       || [],
-            businessHistory:     userData.businessHistory      || [],
-            businessUpgrades:    userData.businessUpgrades     || [],
-            lastCompletedFiscalYearAge: userData.lastCompletedFiscalYearAge ?? null,
-            lastBusinessAge:      userData.lastBusinessAge      ?? null,
-            quartersProcessedThisAge: userData.quartersProcessedThisAge || 0,
-            pastLives:           userData.pastLives            || [],
-            generation:          userData.generation           || 1,
-            lifeStatus: userData.life_status || "Baby",
-            assets: userData.assets || [],
-            investments: userData.investments || null,
-
-            // --- RELATIONSHIPS ---
-            relationships: userData.relationships || [],
-            hadUnfaithfulHookupThisYear: userData.hadUnfaithfulHookupThisYear || false,
-
-            // --- PRISON STATE ---
-            inPrison: userData.inPrison || false,
-            prisonSentenceRemaining: userData.prisonSentenceRemaining || 0,
-            prisonTotalSentence: userData.prisonTotalSentence || 0,
-            prisonSecurity: userData.prisonSecurity || 'Minimum',
-            facilityName: userData.facilityName || null,
-            prisonStats: userData.prisonStats || null,
-            cellmate: userData.cellmate || null,
-            yardInmates: userData.yardInmates || []
-        },
-        lifeLog: [{ age: 0, events: [{ msg: "Game Loaded.", color: "text-white" }] }]    
-    };
+    console.log("Loading game for:", userData.username || userData.name);
+    state.gameState = migrateState({ user: userData });
+    if (state.gameState?.user) {
+        GameLogic.backfillRelationshipGender(state.gameState.user.relationships);
+    }
     //.addLog function contains the renderLifeDashboard call
-    addLog(`Born in ${userData.city}. Welcome to the world!`, 'good');
+    addLog(`Born in ${state.gameState.user.city}. Welcome to the world!`, 'good');
 };
 //save game function
 // Attach to window so it is globally accessible
@@ -591,9 +396,13 @@ export async function saveGame() {
     }
     
     // 1. Safety Checks
+    // Ensure active state is saved to slot store locally first
+    if (state.gameState && state.gameState.user) {
+        saveToSlot();
+    }
+
     // Don't save if we are a guest (no ID) or if the game hasn't loaded yet (no state)
     if (!state.userAuthId) {
-        saveToSlot();
         console.log("⚠️ Guest mode. Saved locally.");
         return;
     }
@@ -605,36 +414,15 @@ export async function saveGame() {
     console.log("Saving to Cloud...");
 
     // 2. The Payload
-    // This captures EVERYTHING: isStudent, loans, history, assets, etc.
+    // This captures EVERYTHING: all slots, activeSlotId, user, history, assets, snapshots, etc.
+    const activeSlotId = state.gameState._slotId || 'slot_1';
+    const cloudGameData = buildCloudSavePayload(state.gameState);
+
     const payload = {
         auth0_id: state.userAuthId,
         email: state.userEmail, // optional helper
-        
-        game_data: {
-            // The "Suitcase" - Contains all flags (isStudent, hasBusiness, etc.)
-            user: state.gameState.user, 
-            
-            // The Lists
-            history: state.gameState.lifeLog,
-            assets: state.gameState.assets,
-            
-            // Time Machine snapshots (paid feature data)
-            snapshots: state.gameState.snapshots || [],
-            
-            // Redundant top-level helpers for easier DB queries later
-            bank: state.gameState.user.money,
-            job: { 
-                title: state.gameState.user.jobTitle, 
-                salary: state.gameState.user.jobSalary 
-            },
-            stats: {
-                age: state.gameState.user.age,
-                health: state.gameState.user.health ?? 100,
-                happiness: state.gameState.user.happiness ?? 100,
-                smarts: state.gameState.user.smarts ?? 50,
-                looks: state.gameState.user.looks ?? 50
-            }
-        }
+        slotId: activeSlotId,
+        game_data: cloudGameData
     };
 
     // 3. Send to API
@@ -657,9 +445,6 @@ export async function saveGame() {
 
         if (response.ok) {
             console.log("Save Complete!");
-            
-            // Optional: Visual Feedback (Toast)
-            // showToast("Game Saved"); 
         } else {
             console.error("❌ Save Failed:", await response.text());
         }
@@ -700,8 +485,7 @@ export const onload = async () => {
  * @param {boolean} showNotification - Whether to show a success modal to the user.
  */
 async function syncPurchasesFromCloud(expectedPackId = null, showNotification = false) {
-    const user = state.gameState?.user;
-    if (!user || !state.userAuthId || !state.auth0Client) return;
+    if (!state.userAuthId || !state.auth0Client) return;
 
     const maxRetries = expectedPackId ? 4 : 1;
     const retryDelay = 2500; // ms between retries
@@ -715,22 +499,19 @@ async function syncPurchasesFromCloud(expectedPackId = null, showNotification = 
 
             if (response.ok) {
                 const data = await response.json();
-                if (Array.isArray(data.purchases) && data.purchases.length > 0) {
-                    const before = (user.purchases || []).length;
-                    user.purchases = Array.from(new Set([...(user.purchases || []), ...data.purchases]));
-                    const newCount = user.purchases.length - before;
+                const verifiedPurchases = Array.isArray(data.purchases) ? data.purchases : [];
+                const before = (state.verifiedPurchases || []).length;
+                setVerifiedPurchases(verifiedPurchases);
+                resolveAdState(verifiedPurchases);
+                const newCount = verifiedPurchases.length - before;
 
-                    // If we're waiting for a specific pack and it's now present, or we're not waiting for anything
-                    if (!expectedPackId || user.purchases.includes(expectedPackId)) {
-                        if (newCount > 0) {
-                            saveGame();
-                            if (showNotification) {
-                                UI.showModal("Purchase Activated!", `${newCount} new pack(s) have been unlocked and synced to your account.`);
-                            }
-                        }
-                        console.log(`Purchase sync complete (attempt ${attempt}): ${user.purchases.length} total packs.`);
-                        return;
+                // If we're waiting for a specific pack and it's now present, or we're not waiting for anything
+                if (!expectedPackId || verifiedPurchases.includes(expectedPackId)) {
+                    if (newCount > 0 && showNotification) {
+                        UI.showModal("Purchase Activated!", `${newCount} new pack(s) have been unlocked and synced to your account.`);
                     }
+                    console.log(`Purchase sync complete (attempt ${attempt}): ${verifiedPurchases.length} total packs.`);
+                    return;
                 }
             }
         } catch (err) {
@@ -744,9 +525,8 @@ async function syncPurchasesFromCloud(expectedPackId = null, showNotification = 
         }
     }
 
-    // Final fallback: even if the expected pack wasn't found, save whatever we got
+    // Final fallback: even if the expected pack wasn't found
     if (expectedPackId && showNotification) {
-        saveGame();
         UI.showModal("Purchase Processing", "Your payment was received! If your pack isn't active yet, use 'Restore Purchases' in the Store in a moment.");
     }
 }
@@ -764,9 +544,15 @@ export async function showPurchaseSuccessModal(packId) {
         }
     } catch (e) {}
 
+    if (packId === 'vip_supporter') {
+        onVipPurchased();
+    }
+
     const title = pack?.title || (packId ? packId.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Expansion Pack');
     const icon = pack?.icon || 'fa-gem text-amber-400';
-    const desc = pack?.desc || 'Your purchase was successful and your new features are now active on your account.';
+    const desc = packId === 'vip_supporter' 
+        ? '⭐ VIP Supporter — Ad-Free Active. Your 100% ad-free experience is now active.'
+        : (pack?.desc || 'Your purchase was successful and your new features are now active on your account.');
 
     // Action button customization based on pack
     let actionBtnHtml = '';
@@ -947,15 +733,14 @@ async function initGame() {
         // Fallback: If /api/load failed, check if user exists via /api/login in sync mode
         if (!dbUser) {
             try {
-                const authToken = await getAuthToken();
-                const headers = { 'Content-Type': 'application/json' };
-                if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
-
+                const fallbackToken = await getAuthToken();
                 const fallbackResp = await fetch('/api/login', {
                     method: 'POST',
-                    headers: headers,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${fallbackToken}`
+                    },
                     body: JSON.stringify({
-                        auth0_id: user.sub,
                         email: user.email,
                         username: user.nickname || 'Player',
                         gender: 'male',
@@ -978,10 +763,10 @@ async function initGame() {
             console.log("Conflict detected: Active guest character AND existing cloud save found.");
             
             const cloudUser = dbUser.game_data.user || dbUser.game_data;
-            const cloudName = cloudUser.username || cloudUser.name || "Account Character";
+            const cloudName = Utils.escapeHtml(cloudUser.username || cloudUser.name || "Account Character");
             const cloudAge = dbUser.game_data.stats?.age || cloudUser.age || 0;
             
-            const guestName = guestSave.user.username || guestSave.user.name || "Guest Character";
+            const guestName = Utils.escapeHtml(guestSave.user.username || guestSave.user.name || "Guest Character");
             const guestAge = guestSave.user.age || 0;
 
             const modalMsg = `
@@ -1008,11 +793,13 @@ async function initGame() {
                 "Use Guest Character",
                 async () => {
                     console.log("User chose Guest Character. Overwriting Cloud save...");
-                    state.gameState = guestSave;
-                    GameLogic.backfillRelationshipGender(state.gameState.user?.relationships);
+                    state.gameState = migrateState(guestSave);
+                    if (state.gameState?.user) {
+                        GameLogic.backfillRelationshipGender(state.gameState.user.relationships);
+                    }
                     await saveGame();
                     Utils.guestStorage.clearSave();
-                    renderLifeDashboard();
+                    renderLifeDashboard(state.gameState);
                     UI.showModal("Character Saved!", `Your guest character (${guestName}) has been saved to your account.`);
                 }
             );
@@ -1034,15 +821,17 @@ async function initGame() {
         // SCENARIO 2: Guest Save exists, but NO Cloud Save exists -> Auto Migration
         if (hasGuestSave) {
             console.log("Migrating active guest character to logged-in cloud account...");
-            state.gameState = guestSave;
-            GameLogic.backfillRelationshipGender(state.gameState.user?.relationships);
+            state.gameState = migrateState(guestSave);
+            if (state.gameState?.user) {
+                GameLogic.backfillRelationshipGender(state.gameState.user.relationships);
+            }
             
             await saveGame();
             Utils.guestStorage.clearSave();
 
             if (typeof renderLifeDashboard === "function") {
-                renderLifeDashboard();
-                UI.showModal("Character Saved!", `Welcome ${user.nickname || 'Player'}! Your character has been saved to your account.`);
+                renderLifeDashboard(state.gameState);
+                UI.showModal("Character Saved!", `Welcome ${Utils.escapeHtml(user.nickname || 'Player')}! Your character has been saved to your account.`);
             }
             return;
         }
@@ -1075,8 +864,9 @@ async function initGame() {
         }
 
     } else {
-        // Guest Mode - Check Multi-Save Slots Store first
+        // Guest Mode - Resolve ads for guest and check Multi-Save Slots Store first
         console.log("Guest mode detected.");
+        resolveAdState([]);
         
         let loadedState = null;
         let activeSlotId = 'slot_1';
@@ -1087,15 +877,18 @@ async function initGame() {
                 const slotsStore = JSON.parse(rawSlots);
                 activeSlotId = slotsStore.activeSlotId || 'slot_1';
                 if (slotsStore.slots && slotsStore.slots[activeSlotId] && slotsStore.slots[activeSlotId].data) {
-                    loadedState = JSON.parse(JSON.stringify(slotsStore.slots[activeSlotId].data));
-                    loadedState._slotId = activeSlotId;
+                    loadedState = migrateState(slotsStore.slots[activeSlotId].data);
+                    if (loadedState) loadedState._slotId = activeSlotId;
                 }
             }
         } catch (e) {}
 
         if (!loadedState) {
-            loadedState = Utils.guestStorage.loadGame();
-            if (loadedState) loadedState._slotId = activeSlotId;
+            const rawGuest = Utils.guestStorage.loadGame();
+            if (rawGuest) {
+                loadedState = migrateState(rawGuest);
+                if (loadedState) loadedState._slotId = activeSlotId;
+            }
         }
         
         if (loadedState) {
@@ -1160,13 +953,17 @@ export async function resetGame() {
     else {
         console.log("Wiping Cloud Save...");
         try {
-            const authToken = await getAuthToken();
-            const headers = { 'Content-Type': 'application/json' };
-            if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+            let authToken = '';
+            try {
+                authToken = await getAuthToken();
+            } catch (e) {}
 
             await fetch('/api/saveGame', {
                 method: 'POST',
-                headers: headers,
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
+                },
                 body: JSON.stringify({
                     auth0_id: state.userAuthId,
                     email: state.userEmail,
@@ -1265,6 +1062,7 @@ const routeHandlers = {
   upgradeMarketingChannel,
   adjustRoleCount,
   acceptVCPitch,
+  launchIPO,
   chooseEventChoice,
   selectIndustry,
   selectSupplier,
@@ -1452,6 +1250,9 @@ const routeHandlers = {
 document.addEventListener('click', (e) => {
     const actionElement = e.target.closest('[data-action]');
     if (actionElement) {
+        if (actionElement.disabled || actionElement.hasAttribute('disabled') || actionElement.getAttribute('aria-disabled') === 'true' || actionElement.classList.contains('disabled')) {
+            return;
+        }
         const action = actionElement.dataset.action;
         const argsStr = actionElement.dataset.args;
         let args = [];

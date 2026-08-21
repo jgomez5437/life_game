@@ -1,9 +1,9 @@
-import { state } from '../public/src/core/state.js';
-import { isVipSupporter, renderVipLoungeModal, selectTheme } from '../public/src/features/store/vipLounge.js';
-import { UI } from '../public/src/ui/ui.js';
-import { applyTheme } from '../public/src/features/more/settingsScreen.js';
-import { renderLifeDashboard } from '../public/src/features/player/mainScreen.js';
-import { openPlayerOverviewModal } from '../public/src/features/player/playerOverviewScreen.js';
+import { state } from '../../../public/src/core/state.js';
+import { isVipSupporter, renderVipLoungeModal, selectTheme } from '../../../public/src/features/store/vipLounge.js';
+import { UI } from '../../../public/src/ui/ui.js';
+import { applyTheme } from '../../../public/src/features/more/settingsScreen.js';
+import { renderLifeDashboard } from '../../../public/src/features/player/mainScreen.js';
+import { openPlayerOverviewModal } from '../../../public/src/features/player/playerOverviewScreen.js';
 
 describe('VIP Supporter & Unique Theme Features', () => {
 

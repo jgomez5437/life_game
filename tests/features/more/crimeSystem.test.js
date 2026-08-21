@@ -1,5 +1,5 @@
 import { jest } from '@jest/globals';
-import { GameLogic } from '../public/src/core/gameLogic.js';
+import { GameLogic } from '../../../public/src/core/gameLogic.js';
 
 describe('Underworld, High-Risk & Crime System Engine', () => {
 
@@ -95,6 +95,70 @@ describe('Underworld, High-Risk & Crime System Engine', () => {
 
         expect(res.outcome).toBe('escaped');
         expect(user.pendingTrial).toBeNull();
+        expect(user.money).toBe(45000);
+
+        spy.mockRestore();
+    });
+
+    test('handleArrestAction bribe rejects negative bribe amount (C-7 exploit fix)', () => {
+        user.pendingTrial = { crime: GameLogic.CRIMES.gta, evidenceRating: 70, extraCharges: [] };
+        const initialMoney = user.money;
+
+        const res = GameLogic.handleArrestAction(user, 'bribe', -50000);
+
+        expect(res.success).toBe(false);
+        expect(res.message).toBe("Invalid bribe amount.");
+        expect(user.money).toBe(initialMoney);
+        expect(user.pendingTrial).not.toBeNull();
+    });
+
+    test('handleArrestAction bribe rejects zero or non-numeric/invalid bribe amounts', () => {
+        user.pendingTrial = { crime: GameLogic.CRIMES.gta, evidenceRating: 70, extraCharges: [] };
+        const initialMoney = user.money;
+
+        [0, NaN, null, undefined, Infinity, -Infinity, '5000', -1].forEach(invalidAmt => {
+            const res = GameLogic.handleArrestAction(user, 'bribe', invalidAmt);
+            expect(res.success).toBe(false);
+            expect(res.message).toBe("Invalid bribe amount.");
+            expect(user.money).toBe(initialMoney);
+            expect(user.pendingTrial).not.toBeNull();
+        });
+    });
+
+    test('handleArrestAction bribe rejects when user has insufficient funds', () => {
+        user.pendingTrial = { crime: GameLogic.CRIMES.gta, evidenceRating: 70, extraCharges: [] };
+        user.money = 1000;
+
+        const res = GameLogic.handleArrestAction(user, 'bribe', 5000);
+
+        expect(res.success).toBe(false);
+        expect(res.message).toBe("You don't have enough cash for that bribe!");
+        expect(user.money).toBe(1000);
+        expect(user.pendingTrial).not.toBeNull();
+    });
+
+    test('handleArrestAction bribe failure deducts money and adds bribery charge', () => {
+        user.pendingTrial = { crime: GameLogic.CRIMES.gta, evidenceRating: 70, extraCharges: [] };
+        const spy = jest.spyOn(Math, 'random').mockReturnValue(0.99);
+
+        const res = GameLogic.handleArrestAction(user, 'bribe', 5000);
+
+        expect(res.success).toBe(true);
+        expect(res.outcome).toBe('bribe_failed');
+        expect(user.money).toBe(45000);
+        expect(user.pendingTrial.extraCharges).toContain("Bribery of a Law Enforcement Officer");
+
+        spy.mockRestore();
+    });
+
+    test('handleArrestAction bribe floors fractional amounts', () => {
+        user.pendingTrial = { crime: GameLogic.CRIMES.gta, evidenceRating: 70, extraCharges: [] };
+        const spy = jest.spyOn(Math, 'random').mockReturnValue(0.05);
+
+        const res = GameLogic.handleArrestAction(user, 'bribe', 5000.95);
+
+        expect(res.outcome).toBe('escaped');
+        expect(user.money).toBe(45000);
 
         spy.mockRestore();
     });

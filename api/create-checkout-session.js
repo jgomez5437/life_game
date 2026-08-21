@@ -1,15 +1,39 @@
 import Stripe from 'stripe';
+import { verifyAuth } from './lib/verifyAuth.js';
+import { checkRateLimit } from './lib/rateLimit.js';
+import { resolvePack } from './lib/validation.js';
 
 export default async function handler(request, response) {
   if (request.method !== 'POST') {
     return response.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { packId, userAuthId } = request.body || {};
+  const { packId, priceId } = request.body || {};
 
-  if (!packId) {
-    return response.status(400).json({ error: 'Missing packId' });
+  // Derive userAuthId from the verified JWT token — authentication is strictly required
+  let userAuthId;
+  try {
+    userAuthId = await verifyAuth(request);
+  } catch (error) {
+    return response.status(401).json({ error: 'Authentication required to start checkout session' });
   }
+
+  if (!userAuthId || userAuthId === 'guest') {
+    return response.status(401).json({ error: 'Authentication required to start checkout session' });
+  }
+
+  // Enforce rate limiting: 5 checkout sessions / min per authenticated user
+  if (!checkRateLimit(request, response, 'checkout', null, userAuthId)) {
+    return;
+  }
+
+  // Authoritatively resolve and validate pack selection from server catalog
+  const resolution = resolvePack(packId, priceId);
+  if (resolution.error) {
+    return response.status(resolution.status || 400).json({ error: resolution.error });
+  }
+
+  const pack = resolution.pack;
 
   const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 
@@ -24,34 +48,13 @@ export default async function handler(request, response) {
   try {
     const stripe = new Stripe(stripeSecretKey);
 
-    const priceMap = {
-      god_mode: 299,
-      instant_diplomas: 199,
-      time_machine: 199,
-      vip_supporter: 499,
-      mafia_syndicate: 299,
-      mafia_expansion: 299,
-      artist_pack: 399,
-      athlete_pack: 399,
-      politician_pack: 399
-    };
-
-    const nameMap = {
-      god_mode: 'God Mode & Stat Editor',
-      instant_diplomas: 'Instant Diplomas',
-      time_machine: 'Time Machine & Multi-Save Slots',
-      vip_supporter: 'VIP Supporter & Unique Theme',
-      mafia_syndicate: 'Start a Life Expansion: Mafia Pack',
-      mafia_expansion: 'Start a Life Expansion: Mafia Pack',
-      artist_pack: 'Artist & Creative Industry',
-      athlete_pack: 'Athlete & Pro Sports',
-      politician_pack: 'Politician & Head of State'
-    };
-
-    const amount = priceMap[packId] || 299;
-    const name = nameMap[packId] || 'Life Game Expansion Pack';
-
-    const origin = request.headers.origin || request.headers.referer || 'http://localhost:3000';
+    const ALLOWED_ORIGINS = [
+        'https://startalife.vercel.app',
+        'http://localhost:3000',
+        'http://localhost:5173'
+    ];
+    const rawOrigin = request.headers?.origin || request.headers?.referer || '';
+    const origin = ALLOWED_ORIGINS.includes(rawOrigin) ? rawOrigin : 'https://startalife.vercel.app';
 
     const session = await stripe.checkout.sessions.create({
       managed_payments: { enabled: false },
@@ -59,23 +62,23 @@ export default async function handler(request, response) {
       line_items: [
         {
           price_data: {
-            currency: 'usd',
+            currency: pack.currency || 'usd',
             product_data: {
-              name: name,
+              name: pack.name,
               tax_code: 'txcd_10000000',
-              metadata: { pack_id: packId }
+              metadata: { pack_id: pack.id }
             },
-            unit_amount: amount
+            unit_amount: pack.amount
           },
           quantity: 1
         }
       ],
       mode: 'payment',
       metadata: {
-        user_auth_id: userAuthId || 'guest',
-        pack_id: packId
+        user_auth_id: userAuthId,
+        pack_id: pack.id
       },
-      success_url: `${origin}/?session_id={CHECKOUT_SESSION_ID}&purchase_success=true&pack_id=${packId}`,
+      success_url: `${origin}/?purchase_success=true&pack_id=${pack.id}`,
       cancel_url: `${origin}/?purchase_cancelled=true`
     });
 

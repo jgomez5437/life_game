@@ -1,5 +1,5 @@
 import { jest } from '@jest/globals';
-import { state } from '../public/src/core/state.js';
+import { state } from '../../../public/src/core/state.js';
 import { 
     openSettingsModal, 
     promptSignOut, 
@@ -8,9 +8,9 @@ import {
     toggleSettingCompact,
     toggleSettingTheme,
     applyTheme
-} from '../public/src/features/more/settingsScreen.js';
-import { logout } from '../public/src/auth/auth.js';
-import { UI } from '../public/src/ui/ui.js';
+} from '../../../public/src/features/more/settingsScreen.js';
+import { logout } from '../../../public/src/auth/auth.js';
+import { UI } from '../../../public/src/ui/ui.js';
 
 describe('Settings Screen & Sign Out Functionality', () => {
 

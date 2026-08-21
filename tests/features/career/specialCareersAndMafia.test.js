@@ -1,11 +1,11 @@
 import { jest } from '@jest/globals';
-import { state } from '../public/src/core/state.js';
-import { SPECIAL_CAREER_TRACKS } from '../public/src/core/main.js';
-import { joinSpecialCareer, confirmJoinSpecialCareer } from '../public/src/features/career/careerJobsScreen.js';
-import { attemptMafiaCrime } from '../public/src/features/career/jobCareerManagerScreen.js';
-import { GameLogic } from '../public/src/core/gameLogic.js';
-import { ageUp } from '../public/src/features/player/mainScreen.js';
-import { UI } from '../public/src/ui/ui.js';
+import { state } from '../../../public/src/core/state.js';
+import { SPECIAL_CAREER_TRACKS } from '../../../public/src/core/main.js';
+import { joinSpecialCareer, confirmJoinSpecialCareer } from '../../../public/src/features/career/careerJobsScreen.js';
+import { attemptMafiaCrime } from '../../../public/src/features/career/jobCareerManagerScreen.js';
+import { GameLogic } from '../../../public/src/core/gameLogic.js';
+import { ageUp } from '../../../public/src/features/player/mainScreen.js';
+import { UI } from '../../../public/src/ui/ui.js';
 
 describe('Special Careers & Mafia Syndicate System', () => {
 
@@ -66,7 +66,31 @@ describe('Special Careers & Mafia Syndicate System', () => {
     });
 
     describe('Joining Special Career & Prerequisites', () => {
+        test('joinSpecialCareer blocks players who have not purchased mafia_syndicate pack', () => {
+            state.gameState.user.purchases = [];
+            state.gameState.user.lifetimeCrimesCommitted = 5;
+            const modalSpy = jest.spyOn(UI, 'showModal');
+
+            joinSpecialCareer('mafia_syndicate');
+
+            expect(modalSpy).toHaveBeenCalledWith("Syndicate Expansion Required", expect.stringContaining("Mafia Syndicate Expansion Pack"));
+            expect(state.gameState.user.careerTrack).toBeNull();
+            modalSpy.mockRestore();
+        });
+
+        test('confirmJoinSpecialCareer blocks players who have not purchased mafia_syndicate pack', () => {
+            state.gameState.user.purchases = [];
+            const modalSpy = jest.spyOn(UI, 'showModal');
+
+            confirmJoinSpecialCareer('mafia_syndicate');
+
+            expect(modalSpy).toHaveBeenCalledWith("Syndicate Expansion Required", expect.stringContaining("Mafia Syndicate Expansion Pack"));
+            expect(state.gameState.user.careerTrack).toBeNull();
+            modalSpy.mockRestore();
+        });
+
         test('joinSpecialCareer blocks players with under 3 lifetime crimes', () => {
+            state.gameState.user.purchases = ['mafia_syndicate'];
             state.gameState.user.lifetimeCrimesCommitted = 2;
             const modalSpy = jest.spyOn(UI, 'showModal');
 
@@ -77,7 +101,8 @@ describe('Special Careers & Mafia Syndicate System', () => {
             modalSpy.mockRestore();
         });
 
-        test('joinSpecialCareer shows custom modal prompt when requirements met (3+ crimes)', () => {
+        test('joinSpecialCareer shows custom modal prompt when requirements met (3+ crimes and owned pack)', () => {
+            state.gameState.user.purchases = ['mafia_syndicate'];
             state.gameState.user.lifetimeCrimesCommitted = 3;
             const modalSpy = jest.spyOn(UI, 'showCustomModal');
 
@@ -88,6 +113,7 @@ describe('Special Careers & Mafia Syndicate System', () => {
         });
 
         test('confirmJoinSpecialCareer initiates player as Muscle in La Cosa Nostra', () => {
+            state.gameState.user.purchases = ['mafia_syndicate'];
             confirmJoinSpecialCareer('mafia_syndicate');
 
             const user = state.gameState.user;
