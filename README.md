@@ -14,7 +14,7 @@
 
 Players guide a procedurally generated character from birth to death—making pivotal decisions across education, career paths, entrepreneurship, real estate, financial markets, criminal enterprises, romantic relationships, and multi-generational legacies.
 
-🎮 **Live Demo**: [https://startalife.vercel.app](https://startalife.vercel.app)
+🎮 **Live Demo**: [https://startalife.app](https://startalife.app)
 
 ---
 

@@ -49,12 +49,13 @@ export default async function handler(request, response) {
     const stripe = new Stripe(stripeSecretKey);
 
     const ALLOWED_ORIGINS = [
+        'https://startalife.app',
         'https://startalife.vercel.app',
         'http://localhost:3000',
         'http://localhost:5173'
     ];
     const rawOrigin = request.headers?.origin || request.headers?.referer || '';
-    const origin = ALLOWED_ORIGINS.includes(rawOrigin) ? rawOrigin : 'https://startalife.vercel.app';
+    const origin = ALLOWED_ORIGINS.includes(rawOrigin) ? rawOrigin : 'https://startalife.app';
 
     const session = await stripe.checkout.sessions.create({
       managed_payments: { enabled: false },
