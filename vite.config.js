@@ -6,7 +6,7 @@ function copyStaticFilesPlugin() {
   return {
     name: 'copy-static-files',
     closeBundle() {
-      const files = ['robots.txt', 'sitemap.xml', 'favicon.png', 'preview.png'];
+      const files = ['robots.txt', 'sitemap.xml', 'favicon.png', 'preview.png', 'ads.txt'];
       for (const file of files) {
         const src = resolve(import.meta.dirname, 'public', file);
         const dest = resolve(import.meta.dirname, 'dist', file);
