@@ -219,6 +219,7 @@ export function renderStoreScreen(activeCategory = null) {
     `;
 
     UI.renderScreen(storeHTML);
+    UI.updateBottomNav('more');
 }
 
 function renderTabButton(tabId, label, icon) {
@@ -701,8 +702,8 @@ export function renderGodModeModal() {
     UI.showCustomModal({
         title: "God Mode Stat Editor",
         content: html,
-        confirmText: "Close",
-        onConfirm: () => {}
+        confirmText: null,
+        cancelText: null
     });
 }
 
@@ -832,8 +833,8 @@ export function openGodModeHubModal() {
     UI.showCustomModal({
         title: "God Mode Control Center",
         content: htmlContent,
-        confirmText: "Close",
-        onConfirm: () => {}
+        confirmText: null,
+        cancelText: null
     });
 }
 

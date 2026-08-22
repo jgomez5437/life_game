@@ -8,8 +8,26 @@ import { Utils } from '../../ui/utils.js';
 
 const get = id => document.getElementById(id);
 
-function returnFromCrimeOrArrest(user) {
-    if (user && user.careerTrack === 'mafia_syndicate') {
+export function returnFromCrimeOrArrest(user) {
+    const activeUser = user || state.gameState?.user;
+    UI.closeAllModals();
+    if (activeUser && activeUser.careerTrack === 'mafia_syndicate') {
+        loadModule('jobCareerManager').then(m => {
+            if (m && typeof m.renderCareerManager === 'function') m.renderCareerManager();
+        });
+    } else {
+        renderCrimeDashboard();
+    }
+}
+
+export function finishCourtSentencing() {
+    const user = state.gameState?.user;
+    UI.closeAllModals();
+    if (user && user.inPrison) {
+        loadModule('prison').then(m => {
+            if (m && typeof m.renderPrisonDashboard === 'function') m.renderPrisonDashboard();
+        });
+    } else if (user && user.careerTrack === 'mafia_syndicate') {
         loadModule('jobCareerManager').then(m => {
             if (m && typeof m.renderCareerManager === 'function') m.renderCareerManager();
         });
@@ -19,7 +37,8 @@ function returnFromCrimeOrArrest(user) {
 }
 
 export function renderCrimeDashboard() {
-    const user = state.gameState.user;
+    const user = state.gameState?.user;
+    if (!user) return;
     const age = user.age || 0;
 
     if (age < 12) {
@@ -38,6 +57,7 @@ export function renderCrimeDashboard() {
     const violentCrimes = crimesList.filter(c => c.category === 'violent');
     const heistCrimes = crimesList.filter(c => c.category === 'heist');
 
+    UI.updateBottomNav('more');
     get('game-container').innerHTML = `
         <div class="flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4 flex items-center justify-between">
@@ -132,10 +152,14 @@ function renderCrimeCard(crime) {
 }
 
 export function openCrimeModal(crimeId) {
-    const user = state.gameState.user;
+    const user = state.gameState?.user;
+    if (!user) return;
     const crime = GameLogic.CRIMES[crimeId];
 
-    if (!crime) return;
+    if (!crime) {
+        UI.showModal("Invalid Crime", "The requested crime is not available.");
+        return;
+    }
 
     const relationships = Array.isArray(user.relationships) ? user.relationships : [];
     const hasTargets = relationships.length > 0 && ['assault', 'attempted_murder', 'murder', 'burglary'].includes(crime.id);
@@ -155,7 +179,7 @@ export function openCrimeModal(crimeId) {
             <div class="bg-red-950/30 border border-red-800/50 p-3 rounded-xl space-y-1">
                 <div class="font-bold text-white text-base flex items-center justify-between">
                     <span>${crime.name}</span>
-                    <span class="text-xs uppercase font-extrabold text-red-400">${crime.risk} RISK</span>
+                    <span class="text-xs uppercase font-extrabold text-red-400">${String(crime.risk).toUpperCase()} RISK</span>
                 </div>
                 <p class="text-xs text-slate-300">${crime.desc}</p>
                 ${crime.payoutMax > 0 ? `<div class="text-xs font-bold text-emerald-400 mt-1">Est. Payout: ${Utils.formatMoney(crime.payoutMin)} - ${Utils.formatMoney(crime.payoutMax)}</div>` : ''}
@@ -183,11 +207,11 @@ export function openCrimeModal(crimeId) {
 }
 
 export function commitCrimeAction(crimeId) {
-    const user = state.gameState.user;
-    const targetSelect = get('crime-target-select');
-    const targetPersonId = targetSelect ? targetSelect.value : null;
+    const user = state.gameState?.user;
+    if (!user) return;
 
-    UI.hideModal();
+    const targetSelect = get('crime-target-select');
+    const targetPersonId = targetSelect && targetSelect.value !== '' ? targetSelect.value : null;
 
     const result = GameLogic.attemptCrime(crimeId, user, targetPersonId);
 
@@ -195,31 +219,70 @@ export function commitCrimeAction(crimeId) {
 
     UI.updateHeader(user);
 
+    if (!result || (!result.success && !result.juvenileMischiefFailed && !result.arrested)) {
+        UI.showModal("Action Blocked", result?.message || "Unable to commit crime at this time.");
+        return;
+    }
+
     if (result.success) {
         if (result.isMurder) {
             showMurderCoverUpModal(result.victimName);
             addLog(`Committed murder against ${result.victimName}. Case remains unsolved.`, 'bad');
         } else {
             addLog(result.message, 'good');
-            UI.showModal("Crime Successful", `
-                <div class="text-center space-y-3">
-                    <div class="text-4xl">🥷</div>
-                    <h3 class="text-lg font-bold text-emerald-400">${result.crime.name} Success</h3>
-                    <p class="text-xs text-slate-300">${result.message}</p>
+            const outcomeHtml = `
+                <div class="text-center space-y-4 py-2">
+                    <div class="w-16 h-16 rounded-2xl bg-emerald-950/80 border border-emerald-500/50 flex items-center justify-center text-3xl mx-auto shadow-xl text-emerald-400">
+                        🥷
+                    </div>
+                    <div>
+                        <div class="text-xs font-bold uppercase tracking-widest text-emerald-400">Crime Successful</div>
+                        <h3 class="text-2xl font-black text-white">${result.crime.name}</h3>
+                    </div>
+                    <p class="text-xs text-slate-300 px-2 leading-relaxed">${result.message}</p>
+                    ${result.payout > 0 ? `
+                        <div class="bg-slate-900/90 p-3 rounded-xl border border-emerald-500/30 text-emerald-400 font-bold text-sm">
+                            <i class="fas fa-coins mr-1.5"></i> Loot Acquired: +${Utils.formatMoney(result.payout)}
+                        </div>
+                    ` : ''}
+                    <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-700">
+                        <button data-action="openCrimeModal" data-args="${result.crime.id}" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs transition">
+                            Commit Again
+                        </button>
+                        <button data-action="returnFromCrimeOrArrest" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-2.5 rounded-xl text-xs transition">
+                            Crime Hub
+                        </button>
+                    </div>
                 </div>
-            `);
+            `;
+            UI.showCustomModal("Crime Successful", outcomeHtml);
         }
-        renderCrimeDashboard();
     } else if (result.juvenileMischiefFailed) {
         addLog(result.message, 'bad');
-        UI.showModal("Caught!", `
-            <div class="text-center space-y-3">
-                <div class="text-4xl">🙈</div>
-                <h3 class="text-lg font-bold text-amber-400">Caught in the Act!</h3>
-                <p class="text-xs text-slate-300">${result.message}</p>
+        const caughtHtml = `
+            <div class="text-center space-y-4 py-2">
+                <div class="w-16 h-16 rounded-2xl bg-amber-950/80 border border-amber-500/50 flex items-center justify-center text-3xl mx-auto shadow-xl text-amber-400">
+                    🙈
+                </div>
+                <div>
+                    <div class="text-xs font-bold uppercase tracking-widest text-amber-400">Caught in the Act</div>
+                    <h3 class="text-2xl font-black text-white">${result.crime.name} Failed</h3>
+                </div>
+                <p class="text-xs text-slate-300 px-2 leading-relaxed">${result.message}</p>
+                <div class="bg-slate-900/90 p-3 rounded-xl border border-amber-500/30 text-amber-300 text-xs font-semibold">
+                    <i class="fas fa-exclamation-circle mr-1.5"></i> Happiness reduced by 10-15%
+                </div>
+                <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-700">
+                    <button data-action="openCrimeModal" data-args="${result.crime.id}" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-2.5 rounded-xl text-xs transition">
+                        Try Again
+                    </button>
+                    <button data-action="returnFromCrimeOrArrest" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-2.5 rounded-xl text-xs transition">
+                        Crime Hub
+                    </button>
+                </div>
             </div>
-        `);
-        renderCrimeDashboard();
+        `;
+        UI.showCustomModal("Caught in the Act!", caughtHtml);
     } else if (result.arrested) {
         addLog(result.message, 'bad');
         showArrestModal(result.crime);
@@ -237,13 +300,13 @@ export function showMurderCoverUpModal(victimName) {
                 <h3 class="text-2xl font-black text-white">Cold Case Established</h3>
             </div>
             <p class="text-xs text-slate-300 leading-relaxed px-2">
-                You successfully eliminated <strong class="text-white">${victimName}</strong>. Homicide detectives have established a crime scene, but found no forensic leads. Their contact profile has been erased.
+                You successfully eliminated <strong class="text-white">${Utils.escapeHtml(victimName)}</strong>. Homicide detectives have established a crime scene, but found no forensic leads. Their contact profile has been erased.
             </p>
             <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800 text-left text-xs space-y-1">
                 <div class="text-slate-400"><i class="fas fa-search text-amber-400 mr-1.5"></i>Investigation Status: <span class="text-amber-300 font-semibold">Inactive / Cold Case</span></div>
                 <div class="text-slate-400"><i class="fas fa-user-shield text-emerald-400 mr-1.5"></i>Suspect Status: <span class="text-emerald-400 font-semibold">No Suspects Identified</span></div>
             </div>
-            <button data-action="hideModal" class="w-full bg-red-900/80 hover:bg-red-800 text-white font-bold py-2.5 rounded-lg text-xs transition">
+            <button data-action="returnFromCrimeOrArrest" class="w-full bg-red-900/80 hover:bg-red-800 text-white font-bold py-2.5 rounded-lg text-xs transition">
                 Leave Crime Scene
             </button>
         </div>
@@ -252,8 +315,13 @@ export function showMurderCoverUpModal(victimName) {
 }
 
 export function showArrestModal(crime, extraCharges = []) {
-    const user = state.gameState.user;
-    const pending = user.pendingTrial || { crime, extraCharges: [] };
+    const user = state.gameState?.user;
+    if (!user) return;
+    const pending = user.pendingTrial || (crime ? { crime, extraCharges } : null);
+    if (!pending) {
+        returnFromCrimeOrArrest(user);
+        return;
+    }
     const hasAttemptedEscape = pending.extraCharges && pending.extraCharges.length > 0;
 
     const html = `
@@ -308,7 +376,8 @@ export function showArrestModal(crime, extraCharges = []) {
 }
 
 export function openBribeModal() {
-    const user = state.gameState.user;
+    const user = state.gameState?.user;
+    if (!user) return;
 
     const html = `
         <div class="space-y-3 text-left">
@@ -332,7 +401,8 @@ export function openBribeModal() {
 }
 
 export function submitBribeAction() {
-    const user = state.gameState.user;
+    const user = state.gameState?.user;
+    if (!user) return;
     const input = get('bribe-amount-input');
     const amount = input ? parseInt(input.value, 10) : 0;
 
@@ -347,8 +417,7 @@ export function submitBribeAction() {
 
     if (result.outcome === 'escaped') {
         addLog(result.message, 'good');
-        UI.showModal("Escaped Custody!", result.message);
-        returnFromCrimeOrArrest(user);
+        UI.showModal("Escaped Custody!", result.message, () => returnFromCrimeOrArrest(user));
     } else {
         addLog(result.message, 'bad');
         showArrestModal(user.pendingTrial?.crime);
@@ -356,15 +425,15 @@ export function submitBribeAction() {
 }
 
 export function handleArrestChoice(choice) {
-    const user = state.gameState.user;
+    const user = state.gameState?.user;
+    if (!user) return;
     const result = GameLogic.handleArrestAction(user, choice);
 
     UI.updateHeader(user);
 
     if (result.outcome === 'escaped') {
         addLog(result.message, 'good');
-        UI.showModal("Escaped Custody!", result.message);
-        returnFromCrimeOrArrest(user);
+        UI.showModal("Escaped Custody!", result.message, () => returnFromCrimeOrArrest(user));
     } else if (result.outcome === 'flee_failed') {
         addLog(result.message, 'bad');
         showArrestModal(user.pendingTrial?.crime);
@@ -374,7 +443,8 @@ export function handleArrestChoice(choice) {
 }
 
 export function showCourtArraignmentModal(errorMsg = null) {
-    const user = state.gameState.user;
+    const user = state.gameState?.user;
+    if (!user) return;
     const pending = user.pendingTrial;
 
     if (!pending) {
@@ -434,7 +504,8 @@ export function showCourtArraignmentModal(errorMsg = null) {
 }
 
 export function selectLegalCounsel(lawyerTier) {
-    const user = state.gameState.user;
+    const user = state.gameState?.user;
+    if (!user) return;
     const result = GameLogic.calculateTrialVerdict(user, lawyerTier);
 
     if (result && result.error) {
@@ -447,20 +518,22 @@ export function selectLegalCounsel(lawyerTier) {
 
     if (result.verdict === 'not_guilty') {
         addLog(result.message, 'good');
-        UI.showModal("Acquitted!", `
-            <div class="text-center space-y-3">
+        const acquitHtml = `
+            <div class="text-center space-y-4 py-2">
                 <div class="text-4xl">⚖️</div>
-                <h3 class="text-xl font-bold text-emerald-400">NOT GUILTY</h3>
-                <p class="text-xs text-slate-300">The jury returned a verdict of not guilty! You walked out of the courtroom a free individual.</p>
+                <h3 class="text-2xl font-black text-emerald-400">NOT GUILTY</h3>
+                <p class="text-xs text-slate-300 leading-relaxed">The jury returned a verdict of not guilty! You walked out of the courtroom a free individual.</p>
+                <button data-action="returnFromCrimeOrArrest" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs transition">
+                    Leave Courtroom
+                </button>
             </div>
-        `);
-        returnFromCrimeOrArrest(user);
+        `;
+        UI.showCustomModal("Acquitted!", acquitHtml);
     } else {
         addLog(result.message, 'bad');
 
         const isMafia = user.careerTrack === 'mafia_syndicate';
-        const jobStatusText = isMafia ? 'Retained (Syndicate Member)' : (result.crime.category !== 'juvenile' ? 'Terminated' : 'N/A');
-        const nextScreenAction = user.inPrison ? 'renderPrisonDashboard' : (isMafia ? 'renderCareerManager' : 'renderCrimeDashboard');
+        const jobStatusText = isMafia ? 'Retained (Syndicate Member)' : (result.crime?.category !== 'juvenile' ? 'Terminated' : 'N/A');
 
         UI.showCustomModal("Convicted & Sentenced", `
             <div class="text-center space-y-3">
@@ -472,11 +545,12 @@ export function selectLegalCounsel(lawyerTier) {
                     <div>• Employment Status: <span class="text-slate-200">${jobStatusText}</span></div>
                     <div>• Criminal Record: <span class="text-amber-400">Permanent Record Updated</span></div>
                 </div>
-                <button data-action="${nextScreenAction}" class="w-full bg-red-700 hover:bg-red-600 text-white font-bold py-2.5 rounded-lg text-xs transition">
+                <button data-action="finishCourtSentencing" class="w-full bg-red-700 hover:bg-red-600 text-white font-bold py-2.5 rounded-lg text-xs transition">
                     ${user.inPrison ? 'Enter Prison System' : 'Continue'}
                 </button>
             </div>
         `);
     }
 }
+
 

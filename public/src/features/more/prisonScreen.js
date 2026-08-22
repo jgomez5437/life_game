@@ -31,6 +31,7 @@ export function renderPrisonDashboard() {
     };
 
     UI.updateHeader(user);
+    UI.hideBottomNav();
 
     const securityColor = user.prisonSecurity === 'Supermax' ? 'text-red-500 bg-red-950/80 border-red-800'
         : user.prisonSecurity === 'Maximum' ? 'text-amber-400 bg-amber-950/80 border-amber-800'
@@ -969,10 +970,6 @@ export function openDealerBuyModal() {
                     </div>
                 `).join('')}
             </div>
-
-            <button data-action="hideModal" class="w-full mt-2 bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-2 rounded-xl text-xs transition border border-slate-600 flex items-center justify-center gap-2">
-                <i class="fas fa-times"></i> Cancel & Exit
-            </button>
         </div>
     `;
 
@@ -1023,10 +1020,6 @@ export function openDealerSellModal() {
             </div>
 
             ${itemsHtml}
-
-            <button data-action="hideModal" class="w-full mt-2 bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-2 rounded-xl text-xs transition border border-slate-600 flex items-center justify-center gap-2">
-                <i class="fas fa-times"></i> Cancel & Exit
-            </button>
         </div>
     `;
 
@@ -1192,10 +1185,6 @@ export function openInmateDetailModal(inmateId) {
             <div class="grid grid-cols-2 gap-2">
                 ${actionButtons}
             </div>
-
-            <button data-action="hideModal" class="w-full mt-2 bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-2 rounded-xl text-xs transition border border-slate-600 flex items-center justify-center gap-2">
-                <i class="fas fa-times"></i> Close
-            </button>
         </div>
     `;
 

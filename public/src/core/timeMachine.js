@@ -256,7 +256,7 @@ export function renderTimeMachineModal() {
     UI.showCustomModal({
         title: "Time Machine & Timeline Scrubber",
         content: modalHTML,
-        confirmText: "Close",
-        onConfirm: () => {}
+        confirmText: null,
+        cancelText: null
     });
 }

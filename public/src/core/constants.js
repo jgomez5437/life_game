@@ -13,6 +13,13 @@ export const GRAD_SCHOOLS = [
     { name: "Psychiatry School", years: 4, icon: "fa-brain" }
 ];
 
+export const GRAD_SCHOOL_DEGREE_TITLES = {
+    'Business School': "Master's Degree in Business",
+    'Law School': "Juris Doctor in Law",
+    'Medical School': "Doctor of Medicine (M.D.)",
+    'Psychiatry School': "Doctorate in Psychiatry"
+};
+
 export const CAREER_TRACKS = [
     // ── NO DEGREE REQUIRED ────────────────────────────────────────────
     {

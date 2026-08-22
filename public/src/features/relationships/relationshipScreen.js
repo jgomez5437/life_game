@@ -109,7 +109,7 @@ export const renderRelationships = () => {
         }
 
         return `
-            <div data-action="renderPersonInteraction" data-args="&apos;${person.id}&apos;" class="bg-slate-800 p-3 rounded-xl border border-slate-700 mb-3 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition flex items-center justify-between group">
+            <div data-action="renderPersonInteraction" data-args="&apos;${person.id}&apos;, &apos;renderRelationships&apos;" class="bg-slate-800 p-3 rounded-xl border border-slate-700 mb-3 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition flex items-center justify-between group">
                 <div class="flex items-center gap-4">
                     <div class="w-10 h-10 rounded-full bg-slate-700 overflow-hidden flex items-center justify-center text-slate-400 group-hover:bg-slate-600 transition border border-slate-600">
                         ${renderAvatar(person)}
@@ -180,6 +180,7 @@ export const renderRelationships = () => {
     const meetPeopleClass = meetPeopleDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-pink-600 transition';
     const meetPeopleAttr = meetPeopleDisabled ? 'disabled' : '';
 
+    UI.updateBottomNav('social');
     const container = document.getElementById('game-container');
     container.innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
@@ -333,7 +334,7 @@ export const openMeetPeopleModal = () => {
 
                 <!-- Option 5: LuxeMatch Matchmaking -->
                 ${user.age >= 18 ? `
-                <button data-action="renderLuxeMatchModal" class="w-full bg-gradient-to-r from-slate-800 to-amber-950/40 hover:to-amber-900/60 border border-amber-500/40 hover:border-amber-400 p-4 rounded-xl text-left transition flex items-center gap-4 group shadow-lg">
+                <button data-action="renderLuxeMatchModal" class="luxe-match-card w-full bg-gradient-to-r from-slate-800 to-amber-950/40 hover:to-amber-900/60 border border-amber-500/40 hover:border-amber-400 p-4 rounded-xl text-left transition flex items-center gap-4 group shadow-lg">
                     <div class="w-12 h-12 rounded-xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-xl text-amber-300 group-hover:scale-105 transition shadow-sm">
                         <i class="fas fa-crown"></i>
                     </div>
@@ -393,7 +394,7 @@ export const renderLuxeMatchModal = () => {
 
     const wealthHtml = wealthTiers.map(t => {
         const active = selectedLuxeWealthTier === t.key;
-        const borderClass = active ? 'border-amber-400 bg-amber-500/10 shadow-md' : 'border-slate-700 bg-slate-800/80 hover:border-slate-600';
+        const borderClass = active ? 'luxe-wealth-active border-amber-400 bg-amber-500/10 shadow-md' : 'border-slate-700 bg-slate-800/80 hover:border-slate-600';
         return `
             <div data-action="selectLuxeWealthTier" data-args="&apos;${t.key}&apos;" class="p-3.5 rounded-xl border ${borderClass} cursor-pointer transition flex items-center justify-between group">
                 <div class="flex items-center gap-3">
@@ -459,13 +460,13 @@ export const renderLuxeMatchModal = () => {
                 </div>
 
                 <!-- Pricing & Action -->
-                <div class="bg-slate-900/80 p-4 rounded-xl border border-amber-500/30 text-center mt-2">
+                <div class="luxe-fee-card bg-slate-900/80 p-4 rounded-xl border border-amber-500/30 text-center mt-2">
                     <div class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Concierge Match Fee</div>
                     <div class="text-2xl font-bold text-amber-400">${Utils.formatMoney(100000)}</div>
                     ${!canAfford ? '<div class="text-xs text-red-400 font-bold mt-1">Insufficient Funds (You need $100,000)</div>' : ''}
                 </div>
 
-                <button data-action="confirmLuxeMatch" ${!canAfford ? 'disabled' : ''} class="w-full btn-primary bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black py-3.5 px-4 rounded-xl text-sm flex items-center justify-center gap-2 shadow-lg transition ${btnDisabled}">
+                <button data-action="confirmLuxeMatch" ${!canAfford ? 'disabled' : ''} class="luxe-action-btn w-full btn-primary bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black py-3.5 px-4 rounded-xl text-sm flex items-center justify-center gap-2 shadow-lg transition ${btnDisabled}">
                     <i class="fas fa-crown text-base"></i> Find Luxury Match (-${Utils.formatMoney(100000)})
                 </button>
             </div>
@@ -747,6 +748,10 @@ function getOccupationIcon(type) {
     return 'fa-user-tag text-slate-400';
 }
 
+// Track active interaction back action per person session
+let _activePersonBackAction = null;
+let _currentInteractionPersonId = null;
+
 // --- INTERACTION SCREEN ---
 export const renderPersonInteraction = (id, backAction = null) => {
     const user = state.gameState?.user;
@@ -764,18 +769,25 @@ export const renderPersonInteraction = (id, backAction = null) => {
 
     let targetBackAction = backAction;
     if (!targetBackAction) {
-        if (person.isCurrentClassmate || person.category === 'classmate') {
+        if (_currentInteractionPersonId === id && _activePersonBackAction) {
+            targetBackAction = _activePersonBackAction;
+        } else if (person.category === 'classmate') {
             targetBackAction = 'renderClassmates';
         } else {
             targetBackAction = 'renderRelationships';
         }
     }
 
+    _activePersonBackAction = targetBackAction;
+    _currentInteractionPersonId = id;
+
     let backLabel = 'Back to Relationships';
     if (targetBackAction === 'renderClassmates') {
         backLabel = 'Back to Classmates';
     } else if (targetBackAction === 'renderEducation') {
         backLabel = 'Back to Education';
+    } else if (targetBackAction === 'renderLifeDashboard') {
+        backLabel = 'Back to Dashboard';
     }
 
     const interactions = GameLogic.getAvailableInteractions(person, user);
@@ -841,6 +853,7 @@ export const renderPersonInteraction = (id, backAction = null) => {
     if (person.status < 30) barColor = 'bg-red-500';
     else if (person.status < 60) barColor = 'bg-yellow-500';
 
+    UI.updateBottomNav('social');
     const container = document.getElementById('game-container');
     container.innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
@@ -1229,9 +1242,6 @@ export const openRingSelectionModal = (personId) => {
         <div class="flex flex-col gap-2 border-t border-slate-700/60 pt-3">
             <button data-action="renderJewelryDealer" data-args="&apos;ring&apos;" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold py-2 px-3 rounded-lg transition border border-slate-700">
                 <i class="fas fa-shopping-cart mr-1"></i> Go Ring Shopping
-            </button>
-            <button data-action="hideModal" class="w-full text-slate-400 hover:text-white text-xs font-semibold py-1">
-                Not Ready Yet
             </button>
         </div>
     `;

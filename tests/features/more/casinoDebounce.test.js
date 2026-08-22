@@ -1,4 +1,6 @@
+import { jest } from '@jest/globals';
 import { state } from '../../../public/src/core/state.js';
+import { GameLogic } from '../../../public/src/core/gameLogic.js';
 import { confirmRouletteBet, confirmSlotsSpin, openBlackjackBetting, startBlackjackGame } from '../../../public/src/features/more/casinoScreen.js';
 import { buyLotteryTicket } from '../../../public/src/features/more/moreScreen.js';
 
@@ -64,6 +66,12 @@ describe('Casino Debounce & Re-entry Protection', () => {
 
     test('startBlackjackGame deducts bet and deals hand only once on rapid calls', () => {
         const initialMoney = state.gameState.user.money;
+        const deckSpy = jest.spyOn(GameLogic, 'getDeck').mockReturnValue([
+            { value: '2', suit: 'hearts' },
+            { value: '3', suit: 'diamonds' },
+            { value: '4', suit: 'clubs' },
+            { value: '5', suit: 'spades' }
+        ]);
 
         startBlackjackGame();
         // User money reduced by 100
@@ -71,6 +79,7 @@ describe('Casino Debounce & Re-entry Protection', () => {
 
         const title = document.getElementById('modal-title');
         expect(title.innerText).toBe('Blackjack');
+        deckSpy.mockRestore();
     });
 
     test('buyLotteryTicket processes only 1 ticket purchase on rapid double calls', () => {

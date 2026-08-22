@@ -180,8 +180,8 @@ export function harvestLifeProfile(user, lifeLog = [], cause = null) {
         lotteryWins,
         casinoWins,
         droppedOut,
-        collegeDegree,
-        gradDegree,
+        collegeDegree: collegeDegree || Boolean(user.universityGraduated),
+        gradDegree: gradDegree || Boolean(user.gradSchoolDegree),
         looks: typeof user.looks === 'number' ? user.looks : 50,
         smarts: typeof user.smarts === 'number' ? user.smarts : 50,
         happiness: typeof user.happiness === 'number' ? user.happiness : 50

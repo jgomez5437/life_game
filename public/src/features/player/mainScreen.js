@@ -196,6 +196,7 @@ export function renderDeathScreen(user, cause) {
         </div>
     `;
     
+    UI.hideBottomNav();
     UI.renderScreen(deathHTML);
 
     setTimeout(() => {
@@ -550,6 +551,7 @@ function handleEducation(user) {
     if (user.age === 18 || (user.age === 19 && user.highSchoolRetained)) {
         if (user.schoolPerformance > 25) {
             addLog("You graduated High School! Enroll in University or find a job.", 'good');
+            user.highSchoolGraduated = true;
             user.highSchoolRetained = false;
             user.isStudent = false;
             // Clear classmates on graduation
@@ -562,6 +564,7 @@ function handleEducation(user) {
         }
     } else if (user.age === 20 && user.highSchoolRetained) {
         addLog("Your high school took pity on you. You passed with a GED.", 'green');
+        user.hasGED = true;
         user.highSchoolRetained = false;
         user.isStudent = false;
     }
@@ -597,6 +600,8 @@ function handleEducation(user) {
                 user.gradSchoolEnrolled = false;
                 user.isStudent = false;
                 user.gradSchoolDegree = user.gradSchoolType;
+                if (!Array.isArray(user.gradSchoolDegrees)) user.gradSchoolDegrees = [];
+                if (!user.gradSchoolDegrees.includes(user.gradSchoolType)) user.gradSchoolDegrees.push(user.gradSchoolType);
                 // Clear classmates on graduation
                 user.relationships.forEach(r => { if (r.isCurrentClassmate) r.isCurrentClassmate = false; });
                 user.relationships = user.relationships.filter(r => r.category !== 'classmate');
@@ -818,10 +823,9 @@ export function renderLifeDashboard(maybeGameState) {
     `).join('');
 
     //Define Action Variables
-    const ageUpText = "Age Up +";
     const isVip = hasPurchasedPack('vip_supporter');
     const vipBannerHtml = isVip ? `
-        <div data-action="renderVipLoungeModal" class="bg-slate-800/80 hover:bg-slate-800 p-2.5 rounded-xl border border-amber-500/30 mb-3 flex items-center justify-between cursor-pointer transition shadow-sm">
+        <div data-action="renderVipLoungeModal" class="bg-slate-800/80 hover:bg-slate-800 p-2.5 rounded-xl border border-amber-500/30 mb-3 flex items-center justify-between cursor-pointer transition shadow-sm shrink-0">
             <div class="flex items-center gap-2">
                 <span class="bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-black text-[10px] uppercase px-2 py-0.5 rounded-full border border-amber-300 shadow-sm flex items-center gap-1">
                     <i class="fas fa-crown text-[9px]"></i> VIP
@@ -838,46 +842,18 @@ export function renderLifeDashboard(maybeGameState) {
     const dashboardHTML = `
         <div class="flex flex-col h-full max-w-lg mx-auto">
             ${vipBannerHtml}
-            <div class="flex-1 overflow-y-auto mb-4 bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
+            <div class="flex-1 overflow-y-auto bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
                 <h3 class="font-bold text-slate-300 mb-4 sticky top-0 bg-transparent backdrop-blur-md py-1 border-b border-slate-700/50">Life History</h3>
                 <div class="space-y-2">
                     ${logHtml.length > 0 ? logHtml : '<div class="text-slate-600 text-sm italic">Life has just begun...</div>'}
                 </div>
             </div>
-            
-            <div class="grid grid-cols-5 gap-2 pt-2 h-20">
-                
-                <button data-action="renderAssets" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700">
-                    <i class="fas fa-home mb-1 text-xl text-yellow-400"></i>
-                    <span class="text-[10px] uppercase tracking-wider">Assets</span>
-                </button>
-                
-                <button data-action="renderActivities" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700">
-                    <i class="fas fa-user-graduate mb-1 text-xl text-blue-400"></i>
-                    <span class="text-[10px] uppercase tracking-wider">Work</span>
-                </button>
-                
-                <button data-action="ageUp" class="btn-primary text-white font-bold rounded-xl shadow-lg flex flex-col items-center justify-center">
-                    <i class="fas fa-arrow-up mb-1 text-xl"></i>
-                    <span class="text-[10px] uppercase tracking-wider">${ageUpText}</span>
-                </button>
-
-                <button data-action="renderRelationships" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700">
-                    <i class="fas fa-users mb-1 text-xl text-pink-400"></i>
-                    <span class="text-[10px] uppercase tracking-wider">Social</span>
-                </button>
-
-                <button data-action="renderMoreDashboard" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700">
-                    <i class="fas fa-ellipsis-h mb-1 text-xl text-slate-400"></i>
-                    <span class="text-[10px] uppercase tracking-wider">More</span>
-                </button>
-
-            </div>
         </div>
     `;
     
-    //Use the UI Manager to inject the HTML into the game container
+    //Use the UI Manager to inject the HTML into the game container and update navigation
     UI.renderScreen(dashboardHTML);
+    UI.updateBottomNav('home');
 
     // Conservative context-aware preloading during idle gameplay
     if (state.gameState) {

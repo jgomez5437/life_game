@@ -41,6 +41,44 @@
         }
         .btn-nav:active { background: #334155; transform: scale(0.98); }
 
+        /* Global Bottom Navigation Active Tab States & Glows */
+        .nav-tab-active {
+            background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%) !important;
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 14px rgba(59, 130, 246, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+            transform: translateY(-1px);
+        }
+
+        .nav-tab-active.nav-tab-assets {
+            border-color: #f59e0b !important;
+            box-shadow: 0 0 14px rgba(245, 158, 11, 0.4), inset 0 1px 0 rgba(254, 240, 138, 0.2) !important;
+        }
+        .nav-tab-active.nav-tab-work {
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 14px rgba(59, 130, 246, 0.45), inset 0 1px 0 rgba(191, 219, 254, 0.2) !important;
+        }
+        .nav-tab-active.nav-tab-home {
+            border-color: #10b981 !important;
+            box-shadow: 0 0 16px rgba(16, 185, 129, 0.5), inset 0 1px 0 rgba(167, 243, 208, 0.2) !important;
+        }
+        .nav-tab-active.nav-tab-social {
+            border-color: #ec4899 !important;
+            box-shadow: 0 0 14px rgba(236, 72, 153, 0.45), inset 0 1px 0 rgba(251, 207, 232, 0.2) !important;
+        }
+        .nav-tab-active.nav-tab-more {
+            border-color: #94a3b8 !important;
+            box-shadow: 0 0 14px rgba(148, 163, 184, 0.4), inset 0 1px 0 rgba(241, 245, 249, 0.15) !important;
+        }
+
+        @keyframes navIconBounce {
+            0%, 100% { transform: translateY(0) scale(1); }
+            35% { transform: translateY(-4px) scale(1.15); }
+            70% { transform: translateY(-1px) scale(1.05); }
+        }
+        .nav-icon-bounce {
+            animation: navIconBounce 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
         /* Custom Range Slider */
         input[type=range] {
             -webkit-appearance: none;
@@ -234,6 +272,17 @@ body.light-mode #modal-content {
     color: #334155 !important;
 }
 
+body.light-mode #modal-close-btn {
+    background-color: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
+    color: #64748b !important;
+}
+
+body.light-mode #modal-close-btn:hover {
+    background-color: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
 /* --------------------------------------------------------------------------
    Surface Hierarchy: Primary Cards (White) vs Wells & Insets (Slate 100/200)
    -------------------------------------------------------------------------- */
@@ -299,6 +348,49 @@ body.light-mode .btn-nav {
 body.light-mode .btn-nav:hover {
     background: #f1f5f9 !important;
     border-color: #94a3b8 !important;
+}
+
+body.light-mode #bottom-nav {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 -1px 3px 0 rgba(0, 0, 0, 0.05), 0 -1px 2px -1px rgba(0, 0, 0, 0.03) !important;
+}
+
+body.light-mode .nav-tab-active {
+    background: #eff6ff !important;
+    border-color: #2563eb !important;
+    box-shadow: 0 0 12px rgba(37, 99, 235, 0.25) !important;
+    color: #1d4ed8 !important;
+}
+
+body.light-mode .nav-tab-active.nav-tab-assets {
+    background: #fffbeb !important;
+    border-color: #f59e0b !important;
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.25) !important;
+}
+
+body.light-mode .nav-tab-active.nav-tab-work {
+    background: #eff6ff !important;
+    border-color: #2563eb !important;
+    box-shadow: 0 0 12px rgba(37, 99, 235, 0.25) !important;
+}
+
+body.light-mode .nav-tab-active.nav-tab-home {
+    background: #ecfdf5 !important;
+    border-color: #10b981 !important;
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.3) !important;
+}
+
+body.light-mode .nav-tab-active.nav-tab-social {
+    background: #fdf2f8 !important;
+    border-color: #ec4899 !important;
+    box-shadow: 0 0 12px rgba(236, 72, 153, 0.25) !important;
+}
+
+body.light-mode .nav-tab-active.nav-tab-more {
+    background: #f1f5f9 !important;
+    border-color: #64748b !important;
+    box-shadow: 0 0 12px rgba(100, 116, 139, 0.2) !important;
 }
 
 /* --------------------------------------------------------------------------
@@ -465,6 +557,87 @@ body.light-mode [class*="from-amber-900"] .text-slate-300 {
 body.light-mode .from-amber-950\/60.to-purple-950\/60 {
     background: linear-gradient(135deg, #fef3c7 0%, #f3e8ff 100%) !important;
     border-color: #e9d5ff !important;
+}
+
+/* Investments Hub Hero Overview Card */
+body.light-mode .bg-gradient-to-br.from-slate-800.to-slate-900,
+body.light-mode [class*="from-slate-800"][class*="to-slate-900"] {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%) !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.06), 0 2px 6px -1px rgba(0, 0, 0, 0.04) !important;
+}
+
+/* My Portfolio Hero Banner */
+body.light-mode .bg-gradient-to-r.from-purple-950\/70.to-slate-900,
+body.light-mode [class*="from-purple-950"] {
+    background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 50%, #ffffff 100%) !important;
+    border-color: #e9d5ff !important;
+    box-shadow: 0 4px 15px -3px rgba(168, 85, 247, 0.12) !important;
+}
+
+body.light-mode [class*="from-purple-950"] h3,
+body.light-mode [class*="from-purple-950"] .text-white {
+    color: #0f172a !important;
+}
+
+body.light-mode [class*="from-purple-950"] .text-purple-300 {
+    color: #7e22ce !important;
+}
+
+/* LuxeMatch Matchmaking Hero Banner & Card */
+body.light-mode .luxe-match-card,
+body.light-mode .bg-gradient-to-r.from-slate-800.to-amber-950\/40,
+body.light-mode [class*="from-slate-800"][class*="to-amber-950"] {
+    background: linear-gradient(135deg, #ffffff 0%, #fffdfa 50%, #fef3c7 100%) !important;
+    border-color: #f59e0b !important;
+    box-shadow: 0 4px 15px -3px rgba(245, 158, 11, 0.15) !important;
+}
+
+body.light-mode .luxe-match-card:hover,
+body.light-mode [class*="from-slate-800"][class*="to-amber-950"]:hover {
+    background: linear-gradient(135deg, #fffdfa 0%, #fef3c7 60%, #fde68a 100%) !important;
+    border-color: #d97706 !important;
+}
+
+body.light-mode .luxe-match-card .text-amber-200,
+body.light-mode [class*="from-slate-800"][class*="to-amber-950"] .text-amber-200 {
+    color: #78350f !important; /* Amber 900 */
+}
+
+body.light-mode .luxe-match-card .text-slate-300,
+body.light-mode [class*="from-slate-800"][class*="to-amber-950"] .text-slate-300 {
+    color: #92400e !important; /* Amber 800 */
+}
+
+/* LuxeMatch Concierge Fee Card */
+body.light-mode .luxe-fee-card,
+body.light-mode .bg-slate-900\/80.border-amber-500\/30 {
+    background-color: #fffbeb !important;
+    border-color: #fde68a !important;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.08) !important;
+}
+
+body.light-mode .luxe-fee-card .text-amber-400,
+body.light-mode .bg-slate-900\/80.border-amber-500\/30 .text-amber-400 {
+    color: #b45309 !important;
+}
+
+/* LuxeMatch Active Wealth Card & Age Presets */
+body.light-mode .luxe-wealth-active,
+body.light-mode .border-amber-400.bg-amber-500\/10 {
+    background-color: #fffbeb !important;
+    border-color: #f59e0b !important;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.12) !important;
+}
+
+/* LuxeMatch Action Button in Light Mode (Keep text and icons dark on bright gold button) */
+body.light-mode .btn-luxe,
+body.light-mode [class*="from-amber-500"][class*="to-yellow-400"],
+body.light-mode [class*="from-amber-500"][class*="to-yellow-400"] *,
+body.light-mode .btn-primary[class*="from-amber-500"],
+body.light-mode .btn-primary[class*="from-amber-500"] * {
+    color: #0f172a !important;
+    font-weight: 800 !important;
 }
 
 /* Life Log Divider Line */
@@ -742,6 +915,43 @@ body.light-mode .text-gray-400 {
 }
 
 /* --------------------------------------------------------------------------
+   Subtext & Badges inside Solid Colored Action Buttons (Light Mode)
+   High specificity guarantee so text/subtext inside solid buttons remains clean white
+   -------------------------------------------------------------------------- */
+body.light-mode .bg-blue-600 .text-blue-100,
+body.light-mode .bg-blue-600 .text-blue-200,
+body.light-mode .bg-blue-600 .text-blue-300,
+body.light-mode .bg-blue-600 .text-slate-200,
+body.light-mode .bg-blue-600 .text-slate-300,
+body.light-mode .bg-blue-600 .text-slate-400,
+body.light-mode .bg-blue-500 .text-blue-100,
+body.light-mode .bg-blue-500 .text-blue-200,
+body.light-mode .bg-indigo-600 .text-indigo-100,
+body.light-mode .bg-indigo-600 .text-indigo-200,
+body.light-mode .bg-indigo-600 .text-indigo-300,
+body.light-mode .bg-indigo-600 .text-slate-200,
+body.light-mode .bg-indigo-600 .text-slate-300,
+body.light-mode .bg-indigo-600 .text-slate-400,
+body.light-mode .bg-indigo-500 .text-indigo-100,
+body.light-mode .bg-indigo-500 .text-indigo-200,
+body.light-mode .bg-emerald-600 .text-emerald-100,
+body.light-mode .bg-emerald-600 .text-emerald-200,
+body.light-mode .bg-emerald-600 .text-slate-200,
+body.light-mode .bg-emerald-600 .text-slate-300,
+body.light-mode .bg-green-600 .text-green-100,
+body.light-mode .bg-green-600 .text-green-200,
+body.light-mode .bg-purple-600 .text-purple-100,
+body.light-mode .bg-purple-600 .text-purple-200,
+body.light-mode .bg-pink-600 .text-pink-100,
+body.light-mode .bg-pink-600 .text-pink-200,
+body.light-mode .bg-red-600 .text-red-100,
+body.light-mode .bg-red-600 .text-red-200,
+body.light-mode .btn-primary [class*="text-"]:not(.text-slate-950),
+body.light-mode .btn-life [class*="text-"] {
+    color: rgba(255, 255, 255, 0.88) !important;
+}
+
+/* --------------------------------------------------------------------------
    Minigames & Component-Specific Visual Refinements
    -------------------------------------------------------------------------- */
 /* Casino Roulette & Slots Modal Polish */
@@ -844,7 +1054,20 @@ body.onyx-gold-mode #modal-overlay > div {
 
 body.onyx-gold-mode #modal-title {
     color: #fef08a !important;
-    text-shadow: 0 0 12px rgba(245, 158, 11, 0.6);
+    text-shadow: 0 0 12px rgba(251, 191, 36, 0.6);
+}
+
+body.onyx-gold-mode #modal-close-btn {
+    background: linear-gradient(135deg, #1d2030 0%, #11131e 100%) !important;
+    border: 1px solid rgba(251, 191, 36, 0.5) !important;
+    color: #fbbf24 !important;
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.25) !important;
+}
+
+body.onyx-gold-mode #modal-close-btn:hover {
+    background: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important;
+    color: #050609 !important;
+    box-shadow: 0 0 14px rgba(251, 191, 36, 0.6) !important;
 }
 
 /* Flashy Primary Buttons */
@@ -874,6 +1097,19 @@ body.onyx-gold-mode .btn-nav {
 body.onyx-gold-mode .btn-nav:hover {
     border-color: #fbbf24 !important;
     box-shadow: 0 0 15px rgba(245, 158, 11, 0.4) !important;
+}
+
+body.onyx-gold-mode #bottom-nav {
+    background: linear-gradient(180deg, #090a10 0%, #131520 100%) !important;
+    border-top: 2px solid #fbbf24 !important;
+    box-shadow: 0 -4px 25px rgba(245, 158, 11, 0.25) !important;
+}
+
+body.onyx-gold-mode .nav-tab-active {
+    background: linear-gradient(145deg, #1d2030 0%, #11131e 100%) !important;
+    border: 1px solid #fbbf24 !important;
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.5), inset 0 1px 0 rgba(254, 240, 138, 0.25) !important;
+    color: #fbbf24 !important;
 }
 
 /* Card Overrides in Onyx & Gold Mode */

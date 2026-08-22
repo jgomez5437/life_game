@@ -150,6 +150,8 @@ export function renderGradSchoolMarket() {
             </div>
         </div>
     `).join('');
+
+    UI.updateBottomNav('work');
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">
@@ -691,6 +693,7 @@ if (user.age < 15) {
     
     content += `</div>`;
 
+    UI.updateBottomNav('work');
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">

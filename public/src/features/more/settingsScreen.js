@@ -137,11 +137,8 @@ export function openSettingsModal() {
             </div>
 
             <!-- Footer -->
-            <div class="flex justify-between items-center pt-2 border-t border-slate-700 text-xs text-slate-500">
-                <span>Version 1.0.12</span>
-                <button data-action="hideModal" class="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs rounded-lg transition">
-                    Close
-                </button>
+            <div class="text-center pt-2 border-t border-slate-700 text-xs text-slate-500">
+                <span>Version 1.2.0</span>
             </div>
         </div>
     `;

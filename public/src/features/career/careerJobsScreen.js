@@ -301,6 +301,7 @@ export function renderCareerMarket() {
     const withMajor = CAREER_TRACKS.filter(t => t.reqDegree && !t.reqGrad);
     const gradReq   = CAREER_TRACKS.filter(t => !!t.reqGrad);
 
+    UI.updateBottomNav('work');
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">
