@@ -5069,7 +5069,7 @@ function interactCellmate(user, actionType) {
         return { success: false, msg: "You cannot interact with cellmates while locked in solitary confinement." };
     }
 
-    if (actionType === 'talk') {
+    if (actionType === 'talk' || actionType === 'chat') {
         cm.status = Math.min(100, (cm.status || 50) + 8);
         user.happiness = clampStat((user.happiness || 50) + 3);
         return { success: true, msg: `Chatted with ${cm.name}. They shared stories about why they are locked up for ${cm.crime}.` };
@@ -5125,7 +5125,8 @@ function attackPrisonInmate(user, targetType, targetId, weaponType = 'fists') {
 
         if (killed) {
             if (usingShank) {
-                stats.contraband = stats.contraband.filter(c => c !== 'Handmade Shank');
+                const shankIdx = stats.contraband.indexOf('Handmade Shank');
+                if (shankIdx !== -1) stats.contraband.splice(shankIdx, 1);
             }
 
             if (targetType === 'cellmate') {
@@ -5234,7 +5235,13 @@ function interactYardInmate(user, inmateId, actionType) {
     if (!user || !user.yardInmates) return { success: false, msg: "No inmates available." };
     if (!isAlive(user)) return { success: false, msg: "Cannot interact while dead or at 0 HP." };
     const inmate = user.yardInmates.find(i => String(i.id) === String(inmateId));
-    if (!inmate) return { success: false, msg: "Inmate not found." };
+    if (!inmate) {
+        // Defensive fallback: check if reference was actually for the cellmate
+        if (user.cellmate && (inmateId === 'cellmate' || String(user.cellmate.id) === String(inmateId))) {
+            return interactCellmate(user, actionType === 'chat' ? 'talk' : actionType);
+        }
+        return { success: false, msg: "Inmate not found." };
+    }
     const stats = user.prisonStats;
     if (stats && stats.solitaryTurns > 0) {
         return { success: false, msg: "You cannot interact with yard inmates while locked in solitary confinement." };
@@ -5327,7 +5334,8 @@ function useContrabandPhone(user, phoneAction, targetId = null) {
     const caught = Math.random() < 0.25;
 
     if (caught) {
-        stats.contraband = stats.contraband.filter(c => c !== 'Contraband Cellphone');
+        const phoneIdx = stats.contraband.indexOf('Contraband Cellphone');
+        if (phoneIdx !== -1) stats.contraband.splice(phoneIdx, 1);
         stats.solitaryTurns = 1;
         stats.guardRelation = Math.max(0, (stats.guardRelation || 50) - 30);
         stats.goodBehaviorPoints = 0;

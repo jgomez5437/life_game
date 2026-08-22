@@ -402,4 +402,97 @@ describe('Prison System Logic', () => {
         expect(mockUser.relationships.find(r => r.id === 'rel_mom').age).toBe(46);
         expect(mockUser.relationships.find(r => r.id === 'rel_friend').age).toBe(26);
     });
+
+    test('interactCellmate supports both talk and chat actions', () => {
+        const verdict = { verdict: 'guilty', fine: 500, sentenceYears: 3, crime: { id: 'gta', category: 'heist' } };
+        GameLogic.initPrisonState(mockUser, verdict);
+
+        const initialStatus = mockUser.cellmate.status;
+        const talkRes = GameLogic.interactCellmate(mockUser, 'talk');
+        expect(talkRes.success).toBe(true);
+        expect(mockUser.cellmate.status).toBe(initialStatus + 8);
+
+        const chatRes = GameLogic.interactCellmate(mockUser, 'chat');
+        expect(chatRes.success).toBe(true);
+        expect(mockUser.cellmate.status).toBe(initialStatus + 16);
+    });
+
+    test('interactYardInmate defensively delegates when passed a cellmate reference', () => {
+        const verdict = { verdict: 'guilty', fine: 500, sentenceYears: 3, crime: { id: 'gta', category: 'heist' } };
+        GameLogic.initPrisonState(mockUser, verdict);
+
+        const initialStatus = mockUser.cellmate.status;
+
+        // When passing 'cellmate' as ID
+        const resByLiteral = GameLogic.interactYardInmate(mockUser, 'cellmate', 'chat');
+        expect(resByLiteral.success).toBe(true);
+        expect(mockUser.cellmate.status).toBe(initialStatus + 8);
+
+        // When passing the cellmate's specific ID
+        const resById = GameLogic.interactYardInmate(mockUser, mockUser.cellmate.id, 'chat');
+        expect(resById.success).toBe(true);
+        expect(mockUser.cellmate.status).toBe(initialStatus + 16);
+    });
+
+    test('All yard inmate roles and actions execute properly', () => {
+        const verdict = { verdict: 'guilty', fine: 500, sentenceYears: 3, crime: { id: 'gta', category: 'heist' } };
+        GameLogic.initPrisonState(mockUser, verdict);
+        mockUser.prisonStats.canteenCash = 200;
+
+        const boss = mockUser.yardInmates.find(i => i.role === 'Yard Boss');
+        const recruiter = mockUser.yardInmates.find(i => i.role === 'Gang Recruiter');
+        const snitch = mockUser.yardInmates.find(i => i.role === 'Prison Snitch');
+        const dealer = mockUser.yardInmates.find(i => i.role === 'Contraband Dealer');
+
+        // Chat with all yard inmates
+        expect(GameLogic.interactYardInmate(mockUser, boss.id, 'chat').success).toBe(true);
+        expect(GameLogic.interactYardInmate(mockUser, recruiter.id, 'chat').success).toBe(true);
+        expect(GameLogic.interactYardInmate(mockUser, snitch.id, 'chat').success).toBe(true);
+        expect(GameLogic.interactYardInmate(mockUser, dealer.id, 'chat').success).toBe(true);
+
+        // Yard Boss Protection
+        const protRes = GameLogic.interactYardInmate(mockUser, boss.id, 'protection');
+        expect(protRes.success).toBe(true);
+        expect(mockUser.prisonStats.canteenCash).toBe(150);
+
+        // Gang Recruiter: Join Gang
+        const joinRes = GameLogic.interactYardInmate(mockUser, recruiter.id, 'join_gang');
+        expect(joinRes.success).toBe(true);
+        expect(mockUser.prisonStats.gang).not.toBe('None');
+
+        // Gang Recruiter: Gang Mission
+        const missionRes = GameLogic.interactYardInmate(mockUser, recruiter.id, 'gang_mission');
+        expect(missionRes.success).toBe(true);
+        expect(mockUser.prisonStats.canteenCash).toBe(200);
+
+        // Prison Snitch: Bribe Snitch
+        const bribeRes = GameLogic.interactYardInmate(mockUser, snitch.id, 'bribe_snitch');
+        expect(bribeRes.success).toBe(true);
+        expect(mockUser.prisonStats.snitchPacified).toBe(true);
+        expect(mockUser.prisonStats.canteenCash).toBe(175);
+
+        // Prison Snitch: Confront Snitch
+        const confrontRes = GameLogic.interactYardInmate(mockUser, snitch.id, 'confront_snitch');
+        expect(confrontRes.success).toBe(true);
+    });
+
+    test('Lethal shank attack only removes 1 shank when player has multiple shanks', () => {
+        const verdict = { verdict: 'guilty', fine: 500, sentenceYears: 3, crime: { id: 'gta', category: 'heist' } };
+        GameLogic.initPrisonState(mockUser, verdict);
+
+        mockUser.health = 100;
+        mockUser.smarts = 100;
+        mockUser.prisonStats.contraband = ['Handmade Shank', 'Handmade Shank'];
+
+        const targetInmate = mockUser.yardInmates[0];
+        const spyMath = jest.spyOn(Math, 'random').mockReturnValue(0.01); // Win & Fatal Kill
+
+        const res = GameLogic.attackPrisonInmate(mockUser, 'yard_inmate', targetInmate.id, 'shank');
+
+        expect(res.success).toBe(true);
+        expect(res.killed).toBe(true);
+        expect(mockUser.prisonStats.contraband).toEqual(['Handmade Shank']);
+
+        spyMath.mockRestore();
+    });
 });
