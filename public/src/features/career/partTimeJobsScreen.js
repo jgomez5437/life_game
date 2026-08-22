@@ -1,6 +1,7 @@
 import { state } from '../../core/state.js';
 import { renderActivities } from './occupationScreen.js';
 import { Utils } from '../../ui/utils.js';
+import { UI } from '../../ui/ui.js';
 import { PART_TIME_JOBS } from '../../core/constants.js';
 import { GameLogic } from '../../core/gameLogic.js';
 
@@ -54,6 +55,8 @@ export function renderJobMarket() {
             </div>
         </div>
     `}).join('');
+
+    UI.updateBottomNav('work');
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">

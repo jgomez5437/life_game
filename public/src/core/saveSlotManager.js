@@ -1212,7 +1212,7 @@ export function renderSaveSlotManagerModal() {
     UI.showCustomModal({
         title: "Save & Load Slots",
         content: modalHTML,
-        confirmText: "Close",
-        onConfirm: () => {}
+        confirmText: null,
+        cancelText: null
     });
 }

@@ -101,6 +101,8 @@ export function grantInstantGradDegree(schoolType) {
     user.gradSchoolEnrolled = false;
     user.gradSchoolDegree = schoolType;
     user.gradSchoolType = schoolType;
+    if (!Array.isArray(user.gradSchoolDegrees)) user.gradSchoolDegrees = [];
+    if (!user.gradSchoolDegrees.includes(schoolType)) user.gradSchoolDegrees.push(schoolType);
     user.gradSchoolYear = 4;
     user.schoolPerformance = 100;
     user.isStudent = false;
@@ -215,7 +217,7 @@ export function renderInstantDiplomaHub() {
     UI.showCustomModal({
         title: "Instant Diploma Hub",
         content: hubHTML,
-        confirmText: "Close Hub",
+        confirmText: null,
         cancelText: null
     });
 }

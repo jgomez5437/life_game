@@ -110,6 +110,7 @@ export function renderInvestmentsScreen(tabName, filterName) {
         contentHtml = renderMarketBlogsSection(user);
     }
 
+    UI.updateBottomNav('assets');
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             ${contentHtml}

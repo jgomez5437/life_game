@@ -74,6 +74,7 @@ export function renderCareerManager() {
         ? "bg-slate-700 p-4 rounded-xl border border-slate-600 flex items-center justify-between opacity-50 cursor-not-allowed"
         : "bg-slate-800 p-4 rounded-xl border border-slate-700 flex items-center justify-between hover:bg-red-900/20 hover:border-red-500/50 transition group cursor-pointer";
 
+    UI.updateBottomNav('work');
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">
@@ -108,7 +109,7 @@ export function renderCareerManager() {
                         </div>
                         <div class="text-left">
                             <h3 class="font-bold text-white">Work Harder</h3>
-                            <div class="text-xs text-blue-200">Boost Performance (+15%)</div>
+                            <div class="text-xs text-blue-100 font-medium">Boost Performance (+15%)</div>
                         </div>
                     </div>
                     <i class="fas fa-arrow-right text-white"></i>
@@ -227,6 +228,7 @@ function renderMafiaManager() {
         return `<div class="w-3 h-3 rounded-full ${filled ? 'bg-red-500' : 'bg-slate-700'} border ${filled ? 'border-red-400' : 'border-slate-600'}"></div>`;
     }).join('');
 
+    UI.updateBottomNav('work');
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">

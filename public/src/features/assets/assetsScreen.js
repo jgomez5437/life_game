@@ -155,6 +155,7 @@ export function renderAssets() {
     const propertyHtml = getPropertyListHtml(assets);
     const jewelryHtml = getJewelryListHtml(assets);
 
+    UI.updateBottomNav('assets');
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">
@@ -281,6 +282,7 @@ export const renderVehicleManager = (id) => {
     const insuranceFee = Math.max(20, Math.floor(vehicle.value * 0.008));
     const stars = "★".repeat(vehicle.reliability || 3) + "☆".repeat(5 - (vehicle.reliability || 3));
 
+    UI.updateBottomNav('assets');
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">
@@ -481,6 +483,7 @@ export const renderPropertyManager = (id) => {
         `;
     }).join('');
 
+    UI.updateBottomNav('assets');
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto overflow-y-auto pb-6">
             <div class="mb-4">
@@ -1222,6 +1225,7 @@ export const renderJewelryManager = (id) => {
     const insureFee = Math.max(10, Math.floor(item.value * 0.005));
     const insureBtnText = item.insured ? "Cancel Insurance Policy" : `Insure Item (${Utils.formatMoney(insureFee)}/yr)`;
 
+    UI.updateBottomNav('assets');
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">

@@ -65,6 +65,7 @@ export function renderMoreDashboard() {
     const ticketsBought = user.lotteryTicketsBoughtThisYear || 0;
     const ticketsLeft = 10 - ticketsBought;
 
+    UI.updateBottomNav('more');
     get('game-container').innerHTML = `
         <div class="flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-3 flex items-center justify-between">
@@ -386,9 +387,6 @@ export function openDietSelectionModal() {
                     `;
                 }).join('')}
             </div>
-            <div class="text-right pt-2 border-t border-slate-700">
-                <button data-action="hideModal" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs rounded-lg transition">Close</button>
-            </div>
         </div>
     `;
 
@@ -460,12 +458,17 @@ export function openLotteryModal() {
                 }).join('')}
             </div>
             <div class="text-right pt-2 border-t border-slate-700">
-                <button data-action="hideModal" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs rounded-lg transition">Close</button>
+                <button data-action="closeAllModals" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs rounded-lg transition">Close</button>
             </div>
         </div>
     `;
 
-    UI.showCustomModal("Lottery Station", html);
+    const modalOverlay = document.getElementById('modal-overlay');
+    if (modalOverlay && !modalOverlay.classList.contains('hidden')) {
+        UI.replaceModalContent("Lottery Station", html);
+    } else {
+        UI.showCustomModal("Lottery Station", html);
+    }
 }
 
 let isLotteryProcessing = false;
@@ -499,7 +502,7 @@ export function buyLotteryTicket(ticketTypeId) {
                 <div class="text-xs text-slate-400 mb-4">Tickets remaining this year: ${result.ticketsRemaining}/10</div>
                 <div class="flex gap-2">
                     ${result.ticketsRemaining > 0 ? `<button data-action="openLotteryModal" class="flex-1 bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 rounded-lg text-xs transition">Play Again</button>` : ''}
-                    <button data-action="hideModal" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 rounded-lg text-xs transition">Close</button>
+                    <button data-action="closeAllModals" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 rounded-lg text-xs transition">Close</button>
                 </div>
             </div>
         ` : `
@@ -510,12 +513,12 @@ export function buyLotteryTicket(ticketTypeId) {
                 <div class="text-xs text-slate-400 mb-4">Tickets remaining this year: ${result.ticketsRemaining}/10</div>
                 <div class="flex gap-2">
                     ${result.ticketsRemaining > 0 ? `<button data-action="openLotteryModal" class="flex-1 bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 rounded-lg text-xs transition">Try Again</button>` : ''}
-                    <button data-action="hideModal" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 rounded-lg text-xs transition">Close</button>
+                    <button data-action="closeAllModals" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 rounded-lg text-xs transition">Close</button>
                 </div>
             </div>
         `;
 
-        UI.showCustomModal("Lottery Reveal", outcomeHtml);
+        UI.replaceModalContent("Lottery Reveal", outcomeHtml);
         renderMoreDashboard();
     } finally {
         isLotteryProcessing = false;
@@ -559,9 +562,6 @@ export function openTravelModal() {
             <button data-action="bookTrip" data-args="3" class="bg-slate-700 hover:bg-slate-600 p-4 rounded-xl text-left border border-slate-600 transition">
                 <div class="font-bold text-white text-lg border-l-4 border-yellow-400 pl-2">Luxury International Tour (${Utils.formatMoney(10000)})</div>
                 <div class="text-sm text-slate-400 pl-3">A once-in-a-lifetime journey across the globe. (+15 Health)</div>
-            </button>
-            <button data-action="hideModal" class="mt-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 p-3 rounded-xl text-center text-white font-bold transition">
-                Cancel
             </button>
         </div>
     `;

@@ -18,6 +18,7 @@ export const renderShoppingHub = () => {
         return;
     }
 
+    UI.updateBottomNav('assets');
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">
@@ -158,6 +159,7 @@ export const renderVehicleDealer = (showroomCategory) => {
         `;
     }).join('');
 
+    UI.updateBottomNav('assets');
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">
@@ -247,6 +249,7 @@ export const renderRealEstateDealer = () => {
         `;
     }).join('');
 
+    UI.updateBottomNav('assets');
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">
@@ -737,6 +740,7 @@ export const renderJewelryDealer = (selectedCategory = 'all') => {
         `;
     }).join('');
 
+    UI.updateBottomNav('assets');
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">

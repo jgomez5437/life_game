@@ -236,6 +236,9 @@ export const submitBribeAction = lazy('crime', 'submitBribeAction');
 export const handleArrestChoice = lazy('crime', 'handleArrestChoice');
 export const showCourtArraignmentModal = lazy('crime', 'showCourtArraignmentModal');
 export const selectLegalCounsel = lazy('crime', 'selectLegalCounsel');
+export const finishCourtSentencing = lazy('crime', 'finishCourtSentencing');
+export const returnFromCrimeOrArrest = lazy('crime', 'returnFromCrimeOrArrest');
+
 
 // Casino
 export const renderCasinoHub = lazy('casino', 'renderCasinoHub');
@@ -1262,6 +1265,8 @@ const routeHandlers = {
   handleArrestChoice,
   showCourtArraignmentModal,
   selectLegalCounsel,
+  finishCourtSentencing,
+  returnFromCrimeOrArrest,
   openGodModeHubModal,
   openTimeMachineModal: renderTimeMachineModal,
   executeTimeRewind: rewindToAge,
@@ -1270,7 +1275,8 @@ const routeHandlers = {
   branchSaveSlot: branchCurrentSave,
   startNewSlotLife: startNewLifeInNewSlot,
   deleteSaveSlot: deleteSlot,
-  hideModal: () => UI.hideModal()
+  hideModal: () => UI.hideModal(),
+  closeAllModals: () => UI.closeAllModals()
 };
 
 document.addEventListener('click', (e) => {

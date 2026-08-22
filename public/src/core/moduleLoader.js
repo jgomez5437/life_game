@@ -233,6 +233,8 @@ export const ACTION_TO_MODULE = {
     handleArrestChoice: 'crime',
     showCourtArraignmentModal: 'crime',
     selectLegalCounsel: 'crime',
+    finishCourtSentencing: 'crime',
+    returnFromCrimeOrArrest: 'crime',
     attemptMafiaCrime: 'jobCareerManager',
     renderPrisonDashboard: 'prison',
     setPrisonTab: 'prison',

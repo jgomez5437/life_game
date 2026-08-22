@@ -90,6 +90,7 @@ export function renderBusinessDashboard() {
         contentHtml = renderTabFinance(user, ind, valuation, overhead);
     }
 
+    UI.updateBottomNav('work');
     UI.renderScreen(`
         <div class="fade-in pb-24 max-w-4xl mx-auto">
             <!-- Header Top Bar -->

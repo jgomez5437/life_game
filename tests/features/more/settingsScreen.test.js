@@ -53,7 +53,7 @@ describe('Settings Screen & Sign Out Functionality', () => {
         state.auth0Client = null;
     });
 
-    test('openSettingsModal displays Guest Local Mode, Login button, and version 1.0.12', () => {
+    test('openSettingsModal displays Guest Local Mode, Login button, version 1.2.0, and no bottom close button', () => {
         state.userAuthId = null;
         openSettingsModal();
 
@@ -62,7 +62,8 @@ describe('Settings Screen & Sign Out Functionality', () => {
         expect(content.innerHTML).toContain('Guest Local Mode');
         expect(content.innerHTML).toContain('data-action="login"');
         expect(content.innerHTML).toContain('Log In &amp; Save to Cloud');
-        expect(content.innerHTML).toContain('Version 1.0.12');
+        expect(content.innerHTML).toContain('Version 1.2.0');
+        expect(content.innerHTML).not.toContain('data-action="hideModal"');
         expect(content.innerHTML).not.toContain('data-action="promptSignOut"');
     });
 

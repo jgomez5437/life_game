@@ -5,6 +5,7 @@ import { renderAvatar } from '../../ui/avatarRenderer.js';
 import { hasInstantDiplomaPerk, renderInstantDiplomaHub } from './instantDiploma.js';
 import { isDeadNPC } from '../relationships/relationshipScreen.js';
 import { Utils } from '../../ui/utils.js';
+import { UI } from '../../ui/ui.js';
 
 const get = id => document.getElementById(id);
 
@@ -45,6 +46,7 @@ export function renderEducation() {
 
     const perkActive = hasInstantDiplomaPerk();
 
+    UI.updateBottomNav('work');
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4 flex items-center justify-between">
@@ -86,7 +88,7 @@ export function renderEducation() {
                         </div>
                         <div class="text-left">
                             <h3 class="font-bold text-white">Classmates</h3>
-                            <div class="text-xs text-indigo-200">Socialize at school</div>
+                            <div class="text-xs text-indigo-100 font-medium">Socialize at school</div>
                         </div>
                     </div>
                     <i class="fas fa-arrow-right text-white"></i>
@@ -112,7 +114,7 @@ export function renderEducation() {
                         </div>
                         <div class="text-left">
                             <h3 class="font-bold text-white">Work Harder</h3>
-                            <div class="text-xs text-blue-200">Improve grades (+20%)</div>
+                            <div class="text-xs text-blue-100 font-medium">Improve grades (+20%)</div>
                         </div>
                     </div>
                     <i class="fas fa-arrow-right text-white"></i>
@@ -194,6 +196,7 @@ export function renderClassmates() {
         content = `<div class="text-slate-600 italic text-sm text-center py-4 border border-dashed border-slate-800 rounded-xl mb-4">No classmates found. Are you enrolled in school?</div>`;
     }
 
+    UI.updateBottomNav('work');
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">

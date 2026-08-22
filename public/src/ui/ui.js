@@ -21,8 +21,17 @@ const _elements = {
     get storeBtn() { return document.getElementById('header-store-btn'); },
     get settingsBtn() { return document.getElementById('header-settings-btn'); },
     get gameContainer() { return document.getElementById('game-container'); },
+    get bottomNav() { return document.getElementById('bottom-nav'); },
+    get bottomNavContainer() { return document.getElementById('bottom-nav-container'); },
+    get navBtnAssets() { return document.getElementById('nav-btn-assets'); },
+    get navBtnWork() { return document.getElementById('nav-btn-work'); },
+    get navBtnCenter() { return document.getElementById('nav-btn-center'); },
+    get navBtnSocial() { return document.getElementById('nav-btn-social'); },
+    get navBtnMore() { return document.getElementById('nav-btn-more'); },
     get modalOverlay() { return document.getElementById('modal-overlay'); },
+    get modalHeader() { return document.getElementById('modal-header'); },
     get modalTitle() { return document.getElementById('modal-title'); },
+    get modalCloseBtn() { return document.getElementById('modal-close-btn'); },
     get modalContent() { return document.getElementById('modal-content'); },
     get modalBtn() { return document.getElementById('modal-btn'); },
     get modalActions() { return document.getElementById('modal-actions'); }
@@ -46,6 +55,13 @@ function _renderInfoModal(title, message, onClose = null) {
         _elements.modalTitle.innerText = title;
         _elements.modalTitle.textContent = title;
         _elements.modalTitle.classList.remove('hidden');
+    }
+    if (_elements.modalCloseBtn) {
+        _elements.modalCloseBtn.onclick = () => {
+            UI.hideModal();
+            if (onClose) onClose();
+        };
+        _elements.modalCloseBtn.classList.remove('hidden');
     }
     if (_elements.modalContent) {
         _elements.modalContent.innerHTML = message;
@@ -77,6 +93,13 @@ function _renderConfirmModal(title, message, confirmText, onConfirm, cancelText 
         _elements.modalTitle.innerText = title;
         _elements.modalTitle.textContent = title;
         _elements.modalTitle.classList.remove('hidden');
+    }
+    if (_elements.modalCloseBtn) {
+        _elements.modalCloseBtn.onclick = () => {
+            UI.hideModal();
+            if (onCancel) onCancel();
+        };
+        _elements.modalCloseBtn.classList.remove('hidden');
     }
     if (_elements.modalContent) {
         _elements.modalContent.innerHTML = message;
@@ -116,7 +139,7 @@ function _renderConfirmModal(title, message, confirmText, onConfirm, cancelText 
 }
 
 function _renderCustomModal(opts) {
-    const { title, content, confirmText, cancelText, onConfirm, onClose } = opts;
+    const { title, content, confirmText, cancelText, onConfirm, onClose, showCloseBtn = true } = opts;
 
     if (_elements.modalTitle) {
         _elements.modalTitle.innerText = title;
@@ -125,6 +148,17 @@ function _renderCustomModal(opts) {
             _elements.modalTitle.classList.add('hidden');
         } else {
             _elements.modalTitle.classList.remove('hidden');
+        }
+    }
+    if (_elements.modalCloseBtn) {
+        if (showCloseBtn === false) {
+            _elements.modalCloseBtn.classList.add('hidden');
+        } else {
+            _elements.modalCloseBtn.onclick = () => {
+                UI.hideModal();
+                if (onClose) onClose();
+            };
+            _elements.modalCloseBtn.classList.remove('hidden');
         }
     }
     if (_elements.modalContent) {
@@ -378,6 +412,81 @@ export const UI = {
         if (avatarContainer) {
             avatarContainer.innerHTML = '<i class="fas fa-user text-slate-400 text-base"></i>';
         }
+        UI.hideBottomNav();
+    },
+
+    /**
+     * Updates the persistent global bottom navigation bar state and active tab.
+     * @param {'home'|'assets'|'work'|'social'|'more'} activeTab
+     */
+    updateBottomNav: (activeTab = 'home') => {
+        const bottomNav = _elements.bottomNav || document.getElementById('bottom-nav');
+        if (!bottomNav) return;
+
+        bottomNav.classList.remove('hidden');
+
+        // Configure Dynamic Center Button (Age Up on Home, Home on Sub-Screens)
+        const centerBtn = _elements.navBtnCenter || document.getElementById('nav-btn-center');
+        if (centerBtn) {
+            if (activeTab === 'home') {
+                centerBtn.dataset.action = 'ageUp';
+                centerBtn.className = 'btn-primary text-white font-bold rounded-xl shadow-lg flex flex-col items-center justify-center transition hover:brightness-110';
+                centerBtn.innerHTML = '<i class="fas fa-arrow-up mb-1 text-lg sm:text-xl"></i><span class="text-[9px] sm:text-[10px] uppercase tracking-wider font-bold">Age Up +</span>';
+                centerBtn.title = 'Age Up (+1 Year)';
+            } else {
+                centerBtn.dataset.action = 'renderLifeDashboard';
+                centerBtn.className = 'btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700 transition';
+                centerBtn.innerHTML = '<i class="fas fa-home mb-1 text-lg sm:text-xl text-emerald-400"></i><span class="text-[9px] sm:text-[10px] uppercase tracking-wider font-bold">Home</span>';
+                centerBtn.title = 'Return to Dashboard & Life History';
+            }
+        }
+
+        // Tab mapping for active styles
+        const tabs = [
+            { key: 'assets', btn: _elements.navBtnAssets || document.getElementById('nav-btn-assets'), tabClass: 'nav-tab-assets' },
+            { key: 'work', btn: _elements.navBtnWork || document.getElementById('nav-btn-work'), tabClass: 'nav-tab-work' },
+            { key: 'home', btn: centerBtn, tabClass: 'nav-tab-home' },
+            { key: 'social', btn: _elements.navBtnSocial || document.getElementById('nav-btn-social'), tabClass: 'nav-tab-social' },
+            { key: 'more', btn: _elements.navBtnMore || document.getElementById('nav-btn-more'), tabClass: 'nav-tab-more' }
+        ];
+
+        tabs.forEach(t => {
+            if (!t.btn) return;
+            t.btn.classList.remove('nav-tab-active', 'nav-tab-assets', 'nav-tab-work', 'nav-tab-home', 'nav-tab-social', 'nav-tab-more');
+            const icon = t.btn.querySelector('i');
+            if (icon) icon.classList.remove('nav-icon-bounce');
+
+            if (t.key === activeTab) {
+                t.btn.classList.add('nav-tab-active', t.tabClass);
+                if (icon) {
+                    void icon.offsetWidth;
+                    icon.classList.add('nav-icon-bounce');
+                }
+            }
+        });
+    },
+
+    /**
+     * Hides the bottom navigation bar (used for login, character creation, death screen, and prison).
+     */
+    hideBottomNav: () => {
+        const bottomNav = _elements.bottomNav || document.getElementById('bottom-nav');
+        if (bottomNav) {
+            bottomNav.classList.add('hidden');
+        }
+        const tabs = [
+            _elements.navBtnAssets || document.getElementById('nav-btn-assets'),
+            _elements.navBtnWork || document.getElementById('nav-btn-work'),
+            _elements.navBtnCenter || document.getElementById('nav-btn-center'),
+            _elements.navBtnSocial || document.getElementById('nav-btn-social'),
+            _elements.navBtnMore || document.getElementById('nav-btn-more')
+        ];
+        tabs.forEach(btn => {
+            if (!btn) return;
+            btn.classList.remove('nav-tab-active', 'nav-tab-assets', 'nav-tab-work', 'nav-tab-home', 'nav-tab-social', 'nav-tab-more');
+            const icon = btn.querySelector('i');
+            if (icon) icon.classList.remove('nav-icon-bounce');
+        });
     },
 
     /**
@@ -419,7 +528,7 @@ export const UI = {
      */
     showCustomModal: (titleOrOptions, htmlContent) => {
         _pushCurrentModal();
-        let title, content, confirmText, cancelText, onConfirm, onClose;
+        let title, content, confirmText, cancelText, onConfirm, onClose, showCloseBtn;
 
         if (typeof titleOrOptions === 'object' && titleOrOptions !== null) {
             title = titleOrOptions.title || '';
@@ -428,6 +537,7 @@ export const UI = {
             cancelText = titleOrOptions.cancelText;
             onConfirm = titleOrOptions.onConfirm;
             onClose = titleOrOptions.onClose;
+            showCloseBtn = titleOrOptions.showCloseBtn;
         } else if (typeof titleOrOptions === 'string' && titleOrOptions.trim().startsWith('<') && !htmlContent) {
             title = '';
             content = titleOrOptions;
@@ -436,7 +546,7 @@ export const UI = {
             content = htmlContent || '';
         }
 
-        const opts = { title, content, confirmText, cancelText, onConfirm, onClose };
+        const opts = { title, content, confirmText, cancelText, onConfirm, onClose, showCloseBtn };
         _currentModalConfig = { type: 'custom', options: opts };
         _renderCustomModal(opts);
     },
@@ -475,6 +585,12 @@ export const UI = {
         if (_elements.modalActions) {
             _elements.modalActions.innerHTML = '';
             _elements.modalActions.classList.add('hidden');
+        }
+        if (_elements.modalCloseBtn) {
+            _elements.modalCloseBtn.classList.remove('hidden');
+            _elements.modalCloseBtn.onclick = () => {
+                UI.hideModal();
+            };
         }
     },
 

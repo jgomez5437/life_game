@@ -123,7 +123,7 @@ export function renderVipLoungeModal() {
     UI.showCustomModal({
         title: "VIP Lounge",
         content: htmlContent,
-        confirmText: "Close Lounge",
+        confirmText: null,
         cancelText: null
     });
 }

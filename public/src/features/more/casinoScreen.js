@@ -104,6 +104,7 @@ export function renderCasinoHub() {
         </div>
     `;
 
+    UI.updateBottomNav('more');
     UI.renderScreen(casinoHtml);
 }
 
@@ -144,12 +145,17 @@ export function openBlackjackBetting() {
             
             <div class="flex gap-2 mt-4">
                 <button data-action="startBlackjackGame" class="flex-1 bg-green-600 hover:bg-green-500 py-3 rounded-lg text-white font-bold text-sm transition">Bet & Deal</button>
-                <button data-action="hideModal" class="flex-1 bg-slate-700 hover:bg-slate-600 py-3 rounded-lg text-white font-bold text-sm transition">Cancel</button>
+                <button data-action="closeAllModals" class="flex-1 bg-slate-700 hover:bg-slate-600 py-3 rounded-lg text-white font-bold text-sm transition">Cancel</button>
             </div>
         </div>
     `;
     
-    UI.showCustomModal("Place Your Bet - Blackjack", htmlContent);
+    const modalOverlay = document.getElementById('modal-overlay');
+    if (modalOverlay && !modalOverlay.classList.contains('hidden')) {
+        UI.replaceModalContent("Place Your Bet - Blackjack", htmlContent);
+    } else {
+        UI.showCustomModal("Place Your Bet - Blackjack", htmlContent);
+    }
     
     setTimeout(() => {
         const slider = document.getElementById('blackjackBetSlider');
@@ -258,7 +264,7 @@ export function renderBlackjackGame() {
             <div class="mt-4 text-center font-bold text-lg ${resultColor}">${resultText}</div>
             <div class="flex gap-2 mt-4">
                 <button data-action="openBlackjackBetting" class="flex-1 bg-purple-600 hover:bg-purple-500 py-3 rounded-lg text-white font-bold text-sm transition">Play Again</button>
-                <button data-action="hideModal" class="flex-1 bg-slate-700 hover:bg-slate-600 py-3 rounded-lg text-white font-bold text-sm transition">Close</button>
+                <button data-action="closeAllModals" class="flex-1 bg-slate-700 hover:bg-slate-600 py-3 rounded-lg text-white font-bold text-sm transition">Close</button>
             </div>
         `;
     }
@@ -278,7 +284,12 @@ export function renderBlackjackGame() {
         </div>
     `;
     
-    UI.showCustomModal("Blackjack", htmlContent);
+    const modalOverlay = document.getElementById('modal-overlay');
+    if (modalOverlay && !modalOverlay.classList.contains('hidden')) {
+        UI.replaceModalContent("Blackjack", htmlContent);
+    } else {
+        UI.showCustomModal("Blackjack", htmlContent);
+    }
 }
 
 export function blackjackHit() {
@@ -411,10 +422,21 @@ export function openRouletteModal() {
                     </button>
                 </div>
             </div>
+
+            <div class="pt-3 border-t border-slate-700">
+                <button data-action="closeAllModals" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-bold py-2.5 rounded-xl text-xs transition">
+                    Exit to Casino Floor
+                </button>
+            </div>
         </div>
     `;
 
-    UI.showCustomModal("European Roulette Floor", htmlContent);
+    const modalOverlay = document.getElementById('modal-overlay');
+    if (modalOverlay && !modalOverlay.classList.contains('hidden')) {
+        UI.replaceModalContent("European Roulette Floor", htmlContent);
+    } else {
+        UI.showCustomModal("European Roulette Floor", htmlContent);
+    }
 }
 
 export function confirmRouletteSingleNumberBet() {
@@ -444,14 +466,21 @@ export function confirmRouletteBet(type, target) {
     isRouletteSpinning = true;
 
     // Spin animation sequence
-    UI.showCustomModal("Spinning Roulette Wheel...", `
+    const spinHtml = `
         <div class="text-center py-6 space-y-4">
             <div class="w-20 h-20 rounded-full border-4 border-amber-400 border-t-red-600 animate-spin mx-auto flex items-center justify-center text-2xl shadow-xl">
                 🎰
             </div>
             <div class="text-sm font-bold text-amber-300 animate-pulse">The ball is rolling...</div>
         </div>
-    `);
+    `;
+
+    const modalOverlay = document.getElementById('modal-overlay');
+    if (modalOverlay && !modalOverlay.classList.contains('hidden')) {
+        UI.replaceModalContent("Spinning Roulette Wheel...", spinHtml);
+    } else {
+        UI.showCustomModal("Spinning Roulette Wheel...", spinHtml);
+    }
 
     setTimeout(() => {
         try {
@@ -478,7 +507,7 @@ export function confirmRouletteBet(type, target) {
                     </div>
                     <div class="flex gap-2 pt-2">
                         <button data-action="openRouletteModal" class="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 rounded-xl text-xs transition">Spin Again</button>
-                        <button data-action="hideModal" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-2.5 rounded-xl text-xs transition">Back</button>
+                        <button data-action="closeAllModals" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-2.5 rounded-xl text-xs transition">Exit to Casino Floor</button>
                     </div>
                 </div>
             `;
@@ -544,14 +573,19 @@ export function openSlotsModal() {
             </div>
 
             <div class="pt-3 border-t border-slate-700">
-                <button data-action="hideModal" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-bold py-2.5 rounded-xl text-xs transition">
+                <button data-action="closeAllModals" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-bold py-2.5 rounded-xl text-xs transition">
                     Exit to Casino Floor
                 </button>
             </div>
         </div>
     `;
 
-    UI.showCustomModal("High-Roller Slots", htmlContent);
+    const modalOverlay = document.getElementById('modal-overlay');
+    if (modalOverlay && !modalOverlay.classList.contains('hidden')) {
+        UI.replaceModalContent("High-Roller Slots", htmlContent);
+    } else {
+        UI.showCustomModal("High-Roller Slots", htmlContent);
+    }
 }
 
 export function confirmSlotsSpin(betAmount) {
@@ -573,7 +607,7 @@ export function confirmSlotsSpin(betAmount) {
     isSlotsSpinning = true;
 
     // Animated reel spin phase
-    UI.showCustomModal("Spinning Reels...", `
+    const spinHtml = `
         <div class="text-center py-6 space-y-4">
             <div class="flex justify-center items-center gap-3 bg-slate-900 p-4 rounded-2xl border border-amber-500/40 shadow-inner">
                 <div class="w-16 h-20 bg-slate-800 border-2 border-slate-600 rounded-xl flex items-center justify-center text-4xl animate-bounce">🎰</div>
@@ -582,7 +616,14 @@ export function confirmSlotsSpin(betAmount) {
             </div>
             <div class="text-xs font-bold text-amber-300 uppercase tracking-widest animate-pulse">Good Luck!</div>
         </div>
-    `);
+    `;
+
+    const modalOverlay = document.getElementById('modal-overlay');
+    if (modalOverlay && !modalOverlay.classList.contains('hidden')) {
+        UI.replaceModalContent("Spinning Reels...", spinHtml);
+    } else {
+        UI.showCustomModal("Spinning Reels...", spinHtml);
+    }
 
     setTimeout(() => {
         try {
@@ -616,7 +657,7 @@ export function confirmSlotsSpin(betAmount) {
                     <div class="grid grid-cols-3 gap-2 pt-2">
                         <button data-action="confirmSlotsSpin" data-args="${wager}" class="bg-amber-600 hover:bg-amber-500 text-white font-bold py-2.5 rounded-xl text-xs transition">Spin (${Utils.formatMoney(wager)})</button>
                         <button data-action="openSlotsModal" class="bg-slate-700 hover:bg-slate-600 text-white font-bold py-2.5 rounded-xl text-xs transition">Change Bet</button>
-                        <button data-action="hideModal" class="bg-slate-800 hover:bg-slate-750 text-slate-300 font-bold py-2.5 rounded-xl text-xs transition">Exit Machine</button>
+                        <button data-action="closeAllModals" class="bg-slate-800 hover:bg-slate-750 text-slate-300 font-bold py-2.5 rounded-xl text-xs transition">Exit Machine</button>
                     </div>
                 </div>
             `;

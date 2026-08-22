@@ -82,6 +82,11 @@ export function openPlayerOverviewModal() {
     const pastLivesCount = (user.pastLives || state.gameState.pastLives || []).length;
     const currentGen = user.generation || (pastLivesCount + 1);
 
+    // 8. Education Milestones & Status
+    const educationMilestones = GameLogic.getEducationMilestones(user);
+    const educationString = GameLogic.formatEducationMilestones(user, ', ', 'No Formal Education');
+    const currentEduStatus = GameLogic.getCurrentEducationStatus(user);
+
     const modalHtml = `
         <div class="space-y-4">
             <!-- Header Identity Banner (Clickable -> Opens Family Graveyard) -->
@@ -206,8 +211,62 @@ export function openPlayerOverviewModal() {
                 </div>
             </div>
 
+            <!-- Education Milestones Card -->
+            <div class="bg-slate-800 p-3.5 rounded-xl border border-slate-700 space-y-2.5">
+                <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center justify-between">
+                    <span><i class="fas fa-graduation-cap text-indigo-400 mr-1"></i> Education Milestones</span>
+                    <span class="text-[10px] font-bold text-indigo-300 px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/30">
+                        ${educationMilestones.length} ${educationMilestones.length === 1 ? 'Credential' : 'Credentials'}
+                    </span>
+                </div>
+
+                ${educationMilestones.length > 0 ? `
+                    <div class="space-y-1.5">
+                        ${educationMilestones.map(m => {
+                            let colorClass = 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300';
+                            let iconClass = m.icon || 'fa-graduation-cap';
+                            if (m.category === 'high_school') {
+                                colorClass = 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300';
+                            } else if (m.category === 'undergrad') {
+                                colorClass = 'bg-blue-500/10 border-blue-500/30 text-blue-300';
+                            } else if (m.category === 'grad') {
+                                colorClass = 'bg-purple-500/10 border-purple-500/30 text-purple-300';
+                            }
+                            return `
+                                <div class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border ${colorClass} text-xs font-semibold">
+                                    <i class="fas ${iconClass} text-xs flex-shrink-0"></i>
+                                    <span class="truncate">${Utils.escapeHtml(m.title)}</span>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                ` : `
+                    <div class="px-3 py-2 rounded-lg bg-slate-900/60 border border-slate-700/50 text-slate-400 text-xs italic text-center">
+                        No formal degrees completed
+                    </div>
+                `}
+
+                ${currentEduStatus.isEnrolled ? `
+                    <div class="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700/60 text-[11px]">
+                        <span class="flex items-center gap-1.5 text-amber-400 font-medium truncate">
+                            <i class="fas fa-book-reader text-[10px]"></i> Enrolled: ${Utils.escapeHtml(currentEduStatus.label)}
+                        </span>
+                        <span class="text-[10px] text-slate-400 font-semibold flex-shrink-0">${Utils.escapeHtml(currentEduStatus.detail)}</span>
+                    </div>
+                ` : ''}
+            </div>
+
             <!-- Life Context Details -->
             <div class="bg-slate-800 p-3.5 rounded-xl border border-slate-700 space-y-2.5 text-xs">
+                <div class="flex justify-between items-center border-b border-slate-700/60 pb-2">
+                    <span class="text-slate-400 flex items-center gap-1.5 font-medium">
+                        <i class="fas fa-graduation-cap text-indigo-400"></i> Education
+                    </span>
+                    <span class="font-bold text-white text-right max-w-[220px] truncate" title="${Utils.escapeHtml(educationString)}">
+                        ${Utils.escapeHtml(educationString)}
+                    </span>
+                </div>
+
                 <div class="flex justify-between items-center border-b border-slate-700/60 pb-2">
                     <span class="text-slate-400 flex items-center gap-1.5 font-medium">
                         <i class="fas ${romanceIcon}"></i> Relationship
@@ -235,13 +294,6 @@ export function openPlayerOverviewModal() {
                     </span>
                     <span class="font-bold text-white">${vehicles.length} ${vehicles.length === 1 ? 'Vehicle' : 'Vehicles'}</span>
                 </div>
-            </div>
-
-            <!-- Footer Action -->
-            <div class="text-right pt-2 border-t border-slate-700">
-                <button data-action="hideModal" class="px-5 py-2 bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs rounded-lg transition">
-                    Close Overview
-                </button>
             </div>
         </div>
     `;

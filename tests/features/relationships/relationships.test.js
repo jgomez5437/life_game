@@ -293,4 +293,78 @@ describe('Dead NPC Interaction Guard (H-13)', () => {
             expect(container?.innerHTML || '').not.toContain('Dead Classmate');
         });
     });
+
+    describe('Classmate and Friend Back Button Routing', () => {
+        beforeEach(() => {
+            state.gameState.user.relationships.push({
+                id: 'npc_classmate_friend',
+                name: 'Befriended Classmate',
+                age: 16,
+                gender: 'female',
+                type: 'Friend',
+                category: 'friend',
+                isCurrentClassmate: true,
+                status: 75
+            });
+            state.gameState.user.relationships.push({
+                id: 'npc_pure_classmate',
+                name: 'Pure Classmate',
+                age: 16,
+                gender: 'male',
+                type: 'Classmate',
+                category: 'classmate',
+                isCurrentClassmate: true,
+                status: 40
+            });
+        });
+
+        test('renderRelationships includes renderRelationships in data-args for friend cards', () => {
+            renderRelationships();
+            const container = document.getElementById('game-container');
+            expect(container.innerHTML).toContain(`data-action="renderPersonInteraction" data-args="'npc_classmate_friend', 'renderRelationships'"`);
+        });
+
+        test('clicking a friend who is also a current classmate from Social routes back to Relationships', () => {
+            renderPersonInteraction('npc_classmate_friend', 'renderRelationships');
+            const container = document.getElementById('game-container');
+            expect(container.innerHTML).toContain('data-action="renderRelationships"');
+            expect(container.innerHTML).toContain('Back to Relationships');
+        });
+
+        test('clicking a classmate from Classmates screen routes back to Classmates', () => {
+            renderPersonInteraction('npc_classmate_friend', 'renderClassmates');
+            const container = document.getElementById('game-container');
+            expect(container.innerHTML).toContain('data-action="renderClassmates"');
+            expect(container.innerHTML).toContain('Back to Classmates');
+        });
+
+        test('pure classmate defaults to renderClassmates when no backAction provided', () => {
+            renderPersonInteraction('npc_pure_classmate');
+            const container = document.getElementById('game-container');
+            expect(container.innerHTML).toContain('data-action="renderClassmates"');
+            expect(container.innerHTML).toContain('Back to Classmates');
+        });
+
+        test('befriended classmate defaults to renderRelationships when no backAction provided', () => {
+            renderPersonInteraction('npc_classmate_friend');
+            const container = document.getElementById('game-container');
+            expect(container.innerHTML).toContain('data-action="renderRelationships"');
+            expect(container.innerHTML).toContain('Back to Relationships');
+        });
+
+        test('performing an action preserves the active back button destination', () => {
+            jest.useFakeTimers();
+            // Open from Social
+            renderPersonInteraction('npc_classmate_friend', 'renderRelationships');
+            
+            // Perform an action
+            performRelationshipAction('npc_classmate_friend', 'compliment');
+            jest.runAllTimers();
+
+            const container = document.getElementById('game-container');
+            expect(container.innerHTML).toContain('data-action="renderRelationships"');
+            expect(container.innerHTML).toContain('Back to Relationships');
+            jest.useRealTimers();
+        });
+    });
 });
