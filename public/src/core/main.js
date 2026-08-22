@@ -136,6 +136,8 @@ export const renderVehicleDealer = lazy('goShopping', 'renderVehicleDealer');
 export const buyVehicle = lazy('goShopping', 'buyVehicle');
 export const buyVehicleCash = lazy('goShopping', 'buyVehicleCash');
 export const buyVehicleLoan = lazy('goShopping', 'buyVehicleLoan');
+export const openTradeInModal = lazy('goShopping', 'openTradeInModal');
+export const executeTradeInPurchase = lazy('goShopping', 'executeTradeInPurchase');
 export const renderRealEstateDealer = lazy('goShopping', 'renderRealEstateDealer');
 export const buyPropertyCash = lazy('goShopping', 'buyPropertyCash');
 export const buyPropertyMortgage = lazy('goShopping', 'buyPropertyMortgage');
@@ -938,6 +940,9 @@ async function initGame() {
 // --- RESET GAME PIPELINE ---
 export async function resetGame() {
     console.log("Resetting game state...");
+    if (typeof UI !== 'undefined' && typeof UI.closeAllModals === 'function') {
+        UI.closeAllModals();
+    }
     UI.resetHeader();
 
     UI.renderScreen(`
@@ -948,14 +953,18 @@ export async function resetGame() {
         </div>
     `);
 
-    // 1. Destroy local state
+    // 1. Destroy local state & wipe all local save keys
     state.gameState = null;
+    try {
+        localStorage.removeItem('life_game_slots');
+        localStorage.removeItem('life_game_save');
+    } catch (e) {}
+    if (Utils && Utils.guestStorage && typeof Utils.guestStorage.clearSave === 'function') {
+        Utils.guestStorage.clearSave();
+    }
 
     // 2. Handle Guest Reset
     if (!state.userAuthId) {
-        if (Utils && Utils.guestStorage && typeof Utils.guestStorage.clearSave === 'function') {
-            Utils.guestStorage.clearSave();
-        }
         console.log("Guest save wiped.");
         
         // Route guests back to login so they can choose to authenticate or play as guest again
@@ -1173,6 +1182,8 @@ const routeHandlers = {
   proposeWithRing,
   buyVehicleCash,
   buyVehicleLoan,
+  openTradeInModal,
+  executeTradeInPurchase,
   setPrimaryVehicle,
   toggleInsureVehicle,
   takeJoyride,

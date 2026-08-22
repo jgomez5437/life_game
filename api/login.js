@@ -92,8 +92,16 @@ export default async function handler(request, response) {
         if (checkResult.rows.length > 0) {
             const existingUser = checkResult.rows[0];
             
-            // If game_data is empty (e.g. wiped after death), initialize it
-            if (!existingUser.game_data || Object.keys(existingUser.game_data).length === 0) {
+            // If game_data is empty, wiped, or only contains entitlement records without a character, initialize it
+            const rawGameData = existingUser.game_data;
+            const hasCharacter = rawGameData && typeof rawGameData === 'object' && (
+                rawGameData.user ||
+                rawGameData.stats ||
+                rawGameData.name ||
+                (rawGameData.slots && typeof rawGameData.slots === 'object' && Object.values(rawGameData.slots).some(s => s && s.data && (s.data.user || s.data.name || s.data.stats)))
+            );
+
+            if (!hasCharacter) {
                 console.log('Re-initializing player data for:', auth0_id);
                 sanitizeEntitlements(initialGameData);
                 injectVerifiedPurchases(initialGameData, dbPurchases);

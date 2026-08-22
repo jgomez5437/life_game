@@ -122,6 +122,8 @@ export const ACTION_TO_MODULE = {
     buyVehicle: 'goShopping',
     buyVehicleCash: 'goShopping',
     buyVehicleLoan: 'goShopping',
+    openTradeInModal: 'goShopping',
+    executeTradeInPurchase: 'goShopping',
     renderRealEstateDealer: 'goShopping',
     buyPropertyCash: 'goShopping',
     buyPropertyMortgage: 'goShopping',

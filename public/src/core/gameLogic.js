@@ -226,38 +226,55 @@ const VEHICLE_TYPES = {
 };
 
 const VEHICLES_FOR_SALE = [
-    // --- 1. USED CAR LOT ($800 - $9,500) ---
+    // --- 1. USED CAR LOT ($800 - $11,500) ---
     { id: 1, name: "Beater Hatchback", type: "hatchback", showroom: "used", price: 800, condition: 45, statusBonus: 0, reliability: 2, valuationType: "standard", desc: "High mileage, rusted body, but gets you from A to B." },
     { id: 2, name: "Vintage Moped", type: "motorcycle", showroom: "used", price: 1200, condition: 55, statusBonus: 0, reliability: 2, valuationType: "standard", desc: "Retro 50cc scooter with character and noisy exhaust." },
     { id: 3, name: "Rusty Toyota Camry", type: "sedan", showroom: "used", price: 2000, condition: 60, statusBonus: 0, reliability: 4, valuationType: "standard", desc: "Reliable Japanese sedan with a dented rear bumper." },
     { id: 4, name: "Rusty Honda Civic", type: "sedan", showroom: "used", price: 2200, condition: 60, statusBonus: 0, reliability: 4, valuationType: "standard", desc: "Dependable 2005 commuter with fading clearcoat." },
-    { id: 5, name: "Used Ford Fiesta", type: "hatchback", showroom: "used", price: 5500, condition: 75, statusBonus: 0, reliability: 3, valuationType: "standard", desc: "Zippy compact city car with 110k miles." },
-    { id: 6, name: "Used Honda Fit", type: "hatchback", showroom: "used", price: 6000, condition: 80, statusBonus: 0, reliability: 4, valuationType: "standard", desc: "Versatile hatch with great fuel economy." },
-    { id: 7, name: "Used Harley Cruiser", type: "motorcycle", showroom: "used", price: 8500, condition: 80, statusBonus: 1, reliability: 3, valuationType: "standard", desc: "Classic V-twin cruiser with chrome exhausts." },
-    { id: 8, name: "Used Nissan Altima", type: "sedan", showroom: "used", price: 9500, condition: 82, statusBonus: 0, reliability: 3, valuationType: "standard", desc: "Smooth midsize sedan with cold AC." },
+    { id: 5, name: "Old Ford Ranger", type: "truck", showroom: "used", price: 3200, condition: 60, statusBonus: 0, reliability: 3, valuationType: "standard", desc: "Trusty compact pickup with a dented tailgate and rugged charm." },
+    { id: 6, name: "Used Mazda 3", type: "hatchback", showroom: "used", price: 4800, condition: 70, statusBonus: 0, reliability: 4, valuationType: "standard", desc: "Sporty compact hatchback with great fuel efficiency." },
+    { id: 7, name: "Used Ford Fiesta", type: "hatchback", showroom: "used", price: 5500, condition: 75, statusBonus: 0, reliability: 3, valuationType: "standard", desc: "Zippy compact city car with 110k miles." },
+    { id: 8, name: "Used Honda Fit", type: "hatchback", showroom: "used", price: 6000, condition: 80, statusBonus: 0, reliability: 4, valuationType: "standard", desc: "Versatile hatch with great fuel economy." },
+    { id: 9, name: "Used Jeep Grand Cherokee", type: "suv", showroom: "used", price: 6800, condition: 72, statusBonus: 1, reliability: 3, valuationType: "standard", desc: "V6 four-wheel-drive SUV ready for road trips." },
+    { id: 10, name: "Used Harley Cruiser", type: "motorcycle", showroom: "used", price: 8500, condition: 80, statusBonus: 1, reliability: 3, valuationType: "standard", desc: "Classic V-twin cruiser with chrome exhausts." },
+    { id: 11, name: "Used BMW 328i", type: "sedan", showroom: "used", price: 8900, condition: 75, statusBonus: 1, reliability: 3, valuationType: "luxury", desc: "Older German sports sedan that still looks sharp." },
+    { id: 12, name: "Used Nissan Altima", type: "sedan", showroom: "used", price: 9500, condition: 82, statusBonus: 0, reliability: 3, valuationType: "standard", desc: "Smooth midsize sedan with cold AC." },
+    { id: 13, name: "Classic VW Beetle", type: "vintage", showroom: "used", price: 11500, condition: 85, statusBonus: 2, reliability: 3, valuationType: "luxury", desc: "Air-cooled vintage icon restored with retro charm." },
 
-    // --- 2. CITY AUTO MALL ($16,000 - $67,000) ---
-    { id: 9, name: "New Honda Civic LX", type: "sedan", showroom: "mall", price: 24000, condition: 100, statusBonus: 1, reliability: 5, valuationType: "standard", desc: "Brand new efficient sedan with modern safety tech." },
-    { id: 10, name: "New Toyota Camry SE", type: "sedan", showroom: "mall", price: 28000, condition: 100, statusBonus: 1, reliability: 5, valuationType: "standard", desc: "Sporty styling, bulletproof reliability, and great MPG." },
-    { id: 11, name: "New Subaru Forester SUV", type: "suv", showroom: "mall", price: 35000, condition: 100, statusBonus: 2, reliability: 4, valuationType: "standard", desc: "All-wheel drive crossover perfect for all weather." },
-    { id: 12, name: "New Toyota RAV4 Hybrid", type: "suv", showroom: "mall", price: 36000, condition: 100, statusBonus: 2, reliability: 5, valuationType: "standard", desc: "Best-selling hybrid SUV with exceptional fuel economy." },
-    { id: 13, name: "Tesla Model 3 EV", type: "ev", showroom: "mall", price: 42000, condition: 100, statusBonus: 3, reliability: 4, valuationType: "standard", desc: "All-electric sedan with autopilot and instant acceleration." },
-    { id: 14, name: "New Chevrolet Silverado 1500", type: "truck", showroom: "mall", price: 42000, condition: 100, statusBonus: 2, reliability: 4, valuationType: "standard", desc: "V8-powered full-size pickup with heavy towing capacity." },
-    { id: 15, name: "New Ford F-150 XL", type: "truck", showroom: "mall", price: 45500, condition: 100, statusBonus: 2, reliability: 4, valuationType: "standard", desc: "America's top-selling workhorse pickup truck." },
-    { id: 16, name: "Tesla Model Y EV", type: "ev", showroom: "mall", price: 48000, condition: 100, statusBonus: 3, reliability: 4, valuationType: "standard", desc: "Spacious electric SUV with long battery range." },
-    { id: 17, name: "Ford Mustang GT", type: "coupe", showroom: "mall", price: 48000, condition: 100, statusBonus: 3, reliability: 4, valuationType: "luxury", desc: "Roaring 5.0L V8 American muscle coupe." },
-    { id: 18, name: "BMW 3-Series Sedan", type: "sedan", showroom: "mall", price: 49000, condition: 100, statusBonus: 4, reliability: 4, valuationType: "luxury", desc: "German luxury sport sedan with refined handling." },
-    { id: 19, name: "New Chevrolet Corvette Stingray", type: "sports", showroom: "mall", price: 67000, condition: 100, statusBonus: 5, reliability: 4, valuationType: "luxury", desc: "Mid-engine V8 supercar performance at a fraction of the cost." },
+    // --- 2. CITY AUTO MALL ($24,000 - $86,000) ---
+    { id: 14, name: "Honda Civic LX", type: "sedan", showroom: "mall", price: 24000, condition: 100, statusBonus: 1, reliability: 5, valuationType: "standard", desc: "Brand new efficient sedan with modern safety tech." },
+    { id: 15, name: "Toyota Camry SE", type: "sedan", showroom: "mall", price: 28000, condition: 100, statusBonus: 1, reliability: 5, valuationType: "standard", desc: "Sporty styling, bulletproof reliability, and great MPG." },
+    { id: 16, name: "Hyundai Elantra N", type: "sedan", showroom: "mall", price: 33000, condition: 100, statusBonus: 2, reliability: 4, valuationType: "standard", desc: "Turbocharged sport compact with track-ready exhaust note." },
+    { id: 17, name: "Subaru Forester", type: "suv", showroom: "mall", price: 35000, condition: 100, statusBonus: 2, reliability: 4, valuationType: "standard", desc: "All-wheel drive crossover perfect for all weather." },
+    { id: 18, name: "Toyota RAV4 Hybrid", type: "suv", showroom: "mall", price: 36000, condition: 100, statusBonus: 2, reliability: 5, valuationType: "standard", desc: "Best-selling hybrid SUV with exceptional fuel economy." },
+    { id: 19, name: "Mazda CX-5 Turbo", type: "suv", showroom: "mall", price: 38000, condition: 100, statusBonus: 2, reliability: 5, valuationType: "standard", desc: "Refined Japanese crossover with upscale interior." },
+    { id: 20, name: "Tesla Model 3 EV", type: "ev", showroom: "mall", price: 42000, condition: 100, statusBonus: 3, reliability: 4, valuationType: "standard", desc: "All-electric sedan with autopilot and instant acceleration." },
+    { id: 21, name: "Chevrolet Silverado 1500", type: "truck", showroom: "mall", price: 42000, condition: 100, statusBonus: 2, reliability: 4, valuationType: "standard", desc: "V8-powered full-size pickup with heavy towing capacity." },
+    { id: 22, name: "Ford Bronco 4x4", type: "suv", showroom: "mall", price: 44000, condition: 100, statusBonus: 3, reliability: 4, valuationType: "standard", desc: "Rugged off-road SUV with removable doors and roof." },
+    { id: 23, name: "Ford F-150 XL", type: "truck", showroom: "mall", price: 45500, condition: 100, statusBonus: 2, reliability: 4, valuationType: "standard", desc: "America's top-selling workhorse pickup truck." },
+    { id: 24, name: "Audi A4 Quattro", type: "sedan", showroom: "mall", price: 46000, condition: 100, statusBonus: 3, reliability: 4, valuationType: "luxury", desc: "Sleek all-wheel drive German luxury commuter." },
+    { id: 25, name: "Tesla Model Y EV", type: "ev", showroom: "mall", price: 48000, condition: 100, statusBonus: 3, reliability: 4, valuationType: "standard", desc: "Spacious electric SUV with long battery range." },
+    { id: 26, name: "Ford Mustang GT", type: "coupe", showroom: "mall", price: 48000, condition: 100, statusBonus: 3, reliability: 4, valuationType: "luxury", desc: "Roaring 5.0L V8 American muscle coupe." },
+    { id: 27, name: "BMW 3-Series Sedan", type: "sedan", showroom: "mall", price: 49000, condition: 100, statusBonus: 4, reliability: 4, valuationType: "luxury", desc: "German luxury sport sedan with refined handling." },
+    { id: 28, name: "Chevrolet Corvette Stingray", type: "sports", showroom: "mall", price: 67000, condition: 100, statusBonus: 5, reliability: 4, valuationType: "luxury", desc: "Mid-engine V8 supercar performance at a fraction of the cost." },
+    { id: 29, name: "BMW M4 Competition", type: "sports", showroom: "mall", price: 82000, condition: 100, statusBonus: 6, reliability: 4, valuationType: "luxury", desc: "Aggressive twin-turbo inline-6 Bavarian track weapon." },
+    { id: 30, name: "Porsche Macan GTS", type: "luxury_suv", showroom: "mall", price: 86000, condition: 100, statusBonus: 5, reliability: 4, valuationType: "luxury", desc: "High-performance luxury compact SUV with sports car DNA." },
 
-    // --- 3. EXOTIC & LUXURY SHOWROOM ($85,000 - $1,800,000) ---
-    { id: 20, name: "Porsche 911 Carrera", type: "sports", showroom: "exotic", price: 115000, condition: 100, statusBonus: 6, reliability: 5, valuationType: "luxury", desc: "Timeless German sports car with rear-engine precision." },
-    { id: 21, name: "Mercedes-AMG G 63 SUV", type: "luxury_suv", showroom: "exotic", price: 180000, condition: 100, statusBonus: 8, reliability: 4, valuationType: "luxury", desc: "Iconic twin-turbo V8 luxury box-truck status symbol." },
-    { id: 22, name: "New Lamborghini Huracán", type: "supercar", showroom: "exotic", price: 255000, condition: 100, statusBonus: 10, reliability: 4, valuationType: "exotic", desc: "Naturally aspirated V10 Italian exotic with aggressive styling." },
-    { id: 23, name: "New Ferrari Roma", type: "supercar", showroom: "exotic", price: 260000, condition: 100, statusBonus: 10, reliability: 4, valuationType: "exotic", desc: "Elegant front-mid V8 Italian grand tourer." },
-    { id: 24, name: "McLaren 720S", type: "supercar", showroom: "exotic", price: 310000, condition: 100, statusBonus: 11, reliability: 3, valuationType: "exotic", desc: "Dihedral door twin-turbo supercar with rocket acceleration." },
-    { id: 25, name: "Rolls-Royce Phantom", type: "luxury_suv", showroom: "exotic", price: 460000, condition: 100, statusBonus: 12, reliability: 4, valuationType: "exotic", desc: "Pinnacle ultra-luxury V12 sedan with starlight headliner." },
-    { id: 26, name: "Ferrari SF90 Stradale", type: "supercar", showroom: "exotic", price: 520000, condition: 100, statusBonus: 13, reliability: 4, valuationType: "exotic", desc: "1,000 HP hybrid AWD Italian flagship supercar." },
-    { id: 27, name: "Bugatti Chiron Hypercar", type: "hypercar", showroom: "exotic", price: 1800000, condition: 100, statusBonus: 15, reliability: 5, valuationType: "exotic", desc: "Quad-turbo W16 hypercar engineering masterpiece." }
+    // --- 3. EXOTIC & LUXURY SHOWROOM ($115,000 - $3,200,000) ---
+    { id: 31, name: "Porsche 911 Carrera", type: "sports", showroom: "exotic", price: 115000, condition: 100, statusBonus: 6, reliability: 5, valuationType: "luxury", desc: "Timeless German sports car with rear-engine precision." },
+    { id: 32, name: "Mercedes-AMG G 63 SUV", type: "luxury_suv", showroom: "exotic", price: 180000, condition: 100, statusBonus: 8, reliability: 4, valuationType: "luxury", desc: "Iconic twin-turbo V8 luxury box-truck status symbol." },
+    { id: 33, name: "Aston Martin DB12", type: "sports", showroom: "exotic", price: 245000, condition: 100, statusBonus: 10, reliability: 4, valuationType: "exotic", desc: "British twin-turbo V8 super tourer with bespoke luxury." },
+    { id: 34, name: "Lamborghini Huracán", type: "supercar", showroom: "exotic", price: 255000, condition: 100, statusBonus: 10, reliability: 4, valuationType: "exotic", desc: "Naturally aspirated V10 Italian exotic with aggressive styling." },
+    { id: 35, name: "Ferrari Roma", type: "supercar", showroom: "exotic", price: 260000, condition: 100, statusBonus: 10, reliability: 4, valuationType: "exotic", desc: "Elegant front-mid V8 Italian grand tourer." },
+    { id: 36, name: "Lamborghini Urus Performante", type: "luxury_suv", showroom: "exotic", price: 270000, condition: 100, statusBonus: 10, reliability: 4, valuationType: "exotic", desc: "657 HP twin-turbo V8 super-SUV with razor-sharp performance." },
+    { id: 37, name: "Bentley Continental GT", type: "coupe", showroom: "exotic", price: 285000, condition: 100, statusBonus: 11, reliability: 4, valuationType: "exotic", desc: "Handcrafted grand tourer with effortless twin-turbo power." },
+    { id: 38, name: "McLaren 720S", type: "supercar", showroom: "exotic", price: 310000, condition: 100, statusBonus: 11, reliability: 3, valuationType: "exotic", desc: "Dihedral door twin-turbo supercar with rocket acceleration." },
+    { id: 39, name: "Rolls-Royce Phantom", type: "luxury_suv", showroom: "exotic", price: 460000, condition: 100, statusBonus: 12, reliability: 4, valuationType: "exotic", desc: "Pinnacle ultra-luxury V12 sedan with starlight headliner." },
+    { id: 40, name: "Ferrari SF90 Stradale", type: "supercar", showroom: "exotic", price: 520000, condition: 100, statusBonus: 13, reliability: 4, valuationType: "exotic", desc: "1,000 HP hybrid AWD Italian flagship supercar." },
+    { id: 41, name: "Lamborghini Revuelto", type: "hypercar", showroom: "exotic", price: 610000, condition: 100, statusBonus: 13, reliability: 4, valuationType: "exotic", desc: "1,001 HP V12 plug-in hybrid flagship Italian hypercar." },
+    { id: 42, name: "Bugatti Chiron Hypercar", type: "hypercar", showroom: "exotic", price: 1800000, condition: 100, statusBonus: 15, reliability: 5, valuationType: "exotic", desc: "Quad-turbo W16 hypercar engineering masterpiece." },
+    { id: 43, name: "Pagani Huayra Roadster", type: "hypercar", showroom: "exotic", price: 2500000, condition: 100, statusBonus: 16, reliability: 5, valuationType: "exotic", desc: "Handcrafted Italian carbon-titanium rolling sculpture." },
+    { id: 44, name: "Koenigsegg Jesko", type: "hypercar", showroom: "exotic", price: 3200000, condition: 100, statusBonus: 18, reliability: 5, valuationType: "exotic", desc: "1,600 HP Swedish hypercar reaching speeds in excess of 300 MPH." }
 ];
 
 function getVehicleIcon(type) {
@@ -302,6 +319,23 @@ function calculateTotalAutoLoanMonthlyOutflow(assets) {
     }, 0);
 }
 
+function calculateTradeInValue(vehicle) {
+    if (!vehicle || typeof vehicle.value !== 'number' || isNaN(vehicle.value)) {
+        return { tradeInValue: 0, loanPayoff: 0, netEquity: 0 };
+    }
+    const safeValue = Math.max(0, vehicle.value);
+    const tradeInValue = Math.max(100, Math.floor(safeValue * 0.80));
+    const loanPayoff = (vehicle.loan && typeof vehicle.loan.remainingBalance === 'number' && vehicle.loan.remainingBalance > 0)
+        ? Math.round(vehicle.loan.remainingBalance)
+        : 0;
+    const netEquity = Math.max(0, tradeInValue - loanPayoff);
+    return {
+        tradeInValue,
+        loanPayoff,
+        netEquity
+    };
+}
+
 function simulateVehicleMarket() {
     const marketForce = (Math.random() * 0.16) - 0.08;
     
@@ -328,6 +362,9 @@ function updateOwnedVehicles(user, marketForce) {
 
     user.assets.forEach(asset => {
         if (asset.category === 'vehicle') {
+            if (asset.name && typeof asset.name === 'string' && asset.name.startsWith('New ')) {
+                asset.name = asset.name.replace(/^New\s+/i, '');
+            }
             if (asset.acquiredAge === undefined) {
                 asset.acquiredAge = Math.max(0, (user.age || 0) - 1);
             }
@@ -5517,6 +5554,7 @@ export const GameLogic = {
     VEHICLES_FOR_SALE,
     calculateAutoLoan,
     calculateTotalAutoLoanMonthlyOutflow,
+    calculateTradeInValue,
     DIET_PLANS,
     INITIAL_STOCKS,
     ensureInvestmentState,

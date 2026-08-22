@@ -138,7 +138,7 @@ export function openSettingsModal() {
 
             <!-- Footer -->
             <div class="flex justify-between items-center pt-2 border-t border-slate-700 text-xs text-slate-500">
-                <span>Version 1.0.10</span>
+                <span>Version 1.0.12</span>
                 <button data-action="hideModal" class="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs rounded-lg transition">
                     Close
                 </button>
@@ -187,6 +187,9 @@ export function promptResetGame() {
         "Are you sure you want to abandon your current character? All current life progress will be erased.", 
         "Reset & Start New Life", 
         () => {
+            if (typeof UI !== 'undefined' && typeof UI.closeAllModals === 'function') {
+                UI.closeAllModals();
+            }
             if (typeof resetGame === 'function') {
                 resetGame();
             }
@@ -216,6 +219,23 @@ export async function handleSignOut() {
             console.warn("Save before sign out failed:", e);
         }
     }
+
+    // Purge local device save data so cloud character does not remain playable in guest mode
+    try {
+        localStorage.removeItem('life_game_slots');
+        localStorage.removeItem('life_game_save');
+    } catch (e) {}
+    if (Utils && Utils.guestStorage && typeof Utils.guestStorage.clearSave === 'function') {
+        Utils.guestStorage.clearSave();
+    }
+    state.gameState = null;
+    state.userAuthId = null;
+    state.userEmail = null;
+
+    if (typeof UI !== 'undefined' && typeof UI.closeAllModals === 'function') {
+        UI.closeAllModals();
+    }
+
     if (typeof logout === 'function') {
         await logout();
     }

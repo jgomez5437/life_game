@@ -94,12 +94,16 @@ export const renderVehicleDealer = (showroomCategory) => {
 
     const allVehicles = GameLogic.VEHICLES_FOR_SALE || [];
     const filteredVehicles = allVehicles.filter(v => (v.showroom || 'used') === currentVehicleShowroom);
+    const hasOwnedVehicles = (user.assets || []).some(a => a.category === 'vehicle');
 
     const carListHtml = filteredVehicles.map(car => {
         const canAffordCash = user.money >= car.price;
         const loanInfo = GameLogic.calculateAutoLoan(car.price, 0.15, 4);
         const canAffordDown = user.money >= loanInfo.downPayment;
         const style = GameLogic.getVehicleIcon(car.type);
+
+        const isShowroomNew = (car.showroom === 'mall' || car.showroom === 'exotic');
+        const displayName = isShowroomNew && !car.name.startsWith('New ') ? `New ${car.name}` : car.name;
 
         const stars = "★".repeat(car.reliability || 3) + "☆".repeat(5 - (car.reliability || 3));
 
@@ -112,7 +116,7 @@ export const renderVehicleDealer = (showroomCategory) => {
                         </div>
                         <div>
                             <div class="flex items-center gap-2">
-                                <h3 class="font-bold text-white text-base leading-tight">${car.name}</h3>
+                                <h3 class="font-bold text-white text-base leading-tight">${displayName}</h3>
                                 ${car.statusBonus > 0 ? `<span class="bg-amber-900/60 text-amber-300 text-[10px] font-bold px-1.5 py-0.5 rounded border border-amber-700">+${car.statusBonus} Status</span>` : ''}
                             </div>
                             <p class="text-xs text-slate-400 mt-0.5">${car.desc}</p>
@@ -131,6 +135,12 @@ export const renderVehicleDealer = (showroomCategory) => {
                     </div>
 
                     <div class="flex items-center gap-2">
+                        ${hasOwnedVehicles ? `
+                            <button data-action="openTradeInModal" data-args="${car.id}" 
+                                class="bg-amber-600 hover:bg-amber-500 text-white px-2.5 py-1.5 rounded-lg font-bold text-xs transition whitespace-nowrap flex items-center gap-1">
+                                <i class="fas fa-exchange-alt"></i> Trade-In
+                            </button>
+                        ` : ''}
                         <button data-action="buyVehicleCash" data-args="${car.id}" 
                             ${canAffordCash ? '' : 'disabled'}
                             class="${canAffordCash ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-slate-700 text-slate-500 cursor-not-allowed'} px-3 py-1.5 rounded-lg font-bold text-xs transition whitespace-nowrap">
@@ -161,7 +171,7 @@ export const renderVehicleDealer = (showroomCategory) => {
                     <i class="fas fa-car"></i>
                 </div>
                 <h2 class="text-2xl font-bold text-white">${user.city} Auto Dealership</h2>
-                <p class="text-slate-400 text-xs">Buy outright or finance with 15% down</p>
+                <p class="text-slate-400 text-xs">Buy outright, finance, or trade in an owned vehicle</p>
             </div>
 
             <!-- Showroom Tabs -->
@@ -199,38 +209,38 @@ export const renderRealEstateDealer = () => {
     const propertyListHtml = properties.map(prop => {
         const canCash = user.money >= prop.price;
         const monthlyMortgage = GameLogic.calculateMonthlyMortgage(prop.price);
-        const qualification = GameLogic.canAffordMortgage(user, monthlyMortgage);
-        const iconStyle = GameLogic.getPropertyIcon(prop.type);
+        const canMortgage = GameLogic.canAffordMortgage(user, prop.price);
+        const style = GameLogic.getPropertyIcon(prop.type);
 
         return `
             <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex flex-col gap-3 mb-3">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
                         <div class="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center border border-slate-600 shrink-0">
-                            <i class="fas ${iconStyle.icon} ${iconStyle.color} text-xl"></i>
+                            <i class="fas ${style.icon} ${style.color} text-xl"></i>
                         </div>
                         <div>
-                            <h3 class="font-bold text-white text-base leading-tight">${prop.name}</h3>
-                            <p class="text-xs text-slate-400">${prop.desc}</p>
+                            <h3 class="font-bold text-white text-base">${prop.name}</h3>
+                            <p class="text-xs text-slate-400 mt-0.5">${prop.desc}</p>
                         </div>
                     </div>
-                    <div class="text-right">
+                    <div class="text-right shrink-0 ml-2">
                         <div class="text-green-400 font-bold text-base">${Utils.formatMoney(prop.price)}</div>
-                        <div class="text-xs text-slate-400 font-semibold">${Utils.formatMoney(monthlyMortgage)}/mo</div>
+                        <div class="text-[11px] text-slate-400 font-semibold">${Utils.formatMoney(monthlyMortgage)}/mo est.</div>
                     </div>
                 </div>
 
-                <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-700/60">
-                    <button data-action="buyPropertyCash" data-args="${prop.id}"
+                <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-700/60 text-xs">
+                    <button data-action="buyPropertyCash" data-args="${prop.id}" 
                         ${canCash ? '' : 'disabled'}
                         class="${canCash ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-slate-700 text-slate-500 cursor-not-allowed'} px-3 py-1.5 rounded-lg font-bold text-xs transition">
-                        ${canCash ? 'Pay Cash' : "Can't Afford Cash"}
+                        Pay Cash
                     </button>
-
-                    <button data-action="buyPropertyMortgage" data-args="${prop.id}"
-                        ${qualification.allowed ? '' : 'disabled'}
-                        class="${qualification.allowed ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-slate-700 text-slate-500 cursor-not-allowed'} px-3 py-1.5 rounded-lg font-bold text-xs transition">
-                        ${qualification.allowed ? 'Get Mortgage' : (monthlyIncome <= 0 ? 'No Income' : 'DTI > 40%')}
+                    
+                    <button data-action="buyPropertyMortgage" data-args="${prop.id}" 
+                        ${canMortgage ? '' : 'disabled'}
+                        class="${canMortgage ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-slate-700 text-slate-500 cursor-not-allowed'} px-3 py-1.5 rounded-lg font-bold text-xs transition">
+                        Apply for Mortgage
                     </button>
                 </div>
             </div>
@@ -246,11 +256,11 @@ export const renderRealEstateDealer = () => {
             </div>
 
             <div class="text-center mb-6">
-                <div class="w-16 h-16 rounded-full bg-green-900/50 flex items-center justify-center text-green-400 mx-auto mb-3 text-2xl">
+                <div class="w-14 h-14 rounded-full bg-green-900/50 flex items-center justify-center text-green-400 mx-auto mb-2 text-2xl">
                     <i class="fas fa-home"></i>
                 </div>
-                <h2 class="text-2xl font-bold text-white">${user.city} Real Estate</h2>
-                <p class="text-slate-400 text-sm">Monthly Income: <span class="text-green-400 font-bold">${Utils.formatMoney(monthlyIncome)}</span> • Max Debt Ratio: 40%</p>
+                <h2 class="text-2xl font-bold text-white">Century 21 Real Estate</h2>
+                <p class="text-slate-400 text-xs">Buy outright or apply for a 30-year fixed mortgage</p>
             </div>
 
             <div class="flex-1 overflow-y-auto pb-6">
@@ -276,10 +286,11 @@ export const buyVehicleCash = (carId) => {
 
     if (!user.assets) user.assets = [];
     const hasPrimary = user.assets.some(a => a.category === 'vehicle' && a.isPrimary);
+    const cleanName = car.name.replace(/^New\s+/i, '');
 
     const newAsset = {
         id: Date.now(),
-        name: car.name,
+        name: cleanName,
         type: car.type,
         purchasePrice: car.price,
         value: car.price,
@@ -296,12 +307,12 @@ export const buyVehicleCash = (carId) => {
 
     user.assets.push(newAsset);
 
-    addLog(`Purchased a ${car.name} for ${Utils.formatMoney(car.price)} in cash.`, 'good');
+    addLog(`Purchased a ${cleanName} for ${Utils.formatMoney(car.price)} in cash.`, 'good');
     saveGame();
 
     UI.updateHeader(user);
     renderVehicleDealer();
-    UI.showModal("Purchase Successful", `You are now the owner of a ${car.name}!${!hasPrimary ? ' Set as your primary ride.' : ''}`);
+    UI.showModal("Purchase Successful", `You are now the owner of a ${cleanName}!${!hasPrimary ? ' Set as your primary ride.' : ''}`);
 };
 
 export const buyVehicleLoan = (carId) => {
@@ -320,10 +331,11 @@ export const buyVehicleLoan = (carId) => {
 
     if (!user.assets) user.assets = [];
     const hasPrimary = user.assets.some(a => a.category === 'vehicle' && a.isPrimary);
+    const cleanName = car.name.replace(/^New\s+/i, '');
 
     const newAsset = {
         id: Date.now(),
-        name: car.name,
+        name: cleanName,
         type: car.type,
         purchasePrice: car.price,
         value: car.price,
@@ -345,12 +357,234 @@ export const buyVehicleLoan = (carId) => {
 
     user.assets.push(newAsset);
 
-    addLog(`Financed a ${car.name} with ${Utils.formatMoney(loanInfo.downPayment)} down (${Utils.formatMoney(loanInfo.monthlyPayment)}/mo loan).`, 'good');
+    addLog(`Financed a ${cleanName} with ${Utils.formatMoney(loanInfo.downPayment)} down (${Utils.formatMoney(loanInfo.monthlyPayment)}/mo loan).`, 'good');
     saveGame();
 
     UI.updateHeader(user);
     renderVehicleDealer();
-    UI.showModal("Auto Loan Approved!", `You financed a ${car.name}! Down payment: ${Utils.formatMoney(loanInfo.downPayment)}. Monthly payment: ${Utils.formatMoney(loanInfo.monthlyPayment)}/mo.`);
+    UI.showModal("Auto Loan Approved!", `You financed a ${cleanName}! Down payment: ${Utils.formatMoney(loanInfo.downPayment)}. Monthly payment: ${Utils.formatMoney(loanInfo.monthlyPayment)}/mo.`);
+};
+
+export const openTradeInModal = (carId) => {
+    const user = state.gameState.user;
+    const car = (GameLogic.VEHICLES_FOR_SALE || []).find(c => c.id === carId);
+    if (!car) return;
+
+    const userVehicles = (user.assets || []).filter(a => a.category === 'vehicle');
+    if (userVehicles.length === 0) {
+        UI.showModal("No Vehicles to Trade In", "You do not own any vehicles to trade in.");
+        return;
+    }
+
+    const isShowroomNew = (car.showroom === 'mall' || car.showroom === 'exotic');
+    const targetDisplayName = isShowroomNew && !car.name.startsWith('New ') ? `New ${car.name}` : car.name;
+    const baseLoanInfo = GameLogic.calculateAutoLoan(car.price, 0.15, 4);
+
+    const vehicleRowsHtml = userVehicles.map(v => {
+        const trade = GameLogic.calculateTradeInValue(v);
+        const style = GameLogic.getVehicleIcon(v.type);
+
+        // Cash calculations with trade-in
+        const cashDue = Math.max(0, car.price - trade.netEquity);
+        const canAffordCash = user.money >= cashDue;
+
+        // Finance calculations with trade-in
+        const remainingDown = Math.max(0, baseLoanInfo.downPayment - trade.netEquity);
+        const canAffordDown = user.money >= remainingDown;
+
+        const excessEquity = Math.max(0, trade.netEquity - baseLoanInfo.downPayment);
+        const adjustedPrincipal = Math.max(0, baseLoanInfo.principal - excessEquity);
+        const adjustedLoan = adjustedPrincipal > 0
+            ? GameLogic.calculateAutoLoan(adjustedPrincipal + remainingDown, remainingDown > 0 ? (remainingDown / (adjustedPrincipal + remainingDown)) : 0, 4)
+            : { monthlyPayment: 0 };
+        const monthlyEst = adjustedPrincipal > 0 ? adjustedLoan.monthlyPayment : 0;
+
+        return `
+            <div class="bg-slate-800 p-3.5 rounded-xl border border-slate-700 flex flex-col gap-2.5">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center border border-slate-600 shrink-0">
+                            <i class="fas ${style.icon} ${style.color}"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h4 class="font-bold text-white text-sm">${Utils.escapeHtml(v.name)}</h4>
+                                ${v.isPrimary ? `<span class="bg-blue-900/80 text-blue-300 text-[10px] font-bold px-1.5 py-0.5 rounded border border-blue-700">Primary</span>` : ''}
+                            </div>
+                            <div class="text-xs text-slate-400 mt-0.5">
+                                Condition: <strong class="text-white">${v.condition}%</strong> • Value: <strong class="text-slate-300">${Utils.formatMoney(v.value)}</strong>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-amber-400 font-bold text-xs">+${Utils.formatMoney(trade.tradeInValue)} Trade-In</div>
+                        ${trade.loanPayoff > 0 ? `<div class="text-[10px] text-red-400 font-semibold">-${Utils.formatMoney(trade.loanPayoff)} Loan Payoff</div>` : ''}
+                        <div class="text-xs text-green-400 font-bold mt-0.5">Credit: ${Utils.formatMoney(trade.netEquity)}</div>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between pt-2 border-t border-slate-700/60 text-xs">
+                    <div class="text-slate-300 text-xs">
+                        Cash: <strong class="text-green-400 font-bold">${Utils.formatMoney(cashDue)}</strong>
+                        <span class="text-slate-500 mx-1">|</span>
+                        Finance: <strong class="text-blue-400 font-bold">${Utils.formatMoney(remainingDown)} down</strong> (${Utils.formatMoney(monthlyEst)}/mo)
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <button data-action="executeTradeInPurchase" data-args="${car.id}, ${v.id}, 'cash'"
+                            ${canAffordCash ? '' : 'disabled'}
+                            class="${canAffordCash ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-slate-700 text-slate-500 cursor-not-allowed'} px-2.5 py-1.5 rounded-lg font-bold text-xs transition whitespace-nowrap">
+                            Pay Cash
+                        </button>
+                        <button data-action="executeTradeInPurchase" data-args="${car.id}, ${v.id}, 'loan'"
+                            ${canAffordDown ? '' : 'disabled'}
+                            class="${canAffordDown ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-slate-700 text-slate-500 cursor-not-allowed'} px-2.5 py-1.5 rounded-lg font-bold text-xs transition whitespace-nowrap">
+                            Finance
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    const modalContent = `
+        <div class="space-y-4">
+            <div class="bg-slate-900 p-3 rounded-lg border border-slate-700 text-xs text-slate-300 flex items-center justify-between">
+                <div>
+                    <span class="text-slate-400 uppercase text-[10px] font-bold block">Target Vehicle</span>
+                    <strong class="text-white text-sm">${Utils.escapeHtml(targetDisplayName)}</strong>
+                </div>
+                <div class="text-right">
+                    <span class="text-slate-400 uppercase text-[10px] font-bold block">Purchase Price</span>
+                    <strong class="text-green-400 text-sm">${Utils.formatMoney(car.price)}</strong>
+                </div>
+            </div>
+
+            <p class="text-xs text-slate-400">Select which vehicle to trade in. The dealership appraises your vehicle at 80% market value and settles any active loans:</p>
+
+            <div class="max-h-72 overflow-y-auto space-y-2.5 pr-1">
+                ${vehicleRowsHtml}
+            </div>
+
+            <div class="text-right pt-2">
+                <button data-action="hideModal" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs rounded-lg transition">Cancel</button>
+            </div>
+        </div>
+    `;
+
+    UI.showModal(`Trade-In Towards ${targetDisplayName}`, modalContent);
+};
+
+export const executeTradeInPurchase = (carId, tradeInAssetId, method) => {
+    const user = state.gameState.user;
+    const car = (GameLogic.VEHICLES_FOR_SALE || []).find(c => c.id === carId);
+    if (!car) return;
+
+    if (!user.assets || !Array.isArray(user.assets)) user.assets = [];
+    const tradeIndex = user.assets.findIndex(a => a.id === tradeInAssetId && a.category === 'vehicle');
+    if (tradeIndex === -1) {
+        UI.showModal("Trade-In Error", "Selected trade-in vehicle could not be found in your assets.");
+        return;
+    }
+
+    const tradeAsset = user.assets[tradeIndex];
+    const trade = GameLogic.calculateTradeInValue(tradeAsset);
+    const cleanName = car.name.replace(/^New\s+/i, '');
+    const wasPrimary = !!tradeAsset.isPrimary;
+    const hasOtherPrimary = user.assets.some(a => a.category === 'vehicle' && a.id !== tradeAsset.id && a.isPrimary);
+
+    if (method === 'cash') {
+        const cashDue = Math.max(0, car.price - trade.netEquity);
+        if (user.money < cashDue) {
+            UI.showModal("Insufficient Funds", `You need at least ${Utils.formatMoney(cashDue)} cash after trade-in.`);
+            return;
+        }
+
+        user.money -= cashDue;
+
+        // Remove traded-in asset
+        user.assets.splice(tradeIndex, 1);
+
+        const newAsset = {
+            id: Date.now(),
+            name: cleanName,
+            type: car.type,
+            purchasePrice: car.price,
+            value: car.price,
+            condition: car.condition,
+            reliability: car.reliability || 3,
+            statusBonus: car.statusBonus || 0,
+            valuationType: car.valuationType || 'standard',
+            category: "vehicle",
+            acquiredAge: user.age || 18,
+            isPrimary: wasPrimary || !hasOtherPrimary,
+            insured: false,
+            loan: null
+        };
+
+        user.assets.push(newAsset);
+
+        addLog(`Traded in your ${tradeAsset.name} (${Utils.formatMoney(trade.netEquity)} credit) and bought a ${cleanName} for ${Utils.formatMoney(cashDue)} cash.`, 'good');
+        saveGame();
+
+        UI.hideModal();
+        UI.updateHeader(user);
+        renderVehicleDealer();
+        UI.showModal("Trade-In Successful!", `You traded in your ${tradeAsset.name} for ${Utils.formatMoney(trade.netEquity)} credit and paid ${Utils.formatMoney(cashDue)} cash for your new ${cleanName}!`);
+    } else {
+        // Loan / Financing
+        const baseLoanInfo = GameLogic.calculateAutoLoan(car.price, 0.15, 4);
+        const remainingDown = Math.max(0, baseLoanInfo.downPayment - trade.netEquity);
+
+        if (user.money < remainingDown) {
+            UI.showModal("Insufficient Funds", `You need at least ${Utils.formatMoney(remainingDown)} cash for the down payment.`);
+            return;
+        }
+
+        user.money -= remainingDown;
+
+        // Excess equity reduces principal
+        const excessEquity = Math.max(0, trade.netEquity - baseLoanInfo.downPayment);
+        const adjustedPrincipal = Math.max(0, baseLoanInfo.principal - excessEquity);
+        const adjustedLoan = adjustedPrincipal > 0
+            ? GameLogic.calculateAutoLoan(adjustedPrincipal + remainingDown, remainingDown > 0 ? (remainingDown / (adjustedPrincipal + remainingDown)) : 0, 4)
+            : { monthlyPayment: 0, annualRate: baseLoanInfo.annualRate };
+
+        // Remove traded-in asset
+        user.assets.splice(tradeIndex, 1);
+
+        const newAsset = {
+            id: Date.now(),
+            name: cleanName,
+            type: car.type,
+            purchasePrice: car.price,
+            value: car.price,
+            condition: car.condition,
+            reliability: car.reliability || 3,
+            statusBonus: car.statusBonus || 0,
+            valuationType: car.valuationType || 'standard',
+            category: "vehicle",
+            acquiredAge: user.age || 18,
+            isPrimary: wasPrimary || !hasOtherPrimary,
+            insured: false,
+            loan: adjustedPrincipal > 0 ? {
+                principal: adjustedPrincipal,
+                remainingBalance: adjustedPrincipal,
+                monthlyPayment: adjustedLoan.monthlyPayment,
+                annualRate: baseLoanInfo.annualRate
+            } : null
+        };
+
+        user.assets.push(newAsset);
+
+        addLog(`Traded in your ${tradeAsset.name} and financed a ${cleanName} with ${Utils.formatMoney(remainingDown)} down (${Utils.formatMoney(adjustedLoan.monthlyPayment)}/mo loan).`, 'good');
+        saveGame();
+
+        UI.hideModal();
+        UI.updateHeader(user);
+        renderVehicleDealer();
+        UI.showModal("Trade-In & Financing Approved!", `You traded in your ${tradeAsset.name} and financed your new ${cleanName}! Down payment: ${Utils.formatMoney(remainingDown)}. Monthly payment: ${Utils.formatMoney(adjustedLoan.monthlyPayment)}/mo.`);
+    }
 };
 
 export const buyVehicle = (carId) => {

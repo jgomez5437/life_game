@@ -2,6 +2,7 @@ import { jest } from '@jest/globals';
 import { state } from '../../../public/src/core/state.js';
 import { 
     openSettingsModal, 
+    promptResetGame,
     promptSignOut, 
     handleSignOut,
     toggleSettingSFX,
@@ -11,6 +12,7 @@ import {
 } from '../../../public/src/features/more/settingsScreen.js';
 import { logout } from '../../../public/src/auth/auth.js';
 import { UI } from '../../../public/src/ui/ui.js';
+import { resetGame } from '../../../public/src/core/main.js';
 
 describe('Settings Screen & Sign Out Functionality', () => {
 
@@ -51,7 +53,7 @@ describe('Settings Screen & Sign Out Functionality', () => {
         state.auth0Client = null;
     });
 
-    test('openSettingsModal displays Guest Local Mode and Login button when userAuthId is null', () => {
+    test('openSettingsModal displays Guest Local Mode, Login button, and version 1.0.12', () => {
         state.userAuthId = null;
         openSettingsModal();
 
@@ -60,6 +62,7 @@ describe('Settings Screen & Sign Out Functionality', () => {
         expect(content.innerHTML).toContain('Guest Local Mode');
         expect(content.innerHTML).toContain('data-action="login"');
         expect(content.innerHTML).toContain('Log In &amp; Save to Cloud');
+        expect(content.innerHTML).toContain('Version 1.0.12');
         expect(content.innerHTML).not.toContain('data-action="promptSignOut"');
     });
 
@@ -78,6 +81,40 @@ describe('Settings Screen & Sign Out Functionality', () => {
         expect(content.innerHTML).not.toContain('data-action="login"');
     });
 
+    test('promptResetGame opens confirmation modal and confirms reset life closing all modals', () => {
+        openSettingsModal();
+        const overlay = document.getElementById('modal-overlay');
+        expect(overlay.classList.contains('hidden')).toBe(false);
+
+        promptResetGame();
+        const title = document.getElementById('modal-title');
+        const confirmBtn = document.getElementById('modal-confirm');
+
+        expect(title.textContent).toBe('Start New Life?');
+        expect(confirmBtn).not.toBeNull();
+
+        // Simulate confirming Reset Life
+        confirmBtn.click();
+
+        // Modal overlay must be hidden after confirming reset
+        expect(overlay.classList.contains('hidden')).toBe(true);
+    });
+
+    test('resetGame wipes local saves and resets in-memory game state', async () => {
+        localStorage.setItem('life_game_slots', JSON.stringify({ activeSlotId: 'slot_1', slots: { slot_1: { data: { user: { username: 'Old' } } } } }));
+        localStorage.setItem('life_game_save', JSON.stringify({ user: { username: 'Old' } }));
+        localStorage.setItem('startALife_saveData', JSON.stringify({ user: { username: 'Old' } }));
+
+        await resetGame();
+
+        expect(state.gameState).toBeNull();
+        expect(localStorage.getItem('life_game_slots')).toBeNull();
+        expect(localStorage.getItem('life_game_save')).toBeNull();
+        expect(localStorage.getItem('startALife_saveData')).toBeNull();
+        const overlay = document.getElementById('modal-overlay');
+        expect(overlay.classList.contains('hidden')).toBe(true);
+    });
+
     test('promptSignOut opens confirmation modal with Sign Out confirm button', () => {
         openSettingsModal();
         promptSignOut();
@@ -90,8 +127,13 @@ describe('Settings Screen & Sign Out Functionality', () => {
         expect(confirmBtn.textContent).toBe('Sign Out');
     });
 
-    test('handleSignOut renders loading screen and invokes logout', async () => {
+    test('handleSignOut renders loading screen, purges local saves, and invokes logout', async () => {
         state.userAuthId = 'auth0|12345';
+        state.userEmail = 'test@example.com';
+        localStorage.setItem('life_game_slots', JSON.stringify({ activeSlotId: 'slot_1', slots: { slot_1: { data: { user: { username: 'CloudChar' } } } } }));
+        localStorage.setItem('life_game_save', JSON.stringify({ user: { username: 'CloudChar' } }));
+        localStorage.setItem('startALife_saveData', JSON.stringify({ user: { username: 'CloudChar' } }));
+
         const logoutMock = jest.fn();
         state.auth0Client = { logout: logoutMock };
 
@@ -99,6 +141,12 @@ describe('Settings Screen & Sign Out Functionality', () => {
 
         const container = document.getElementById('game-container');
         expect(container.innerHTML).toContain('Signing Out...');
+        expect(localStorage.getItem('life_game_slots')).toBeNull();
+        expect(localStorage.getItem('life_game_save')).toBeNull();
+        expect(localStorage.getItem('startALife_saveData')).toBeNull();
+        expect(state.gameState).toBeNull();
+        expect(state.userAuthId).toBeNull();
+        expect(state.userEmail).toBeNull();
         expect(logoutMock).toHaveBeenCalledWith(expect.objectContaining({
             logoutParams: expect.objectContaining({
                 returnTo: expect.any(String)
@@ -106,9 +154,19 @@ describe('Settings Screen & Sign Out Functionality', () => {
         }));
     });
 
-    test('logout in auth.js handles null auth0Client gracefully without throwing', async () => {
+    test('logout in auth.js purges local storage saves and handles null auth0Client gracefully without throwing', async () => {
         state.auth0Client = null;
+        localStorage.setItem('life_game_slots', '{"some":"data"}');
+        localStorage.setItem('life_game_save', '{"some":"data"}');
+        localStorage.setItem('startALife_saveData', '{"some":"data"}');
+        state.gameState = { user: { name: 'Player' } };
+
         await expect(logout()).resolves.not.toThrow();
+
+        expect(localStorage.getItem('life_game_slots')).toBeNull();
+        expect(localStorage.getItem('life_game_save')).toBeNull();
+        expect(localStorage.getItem('startALife_saveData')).toBeNull();
+        expect(state.gameState).toBeNull();
     });
 
     test('toggleSettingSFX toggles sfx in localStorage and updates toggle state', () => {

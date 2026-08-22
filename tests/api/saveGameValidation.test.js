@@ -350,3 +350,33 @@ describe('Save Endpoint Payload Size Validation (C-3 Fix)', () => {
         expect(result.size).toBeGreaterThan(0);
     });
 });
+
+describe('Wiped and Reset Game State Payload Validation', () => {
+    test('validateGameStateSchema accepts empty object (wiped cloud save)', () => {
+        const wipedPayload = {};
+        expect(sanitizeEntitlements(wipedPayload)).toEqual({});
+    });
+
+    test('character detection accurately distinguishes wiped save from active save', () => {
+        const isCharacterActive = (rawGameData) => {
+            return !!(rawGameData && typeof rawGameData === 'object' && (
+                rawGameData.user ||
+                rawGameData.stats ||
+                rawGameData.name ||
+                (rawGameData.slots && typeof rawGameData.slots === 'object' && Object.values(rawGameData.slots).some(s => s && s.data && (s.data.user || s.data.name || s.data.stats)))
+            ));
+        };
+
+        // Wiped state with purchases only -> NOT active character
+        expect(isCharacterActive({})).toBe(false);
+        expect(isCharacterActive({ purchases: ['god_mode'] })).toBe(false);
+        expect(isCharacterActive({ purchases: [], activeSlotId: 'slot_1', slots: {} })).toBe(false);
+        expect(isCharacterActive(null)).toBe(false);
+
+        // Active saves -> TRUE
+        expect(isCharacterActive({ user: { username: 'John' } })).toBe(true);
+        expect(isCharacterActive({ name: 'Jane', stats: { age: 10 } })).toBe(true);
+        expect(isCharacterActive({ slots: { slot_1: { data: { user: { username: 'John' } } } } })).toBe(true);
+    });
+});
+

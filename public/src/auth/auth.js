@@ -53,6 +53,17 @@ export async function login() {
 
 export async function logout() {
     resetAdState();
+    try {
+        localStorage.removeItem('life_game_slots');
+        localStorage.removeItem('life_game_save');
+    } catch (e) {}
+    if (Utils && Utils.guestStorage && typeof Utils.guestStorage.clearSave === 'function') {
+        Utils.guestStorage.clearSave();
+    }
+    state.gameState = null;
+    state.userAuthId = null;
+    state.userEmail = null;
+
     if (state.auth0Client && typeof state.auth0Client.logout === 'function') {
         await state.auth0Client.logout({
             logoutParams: {
