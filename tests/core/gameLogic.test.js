@@ -1689,11 +1689,36 @@ describe('Relocation to New Country Pure Functions', () => {
             expect(GameLogic.isAlive({ health: 1 })).toBe(true);
             expect(GameLogic.isAlive({ stats: { health: 50 } })).toBe(true);
 
+            // Serialized save state fields on living character
+            expect(GameLogic.isAlive({ health: 100, deathCause: null, deathAge: null })).toBe(true);
+            expect(GameLogic.isAlive({ health: 100, deathCause: undefined, deathAge: undefined })).toBe(true);
+            expect(GameLogic.isAlive({ health: 100, deathCause: '' })).toBe(true);
+
+            // Truly deceased indicators
+            expect(GameLogic.isAlive({ health: 100, deathCause: 'Heart Attack' })).toBe(false);
+            expect(GameLogic.isAlive({ health: 100, deathAge: 80 })).toBe(false);
             expect(GameLogic.isAlive({ health: 0 })).toBe(false);
             expect(GameLogic.isAlive({ health: -15 })).toBe(false);
             expect(GameLogic.isAlive({ stats: { health: 0 } })).toBe(false);
             expect(GameLogic.isAlive({ health: 100, lifeStatus: 'Deceased' })).toBe(false);
             expect(GameLogic.isAlive({ health: 100, isDead: true })).toBe(false);
+            expect(GameLogic.isAlive({ health: 100, isAlive: false })).toBe(false);
+        });
+
+        test('attemptCrime succeeds for living characters with serialized deathCause: null', () => {
+            const livingUser = {
+                health: 100,
+                age: 22,
+                money: 500,
+                smarts: 80,
+                deathCause: null,
+                deathAge: null,
+                criminalRecord: [],
+                relationships: []
+            };
+            const result = GameLogic.attemptCrime('vandalism', livingUser);
+            expect(result).toHaveProperty('success');
+            expect(result.message).not.toMatch(/dead|0 HP/i);
         });
 
         test('Gambling actions are blocked when user is dead or at 0 HP', () => {

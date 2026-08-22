@@ -154,6 +154,10 @@ function renderCrimeCard(crime) {
 export function openCrimeModal(crimeId) {
     const user = state.gameState?.user;
     if (!user) return;
+    if (!GameLogic.isAlive(user)) {
+        UI.showModal("Action Blocked", "Cannot commit crimes while dead or at 0 HP.");
+        return;
+    }
     const crime = GameLogic.CRIMES[crimeId];
 
     if (!crime) {

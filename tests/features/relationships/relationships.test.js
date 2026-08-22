@@ -145,6 +145,9 @@ describe('Dead NPC Interaction Guard (H-13)', () => {
             const living = state.gameState.user.relationships[0];
             expect(isDeadNPC(living)).toBe(false);
 
+            // Living character with serialized null death fields
+            expect(isDeadNPC({ id: 'npc_living_1', name: 'Living Friend', type: 'Friend', health: 90, age: 25, deathCause: null, deathAge: null })).toBe(false);
+
             // Marked isDead: true
             const deadFlag = state.gameState.user.relationships[1];
             expect(isDeadNPC(deadFlag)).toBe(true);
@@ -156,6 +159,9 @@ describe('Dead NPC Interaction Guard (H-13)', () => {
             // Marked deathCause
             const deathCause = state.gameState.user.relationships[3];
             expect(isDeadNPC(deathCause)).toBe(true);
+
+            // Marked deathAge
+            expect(isDeadNPC({ id: 'npc_dead_age', name: 'Late Elder', type: 'Grandparent', deathAge: 90 })).toBe(true);
 
             // In pendingFunerals queue
             state.gameState.pendingFunerals = [{ id: 'npc_funeral_target', name: 'Funeral Person', type: 'Friend' }];
@@ -171,8 +177,10 @@ describe('Dead NPC Interaction Guard (H-13)', () => {
             expect(GameLogic.isAlive({ isDead: true })).toBe(false);
             expect(GameLogic.isAlive({ lifeStatus: 'Deceased' })).toBe(false);
             expect(GameLogic.isAlive({ deathCause: 'Illness' })).toBe(false);
+            expect(GameLogic.isAlive({ deathAge: 85 })).toBe(false);
             expect(GameLogic.isAlive({ health: 0 })).toBe(false);
             expect(GameLogic.isAlive({ health: 100 })).toBe(true);
+            expect(GameLogic.isAlive({ health: 100, deathCause: null, deathAge: null })).toBe(true);
         });
 
         test('GameLogic.getAvailableInteractions and isInteractionBlocked block dead NPCs', () => {

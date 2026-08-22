@@ -62,7 +62,7 @@ function clampStat(val, fallback = 50) {
 export function isAlive(user) {
     if (!user) return false;
     if (user.lifeStatus === 'Deceased' || user.isDead === true || user.isAlive === false) return false;
-    if (user.deathCause !== undefined || user.deathAge !== undefined) return false;
+    if ((typeof user.deathCause === 'string' && user.deathCause.trim() !== '') || (typeof user.deathAge === 'number' && user.deathAge >= 0)) return false;
     const health = user.health ?? user.stats?.health ?? 100;
     return typeof health === 'number' && !isNaN(health) && health > 0;
 }
@@ -1501,7 +1501,7 @@ function isHostile(person) {
  * @returns {Array}
  */
 function getAvailableInteractions(person, user) {
-    if (!person || !isAlive(person) || person.isDead || person.lifeStatus === 'Deceased' || person.deathCause !== undefined) {
+    if (!person || !isAlive(person) || person.isDead || person.lifeStatus === 'Deceased' || (typeof person.deathCause === 'string' && person.deathCause.trim() !== '')) {
         return [];
     }
     const hasPartnerOrSpouse = (user?.relationships || []).some(r => r.category === 'partner' || r.category === 'spouse');
@@ -1533,7 +1533,7 @@ function getRandomHookupScenario(name) {
 }
 
 function calculateMakeAMoveSuccess(person, user) {
-    if (!person || !isAlive(person) || person.isDead || person.lifeStatus === 'Deceased' || person.deathCause !== undefined) {
+    if (!person || !isAlive(person) || person.isDead || person.lifeStatus === 'Deceased' || (typeof person.deathCause === 'string' && person.deathCause.trim() !== '')) {
         return false;
     }
     const status = person.status || 0;
@@ -1577,7 +1577,7 @@ function checkAgeUpInfidelityDiscovery(user) {
  * @returns {{blocked: boolean, reason: string}}
  */
 function isInteractionBlocked(interactionKey, person, user) {
-    if (!person || !isAlive(person) || person.isDead || person.lifeStatus === 'Deceased' || person.deathCause !== undefined) {
+    if (!person || !isAlive(person) || person.isDead || person.lifeStatus === 'Deceased' || (typeof person.deathCause === 'string' && person.deathCause.trim() !== '')) {
         return { blocked: true, reason: 'Deceased' };
     }
     const it = RELATIONSHIP_INTERACTIONS.find(i => i.key === interactionKey);
