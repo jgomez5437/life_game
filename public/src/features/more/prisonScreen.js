@@ -18,6 +18,13 @@ export function renderPrisonDashboard() {
         return;
     }
 
+    if (!user.yardInmates || user.yardInmates.length === 0) {
+        user.yardInmates = GameLogic.generateYardInmates(user.prisonSecurity || 'Medium');
+    }
+    if (!user.cellmate && (!user.prisonStats || user.prisonStats.solitaryTurns <= 0)) {
+        user.cellmate = GameLogic.generateCellmate(user.prisonSecurity || 'Medium');
+    }
+
     const stats = user.prisonStats || {
         respect: 25,
         guardRelation: 50,
@@ -615,6 +622,9 @@ export function handleYardWorkout(workoutType) {
 
 export function handleInmateInteract(inmateId, actionType) {
     const user = state.gameState.user;
+    if (inmateId === 'cellmate' || (user.cellmate && String(user.cellmate.id) === String(inmateId))) {
+        return handleCellmateAction(actionType === 'chat' ? 'talk' : actionType);
+    }
     const inmate = (user.yardInmates || []).find(i => String(i.id) === String(inmateId));
     const result = GameLogic.interactYardInmate(user, inmateId, actionType);
 
@@ -1077,16 +1087,21 @@ export function openInmateDetailModal(inmateId) {
 
     if (!inmate) return;
 
-    let actionButtons = `
-        <button data-action="handleInmateInteract" data-args="${inmate.id}, &apos;chat&apos;" class="bg-slate-700 hover:bg-slate-600 text-white font-bold p-2.5 rounded-xl text-xs flex items-center justify-center gap-2 transition border border-slate-600">
-            <i class="fas fa-comments text-amber-400"></i> Talk & Chat
-        </button>
-    `;
+    let actionButtons = '';
 
     if (isCellmate) {
-        actionButtons += `
+        actionButtons = `
+            <button data-action="handleCellmateAction" data-args="talk" class="bg-slate-700 hover:bg-slate-600 text-white font-bold p-2.5 rounded-xl text-xs flex items-center justify-center gap-2 transition border border-slate-600">
+                <i class="fas fa-comments text-amber-400"></i> Talk & Chat
+            </button>
             <button data-action="handleCellmateAction" data-args="share_snack" class="bg-slate-700 hover:bg-slate-600 text-white font-bold p-2.5 rounded-xl text-xs flex items-center justify-center gap-2 transition border border-slate-600">
                 <i class="fas fa-cookie-bite text-green-400"></i> Share Snack ($10)
+            </button>
+        `;
+    } else {
+        actionButtons = `
+            <button data-action="handleInmateInteract" data-args="${inmate.id}, &apos;chat&apos;" class="bg-slate-700 hover:bg-slate-600 text-white font-bold p-2.5 rounded-xl text-xs flex items-center justify-center gap-2 transition border border-slate-600">
+                <i class="fas fa-comments text-amber-400"></i> Talk & Chat
             </button>
         `;
     }
