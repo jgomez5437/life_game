@@ -45,7 +45,7 @@ describe('Persistent Global Bottom Navigation & Active Tab States', () => {
                         <i class="fas fa-user-graduate mb-1 text-lg sm:text-xl text-blue-400"></i>
                         <span class="text-[9px] sm:text-[10px] uppercase tracking-wider font-bold">Work</span>
                     </button>
-                    <button id="nav-btn-center" data-action="ageUp" class="btn-primary text-white font-bold rounded-xl shadow-lg flex flex-col items-center justify-center transition" title="Age Up (+1 Year)">
+                    <button id="nav-btn-center" data-action="ageUp" class="btn-age-up btn-primary text-white font-bold rounded-xl shadow-lg flex flex-col items-center justify-center transition" title="Age Up (+1 Year)">
                         <i class="fas fa-arrow-up mb-1 text-lg sm:text-xl"></i>
                         <span class="text-[9px] sm:text-[10px] uppercase tracking-wider font-bold">Age Up +</span>
                     </button>
@@ -108,6 +108,8 @@ describe('Persistent Global Bottom Navigation & Active Tab States', () => {
         expect(bottomNav.classList.contains('hidden')).toBe(false);
         expect(centerBtn.dataset.action).toBe('ageUp');
         expect(centerBtn.textContent).toContain('Age Up +');
+        expect(centerBtn.classList.contains('btn-age-up')).toBe(true);
+        expect(centerBtn.classList.contains('btn-primary')).toBe(true);
         expect(centerBtn.classList.contains('nav-tab-active')).toBe(true);
         expect(centerBtn.classList.contains('nav-tab-home')).toBe(true);
 
@@ -135,6 +137,8 @@ describe('Persistent Global Bottom Navigation & Active Tab States', () => {
         // Center button becomes "Home" on non-homepage views
         expect(centerBtn.dataset.action).toBe('renderLifeDashboard');
         expect(centerBtn.textContent).toContain('Home');
+        expect(centerBtn.classList.contains('btn-nav')).toBe(true);
+        expect(centerBtn.classList.contains('btn-age-up')).toBe(false);
         expect(centerBtn.querySelector('i').classList.contains('fa-home')).toBe(true);
 
         // Assets button is highlighted with active glow & bounce

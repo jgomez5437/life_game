@@ -430,7 +430,7 @@ export const UI = {
         if (centerBtn) {
             if (activeTab === 'home') {
                 centerBtn.dataset.action = 'ageUp';
-                centerBtn.className = 'btn-primary text-white font-bold rounded-xl shadow-lg flex flex-col items-center justify-center transition hover:brightness-110';
+                centerBtn.className = 'btn-age-up btn-primary text-white font-bold rounded-xl shadow-lg flex flex-col items-center justify-center transition hover:brightness-110';
                 centerBtn.innerHTML = '<i class="fas fa-arrow-up mb-1 text-lg sm:text-xl"></i><span class="text-[9px] sm:text-[10px] uppercase tracking-wider font-bold">Age Up +</span>';
                 centerBtn.title = 'Age Up (+1 Year)';
             } else {

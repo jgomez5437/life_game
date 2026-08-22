@@ -27,6 +27,30 @@
         .btn-primary:active { transform: scale(0.98); filter: brightness(0.9); }
         .btn-primary:disabled { opacity: 0.5; filter: grayscale(1); cursor: not-allowed; }
 
+        /* Age Up Button (Center Bottom Navigation) */
+        #nav-btn-center[data-action="ageUp"],
+        .btn-age-up {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
+            border: 1px solid #60a5fa !important;
+            color: #ffffff !important;
+            box-shadow: 0 0 16px rgba(59, 130, 246, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+            transform: translateY(-1px);
+        }
+        #nav-btn-center[data-action="ageUp"]:hover,
+        .btn-age-up:hover {
+            filter: brightness(1.1);
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
+        }
+        #nav-btn-center[data-action="ageUp"]:active,
+        .btn-age-up:active {
+            transform: scale(0.96) translateY(0);
+            filter: brightness(0.95);
+        }
+        #nav-btn-center[data-action="ageUp"] *,
+        .btn-age-up * {
+            color: #ffffff !important;
+        }
+
         .btn-life {
             background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             color: #ffffff;
@@ -391,6 +415,32 @@ body.light-mode .nav-tab-active.nav-tab-more {
     background: #f1f5f9 !important;
     border-color: #64748b !important;
     box-shadow: 0 0 12px rgba(100, 116, 139, 0.2) !important;
+}
+
+/* Light Mode Age Up Button (Center Bottom Navigation) - Bold, distinct primary blue */
+body.light-mode #nav-btn-center[data-action="ageUp"],
+body.light-mode .btn-age-up {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+    border: 1px solid #1e40af !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+}
+
+body.light-mode #nav-btn-center[data-action="ageUp"]:hover,
+body.light-mode .btn-age-up:hover {
+    background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%) !important;
+    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
+}
+
+body.light-mode #nav-btn-center[data-action="ageUp"]:active,
+body.light-mode .btn-age-up:active {
+    transform: scale(0.96) translateY(0);
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3) !important;
+}
+
+body.light-mode #nav-btn-center[data-action="ageUp"] *,
+body.light-mode .btn-age-up * {
+    color: #ffffff !important;
 }
 
 /* --------------------------------------------------------------------------
@@ -759,7 +809,7 @@ body.light-mode [class*="from-cyan-600"] * {
 /* --------------------------------------------------------------------------
    Base Typography (Invert dark-mode white text on light cards)
    -------------------------------------------------------------------------- */
-body.light-mode .text-white:not(.btn-primary):not(.btn-primary *):not(.btn-life):not(.btn-life *):not(.bg-blue-600):not(.bg-blue-600 *):not(.bg-blue-500):not(.bg-blue-500 *):not(.bg-blue-700):not(.bg-blue-700 *):not(.bg-emerald-600):not(.bg-emerald-600 *):not(.bg-emerald-700):not(.bg-emerald-700 *):not(.bg-green-600):not(.bg-green-600 *):not(.bg-green-700):not(.bg-green-700 *):not(.bg-red-600):not(.bg-red-600 *):not(.bg-red-700):not(.bg-red-700 *):not(.bg-purple-600):not(.bg-purple-600 *):not(.bg-purple-700):not(.bg-purple-700 *):not(.bg-amber-600):not(.bg-amber-600 *):not(.bg-pink-600):not(.bg-pink-600 *):not(.bg-indigo-600):not(.bg-indigo-600 *):not(.bg-indigo-700):not(.bg-indigo-700 *):not(.bg-cyan-600):not(.bg-cyan-600 *):not([class*="from-amber-400"]):not([class*="from-amber-400"] *):not([class*="from-cyan-600"]):not([class*="from-cyan-600"] *):not([class*="from-blue-600"]):not([class*="from-blue-600"] *) {
+body.light-mode .text-white:not(.btn-primary):not(.btn-primary *):not(.btn-age-up):not(.btn-age-up *):not(.btn-life):not(.btn-life *):not(.bg-blue-600):not(.bg-blue-600 *):not(.bg-blue-500):not(.bg-blue-500 *):not(.bg-blue-700):not(.bg-blue-700 *):not(.bg-emerald-600):not(.bg-emerald-600 *):not(.bg-emerald-700):not(.bg-emerald-700 *):not(.bg-green-600):not(.bg-green-600 *):not(.bg-green-700):not(.bg-green-700 *):not(.bg-red-600):not(.bg-red-600 *):not(.bg-red-700):not(.bg-red-700 *):not(.bg-purple-600):not(.bg-purple-600 *):not(.bg-purple-700):not(.bg-purple-700 *):not(.bg-amber-600):not(.bg-amber-600 *):not(.bg-pink-600):not(.bg-pink-600 *):not(.bg-indigo-600):not(.bg-indigo-600 *):not(.bg-indigo-700):not(.bg-indigo-700 *):not(.bg-cyan-600):not(.bg-cyan-600 *):not([class*="from-amber-400"]):not([class*="from-amber-400"] *):not([class*="from-cyan-600"]):not([class*="from-cyan-600"] *):not([class*="from-blue-600"]):not([class*="from-blue-600"] *) {
     color: #0f172a !important;
 }
 
@@ -1110,6 +1160,33 @@ body.onyx-gold-mode .nav-tab-active {
     border: 1px solid #fbbf24 !important;
     box-shadow: 0 0 16px rgba(245, 158, 11, 0.5), inset 0 1px 0 rgba(254, 240, 138, 0.25) !important;
     color: #fbbf24 !important;
+}
+
+/* Onyx Gold Mode Age Up Button (Center Bottom Navigation) */
+body.onyx-gold-mode #nav-btn-center[data-action="ageUp"],
+body.onyx-gold-mode .btn-age-up {
+    background: linear-gradient(135deg, #fbbf24 0%, #d97706 60%, #b45309 100%) !important;
+    border: 1px solid #fef08a !important;
+    color: #050609 !important;
+    font-weight: 900 !important;
+    box-shadow: 0 0 20px rgba(251, 191, 36, 0.6), inset 0 1px 0 rgba(254, 240, 138, 0.3) !important;
+}
+
+body.onyx-gold-mode #nav-btn-center[data-action="ageUp"]:hover,
+body.onyx-gold-mode .btn-age-up:hover {
+    box-shadow: 0 0 25px rgba(251, 191, 36, 0.8) !important;
+    filter: brightness(1.1);
+}
+
+body.onyx-gold-mode #nav-btn-center[data-action="ageUp"]:active,
+body.onyx-gold-mode .btn-age-up:active {
+    transform: scale(0.96) translateY(0);
+}
+
+body.onyx-gold-mode #nav-btn-center[data-action="ageUp"] *,
+body.onyx-gold-mode .btn-age-up * {
+    color: #050609 !important;
+    font-weight: 900 !important;
 }
 
 /* Card Overrides in Onyx & Gold Mode */
