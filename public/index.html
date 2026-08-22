@@ -53,40 +53,63 @@
 <body class="h-[100dvh] flex flex-col overflow-hidden">
 
     <!-- Header Stats Bar (Persistent) -->
-    <header class="bg-slate-800 border-b border-slate-700 p-3 shadow-lg z-10 flex justify-center items-center h-16 shrink-0">
-        <div class="w-full max-w-lg mx-auto flex justify-between items-center px-1">
+    <header class="bg-slate-800 border-b border-slate-700 px-3 py-2 sm:py-2.5 shadow-lg z-10 flex justify-center items-center shrink-0 min-h-[4rem]">
+        <div class="w-full max-w-lg mx-auto flex flex-col gap-1.5 px-1">
             <!-- Header Brand / Logo for Login Screen -->
-            <div id="header-brand" class="flex items-center justify-center gap-2 font-bold text-white text-lg tracking-wide select-none mx-auto">
+            <div id="header-brand" class="flex items-center justify-center gap-2 font-bold text-white text-lg tracking-wide select-none mx-auto py-1">
                 <i class="fas fa-globe-americas text-blue-400"></i>
                 <span>Start a Life</span>
             </div>
 
-            <!-- In-Game Player Info -->
-            <div id="header-user-info" data-action="openPlayerOverviewModal" class="flex items-center gap-3 cursor-pointer hover:opacity-90 transition group select-none hidden" title="Click for Life Overview">
-                <div class="w-10 h-10 rounded-full bg-slate-700 overflow-hidden flex items-center justify-center border-2 border-slate-600 group-hover:border-blue-400 transition" id="avatar-container">
-                    <i class="fas fa-user text-slate-400"></i>
-                </div>
-                <div>
-                    <h1 id="header-name" class="font-bold text-sm leading-tight text-white group-hover:text-blue-300 transition">Player</h1>
-                    <div class="text-xs text-slate-400 flex items-center gap-3 mt-1">
-                        <div>Age: <span id="header-age" class="text-white font-bold">0</span></div>
-                        <div id="health-container" class="font-bold flex items-center transition-colors duration-300 text-green-400">
-                            <i class="fas fa-heart mr-1"></i>
-                            <span id="ui-health">100%</span>
+            <!-- In-Game Player Info Row 1: Top Bar (Identity & Finances) -->
+            <div id="header-main-row" class="w-full flex justify-between items-center hidden">
+                <!-- Left: Avatar + Name + Age -->
+                <div id="header-user-info" data-action="openPlayerOverviewModal" class="flex items-center gap-2.5 cursor-pointer hover:opacity-90 transition group select-none min-w-0" title="Click for Life Overview">
+                    <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-slate-700 overflow-hidden flex items-center justify-center border-2 border-slate-600 group-hover:border-blue-400 transition shrink-0" id="avatar-container">
+                        <i class="fas fa-user text-slate-400"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <h1 id="header-name" class="font-bold text-xs sm:text-sm leading-tight text-white group-hover:text-blue-300 transition truncate">Player</h1>
+                        <div class="text-[11px] sm:text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
+                            <span>Age: <span id="header-age" class="text-white font-bold">0</span></span>
                         </div>
                     </div>
                 </div>
+
+                <!-- Right: In-Game Controls & Bank -->
+                <div class="flex items-center gap-2 sm:gap-2.5 shrink-0">
+                    <div id="header-bank-wrapper" class="text-right">
+                        <div id="header-bank" class="font-bold text-green-400 text-sm sm:text-base leading-tight">$0</div>
+                        <div class="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Bank</div>
+                    </div>
+                    <button id="header-settings-btn" data-action="openSettingsModal" class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-slate-700/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-600/70 flex items-center justify-center transition-colors shadow-sm ml-1" title="Settings">
+                        <i class="fas fa-cog text-sm sm:text-base"></i>
+                    </button>
+                </div>
             </div>
 
-            <!-- In-Game Controls & Bank -->
-            <div class="flex items-center gap-3">
-                <div id="header-bank-wrapper" class="text-right hidden">
-                    <div id="header-bank" class="font-bold text-green-400 text-lg">$0</div>
-                    <div class="text-xs text-slate-500 uppercase tracking-wider">Bank Account</div>
+            <!-- In-Game Player Info Row 2: Crisp 4-Stat Ribbon -->
+            <div id="header-stats-ribbon" data-action="openPlayerOverviewModal" class="w-full grid grid-cols-4 gap-1.5 sm:gap-2 cursor-pointer select-none hidden" title="Click for Life Overview">
+                <!-- Health -->
+                <div id="health-container" class="header-stat-pill bg-slate-900/60 hover:bg-slate-900/90 border border-slate-700/60 hover:border-emerald-500/40 rounded-lg py-1 px-1.5 sm:px-2 flex items-center justify-center gap-1.5 transition text-green-400">
+                    <i class="fas fa-heart text-[10px] sm:text-xs shrink-0"></i>
+                    <span id="ui-health" class="text-[11px] sm:text-xs font-bold font-mono">100%</span>
                 </div>
-                <button id="header-settings-btn" data-action="openSettingsModal" class="w-9 h-9 rounded-xl bg-slate-700/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-600/70 flex items-center justify-center transition-colors shadow-sm ml-1 hidden" title="Settings">
-                    <i class="fas fa-cog text-base"></i>
-                </button>
+                <!-- Happiness -->
+                <div id="happiness-container" class="header-stat-pill bg-slate-900/60 hover:bg-slate-900/90 border border-slate-700/60 hover:border-amber-500/40 rounded-lg py-1 px-1.5 sm:px-2 flex items-center justify-center gap-1.5 transition text-amber-400">
+                    <i class="fas fa-smile text-[10px] sm:text-xs shrink-0"></i>
+                    <span id="ui-happiness" class="text-[11px] sm:text-xs font-bold font-mono">100%</span>
+                </div>
+                <!-- Smarts -->
+                <div id="smarts-container" class="header-stat-pill bg-slate-900/60 hover:bg-slate-900/90 border border-slate-700/60 hover:border-blue-500/40 rounded-lg py-1 px-1.5 sm:px-2 flex items-center justify-center gap-1.5 transition text-blue-400">
+                    <i class="fas fa-brain text-[10px] sm:text-xs shrink-0"></i>
+                    <span id="ui-smarts" class="text-[11px] sm:text-xs font-bold font-mono">50%</span>
+                </div>
+                <!-- Looks -->
+                <div id="looks-container" class="header-stat-pill bg-slate-900/60 hover:bg-slate-900/90 border border-slate-700/60 hover:border-pink-500/40 rounded-lg py-1 px-1.5 sm:px-2 flex items-center justify-center gap-1.5 transition text-pink-400">
+                    <i class="fas fa-sparkles text-[10px] sm:text-xs shrink-0"></i>
+                    <span id="ui-looks" class="text-[11px] sm:text-xs font-bold font-mono">50%</span>
+                </div>
             </div>
         </div>
     </header>

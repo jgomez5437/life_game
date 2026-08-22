@@ -7,6 +7,14 @@ const _elements = {
     get bank() { return document.getElementById('header-bank'); },
     get healthText() { return document.getElementById('ui-health'); },
     get healthContainer() { return document.getElementById('health-container'); },
+    get happinessText() { return document.getElementById('ui-happiness'); },
+    get happinessContainer() { return document.getElementById('happiness-container'); },
+    get smartsText() { return document.getElementById('ui-smarts'); },
+    get smartsContainer() { return document.getElementById('smarts-container'); },
+    get looksText() { return document.getElementById('ui-looks'); },
+    get looksContainer() { return document.getElementById('looks-container'); },
+    get headerMainRow() { return document.getElementById('header-main-row'); },
+    get statsRibbon() { return document.getElementById('header-stats-ribbon'); },
     get headerBrand() { return document.getElementById('header-brand'); },
     get userInfo() { return document.getElementById('header-user-info'); },
     get bankWrapper() { return document.getElementById('header-bank-wrapper'); },
@@ -181,12 +189,14 @@ function _restorePreviousModal() {
 }
 
 export const UI = {
-    /** * @param {Object} stats - { username, name, age, money, city, health }
+    /** * @param {Object} stats - { username, name, age, money, city, health, happiness, smarts, looks }
      */
     updateHeader: (stats) => {
         if (!stats) return;
         // Toggle header element visibility for in-game stats view
         if (_elements.headerBrand) _elements.headerBrand.classList.add('hidden');
+        if (_elements.headerMainRow) _elements.headerMainRow.classList.remove('hidden');
+        if (_elements.statsRibbon) _elements.statsRibbon.classList.remove('hidden');
         if (_elements.userInfo) _elements.userInfo.classList.remove('hidden');
         if (_elements.bankWrapper) _elements.bankWrapper.classList.remove('hidden');
         if (_elements.settingsBtn) _elements.settingsBtn.classList.remove('hidden');
@@ -204,32 +214,91 @@ export const UI = {
                              srcset="https://flagcdn.com/w40/${countryCode}.png 2x" 
                              width="20" 
                              alt="${Utils.escapeHtml(stats.city || '')}" 
-                             class="ml-2 inline-block shadow-sm rounded-sm" 
+                             class="ml-1.5 inline-block shadow-sm rounded-sm" 
                              style="vertical-align: text-bottom;">`;
         }
 
         if (_elements.name) _elements.name.innerHTML = `${displayName} ${flagHtml}`;
 
         // 2. AGE UPDATE
-        if (stats.age !== undefined && _elements.age) _elements.age.innerText = stats.age;
+        if (stats.age !== undefined && _elements.age) {
+            _elements.age.innerText = stats.age;
+            _elements.age.textContent = String(stats.age);
+        }
 
         // 3. HEALTH UPDATE
-        if (stats.health !== undefined && _elements.healthText && _elements.healthContainer) {
-            _elements.healthText.innerText = `${stats.health}%`;
-            
+        const healthVal = stats.health !== undefined ? stats.health : (stats.stats?.health !== undefined ? stats.stats.health : 100);
+        if (_elements.healthText) {
+            _elements.healthText.innerText = `${healthVal}%`;
+            _elements.healthText.textContent = `${healthVal}%`;
+        }
+        if (_elements.healthContainer) {
             _elements.healthContainer.classList.remove('text-green-400', 'text-yellow-400', 'text-red-500');
-            if (stats.health > 70) {
+            if (healthVal > 70) {
                 _elements.healthContainer.classList.add('text-green-400');
-            } else if (stats.health > 30) {
+            } else if (healthVal > 30) {
                 _elements.healthContainer.classList.add('text-yellow-400');
             } else {
                 _elements.healthContainer.classList.add('text-red-500');
             }
         }
 
-        // 4. BANK UPDATE
+        // 4. HAPPINESS UPDATE
+        const happinessVal = stats.happiness !== undefined ? stats.happiness : (stats.stats?.happiness !== undefined ? stats.stats.happiness : 100);
+        if (_elements.happinessText) {
+            _elements.happinessText.innerText = `${happinessVal}%`;
+            _elements.happinessText.textContent = `${happinessVal}%`;
+        }
+        if (_elements.happinessContainer) {
+            _elements.happinessContainer.classList.remove('text-amber-400', 'text-yellow-400', 'text-red-500');
+            if (happinessVal > 70) {
+                _elements.happinessContainer.classList.add('text-amber-400');
+            } else if (happinessVal > 30) {
+                _elements.happinessContainer.classList.add('text-yellow-400');
+            } else {
+                _elements.happinessContainer.classList.add('text-red-500');
+            }
+        }
+
+        // 5. SMARTS UPDATE
+        const smartsVal = stats.smarts !== undefined ? stats.smarts : (stats.stats?.smarts !== undefined ? stats.stats.smarts : 50);
+        if (_elements.smartsText) {
+            _elements.smartsText.innerText = `${smartsVal}%`;
+            _elements.smartsText.textContent = `${smartsVal}%`;
+        }
+        if (_elements.smartsContainer) {
+            _elements.smartsContainer.classList.remove('text-blue-400', 'text-indigo-300', 'text-slate-400');
+            if (smartsVal > 70) {
+                _elements.smartsContainer.classList.add('text-blue-400');
+            } else if (smartsVal > 30) {
+                _elements.smartsContainer.classList.add('text-indigo-300');
+            } else {
+                _elements.smartsContainer.classList.add('text-slate-400');
+            }
+        }
+
+        // 6. LOOKS UPDATE
+        const looksVal = stats.looks !== undefined ? stats.looks : (stats.stats?.looks !== undefined ? stats.stats.looks : 50);
+        if (_elements.looksText) {
+            _elements.looksText.innerText = `${looksVal}%`;
+            _elements.looksText.textContent = `${looksVal}%`;
+        }
+        if (_elements.looksContainer) {
+            _elements.looksContainer.classList.remove('text-pink-400', 'text-purple-300', 'text-slate-400');
+            if (looksVal > 70) {
+                _elements.looksContainer.classList.add('text-pink-400');
+            } else if (looksVal > 30) {
+                _elements.looksContainer.classList.add('text-purple-300');
+            } else {
+                _elements.looksContainer.classList.add('text-slate-400');
+            }
+        }
+
+        // 7. BANK UPDATE
         if (stats.money !== undefined && _elements.bank) {
-            _elements.bank.innerText = Utils.formatMoney(stats.money);
+            const formattedMoney = Utils.formatMoney(stats.money);
+            _elements.bank.innerText = formattedMoney;
+            _elements.bank.textContent = formattedMoney;
             
             _elements.bank.classList.remove('text-green-400', 'text-red-400');
             if (stats.money < 0) {
@@ -239,7 +308,7 @@ export const UI = {
             }
         }
 
-        // 5. AVATAR UPDATE
+        // 8. AVATAR UPDATE
         const avatarContainer = document.getElementById('avatar-container');
         if (avatarContainer) {
             avatarContainer.innerHTML = renderAvatar(stats);
@@ -251,20 +320,57 @@ export const UI = {
      */
     resetHeader: () => {
         if (_elements.headerBrand) _elements.headerBrand.classList.remove('hidden');
+        if (_elements.headerMainRow) _elements.headerMainRow.classList.add('hidden');
+        if (_elements.statsRibbon) _elements.statsRibbon.classList.add('hidden');
         if (_elements.userInfo) _elements.userInfo.classList.add('hidden');
         if (_elements.bankWrapper) _elements.bankWrapper.classList.add('hidden');
         if (_elements.storeBtn) _elements.storeBtn.classList.add('hidden');
         if (_elements.settingsBtn) _elements.settingsBtn.classList.add('hidden');
 
-        if (_elements.name) _elements.name.innerText = '—';
-        if (_elements.age) _elements.age.innerText = '—';
-        if (_elements.healthText) _elements.healthText.innerText = '100%';
+        if (_elements.name) {
+            _elements.name.innerHTML = '—';
+            _elements.name.textContent = '—';
+        }
+        if (_elements.age) {
+            _elements.age.innerText = '—';
+            _elements.age.textContent = '—';
+        }
+        if (_elements.healthText) {
+            _elements.healthText.innerText = '100%';
+            _elements.healthText.textContent = '100%';
+        }
         if (_elements.healthContainer) {
             _elements.healthContainer.classList.remove('text-yellow-400', 'text-red-500');
             _elements.healthContainer.classList.add('text-green-400');
         }
+        if (_elements.happinessText) {
+            _elements.happinessText.innerText = '100%';
+            _elements.happinessText.textContent = '100%';
+        }
+        if (_elements.happinessContainer) {
+            _elements.happinessContainer.classList.remove('text-yellow-400', 'text-red-500');
+            _elements.happinessContainer.classList.add('text-amber-400');
+        }
+        if (_elements.smartsText) {
+            _elements.smartsText.innerText = '50%';
+            _elements.smartsText.textContent = '50%';
+        }
+        if (_elements.smartsContainer) {
+            _elements.smartsContainer.classList.remove('text-indigo-300', 'text-slate-400');
+            _elements.smartsContainer.classList.add('text-blue-400');
+        }
+        if (_elements.looksText) {
+            _elements.looksText.innerText = '50%';
+            _elements.looksText.textContent = '50%';
+        }
+        if (_elements.looksContainer) {
+            _elements.looksContainer.classList.remove('text-purple-300', 'text-slate-400');
+            _elements.looksContainer.classList.add('text-pink-400');
+        }
         if (_elements.bank) {
-            _elements.bank.innerText = Utils.formatMoney(0);
+            const zeroMoney = Utils.formatMoney(0);
+            _elements.bank.innerText = zeroMoney;
+            _elements.bank.textContent = zeroMoney;
             _elements.bank.classList.remove('text-red-400');
             _elements.bank.classList.add('text-green-400');
         }

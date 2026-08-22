@@ -58,6 +58,9 @@ function getVehicleListHtml(assets) {
     const currentAge = (state.gameState.user && state.gameState.user.age) || 18;
 
     return vehicles.map(v => {
+        if (v.name && typeof v.name === 'string' && v.name.startsWith('New ')) {
+            v.name = v.name.replace(/^New\s+/i, '');
+        }
         let condColor = 'text-green-400';
         if (v.condition < 40) condColor = 'text-red-500'; 
         else if (v.condition < 75) condColor = 'text-yellow-500'; 
@@ -257,6 +260,10 @@ export const renderVehicleManager = (id) => {
         console.error("Vehicle not found!"); 
         renderAssets(); 
         return;
+    }
+
+    if (vehicle.name && typeof vehicle.name === 'string' && vehicle.name.startsWith('New ')) {
+        vehicle.name = vehicle.name.replace(/^New\s+/i, '');
     }
 
     const style = GameLogic.getVehicleIcon(vehicle.type);

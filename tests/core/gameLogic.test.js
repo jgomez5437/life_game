@@ -1380,6 +1380,91 @@ describe('Vehicle System Revamp', () => {
         GameLogic.updateOwnedVehicles(user, 0);
         expect(user.assets[0].value).toBeGreaterThan(260000);
     });
+
+    test('VEHICLES_FOR_SALE does not contain hardcoded "New " prefixes in base names', () => {
+        const vehicles = GameLogic.VEHICLES_FOR_SALE;
+        expect(vehicles.length).toBeGreaterThanOrEqual(40);
+        vehicles.forEach(car => {
+            expect(car.name.startsWith('New ')).toBe(false);
+        });
+    });
+
+    test('VEHICLES_FOR_SALE includes expanded catalog across all showroom lots', () => {
+        const used = GameLogic.VEHICLES_FOR_SALE.filter(v => v.showroom === 'used');
+        const mall = GameLogic.VEHICLES_FOR_SALE.filter(v => v.showroom === 'mall');
+        const exotic = GameLogic.VEHICLES_FOR_SALE.filter(v => v.showroom === 'exotic');
+
+        expect(used.length).toBeGreaterThanOrEqual(13);
+        expect(mall.length).toBeGreaterThanOrEqual(17);
+        expect(exotic.length).toBeGreaterThanOrEqual(14);
+
+        // Verify specific new vehicle additions exist
+        expect(used.some(v => v.name === 'Classic VW Beetle')).toBe(true);
+        expect(used.some(v => v.name === 'Old Ford Ranger')).toBe(true);
+        expect(mall.some(v => v.name === 'Hyundai Elantra N')).toBe(true);
+        expect(mall.some(v => v.name === 'BMW M4 Competition')).toBe(true);
+        expect(exotic.some(v => v.name === 'Aston Martin DB12')).toBe(true);
+        expect(exotic.some(v => v.name === 'Koenigsegg Jesko')).toBe(true);
+    });
+
+    test('calculateTradeInValue computes 80% trade-in valuation and handles active loans', () => {
+        // Vehicle without loan
+        const carNoLoan = { value: 20000, loan: null };
+        const trade1 = GameLogic.calculateTradeInValue(carNoLoan);
+        expect(trade1.tradeInValue).toBe(16000); // 80% of 20,000
+        expect(trade1.loanPayoff).toBe(0);
+        expect(trade1.netEquity).toBe(16000);
+
+        // Vehicle with active loan
+        const carWithLoan = { value: 30000, loan: { remainingBalance: 8000 } };
+        const trade2 = GameLogic.calculateTradeInValue(carWithLoan);
+        expect(trade2.tradeInValue).toBe(24000); // 80% of 30,000
+        expect(trade2.loanPayoff).toBe(8000);
+        expect(trade2.netEquity).toBe(16000); // 24,000 - 8,000
+
+        // Underwater vehicle
+        const carUnderwater = { value: 10000, loan: { remainingBalance: 12000 } };
+        const trade3 = GameLogic.calculateTradeInValue(carUnderwater);
+        expect(trade3.tradeInValue).toBe(8000);
+        expect(trade3.loanPayoff).toBe(12000);
+        expect(trade3.netEquity).toBe(0); // Clamped to 0
+
+        // Invalid input
+        const invalidTrade = GameLogic.calculateTradeInValue(null);
+        expect(invalidTrade.tradeInValue).toBe(0);
+        expect(invalidTrade.loanPayoff).toBe(0);
+        expect(invalidTrade.netEquity).toBe(0);
+    });
+
+    test('updateOwnedVehicles automatically sanitizes legacy "New " prefixes from owned assets', () => {
+        const user = {
+            age: 25,
+            assets: [
+                {
+                    id: 10,
+                    category: 'vehicle',
+                    name: 'New Honda Civic LX',
+                    value: 22000,
+                    condition: 90,
+                    reliability: 5,
+                    acquiredAge: 24
+                },
+                {
+                    id: 11,
+                    category: 'vehicle',
+                    name: 'New Porsche 911 Carrera',
+                    value: 110000,
+                    condition: 98,
+                    reliability: 5,
+                    acquiredAge: 24
+                }
+            ]
+        };
+
+        GameLogic.updateOwnedVehicles(user, 0);
+        expect(user.assets[0].name).toBe('Honda Civic LX');
+        expect(user.assets[1].name).toBe('Porsche 911 Carrera');
+    });
 });
 
 describe('More Options Revamp: Diets, Lottery & Suggestions', () => {

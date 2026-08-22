@@ -136,6 +136,8 @@ export const renderVehicleDealer = lazy('goShopping', 'renderVehicleDealer');
 export const buyVehicle = lazy('goShopping', 'buyVehicle');
 export const buyVehicleCash = lazy('goShopping', 'buyVehicleCash');
 export const buyVehicleLoan = lazy('goShopping', 'buyVehicleLoan');
+export const openTradeInModal = lazy('goShopping', 'openTradeInModal');
+export const executeTradeInPurchase = lazy('goShopping', 'executeTradeInPurchase');
 export const renderRealEstateDealer = lazy('goShopping', 'renderRealEstateDealer');
 export const buyPropertyCash = lazy('goShopping', 'buyPropertyCash');
 export const buyPropertyMortgage = lazy('goShopping', 'buyPropertyMortgage');
@@ -1180,6 +1182,8 @@ const routeHandlers = {
   proposeWithRing,
   buyVehicleCash,
   buyVehicleLoan,
+  openTradeInModal,
+  executeTradeInPurchase,
   setPrimaryVehicle,
   toggleInsureVehicle,
   takeJoyride,
