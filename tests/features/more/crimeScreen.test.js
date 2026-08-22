@@ -209,6 +209,20 @@ describe('Crime Hub UI & Interaction Flow (crimeScreen.js)', () => {
             expect(modalSpy).toHaveBeenCalledWith("Action Blocked", expect.stringContaining("Cannot commit crimes while dead"));
             modalSpy.mockRestore();
         });
+
+        test('allows living character with serialized deathCause: null to commit crimes successfully', () => {
+            state.gameState.user.deathCause = null;
+            state.gameState.user.deathAge = null;
+            state.gameState.user.health = 100;
+            const spy = jest.spyOn(Math, 'random').mockReturnValue(0.01);
+
+            commitCrimeAction('vandalism');
+
+            const title = document.getElementById('modal-title');
+            expect(title.textContent).toBe('Crime Successful');
+
+            spy.mockRestore();
+        });
     });
 
     describe('Arrest & Court Proceedings', () => {

@@ -15,8 +15,8 @@ import { renderAvatar } from '../../ui/avatarRenderer.js';
 export const isDeadNPC = (person) => {
     if (!person) return true;
     if (person.isDead === true || person.lifeStatus === 'Deceased' || person.isAlive === false) return true;
-    if (person.deathCause !== undefined || person.deathAge !== undefined) return true;
-    if (person.health !== undefined && person.health <= 0 && person.age !== undefined) return true;
+    if ((typeof person.deathCause === 'string' && person.deathCause.trim() !== '') || (typeof person.deathAge === 'number' && person.deathAge >= 0)) return true;
+    if (typeof person.health === 'number' && !isNaN(person.health) && person.health <= 0 && typeof person.age === 'number') return true;
     const pendingFunerals = state.gameState?.pendingFunerals || [];
     if (pendingFunerals.some(d => d.id === person.id || (d.name === person.name && d.type === person.type))) {
         return true;
