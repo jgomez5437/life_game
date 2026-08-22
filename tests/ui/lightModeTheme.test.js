@@ -80,6 +80,13 @@ describe('Light Mode Theme & UI Contrast Verification', () => {
             expect(cssContent).toContain('body.light-mode [class*="from-amber-500"][class*="to-yellow-400"] *');
             expect(cssContent).toContain('#0f172a !important');
         });
+
+        test('styles.css contains high-contrast distinct Age Up button styling for light mode', () => {
+            expect(cssContent).toContain('body.light-mode #nav-btn-center[data-action="ageUp"]');
+            expect(cssContent).toContain('body.light-mode .btn-age-up');
+            expect(cssContent).toContain('linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important');
+            expect(cssContent).toContain('body.light-mode .btn-age-up *');
+        });
     });
 
     describe('Feature Screens DOM Markup', () => {
