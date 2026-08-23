@@ -23,11 +23,13 @@ export async function verifyAuth(request) {
 
     try {
         const { payload } = await jwtVerify(token, JWKS, {
-            issuer: `${AUTH0_DOMAIN}/`,
-            audience: AUTH0_CLIENT_ID
+            issuer: [`${AUTH0_DOMAIN}/`, AUTH0_DOMAIN],
+            audience: AUTH0_CLIENT_ID,
+            clockTolerance: '60s'
         });
         return payload.sub;
     } catch (err) {
+        console.warn(`[AUTH] Token verification failed: ${err.message}`);
         throw new Error(`Token verification failed: ${err.message}`);
     }
 }

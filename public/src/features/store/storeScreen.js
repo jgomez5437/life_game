@@ -507,6 +507,35 @@ export async function buyPack(packId) {
         } else {
             const errData = await response.json().catch(() => ({}));
             console.error("Stripe API Error:", errData);
+            if (response.status === 401) {
+                UI.showCustomModal({
+                    title: "Authentication Required",
+                    content: `
+                        <div class="space-y-3 text-left">
+                            <div class="bg-slate-900 p-3.5 rounded-xl border border-amber-500/40 flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-amber-950/60 text-amber-400 border border-amber-500/40 flex items-center justify-center text-lg shrink-0">
+                                    <i class="fas fa-lock"></i>
+                                </div>
+                                <div>
+                                    <div class="text-sm font-bold text-white">${pack.title}</div>
+                                    <div class="text-xs text-amber-400 font-semibold">Login Session Refresh Needed</div>
+                                </div>
+                            </div>
+                            <p class="text-xs text-slate-300 leading-relaxed">
+                                Your login session has expired or requires renewal to securely initiate checkout. Please sign in to continue with your purchase.
+                            </p>
+                        </div>
+                    `,
+                    confirmText: "Sign In / Refresh Session",
+                    cancelText: "Cancel",
+                    onConfirm: () => {
+                        if (typeof login === 'function') {
+                            login();
+                        }
+                    }
+                });
+                return;
+            }
             UI.showModal("Checkout Error", errData.error || "Failed to initiate payment session.");
             return;
         }
