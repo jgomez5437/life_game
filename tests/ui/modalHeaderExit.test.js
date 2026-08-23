@@ -75,7 +75,7 @@ describe('Modal Header Inline Exit Button & Screen Cleanliness', () => {
         UI.closeAllModals();
     });
 
-    test('UI.showModal displays title, content, unhides close button, and executes onClose on exit click', () => {
+    test('UI.showModal displays title, content, Dismiss button, hides top close button, and executes onClose on Dismiss click', () => {
         const onClose = jest.fn();
         UI.showModal("Info Notice", "<p>Hello world</p>", onClose);
 
@@ -83,20 +83,22 @@ describe('Modal Header Inline Exit Button & Screen Cleanliness', () => {
         const title = document.getElementById('modal-title');
         const content = document.getElementById('modal-content');
         const closeBtn = document.getElementById('modal-close-btn');
+        const dismissBtn = document.getElementById('modal-btn');
 
         expect(overlay.classList.contains('hidden')).toBe(false);
         expect(title.textContent).toBe("Info Notice");
         expect(content.innerHTML).toContain("Hello world");
-        expect(closeBtn.classList.contains('hidden')).toBe(false);
+        expect(closeBtn.classList.contains('hidden')).toBe(true);
+        expect(dismissBtn).not.toBeNull();
 
-        // Click top exit button
-        closeBtn.click();
+        // Click Dismiss button
+        dismissBtn.click();
 
         expect(overlay.classList.contains('hidden')).toBe(true);
         expect(onClose).toHaveBeenCalledTimes(1);
     });
 
-    test('UI.showConfirm executes onCancel callback when clicking the top inline close button', () => {
+    test('UI.showConfirm displays Confirm/Cancel buttons, hides top close button, and executes onCancel on Cancel click', () => {
         const onConfirm = jest.fn();
         const onCancel = jest.fn();
         UI.showConfirm("Are you sure?", "Please confirm", "Yes", onConfirm, "No", onCancel);
@@ -104,23 +106,27 @@ describe('Modal Header Inline Exit Button & Screen Cleanliness', () => {
         const overlay = document.getElementById('modal-overlay');
         const title = document.getElementById('modal-title');
         const closeBtn = document.getElementById('modal-close-btn');
+        const cancelBtn = document.getElementById('modal-cancel');
 
         expect(overlay.classList.contains('hidden')).toBe(false);
         expect(title.textContent).toBe("Are you sure?");
+        expect(closeBtn.classList.contains('hidden')).toBe(true);
+        expect(cancelBtn).not.toBeNull();
 
-        // Click top inline exit button
-        closeBtn.click();
+        // Click cancel button
+        cancelBtn.click();
 
         expect(overlay.classList.contains('hidden')).toBe(true);
         expect(onConfirm).not.toHaveBeenCalled();
         expect(onCancel).toHaveBeenCalledTimes(1);
     });
 
-    test('UI.showCustomModal executes onClose callback and supports showCloseBtn option', () => {
+    test('UI.showCustomModal executes onClose callback when showCloseBtn is true, and hides close button by default', () => {
         const onClose = jest.fn();
         UI.showCustomModal({
             title: "Custom Header",
             content: "<div>Custom Body</div>",
+            showCloseBtn: true,
             onClose
         });
 
@@ -136,17 +142,20 @@ describe('Modal Header Inline Exit Button & Screen Cleanliness', () => {
         expect(overlay.classList.contains('hidden')).toBe(true);
         expect(onClose).toHaveBeenCalledTimes(1);
 
-        // Test with showCloseBtn: false
+        // Test default showCloseBtn (false)
         UI.showCustomModal({
             title: "No Exit Allowed",
-            content: "<div>Locked modal</div>",
-            showCloseBtn: false
+            content: "<div>Locked modal</div>"
         });
         expect(closeBtn.classList.contains('hidden')).toBe(true);
     });
 
-    test('UI.replaceModalContent preserves the inline close button and its dismiss handler', () => {
-        UI.showCustomModal("Initial Step", "<div>Step 1</div>");
+    test('UI.replaceModalContent preserves the inline close button and its dismiss handler when enabled', () => {
+        UI.showCustomModal({
+            title: "Initial Step",
+            content: "<div>Step 1</div>",
+            showCloseBtn: true
+        });
         const overlay = document.getElementById('modal-overlay');
         const title = document.getElementById('modal-title');
         const content = document.getElementById('modal-content');
@@ -166,11 +175,19 @@ describe('Modal Header Inline Exit Button & Screen Cleanliness', () => {
 
     test('Nested modals correctly unwind when clicking the inline close button', () => {
         // Open Modal A
-        UI.showCustomModal("Parent Modal", "<div>Parent View</div>");
+        UI.showCustomModal({
+            title: "Parent Modal",
+            content: "<div>Parent View</div>",
+            showCloseBtn: true
+        });
         expect(document.getElementById('modal-title').textContent).toBe("Parent Modal");
 
         // Open Modal B over Modal A
-        UI.showCustomModal("Child Modal", "<div>Child View</div>");
+        UI.showCustomModal({
+            title: "Child Modal",
+            content: "<div>Child View</div>",
+            showCloseBtn: true
+        });
         expect(document.getElementById('modal-title').textContent).toBe("Child Modal");
 
         // Close Modal B via top exit button

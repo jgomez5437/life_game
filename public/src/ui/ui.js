@@ -57,11 +57,7 @@ function _renderInfoModal(title, message, onClose = null) {
         _elements.modalTitle.classList.remove('hidden');
     }
     if (_elements.modalCloseBtn) {
-        _elements.modalCloseBtn.onclick = () => {
-            UI.hideModal();
-            if (onClose) onClose();
-        };
-        _elements.modalCloseBtn.classList.remove('hidden');
+        _elements.modalCloseBtn.classList.add('hidden');
     }
     if (_elements.modalContent) {
         _elements.modalContent.innerHTML = message;
@@ -95,11 +91,7 @@ function _renderConfirmModal(title, message, confirmText, onConfirm, cancelText 
         _elements.modalTitle.classList.remove('hidden');
     }
     if (_elements.modalCloseBtn) {
-        _elements.modalCloseBtn.onclick = () => {
-            UI.hideModal();
-            if (onCancel) onCancel();
-        };
-        _elements.modalCloseBtn.classList.remove('hidden');
+        _elements.modalCloseBtn.classList.add('hidden');
     }
     if (_elements.modalContent) {
         _elements.modalContent.innerHTML = message;
@@ -139,7 +131,7 @@ function _renderConfirmModal(title, message, confirmText, onConfirm, cancelText 
 }
 
 function _renderCustomModal(opts) {
-    const { title, content, confirmText, cancelText, onConfirm, onClose, showCloseBtn = true } = opts;
+    const { title, content, confirmText, cancelText, onConfirm, onClose, showCloseBtn = false } = opts;
 
     if (_elements.modalTitle) {
         _elements.modalTitle.innerText = title;
@@ -151,14 +143,14 @@ function _renderCustomModal(opts) {
         }
     }
     if (_elements.modalCloseBtn) {
-        if (showCloseBtn === false) {
-            _elements.modalCloseBtn.classList.add('hidden');
-        } else {
+        if (showCloseBtn === true) {
             _elements.modalCloseBtn.onclick = () => {
                 UI.hideModal();
                 if (onClose) onClose();
             };
             _elements.modalCloseBtn.classList.remove('hidden');
+        } else {
+            _elements.modalCloseBtn.classList.add('hidden');
         }
     }
     if (_elements.modalContent) {
