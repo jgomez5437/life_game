@@ -495,4 +495,75 @@ describe('Prison System Logic', () => {
 
         spyMath.mockRestore();
     });
+
+    test('applySentencing preserves negative debt balances and assesses fines correctly', () => {
+        mockUser.money = -5000;
+        const verdict = {
+            verdict: 'guilty',
+            fine: 2500,
+            sentenceYears: 3,
+            crime: { id: 'gta', name: 'Grand Theft Auto', category: 'heist' }
+        };
+
+        GameLogic.applySentencing(mockUser, verdict);
+
+        expect(mockUser.money).toBe(-7500);
+        expect(mockUser.inPrison).toBe(true);
+        expect(mockUser.prisonStats.canteenCash).toBe(0); // Clamped to non-negative
+    });
+
+    test('processPrisonAgeUp adds $250 gate money upon full sentence completion while preserving debt balance', () => {
+        mockUser.money = -7500;
+        const verdict = {
+            verdict: 'guilty',
+            fine: 0,
+            sentenceYears: 1,
+            crime: { id: 'shoplift', name: 'Shoplifting', category: 'petty' }
+        };
+
+        GameLogic.initPrisonState(mockUser, verdict);
+        expect(mockUser.prisonSentenceRemaining).toBe(1);
+
+        const ageRes = GameLogic.processPrisonAgeUp(mockUser);
+        expect(ageRes.released).toBe(true);
+        expect(mockUser.inPrison).toBe(false);
+        expect(mockUser.prisonSentenceRemaining).toBe(0);
+        expect(mockUser.money).toBe(-7250); // -7500 + 250 gate money
+        expect(ageRes.message).toContain('$250 in gate money');
+    });
+
+    test('attemptSentenceAppeal adds $250 gate money upon release', () => {
+        mockUser.money = -3000;
+        const verdict = { verdict: 'guilty', fine: 0, sentenceYears: 5, crime: { id: 'gta', category: 'heist' } };
+        GameLogic.initPrisonState(mockUser, verdict);
+
+        const spy = jest.spyOn(Math, 'random').mockReturnValue(0.01); // Overturn appeal
+        const res = GameLogic.attemptSentenceAppeal(mockUser, 'self');
+
+        expect(res.released).toBe(true);
+        expect(mockUser.inPrison).toBe(false);
+        expect(mockUser.prisonSentenceRemaining).toBe(0);
+        expect(mockUser.money).toBe(-2750); // -3000 + 250 gate money
+
+        spy.mockRestore();
+    });
+
+    test('attemptParoleBoard adds $250 gate money upon parole grant', () => {
+        mockUser.money = -4000;
+        const verdict = { verdict: 'guilty', fine: 0, sentenceYears: 4, crime: { id: 'gta', category: 'heist' } };
+        GameLogic.initPrisonState(mockUser, verdict);
+        mockUser.prisonSentenceRemaining = 2; // 50% served (2 of 4)
+        mockUser.prisonStats.goodBehaviorPoints = 100;
+        mockUser.prisonStats.guardRelation = 100;
+
+        const spy = jest.spyOn(Math, 'random').mockReturnValue(0.01); // Grant parole
+        const res = GameLogic.attemptParoleBoard(mockUser);
+
+        expect(res.released).toBe(true);
+        expect(mockUser.inPrison).toBe(false);
+        expect(mockUser.prisonSentenceRemaining).toBe(0);
+        expect(mockUser.money).toBe(-3750); // -4000 + 250 gate money
+
+        spy.mockRestore();
+    });
 });

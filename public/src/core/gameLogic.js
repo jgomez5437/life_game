@@ -4775,7 +4775,7 @@ function calculateTrialVerdict(user, lawyerTier) {
 function applySentencing(user, verdictResult) {
     if (!Array.isArray(user.criminalRecord)) user.criminalRecord = [];
 
-    user.money = Math.max(0, (user.money || 0) - verdictResult.fine);
+    user.money = (user.money || 0) - verdictResult.fine;
 
     user.criminalRecord.push({
         year: user.age || 20,
@@ -4878,7 +4878,7 @@ function initPrisonState(user, verdictResult) {
         respect: 25,
         guardRelation: 50,
         gang: 'None',
-        canteenCash: Math.min(250, Math.floor((user.money || 0) * 0.1)),
+        canteenCash: Math.max(0, Math.min(250, Math.floor(Math.max(0, user.money || 0) * 0.1))),
         solitaryTurns: 0,
         goodBehaviorPoints: 10,
         prisonJob: 'None',
