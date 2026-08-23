@@ -587,27 +587,63 @@ export function hydrateSlotsStoreFromCloud(cloudGameData) {
         return getSlotsStore();
     }
 
+    const localStore = getSlotsStore();
     const cleanData = sanitizeGameState(cloudGameData);
     let store = { activeSlotId: 'slot_1', slots: {} };
+    let needsCloudSync = false;
 
     // Case 1: Multi-slot cloud data with .slots object
     if (cleanData.slots && typeof cleanData.slots === 'object' && !Array.isArray(cleanData.slots)) {
         const cloudSlotKeys = Object.keys(cleanData.slots);
         cloudSlotKeys.forEach(key => {
             if (isValidSlotId(key)) {
-                const s = cleanData.slots[key];
-                if (s && typeof s === 'object') {
-                    store.slots[key] = {
-                        id: s.id || key,
-                        name: s.name || 'Life Save',
-                        lastSaved: s.lastSaved || Date.now(),
-                        data: s.data ? deepClone(sanitizeGameState(s.data)) : null
-                    };
+                const cloudSlot = cleanData.slots[key];
+                const localSlot = localStore.slots?.[key];
+
+                if (cloudSlot && typeof cloudSlot === 'object') {
+                    const cloudData = cloudSlot.data ? deepClone(sanitizeGameState(cloudSlot.data)) : null;
+                    const cloudSaved = cloudSlot.lastSaved || 0;
+                    const cloudAge = cloudData?.user?.age ?? -1;
+
+                    const localData = localSlot?.data;
+                    const localSaved = localSlot?.lastSaved || 0;
+                    const localAge = localData?.user?.age ?? -1;
+
+                    // If local slot has newer progress (higher age or more recent timestamp with active character)
+                    const isLocalNewer = localData?.user && localData.user.lifeStatus !== 'Deceased' &&
+                        (localAge > cloudAge || (localAge === cloudAge && localSaved > cloudSaved));
+
+                    if (isLocalNewer) {
+                        store.slots[key] = {
+                            id: localSlot.id || key,
+                            name: localSlot.name || cloudSlot.name || 'Life Save',
+                            lastSaved: localSaved,
+                            data: deepClone(localData)
+                        };
+                        needsCloudSync = true;
+                    } else {
+                        store.slots[key] = {
+                            id: cloudSlot.id || key,
+                            name: cloudSlot.name || 'Life Save',
+                            lastSaved: cloudSaved || Date.now(),
+                            data: cloudData
+                        };
+                    }
                 }
             }
         });
 
-        const targetActive = cleanData.activeSlotId || cleanData._slotId;
+        // Preserve any local-only slots that don't exist in cloud yet (e.g. newly created branches)
+        if (localStore.slots && typeof localStore.slots === 'object') {
+            Object.keys(localStore.slots).forEach(localKey => {
+                if (!store.slots[localKey] && isValidSlotId(localKey) && localStore.slots[localKey]?.data) {
+                    store.slots[localKey] = deepClone(localStore.slots[localKey]);
+                    needsCloudSync = true;
+                }
+            });
+        }
+
+        const targetActive = cleanData.activeSlotId || cleanData._slotId || localStore.activeSlotId;
         if (isValidSlotId(targetActive) && store.slots[targetActive]) {
             store.activeSlotId = targetActive;
         } else if (Object.keys(store.slots).length > 0) {
@@ -619,13 +655,26 @@ export function hydrateSlotsStoreFromCloud(cloudGameData) {
 
     // Case 2: Legacy single-slot save (or missing/empty slots object)
     if (Object.keys(store.slots).length === 0 && (cleanData.user || cleanData.stats || cleanData.name)) {
-        const name = cleanData.user?.username || cleanData.user?.name || cleanData.name || 'Main Life';
-        store.slots['slot_1'] = {
-            id: 'slot_1',
-            name: name,
-            lastSaved: Date.now(),
-            data: deepClone(cleanData)
-        };
+        const cloudUser = cleanData.user || cleanData;
+        const cloudAge = cloudUser.age ?? -1;
+        const localSlot = localStore.slots?.['slot_1'];
+        const localData = localSlot?.data;
+        const localAge = localData?.user?.age ?? -1;
+
+        const isLocalNewer = localData?.user && localData.user.lifeStatus !== 'Deceased' && localAge > cloudAge;
+
+        if (isLocalNewer) {
+            store.slots['slot_1'] = deepClone(localSlot);
+            needsCloudSync = true;
+        } else {
+            const name = cleanData.user?.username || cleanData.user?.name || cleanData.name || 'Main Life';
+            store.slots['slot_1'] = {
+                id: 'slot_1',
+                name: name,
+                lastSaved: Date.now(),
+                data: deepClone(cleanData)
+            };
+        }
         store.activeSlotId = 'slot_1';
     }
 
@@ -633,6 +682,7 @@ export function hydrateSlotsStoreFromCloud(cloudGameData) {
         persistSlotsStore(store);
     }
 
+    store._needsCloudSync = needsCloudSync;
     return store;
 }
 
@@ -864,10 +914,15 @@ export function saveToSlot(slotId = null, customName = null) {
     store.activeSlotId = targetId;
     const persistResult = persistSlotsStore(store);
 
-    // Also update legacy key for backward compatibility if primary save succeeded
+    // Also update legacy and guest keys for backward compatibility if primary save succeeded
     if (persistResult?.success) {
         try {
             localStorage.setItem('life_game_save', JSON.stringify(cleanState));
+        } catch (e) {}
+        try {
+            if (Utils && Utils.guestStorage && Utils.guestStorage.SAVE_KEY) {
+                localStorage.setItem(Utils.guestStorage.SAVE_KEY, JSON.stringify(cleanState));
+            }
         } catch (e) {}
     }
 

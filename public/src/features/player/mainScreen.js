@@ -8,6 +8,7 @@ import { CAREER_TRACKS, SPECIAL_CAREER_TRACKS, GRAD_SCHOOLS } from '../../core/c
 import { AvatarLogic } from '../../core/avatarLogic.js';
 import { renderAvatar } from '../../ui/avatarRenderer.js';
 import { captureAnnualSnapshot } from '../../core/timeMachine.js';
+import { saveToSlot } from '../../core/saveSlotManager.js';
 import { EulogyGenerator } from '../../core/eulogyGenerator.js';
 import { loadModule, preloadForContext } from '../../core/moduleLoader.js';
 import { checkPeriodicAchievements } from '../../core/achievementManager.js';
@@ -49,7 +50,8 @@ export async function ageUp() {
                 }
             });
         }
-        if (typeof saveGame === "function") saveGame();
+        saveToSlot();
+        if (typeof saveGame === "function") saveGame(true);
         return;
     }
     
@@ -107,9 +109,10 @@ export async function ageUp() {
     });
     
     captureAnnualSnapshot(currentState);
+    saveToSlot();
 
     if (typeof saveGame === "function") {
-        saveGame();
+        saveGame(true);
     }
 }
 
@@ -119,6 +122,7 @@ function handleDeath(user, cause) {
     addLog(`You died at age ${user.age} from ${cause}`, 'bad');
     
     // Auto-save the death state before transitioning
+    saveToSlot();
     if (typeof saveGame === "function") {
         saveGame(true);
     }

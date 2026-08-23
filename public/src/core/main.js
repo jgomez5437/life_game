@@ -372,6 +372,15 @@ export function updateGameInfo(dbUser) {
         if (state.gameState?.user) {
             GameLogic.backfillRelationshipGender(state.gameState.user.relationships);
         }
+        // Clean up stale guest save on successful authenticated session
+        if (Utils && Utils.guestStorage && typeof Utils.guestStorage.clearSave === 'function') {
+            Utils.guestStorage.clearSave();
+        }
+        // If local progress was newer than cloud data, sync to cloud immediately
+        if (store?._needsCloudSync && state.gameState.user) {
+            console.log("Local progress is newer than cloud database. Synchronizing to cloud...");
+            saveGame(true);
+        }
     }
 
     // Render

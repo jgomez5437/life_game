@@ -171,7 +171,7 @@ export function openSettingsModal() {
 
             <!-- Footer -->
             <div class="text-center pt-2 border-t border-slate-700 text-xs text-slate-500">
-                <span>Version 1.3.0</span>
+                <span>Version 1.3.1</span>
             </div>
         </div>
     `;
