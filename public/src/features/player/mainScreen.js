@@ -10,6 +10,7 @@ import { renderAvatar } from '../../ui/avatarRenderer.js';
 import { captureAnnualSnapshot } from '../../core/timeMachine.js';
 import { EulogyGenerator } from '../../core/eulogyGenerator.js';
 import { loadModule, preloadForContext } from '../../core/moduleLoader.js';
+import { checkPeriodicAchievements } from '../../core/achievementManager.js';
 const get = id => document.getElementById(id);
 
 function checkSchoolActionTaken(user) {
@@ -95,6 +96,9 @@ export async function ageUp() {
     checkSchoolActionTaken(user);
     checkActionTaken(user);          
     
+    // 6. Check Periodic Achievements
+    checkPeriodicAchievements(user);
+
     // Process tenant default popups first, then funerals, then render dashboard
     loadModule('assets').then(m => {
         if (m && typeof m.processNextTenantDefaultEvent === 'function') {

@@ -7,6 +7,7 @@ import { saveGame } from '../../core/main.js';
 import { SUPPLIERS } from '../../core/constants.js';
 import { HQ_TIERS, BUSINESS_INDUSTRIES, MARKETING_CHANNELS, SPECIALIZED_ROLES, VC_INVESTOR_TYPES, BUSINESS_DECISION_EVENTS } from './businessTypes.js';
 import { GameLogic } from '../../core/gameLogic.js';
+import { unlockAchievement } from '../../core/achievementManager.js';
 
 let activeBusinessTab = 'overview';
 let isProcessingBusinessAction = false;
@@ -1035,6 +1036,7 @@ export function launchIPO() {
             try {
                 const res = GameLogic.launchIPO(user, float);
                 if (res.success) {
+                    unlockAchievement('unicorn_tycoon', user);
                     addLog(res.msg, 'major');
                     if (typeof saveGame === 'function') saveGame();
                     UI.showModal('🎉 Historic IPO Listing!', res.msg);

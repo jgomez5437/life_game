@@ -4,6 +4,7 @@ import { Utils } from '../ui/utils.js';
 import { AvatarLogic } from './avatarLogic.js';
 import { HQ_TIERS, BUSINESS_INDUSTRIES, VC_INVESTOR_TYPES } from '../features/business/businessTypes.js';
 import { GRAD_SCHOOL_DEGREE_TITLES } from './constants.js';
+import { unlockAchievement } from './achievementManager.js';
 
 function sanitizeName(rawInput) {
     if (!rawInput || typeof rawInput !== 'string') {
@@ -5569,6 +5570,7 @@ function attemptPrisonEscape(user, method) {
     if (Math.random() < escapeChance) {
         user.inPrison = false;
         user.prisonSentenceRemaining = 0;
+        unlockAchievement('supermax_houdini', user);
         return {
             success: true,
             escaped: true,
