@@ -15,6 +15,7 @@ export async function configureAuth() {
         domain: config.domain,
         clientId: config.clientId,
         cacheLocation: 'localstorage',
+        useRefreshTokens: true,
         authorizationParams: {
             redirect_uri: window.location.origin
         }
@@ -31,20 +32,45 @@ export async function configureAuth() {
 
 export async function getAuthToken() {
     if (!state.auth0Client) return '';
+
+    // 1. Check if we have cached ID token claims that are still valid (not expired)
     try {
         const claims = await state.auth0Client.getIdTokenClaims();
-        if (claims?.__raw) return claims.__raw;
+        const nowSec = Math.floor(Date.now() / 1000);
+        // If claims exist with a raw token and expiration is at least 60 seconds in the future
+        if (claims?.__raw && typeof claims.exp === 'number' && claims.exp > nowSec + 60) {
+            return claims.__raw;
+        }
     } catch (e) {
-        console.warn("Could not retrieve ID token claims, trying silent refresh:", e);
+        console.warn("Could not retrieve ID token claims, attempting silent refresh:", e);
     }
 
+    // 2. Token is expired, near expiration, or claims not yet cached; refresh silently
     try {
         if (typeof state.auth0Client.getTokenSilently === 'function') {
-            const token = await state.auth0Client.getTokenSilently();
-            if (token) return token;
+            const tokenRes = await state.auth0Client.getTokenSilently({ detailedResponse: true });
+            if (tokenRes?.id_token) {
+                return tokenRes.id_token;
+            }
+            if (typeof tokenRes === 'string' && tokenRes) {
+                const refreshedClaims = await state.auth0Client.getIdTokenClaims();
+                if (refreshedClaims?.__raw) return refreshedClaims.__raw;
+                return tokenRes;
+            }
+            // If getTokenSilently updated the internal cache, retrieve the fresh claims
+            const refreshedClaims = await state.auth0Client.getIdTokenClaims();
+            if (refreshedClaims?.__raw) return refreshedClaims.__raw;
         }
     } catch (e2) {
         console.warn("Silent token refresh failed:", e2);
+    }
+
+    // 3. Fallback: if silent refresh failed, check if getIdTokenClaims has any token
+    try {
+        const fallbackClaims = await state.auth0Client.getIdTokenClaims();
+        if (fallbackClaims?.__raw) return fallbackClaims.__raw;
+    } catch (e3) {
+        console.warn("Fallback ID token retrieval failed:", e3);
     }
 
     return '';
