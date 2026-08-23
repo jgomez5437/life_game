@@ -340,6 +340,7 @@ export function migrateState(rawState) {
     const migratedUser = {
         username: toStr(u.username || u.name, "Player"),
         gender: ['male', 'female', 'non-binary'].includes(u.gender) ? u.gender : 'male',
+        country: toStr(u.country, "United States"),
         city: toStr(u.city, "New York"),
         appearance,
         avatarVersion: toNum(u.avatarVersion, 0, 0),

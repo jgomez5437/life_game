@@ -22,12 +22,14 @@ export default async function handler(request, response) {
         return;
     }
 
-    const { email, username, gender, city, relationships, appearance } = request.body;
+    const body = (typeof request.body === 'string' ? JSON.parse(request.body) : request.body) || {};
+    const { email, username, gender, country, city, relationships, appearance } = body;
 
     try {
         const slotData = {
             name: username,
             gender: gender,
+            country: country || 'United States',
             city: city,
             appearance: appearance || null,
             assets: [],
@@ -38,7 +40,7 @@ export default async function handler(request, response) {
             history: [
                 { 
                     age: 0, 
-                    events: [{ msg: `Born in ${city}`, color: "text-blue-400" }] 
+                    events: [{ msg: `Born in ${city || 'New York'}`, color: "text-blue-400" }] 
                 }
             ],
             _slotId: 'slot_1'
@@ -56,6 +58,7 @@ export default async function handler(request, response) {
             },
             name: username,
             gender: gender,
+            country: country || 'United States',
             city: city,
             appearance: appearance || null,
             assets: [],
@@ -66,7 +69,7 @@ export default async function handler(request, response) {
             history: [
                 { 
                     age: 0, 
-                    events: [{ msg: `Born in ${city}`, color: "text-blue-400" }] 
+                    events: [{ msg: `Born in ${city || 'New York'}`, color: "text-blue-400" }] 
                 }
             ]
         };

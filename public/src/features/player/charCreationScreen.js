@@ -1,5 +1,5 @@
 import { GameLogic } from '../../core/gameLogic.js';
-import { loadAndRenderGame, updateGameInfo } from '../../core/main.js';
+import { loadAndRenderGame, updateGameInfo, saveGame } from '../../core/main.js';
 import { state, hasPurchasedPack } from '../../core/state.js';
 import { renderLifeDashboard, addLog } from './mainScreen.js';
 import { FamilyFactory } from '../relationships/familyFactory.js';
@@ -9,6 +9,7 @@ import { AvatarLogic } from '../../core/avatarLogic.js';
 import { renderAvatar } from '../../ui/avatarRenderer.js';
 import { captureAnnualSnapshot } from '../../core/timeMachine.js';
 import { getAuthToken } from '../../auth/auth.js';
+import { saveToSlot, getSlotsStore } from '../../core/saveSlotManager.js';
 
 //Character creation screen
 const get = id => document.getElementById(id);
@@ -265,8 +266,12 @@ export async function submitCharacter() {
     if (state.auth0Client) {
         try { user = await state.auth0Client.getUser(); } catch (e) {}
     }
+    if (user) {
+        state.userAuthId = user.sub;
+        state.userEmail = user.email;
+    }
 
-    const inputName = get('inp-name').value;
+    const inputName = get('inp-name')?.value || '';
     const validation = GameLogic.sanitizeName(inputName);
 
     if (!validation.isValid) {
@@ -285,7 +290,7 @@ export async function submitCharacter() {
     const country = get('inp-country') ? get('inp-country').value : 'United States';
     const city = get('inp-city') ? get('inp-city').value : 'New York';
 
-    // === 1. GENERATE LOCAL ARRAY (DO NOT MUTATE STATE YET) ===
+    // === 1. GENERATE STARTING FAMILY ===
     let startingFamily = [];
     if (FamilyFactory) {
         startingFamily = FamilyFactory.generateFamily(lastName);
@@ -293,92 +298,73 @@ export async function submitCharacter() {
         console.error("FamilyFactory is not loaded. Relationships array will be empty.");
     }
 
-    let userData;
-
     try {
-        // === IF USER IS LOGGED IN ===
-        if (user) {
-            const authToken = await getAuthToken();
-            const response = await fetch('/api/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${authToken}`
-                },
-                body: JSON.stringify({
-                    email: user.email,
-                    username: finalName,
-                    gender: gender,
-                    country: country,
-                    city: city,
-                    relationships: startingFamily,
-                    appearance: draftAppearance
-                })
-            });
-            if (!response.ok) throw new Error('API Login Failed');
-
-            userData = await response.json();
-            const isExistingAdult = (userData.game_data?.stats?.age || userData.game_data?.user?.age || userData.age || 0) > 0;
-            if (!isExistingAdult) {
-                userData.relationships = startingFamily; // Only inject new family for newborn
-            }
-            updateGameInfo(userData);
+        // === 2. DETERMINE INITIAL STATS (SUPPORTING GOD MODE IF UNLOCKED) ===
+        let initialStats;
+        if (hasPurchasedPack('god_mode') && get('god-create-health')) {
+            initialStats = {
+                health: Math.max(0, Math.min(100, parseInt(get('god-create-health').value, 10) || 100)),
+                happiness: Math.max(0, Math.min(100, parseInt(get('god-create-happiness').value, 10) || 100)),
+                smarts: Math.max(0, Math.min(100, parseInt(get('god-create-smarts').value, 10) || 50)),
+                looks: Math.max(0, Math.min(100, parseInt(get('god-create-looks').value, 10) || 50))
+            };
+        } else {
+            initialStats = GameLogic.generateRandomStats ? GameLogic.generateRandomStats() : {
+                health: 100,
+                happiness: 100,
+                smarts: Math.floor(Math.random() * 56) + 40,
+                looks: Math.floor(Math.random() * 56) + 40
+            };
         }
-        // === IF GUEST ===
-        else {
-            let initialStats;
-            if (hasPurchasedPack('god_mode') && get('god-create-health')) {
-                initialStats = {
-                    health: Math.max(0, Math.min(100, parseInt(get('god-create-health').value, 10) || 100)),
-                    happiness: Math.max(0, Math.min(100, parseInt(get('god-create-happiness').value, 10) || 100)),
-                    smarts: Math.max(0, Math.min(100, parseInt(get('god-create-smarts').value, 10) || 50)),
-                    looks: Math.max(0, Math.min(100, parseInt(get('god-create-looks').value, 10) || 50))
-                };
-            } else {
-                initialStats = GameLogic.generateRandomStats ? GameLogic.generateRandomStats() : {
-                    health: 100,
-                    happiness: 100,
-                    smarts: Math.floor(Math.random() * 56) + 40,
-                    looks: Math.floor(Math.random() * 56) + 40
-                };
-            }
-            const savedPurchases = Array.isArray(state.verifiedPurchases)
-                ? [...state.verifiedPurchases]
-                : [];
 
-            let activeSlotId = 'slot_1';
+        const savedPurchases = Array.isArray(state.verifiedPurchases)
+            ? [...state.verifiedPurchases]
+            : [];
+
+        // === 3. DETERMINE ACTIVE SAVE SLOT ===
+        let activeSlotId = state.gameState?._slotId || 'slot_1';
+        try {
+            const store = getSlotsStore();
+            if (store && store.activeSlotId) {
+                activeSlotId = store.activeSlotId;
+            }
+        } catch (e) {
             try {
                 const rawStore = localStorage.getItem('life_game_slots');
                 if (rawStore) {
                     const storeObj = JSON.parse(rawStore);
                     if (storeObj.activeSlotId) activeSlotId = storeObj.activeSlotId;
                 }
-            } catch (e) {}
-
-            userData = {
-                username: finalName,
-                gender: gender,
-                country: country,
-                city: city,
-                age: 0,
-                money: 0,
-                debt: 0,
-                purchases: savedPurchases,
-                health: initialStats.health,
-                happiness: initialStats.happiness,
-                smarts: initialStats.smarts,
-                looks: initialStats.looks,
-                karma: 50,
-                appearance: draftAppearance,
-                relationships: startingFamily,
-                assets: [],
-                lifeLog: []
-            };
-            loadAndRenderGame(userData);
-            if (state.gameState) state.gameState._slotId = activeSlotId;
+            } catch (err) {}
         }
 
-        // --- PARENTAGE LOGIC (Newborns only) ---
+        // === 4. BUILD NEW CHARACTER GAME STATE ===
+        const userData = {
+            username: finalName,
+            gender: gender,
+            country: country,
+            city: city,
+            age: 0,
+            money: 0,
+            debt: 0,
+            purchases: savedPurchases,
+            health: initialStats.health,
+            happiness: initialStats.happiness,
+            smarts: initialStats.smarts,
+            looks: initialStats.looks,
+            karma: 50,
+            appearance: draftAppearance,
+            relationships: startingFamily,
+            assets: [],
+            lifeLog: []
+        };
+
+        loadAndRenderGame(userData);
+        if (state.gameState) {
+            state.gameState._slotId = activeSlotId;
+        }
+
+        // --- 5. PARENTAGE LOGIC (Newborns only) ---
         const userAge = state.gameState?.user?.age || 0;
         if (userAge === 0 && state.gameState?.user?.relationships) {
             const rels = state.gameState.user.relationships;
@@ -401,15 +387,26 @@ export async function submitCharacter() {
             }
         }
 
-        // Render the UI only after all state has been initialized
-        // Note: updateGameInfo/loadAndRenderGame should be responsible for calling this, 
-        // but if left here, it will execute after gameState exists.
-        captureAnnualSnapshot(state.gameState);
-        import('../../core/saveSlotManager.js').then(m => {
-            if (m && typeof m.saveToSlot === 'function') {
-                m.saveToSlot(state.gameState._slotId);
+        // --- 6. SNAPSHOT & SLOT SAVE ---
+        if (state.gameState) {
+            captureAnnualSnapshot(state.gameState);
+            saveToSlot(activeSlotId, finalName);
+        }
+
+        // --- 7. CLOUD SYNC FOR AUTHENTICATED USERS ---
+        if (state.userAuthId || user) {
+            try {
+                if (typeof saveGame === 'function') {
+                    await saveGame();
+                } else if (typeof window !== 'undefined' && typeof window.saveGame === 'function') {
+                    await window.saveGame();
+                }
+            } catch (cloudErr) {
+                console.warn("Cloud save warning during character creation:", cloudErr);
             }
-        }).catch(() => {});
+        }
+
+        // --- 8. MOUNT LIFE DASHBOARD ---
         renderLifeDashboard(state.gameState);
 
     } catch (error) {
