@@ -172,53 +172,56 @@ describe('Special Careers & Mafia Syndicate System', () => {
     });
 
     describe('Mafia Annual Quota & Promotion Turn Engine', () => {
-        test('ageUp inflicts beatings and dock salary if annual quota (<3) not met', () => {
-            const user = state.gameState.user;
+        test('ageUp inflicts beatings and dock salary if annual quota (<3) not met', async () => {
             confirmJoinSpecialCareer('mafia_syndicate');
+            const user = state.gameState.user;
             user.mafiaCrimesThisYear = 1; // Failed quota of 3
             user.health = 100;
             const salary = user.jobSalary;
             const initialMoney = user.money;
 
-            ageUp();
+            await ageUp();
 
-            expect(user.health).toBeLessThanOrEqual(75); // -25 penalty plus natural age decay
-            expect(user.health).toBeGreaterThanOrEqual(70);
+            const activeUser = state.gameState.user;
+            expect(activeUser.health).toBeLessThanOrEqual(75); // -25 penalty plus natural age decay
+            expect(activeUser.health).toBeGreaterThanOrEqual(70);
             // Money should equal initialMoney minus living expenses, WITHOUT salary added
-            const expectedLivingExpenses = GameLogic.addLivingExpenses(user.age - 1, user.isStudent, user.city);
-            expect(user.money).toBe(initialMoney - expectedLivingExpenses);
-            expect(user.mafiaCrimesThisYear).toBe(0); // Quota reset for next year
+            const expectedLivingExpenses = GameLogic.addLivingExpenses(activeUser.age - 1, activeUser.isStudent, activeUser.city);
+            expect(activeUser.money).toBe(initialMoney - expectedLivingExpenses);
+            expect(activeUser.mafiaCrimesThisYear).toBe(0); // Quota reset for next year
         });
 
-        test('ageUp pays salary and advances yearsInRole when annual quota (>=3) is met', () => {
-            const user = state.gameState.user;
+        test('ageUp pays salary and advances yearsInRole when annual quota (>=3) is met', async () => {
             confirmJoinSpecialCareer('mafia_syndicate');
+            const user = state.gameState.user;
             user.mafiaCrimesThisYear = 3; // Quota met
             user.health = 100;
             const initialMoney = user.money;
             const salary = user.jobSalary;
 
-            ageUp();
+            await ageUp();
 
-            expect(user.health).toBeGreaterThanOrEqual(95);
-            const expectedLivingExpenses = GameLogic.addLivingExpenses(user.age - 1, user.isStudent, user.city);
-            expect(user.money).toBe(initialMoney + salary - expectedLivingExpenses);
-            expect(user.yearsInRole).toBe(1);
-            expect(user.mafiaCrimesThisYear).toBe(0);
+            const activeUser = state.gameState.user;
+            expect(activeUser.health).toBeGreaterThanOrEqual(95);
+            const expectedLivingExpenses = GameLogic.addLivingExpenses(activeUser.age - 1, activeUser.isStudent, activeUser.city);
+            expect(activeUser.money).toBe(initialMoney + salary - expectedLivingExpenses);
+            expect(activeUser.yearsInRole).toBe(1);
+            expect(activeUser.mafiaCrimesThisYear).toBe(0);
         });
 
-        test('ageUp promotes Muscle to Made Man after meeting minYears and eligibility roll', () => {
+        test('ageUp promotes Muscle to Made Man after meeting minYears and eligibility roll', async () => {
             const spy = jest.spyOn(Math, 'random').mockReturnValue(0.1);
-            const user = state.gameState.user;
             confirmJoinSpecialCareer('mafia_syndicate');
+            const user = state.gameState.user;
             user.yearsInRole = 2; // Level 0 (Muscle) minYears is 2
             user.mafiaCrimesThisYear = 3;
 
-            ageUp();
+            await ageUp();
 
-            expect(user.careerLevel).toBe(1);
-            expect(user.jobTitle).toBe('Made Man');
-            expect(user.yearsInRole).toBe(0);
+            const activeUser = state.gameState.user;
+            expect(activeUser.careerLevel).toBe(1);
+            expect(activeUser.jobTitle).toBe('Made Man');
+            expect(activeUser.yearsInRole).toBe(0);
 
             spy.mockRestore();
         });
