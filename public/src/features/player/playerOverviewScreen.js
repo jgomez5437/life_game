@@ -298,5 +298,9 @@ export function openPlayerOverviewModal() {
         </div>
     `;
 
-    UI.showCustomModal("Player Life Overview", modalHtml);
+    UI.showCustomModal({
+        title: "Player Life Overview",
+        content: modalHtml,
+        showCloseBtn: true
+    });
 }
