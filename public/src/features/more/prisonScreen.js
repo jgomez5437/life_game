@@ -58,27 +58,29 @@ export function renderPrisonDashboard() {
     ` : '';
 
     const tabNavHtml = `
-        <div class="flex items-center gap-1.5 overflow-x-auto pb-2 mb-3 no-scrollbar text-xs font-bold">
-            <button data-action="setPrisonTab" data-args="cell_block" class="px-3 py-2 rounded-xl transition shrink-0 flex items-center gap-1.5 ${activePrisonTab === 'cell_block' ? 'bg-slate-700 text-white border border-slate-600 shadow' : 'bg-slate-800/80 text-slate-400 hover:text-white'}">
+        <div id="prison-tab-nav" class="flex items-center gap-1.5 overflow-x-auto pb-2 mb-3 no-scrollbar text-xs font-bold touch-pan-x overscroll-contain select-none">
+            <button data-action="setPrisonTab" data-args="cell_block" class="px-3 py-2 rounded-xl transition shrink-0 flex items-center gap-1.5 ${activePrisonTab === 'cell_block' ? 'bg-slate-700 text-white border border-amber-500/60 shadow-md ring-1 ring-amber-500/30 font-extrabold' : 'bg-slate-800/80 text-slate-400 hover:text-white border border-slate-700/50'}">
                 <i class="fas fa-bed text-amber-400"></i> Cell Block
             </button>
-            <button data-action="setPrisonTab" data-args="yard" class="px-3 py-2 rounded-xl transition shrink-0 flex items-center gap-1.5 ${activePrisonTab === 'yard' ? 'bg-slate-700 text-white border border-slate-600 shadow' : 'bg-slate-800/80 text-slate-400 hover:text-white'}">
+            <button data-action="setPrisonTab" data-args="yard" class="px-3 py-2 rounded-xl transition shrink-0 flex items-center gap-1.5 ${activePrisonTab === 'yard' ? 'bg-slate-700 text-white border border-emerald-500/60 shadow-md ring-1 ring-emerald-500/30 font-extrabold' : 'bg-slate-800/80 text-slate-400 hover:text-white border border-slate-700/50'}">
                 <i class="fas fa-dumbbell text-emerald-400"></i> Yard & Gym
             </button>
-            <button data-action="setPrisonTab" data-args="jobs_canteen" class="px-3 py-2 rounded-xl transition shrink-0 flex items-center gap-1.5 ${activePrisonTab === 'jobs_canteen' ? 'bg-slate-700 text-white border border-slate-600 shadow' : 'bg-slate-800/80 text-slate-400 hover:text-white'}">
+            <button data-action="setPrisonTab" data-args="jobs_canteen" class="px-3 py-2 rounded-xl transition shrink-0 flex items-center gap-1.5 ${activePrisonTab === 'jobs_canteen' ? 'bg-slate-700 text-white border border-indigo-500/60 shadow-md ring-1 ring-indigo-500/30 font-extrabold' : 'bg-slate-800/80 text-slate-400 hover:text-white border border-slate-700/50'}">
                 <i class="fas fa-utensils text-indigo-400"></i> Jobs & Canteen
             </button>
-            <button data-action="setPrisonTab" data-args="legal" class="px-3 py-2 rounded-xl transition shrink-0 flex items-center gap-1.5 ${activePrisonTab === 'legal' ? 'bg-slate-700 text-white border border-slate-600 shadow' : 'bg-slate-800/80 text-slate-400 hover:text-white'}">
+            <button data-action="setPrisonTab" data-args="legal" class="px-3 py-2 rounded-xl transition shrink-0 flex items-center gap-1.5 ${activePrisonTab === 'legal' ? 'bg-slate-700 text-white border border-cyan-500/60 shadow-md ring-1 ring-cyan-500/30 font-extrabold' : 'bg-slate-800/80 text-slate-400 hover:text-white border border-slate-700/50'}">
                 <i class="fas fa-balance-scale text-cyan-400"></i> Law & Appeals
             </button>
-            <button data-action="setPrisonTab" data-args="visiting" class="px-3 py-2 rounded-xl transition shrink-0 flex items-center gap-1.5 ${activePrisonTab === 'visiting' ? 'bg-slate-700 text-white border border-slate-600 shadow' : 'bg-slate-800/80 text-slate-400 hover:text-white'}">
+            <button data-action="setPrisonTab" data-args="visiting" class="px-3 py-2 rounded-xl transition shrink-0 flex items-center gap-1.5 ${activePrisonTab === 'visiting' ? 'bg-slate-700 text-white border border-pink-500/60 shadow-md ring-1 ring-pink-500/30 font-extrabold' : 'bg-slate-800/80 text-slate-400 hover:text-white border border-slate-700/50'}">
                 <i class="fas fa-user-friends text-pink-400"></i> Visiting Room
             </button>
-            <button data-action="setPrisonTab" data-args="escape" class="px-3 py-2 rounded-xl transition shrink-0 flex items-center gap-1.5 ${activePrisonTab === 'escape' ? 'bg-slate-700 text-white border border-slate-600 shadow' : 'bg-slate-800/80 text-slate-400 hover:text-white'}">
+            <button data-action="setPrisonTab" data-args="escape" class="px-3 py-2 rounded-xl transition shrink-0 flex items-center gap-1.5 ${activePrisonTab === 'escape' ? 'bg-slate-700 text-white border border-red-500/60 shadow-md ring-1 ring-red-500/30 font-extrabold' : 'bg-slate-800/80 text-slate-400 hover:text-white border border-slate-700/50'}">
                 <i class="fas fa-person-walking-arrow-right text-red-400"></i> Parole & Escape
             </button>
         </div>
     `;
+
+    const prevScrollLeft = document.getElementById('prison-tab-nav')?.scrollLeft;
 
     get('game-container').innerHTML = `
         <div class="flex flex-col h-full max-w-lg mx-auto">
@@ -136,11 +138,14 @@ export function renderPrisonDashboard() {
             </div>
         </div>
     `;
+
+    UI.preserveTabScroll('prison-tab-nav', `[data-action="setPrisonTab"][data-args="${activePrisonTab}"]`, prevScrollLeft);
 }
 
 export function setPrisonTab(tabKey) {
     activePrisonTab = tabKey;
     renderPrisonDashboard();
+    UI.scrollTabIntoView('prison-tab-nav', `[data-action="setPrisonTab"][data-args="${activePrisonTab}"]`, { behavior: 'smooth', align: 'center' });
 }
 
 function renderActivePrisonTab(user, stats) {

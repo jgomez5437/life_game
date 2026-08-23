@@ -741,6 +741,7 @@ export const renderJewelryDealer = (selectedCategory = 'all') => {
     }).join('');
 
     UI.updateBottomNav('assets');
+    const prevScrollLeft = document.getElementById('jewelry-tab-nav')?.scrollLeft;
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
             <div class="mb-4">
@@ -758,7 +759,7 @@ export const renderJewelryDealer = (selectedCategory = 'all') => {
                 <div class="mt-2 font-bold text-sm text-green-400">Cash: ${Utils.formatMoney(user.money)}</div>
             </div>
 
-            <div class="flex gap-1.5 mb-4 overflow-x-auto pb-1">
+            <div id="jewelry-tab-nav" class="flex gap-1.5 mb-4 overflow-x-auto pb-1 touch-pan-x overscroll-contain select-none">
                 ${categoryTabsHtml}
             </div>
 
@@ -767,6 +768,8 @@ export const renderJewelryDealer = (selectedCategory = 'all') => {
             </div>
         </div>
     `;
+
+    UI.preserveTabScroll('jewelry-tab-nav', `[data-action="renderJewelryDealer"][data-args*="${selectedCategory}"]`, prevScrollLeft);
 };
 
 export const buyJewelry = (itemId) => {

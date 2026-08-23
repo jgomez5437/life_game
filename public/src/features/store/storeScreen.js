@@ -198,7 +198,7 @@ export function renderStoreScreen(activeCategory = null) {
             </div>
 
             <!-- Tab Filters -->
-            <div class="flex gap-1.5 overflow-x-auto pb-2 mb-3 scrollbar-none">
+            <div id="store-tab-nav" class="flex gap-1.5 overflow-x-auto pb-2 mb-3 scrollbar-none touch-pan-x overscroll-contain select-none">
                 ${renderTabButton('all', 'All Items', 'fa-border-all')}
                 ${renderTabButton('perk', 'Perks', 'fa-bolt')}
                 ${renderTabButton('career', 'Career Packs', 'fa-briefcase')}
@@ -218,8 +218,11 @@ export function renderStoreScreen(activeCategory = null) {
         </div>
     `;
 
+    const prevScrollLeft = document.getElementById('store-tab-nav')?.scrollLeft;
+
     UI.renderScreen(storeHTML);
     UI.updateBottomNav('more');
+    UI.preserveTabScroll('store-tab-nav', `[data-action="filterStoreCategory"][data-args*="${currentActiveTab}"]`, prevScrollLeft);
 }
 
 function renderTabButton(tabId, label, icon) {
@@ -332,6 +335,7 @@ function renderPackCard(pack) {
  */
 export function filterStoreCategory(category) {
     renderStoreScreen(category);
+    UI.scrollTabIntoView('store-tab-nav', `[data-action="filterStoreCategory"][data-args*="${currentActiveTab}"]`, { behavior: 'smooth', align: 'center' });
 }
 
 /**

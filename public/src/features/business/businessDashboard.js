@@ -28,6 +28,7 @@ export function enterBusinessMode() {
 export function setBusinessTab(tabId) {
     activeBusinessTab = tabId;
     renderBusinessDashboard();
+    UI.scrollTabIntoView('business-tab-nav', `[data-action="setBusinessTab"][data-args*="${activeBusinessTab}"]`, { behavior: 'smooth', align: 'center' });
 }
 
 // ─── MAIN DASHBOARD RENDER ───────────────────────────────────────────────────
@@ -57,10 +58,10 @@ export function renderBusinessDashboard() {
     ];
 
     const tabNavHtml = `
-        <div class="flex border-b border-slate-700 mb-6 space-x-1 overflow-x-auto pb-1">
+        <div id="business-tab-nav" class="flex border-b border-slate-700 mb-6 space-x-1 overflow-x-auto pb-1 touch-pan-x overscroll-contain select-none">
             ${tabs.map(t => `
                 <button data-action="setBusinessTab" data-args="&apos;${t.id}&apos;"
-                        class="px-4 py-2.5 rounded-t-lg font-bold text-xs flex items-center gap-2 whitespace-nowrap transition ${activeBusinessTab === t.id ? 'bg-indigo-600 text-white border-b-2 border-indigo-400' : 'bg-slate-800/60 text-slate-400 hover:text-white hover:bg-slate-700'}">
+                        class="px-4 py-2.5 rounded-t-lg font-bold text-xs flex items-center gap-2 whitespace-nowrap transition ${activeBusinessTab === t.id ? 'bg-indigo-600 text-white border-b-2 border-indigo-400 font-extrabold shadow-sm' : 'bg-slate-800/60 text-slate-400 hover:text-white hover:bg-slate-700'}">
                     <i class="fas ${t.icon}"></i> ${t.name}
                 </button>
             `).join('')}
@@ -89,6 +90,8 @@ export function renderBusinessDashboard() {
     } else if (activeBusinessTab === 'finance') {
         contentHtml = renderTabFinance(user, ind, valuation, overhead);
     }
+
+    const prevScrollLeft = document.getElementById('business-tab-nav')?.scrollLeft;
 
     UI.updateBottomNav('work');
     UI.renderScreen(`
@@ -129,6 +132,7 @@ export function renderBusinessDashboard() {
 
     attachDashboardListeners();
     updateDashboardCalculations();
+    UI.preserveTabScroll('business-tab-nav', `[data-action="setBusinessTab"][data-args*="${activeBusinessTab}"]`, prevScrollLeft);
 }
 
 // ─── TAB 1: OVERVIEW ─────────────────────────────────────────────────────────
