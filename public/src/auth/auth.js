@@ -33,11 +33,21 @@ export async function getAuthToken() {
     if (!state.auth0Client) return '';
     try {
         const claims = await state.auth0Client.getIdTokenClaims();
-        return claims?.__raw || '';
+        if (claims?.__raw) return claims.__raw;
     } catch (e) {
-        console.warn("Could not retrieve ID token:", e);
-        return '';
+        console.warn("Could not retrieve ID token claims, trying silent refresh:", e);
     }
+
+    try {
+        if (typeof state.auth0Client.getTokenSilently === 'function') {
+            const token = await state.auth0Client.getTokenSilently();
+            if (token) return token;
+        }
+    } catch (e2) {
+        console.warn("Silent token refresh failed:", e2);
+    }
+
+    return '';
 }
 
 export async function login() {

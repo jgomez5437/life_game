@@ -334,7 +334,10 @@ let _hasPendingSave = false;
 //updates game info
 export function updateGameInfo(dbUser) {
     console.log("Updating game state from DB...");
-    const rawData = dbUser.game_data || {};
+    let rawData = dbUser.game_data || {};
+    if (typeof rawData === 'string') {
+        try { rawData = JSON.parse(rawData); } catch (e) {}
+    }
 
     // Authoritative entitlement hydration from server
     const serverPurchases = rawData.user?.purchases || rawData.purchases;
@@ -436,6 +439,7 @@ async function _executeCloudSave() {
     try {
         const response = await fetch('/api/saveGame', {
             method: 'POST',
+            keepalive: true,
             headers: { 
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${authToken}`
@@ -813,9 +817,17 @@ async function initGame() {
                     });
                     if (response.ok) {
                         const data = await response.json();
-                        if (data && data.game_data && Object.keys(data.game_data).length > 0 && (data.game_data.user || data.game_data.stats)) {
-                            dbUser = data;
-                            break;
+                        let parsedGameData = data?.game_data;
+                        if (typeof parsedGameData === 'string') {
+                            try { parsedGameData = JSON.parse(parsedGameData); } catch (e) {}
+                        }
+                        if (parsedGameData && typeof parsedGameData === 'object' && Object.keys(parsedGameData).length > 0) {
+                            const hasChar = parsedGameData.user || parsedGameData.stats || parsedGameData.name || parsedGameData.username ||
+                                (parsedGameData.slots && typeof parsedGameData.slots === 'object' && Object.values(parsedGameData.slots).some(s => s && (s.data?.user || s.data?.name || s.data?.stats)));
+                            if (hasChar) {
+                                dbUser = { ...data, game_data: parsedGameData };
+                                break;
+                            }
                         }
                     }
                 }
@@ -846,8 +858,16 @@ async function initGame() {
                 });
                 if (fallbackResp.ok) {
                     const fallbackData = await fallbackResp.json();
-                    if (fallbackData && fallbackData.game_data && Object.keys(fallbackData.game_data).length > 0 && (fallbackData.game_data.user || fallbackData.game_data.stats)) {
-                        dbUser = fallbackData;
+                    let parsedFallback = fallbackData?.game_data;
+                    if (typeof parsedFallback === 'string') {
+                        try { parsedFallback = JSON.parse(parsedFallback); } catch (e) {}
+                    }
+                    if (parsedFallback && typeof parsedFallback === 'object' && Object.keys(parsedFallback).length > 0) {
+                        const hasChar = parsedFallback.user || parsedFallback.stats || parsedFallback.name || parsedFallback.username ||
+                            (parsedFallback.slots && typeof parsedFallback.slots === 'object' && Object.values(parsedFallback.slots).some(s => s && (s.data?.user || s.data?.name || s.data?.stats)));
+                        if (hasChar) {
+                            dbUser = { ...fallbackData, game_data: parsedFallback };
+                        }
                     }
                 }
             } catch (e) {
@@ -950,6 +970,22 @@ async function initGame() {
                     if (localRecovered) localRecovered._slotId = activeId;
                 }
             } catch (e) {}
+
+            // Also check legacy single save key 'life_game_save'
+            if (!localRecovered) {
+                try {
+                    const legacy = localStorage.getItem('life_game_save');
+                    if (legacy) {
+                        const parsed = JSON.parse(legacy);
+                        if (parsed && (parsed.user || parsed.name || parsed.stats)) {
+                            const migrated = migrateState(parsed);
+                            if (migrated && migrated.user && migrated.user.lifeStatus !== 'Deceased') {
+                                localRecovered = migrated;
+                            }
+                        }
+                    }
+                } catch (e) {}
+            }
 
             if (localRecovered && localRecovered.user) {
                 console.log(`Recovered active character (${localRecovered.user.username}) from local slot (${recoveredSlotId}). Syncing to cloud...`);

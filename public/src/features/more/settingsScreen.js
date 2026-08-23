@@ -186,10 +186,23 @@ export function toggleSettingTheme() {
     }
 }
 
-export function triggerManualSave() {
+export async function triggerManualSave() {
     if (typeof saveGame === 'function') {
-        saveGame();
-        UI.showModal("Save Successful", "Your game progress has been saved.");
+        const isCloud = !!state.userAuthId;
+        const result = await saveGame(true);
+        if (result) {
+            UI.showModal(
+                "Save Successful",
+                isCloud 
+                    ? "Your game progress has been synchronized to your cloud account." 
+                    : "Your game progress has been saved locally on this device."
+            );
+        } else {
+            UI.showModal(
+                "Save Warning",
+                "Progress was saved locally, but cloud synchronization could not be confirmed. Please check your connection."
+            );
+        }
     }
 }
 
