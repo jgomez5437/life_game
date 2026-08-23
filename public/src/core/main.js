@@ -327,6 +327,10 @@ export const saveToSlot = lazy('saveSlotManager', 'saveToSlot');
 // public/script.js
 state.gameState = null;
 const API_URL = '/api'
+let _saveDebounceTimer = null;
+let _isSaveInFlight = false;
+let _hasPendingSave = false;
+
 //updates game info
 export function updateGameInfo(dbUser) {
     console.log("Updating game state from DB...");
@@ -346,18 +350,21 @@ export function updateGameInfo(dbUser) {
 
     // Extract active slot data
     const activeSlotId = store.activeSlotId || rawData.activeSlotId || rawData._slotId || 'slot_1';
-    const activeSlotData = store.slots[activeSlotId]?.data || rawData;
-    const data = activeSlotData || dbUser;
+    const activeSlotData = store.slots[activeSlotId]?.data;
+    const fallbackData = (rawData.user || rawData.stats || rawData.username || rawData.name) ? rawData : null;
+    const data = activeSlotData || fallbackData || store.slots[Object.keys(store.slots)[0]]?.data;
 
     state.userAuthId = dbUser.auth0_id;
     state.userEmail = dbUser.email;
 
-    state.gameState = migrateState(data);
-    if (state.gameState) {
-        state.gameState._slotId = activeSlotId;
-    }
-    if (state.gameState?.user) {
-        GameLogic.backfillRelationshipGender(state.gameState.user.relationships);
+    if (data) {
+        state.gameState = migrateState(data);
+        if (state.gameState) {
+            state.gameState._slotId = activeSlotId;
+        }
+        if (state.gameState?.user) {
+            GameLogic.backfillRelationshipGender(state.gameState.user.relationships);
+        }
     }
 
     // Render
@@ -367,8 +374,11 @@ export function updateGameInfo(dbUser) {
         if (typeof renderDeathScreen === "function") {
             renderDeathScreen(state.gameState.user, cause);
         }
-    } else if (typeof renderLifeDashboard === "function") {
+    } else if (state.gameState?.user && typeof renderLifeDashboard === "function") {
         renderLifeDashboard(state.gameState); 
+    } else if (typeof renderCharCreation === "function") {
+        console.log("No valid character state found in save. Directing to Character Creation.");
+        renderCharCreation();
     } else {
         console.error("❌ renderLifeDashboard function not found!");
     }
@@ -386,59 +396,43 @@ export const loadAndRenderGame = (userData) => {
     //.addLog function contains the renderLifeDashboard call
     addLog(`Born in ${state.gameState.user.city}. Welcome to the world!`, 'good');
 };
-//save game function
-// Attach to window so it is globally accessible
-if (typeof window !== 'undefined') {
-    window.saveGame = saveGame;
-    window.renderLifeDashboard = renderLifeDashboard;
-    window.renderCharCreation = renderCharCreation;
-}
 
 const isTestEnv = typeof process !== 'undefined' && (process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID !== undefined);
 
-export async function saveGame() {
-    if (isTestEnv) {
-        return;
-    }
-    
-    // 1. Safety Checks
-    // Ensure active state is saved to slot store locally first
-    if (state.gameState && state.gameState.user) {
-        saveToSlot();
+/**
+ * Internal executor that performs the cloud network request with inflight queueing.
+ */
+async function _executeCloudSave() {
+    if (!state.userAuthId || !state.gameState || !state.gameState.user) {
+        return false;
     }
 
-    // Don't save if we are a guest (no ID) or if the game hasn't loaded yet (no state)
-    if (!state.userAuthId) {
-        console.log("⚠️ Guest mode. Saved locally.");
-        return;
-    }
-    if (!state.gameState || !state.gameState.user) {
-        console.error("⚠️ Game state not ready. Save skipped.");
-        return;
+    if (_isSaveInFlight) {
+        _hasPendingSave = true;
+        return true;
     }
 
-    console.log("Saving to Cloud...");
+    _isSaveInFlight = true;
+    _hasPendingSave = false;
 
-    // 2. The Payload
-    // This captures EVERYTHING: all slots, activeSlotId, user, history, assets, snapshots, etc.
     const activeSlotId = state.gameState._slotId || 'slot_1';
     const cloudGameData = buildCloudSavePayload(state.gameState);
 
     const payload = {
         auth0_id: state.userAuthId,
-        email: state.userEmail, // optional helper
+        email: state.userEmail,
         slotId: activeSlotId,
         game_data: cloudGameData
     };
 
-    // 3. Send to API
     let authToken = '';
     try {
         authToken = await getAuthToken();
     } catch (e) {
-        console.warn('Could not get auth token:', e);
+        console.warn('Could not get auth token for cloud save:', e);
     }
 
+    let success = false;
     try {
         const response = await fetch('/api/saveGame', {
             method: 'POST',
@@ -451,15 +445,97 @@ export async function saveGame() {
 
         if (response.ok) {
             console.log("Save Complete!");
+            success = true;
         } else {
             console.error("❌ Save Failed:", await response.text());
         }
     } catch (e) {
         console.error("Network Error:", e);
+    } finally {
+        _isSaveInFlight = false;
+        if (_hasPendingSave) {
+            _hasPendingSave = false;
+            return await _executeCloudSave();
+        }
     }
-};
+
+    return success;
+}
+
+/**
+ * Saves active game state locally to active slot immediately, and synchronizes with cloud.
+ * Supports debounced non-blocking calls (default during gameplay/ageUp) and immediate execution.
+ * @param {boolean} [immediate=false] - If true, bypasses debounce and synchronizes to cloud immediately.
+ * @returns {Promise<boolean>}
+ */
+export async function saveGame(immediate = false) {
+    // 1. Immediate local persistence to slots store (0ms latency guarantee)
+    if (state.gameState && state.gameState.user) {
+        saveToSlot();
+    }
+
+    // In test environment, skip cloud network unless fetch is explicitly mocked
+    if (isTestEnv && !(typeof globalThis.fetch === 'function' && (globalThis.fetch._isMockFunction || globalThis.fetch.mock !== undefined))) {
+        return true;
+    }
+
+    // Don't save if we are a guest (no ID) or if the game hasn't loaded yet (no state)
+    if (!state.userAuthId) {
+        console.log("⚠️ Guest mode. Saved locally.");
+        return true;
+    }
+    if (!state.gameState || !state.gameState.user) {
+        console.error("⚠️ Game state not ready. Save skipped.");
+        return false;
+    }
+
+    if (!immediate) {
+        // Trailing-edge debounce: reset timer and schedule cloud sync in 400ms
+        if (_saveDebounceTimer) {
+            clearTimeout(_saveDebounceTimer);
+        }
+        return new Promise(resolve => {
+            _saveDebounceTimer = setTimeout(async () => {
+                _saveDebounceTimer = null;
+                const result = await _executeCloudSave();
+                resolve(result);
+            }, 400);
+        });
+    }
+
+    // Immediate execution: cancel pending debounce timer and sync now
+    if (_saveDebounceTimer) {
+        clearTimeout(_saveDebounceTimer);
+        _saveDebounceTimer = null;
+    }
+    return await _executeCloudSave();
+}
+
+/**
+ * Flushes any pending debounced save immediately (e.g. window unload, visibility change).
+ */
+export async function flushPendingSave() {
+    if (_saveDebounceTimer) {
+        clearTimeout(_saveDebounceTimer);
+        _saveDebounceTimer = null;
+    }
+    if (state.gameState && state.gameState.user) {
+        saveToSlot();
+        if (state.userAuthId) {
+            return await _executeCloudSave();
+        }
+    }
+    return true;
+}
+
+// Attach to window so it is globally accessible
 if (typeof window !== 'undefined') {
     window.saveGame = saveGame;
+    window.flushPendingSave = flushPendingSave;
+    window.renderLifeDashboard = renderLifeDashboard;
+    window.renderCharCreation = renderCharCreation;
+    window.addEventListener('beforeunload', () => flushPendingSave());
+    window.addEventListener('pagehide', () => flushPendingSave());
 }
 
 // --- Unified Entry Point ---
@@ -818,7 +894,7 @@ async function initGame() {
                     if (state.gameState?.user) {
                         GameLogic.backfillRelationshipGender(state.gameState.user.relationships);
                     }
-                    await saveGame();
+                    await saveGame(true);
                     Utils.guestStorage.clearSave();
                     renderLifeDashboard(state.gameState);
                     UI.showModal("Character Saved!", `Your guest character (${guestName}) has been saved to your account.`);
@@ -847,7 +923,7 @@ async function initGame() {
                 GameLogic.backfillRelationshipGender(state.gameState.user.relationships);
             }
             
-            await saveGame();
+            await saveGame(true);
             Utils.guestStorage.clearSave();
 
             if (typeof renderLifeDashboard === "function") {
@@ -857,12 +933,36 @@ async function initGame() {
             return;
         }
 
-        // SCENARIO 3: No Guest Save -> Load Cloud Save or Start Character Creation
+        // SCENARIO 3: No Guest Save -> Load Cloud Save, Recover Local Slot, or Start Character Creation
         if (dbUser) {
             updateGameInfo(dbUser);
         } else {
-            console.log("No save file found. Starting Character Creation.");
-            renderCharCreation();
+            // Check if local slots store has an existing character that hasn't synced to cloud yet
+            let localRecovered = null;
+            let recoveredSlotId = 'slot_1';
+            try {
+                const store = getSlotsStore();
+                const activeId = store.activeSlotId || 'slot_1';
+                const activeSlot = store.slots[activeId] || Object.values(store.slots)[0];
+                if (activeSlot?.data?.user && activeSlot.data.user.lifeStatus !== 'Deceased') {
+                    localRecovered = migrateState(activeSlot.data);
+                    recoveredSlotId = activeId;
+                    if (localRecovered) localRecovered._slotId = activeId;
+                }
+            } catch (e) {}
+
+            if (localRecovered && localRecovered.user) {
+                console.log(`Recovered active character (${localRecovered.user.username}) from local slot (${recoveredSlotId}). Syncing to cloud...`);
+                state.gameState = localRecovered;
+                GameLogic.backfillRelationshipGender(state.gameState.user.relationships);
+                saveGame(true);
+                if (typeof renderLifeDashboard === "function") {
+                    renderLifeDashboard(state.gameState);
+                }
+            } else {
+                console.log("No save file found. Starting Character Creation.");
+                renderCharCreation();
+            }
         }
 
         // Apply verified purchased pack to active user state immediately if verified
@@ -871,7 +971,7 @@ async function initGame() {
                 if (!Array.isArray(state.gameState.user.purchases)) state.gameState.user.purchases = [];
                 if (!state.gameState.user.purchases.includes(verifiedPackId)) {
                     state.gameState.user.purchases.push(verifiedPackId);
-                    await saveGame();
+                    await saveGame(true);
                 }
             }
             console.log(`Verified Stripe checkout completed for pack: ${verifiedPackId}`);

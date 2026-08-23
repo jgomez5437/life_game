@@ -106,13 +106,13 @@ describe('Rate Limiter Engine (api/lib/rateLimit.js)', () => {
     });
 
     test('RATE_LIMIT_CONFIGS has safe definitions for all endpoints', () => {
-        expect(RATE_LIMIT_CONFIGS.saveGame.maxRequests).toBe(20);
-        expect(RATE_LIMIT_CONFIGS.load.maxRequests).toBe(30);
-        expect(RATE_LIMIT_CONFIGS.login.maxRequests).toBe(10);
-        expect(RATE_LIMIT_CONFIGS.checkout.maxRequests).toBe(5);
-        expect(RATE_LIMIT_CONFIGS.getPurchases.maxRequests).toBe(30);
-        expect(RATE_LIMIT_CONFIGS.eulogy.maxRequests).toBe(5);
-        expect(RATE_LIMIT_CONFIGS.health.maxRequests).toBe(30);
+        expect(RATE_LIMIT_CONFIGS.saveGame.maxRequests).toBe(60);
+        expect(RATE_LIMIT_CONFIGS.load.maxRequests).toBe(60);
+        expect(RATE_LIMIT_CONFIGS.login.maxRequests).toBe(30);
+        expect(RATE_LIMIT_CONFIGS.checkout.maxRequests).toBe(10);
+        expect(RATE_LIMIT_CONFIGS.getPurchases.maxRequests).toBe(60);
+        expect(RATE_LIMIT_CONFIGS.eulogy.maxRequests).toBe(10);
+        expect(RATE_LIMIT_CONFIGS.health.maxRequests).toBe(60);
         expect(RATE_LIMIT_CONFIGS.webhook.maxRequests).toBe(120);
     });
 });

@@ -116,7 +116,7 @@ function handleDeath(user, cause) {
     
     // Auto-save the death state before transitioning
     if (typeof saveGame === "function") {
-        saveGame();
+        saveGame(true);
     }
     
     renderDeathScreen(user, cause);
@@ -312,7 +312,7 @@ export const continueAsChild = (childIndex, inheritedMoney) => {
     }];
 
     // 4. Force cloud sync of the new character state, then mount UI
-    if (typeof saveGame === "function") saveGame();
+    if (typeof saveGame === "function") saveGame(true);
     renderLifeDashboard(state.gameState);
 };
 

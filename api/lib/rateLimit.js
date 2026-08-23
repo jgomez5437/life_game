@@ -14,13 +14,13 @@
 // protection against single-origin abuse and accidental client-side retry storms.
 
 export const RATE_LIMIT_CONFIGS = {
-    saveGame: { maxRequests: 20, windowMs: 60 * 1000 },       // 20 saves / min
-    load: { maxRequests: 30, windowMs: 60 * 1000 },           // 30 loads / min
-    login: { maxRequests: 10, windowMs: 60 * 1000 },          // 10 logins / min
-    checkout: { maxRequests: 5, windowMs: 60 * 1000 },        // 5 checkout sessions / min
-    getPurchases: { maxRequests: 30, windowMs: 60 * 1000 },   // 30 entitlement checks / min
-    eulogy: { maxRequests: 5, windowMs: 60 * 1000 },          // 5 eulogy requests / min
-    health: { maxRequests: 30, windowMs: 60 * 1000 },         // 30 health checks / min
+    saveGame: { maxRequests: 60, windowMs: 60 * 1000 },       // 60 saves / min
+    load: { maxRequests: 60, windowMs: 60 * 1000 },           // 60 loads / min
+    login: { maxRequests: 30, windowMs: 60 * 1000 },          // 30 logins / min
+    checkout: { maxRequests: 10, windowMs: 60 * 1000 },       // 10 checkout sessions / min
+    getPurchases: { maxRequests: 60, windowMs: 60 * 1000 },   // 60 entitlement checks / min
+    eulogy: { maxRequests: 10, windowMs: 60 * 1000 },         // 10 eulogy requests / min
+    health: { maxRequests: 60, windowMs: 60 * 1000 },         // 60 health checks / min
     webhook: { maxRequests: 120, windowMs: 60 * 1000 },       // 120 webhook events / min
     default: { maxRequests: 60, windowMs: 60 * 1000 }         // 60 req / min default
 };
