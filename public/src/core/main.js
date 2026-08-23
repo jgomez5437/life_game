@@ -260,6 +260,10 @@ export const toggleSettingBottomNav = lazy('settings', 'toggleSettingBottomNav')
 export const toggleSettingTheme = lazy('settings', 'toggleSettingTheme');
 export const applyTheme = lazy('settings', 'applyTheme');
 
+// Achievements
+export const openAchievementsModal = lazy('achievements', 'openAchievementsModal');
+export const filterAchievementsCategory = lazy('achievements', 'filterAchievementsCategory');
+
 // Store & Customization
 export const renderStoreScreen = lazy('store', 'renderStoreScreen');
 export const filterStoreCategory = lazy('store', 'filterStoreCategory');
@@ -1363,6 +1367,8 @@ const routeHandlers = {
   askPartnerToMove,
   confirmMoveAlone,
   openSettingsModal,
+  openAchievementsModal,
+  filterAchievementsCategory,
   triggerManualSave,
   promptResetGame,
   promptSignOut,

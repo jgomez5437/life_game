@@ -4,6 +4,7 @@ import { renderLifeDashboard, addLog } from '../player/mainScreen.js';
 import { saveGame } from '../../core/main.js';
 import { UI } from '../../ui/ui.js';
 import { Utils, COUNTRIES_DATA } from '../../ui/utils.js';
+import { unlockAchievement } from '../../core/achievementManager.js';
 
 const get = id => document.getElementById(id);
 
@@ -489,6 +490,9 @@ export function buyLotteryTicket(ticketTypeId) {
         UI.updateHeader(user);
 
         if (result.payout > 0) {
+            if (result.payout >= 100000 || (ticketTypeId === 'mega' && result.payout >= 50000)) {
+                unlockAchievement('mega_jackpot', user);
+            }
             addLog(`Won ${Utils.formatMoney(result.payout)} on a ${result.ticketName}!`, 'good');
         } else {
             addLog(`Bought a ${result.ticketName} but didn't win anything.`, 'neutral');
@@ -805,6 +809,11 @@ function executeRelocation(user, targetCountry, targetCity, partnerMovedWith, pa
     if (!result.success) {
         UI.showModal("Relocation Failed", result.message);
         return;
+    }
+
+    user.relocationsCount = (user.relocationsCount || 0) + 1;
+    if (user.relocationsCount >= 3) {
+        unlockAchievement('globe_trotter', user);
     }
 
     addLog(result.message, result.hadJob ? 'neutral' : 'good');

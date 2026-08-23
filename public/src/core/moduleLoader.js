@@ -35,6 +35,7 @@ export const MODULE_REGISTRY = {
     vipLounge: () => import('../features/store/vipLounge.js'),
     more: () => import('../features/more/moreScreen.js'),
     settings: () => import('../features/more/settingsScreen.js'),
+    achievements: () => import('../features/more/achievementsScreen.js'),
     graveyard: () => import('../features/player/graveyardScreen.js'),
 
     // --- Tier 3: True Lazy Load ---
@@ -214,6 +215,8 @@ export const ACTION_TO_MODULE = {
     openSlotsModal: 'casino',
     confirmSlotsSpin: 'casino',
     openSettingsModal: 'settings',
+    openAchievementsModal: 'achievements',
+    filterAchievementsCategory: 'achievements',
     triggerManualSave: 'settings',
     promptResetGame: 'settings',
     promptSignOut: 'settings',
@@ -381,6 +384,7 @@ export function formatModuleName(moduleKey) {
         vipLounge: 'VIP Lounge',
         more: 'Activities',
         settings: 'Settings',
+        achievements: 'Achievements & Trophies',
         graveyard: 'Graveyard',
         casino: 'Casino',
         crime: 'Crime',

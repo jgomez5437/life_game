@@ -4,6 +4,7 @@ import { saveGame } from '../../core/main.js';
 import { addLog } from '../player/mainScreen.js';
 import { UI } from '../../ui/ui.js';
 import { Utils } from '../../ui/utils.js';
+import { unlockAchievement } from '../../core/achievementManager.js';
 
 const get = id => document.getElementById(id);
 
@@ -628,6 +629,9 @@ export function confirmSlotsSpin(betAmount) {
     setTimeout(() => {
         try {
             const result = GameLogic.spinSlotMachine(user, wager);
+            if (result.isJackpot) {
+                unlockAchievement('mega_jackpot', user);
+            }
             saveGame();
             UI.updateHeader(user);
 

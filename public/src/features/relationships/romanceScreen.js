@@ -3,6 +3,7 @@ import { Utils } from '../../ui/utils.js';
 import { UI } from '../../ui/ui.js';
 import { GameLogic } from '../../core/gameLogic.js';
 import { renderPersonInteraction, isDeadNPC } from './relationshipScreen.js';
+import { unlockAchievement } from '../../core/achievementManager.js';
 
 const WEDDING_TIERS = [
     { name: "Courthouse", cost: 200, desc: "A simple, no-frills ceremony" },
@@ -81,6 +82,10 @@ export const confirmWeddingPlan = (personId, index) => {
     person.type = person.gender === 'male' ? 'Husband' : 'Wife';
     person.status = Math.min(100, (person.status || 0) + 20);
     person.interactedThisYear = true;
+
+    if (person.wealthTier === 'ultra' || person.wealthTier === 'high' || (person.netWorth || person.money || 0) >= 5000000) {
+        unlockAchievement('gold_digger', user);
+    }
 
     addLog(`You married ${person.name} in a ${tier.name.toLowerCase()} wedding!`, 'good');
     UI.updateHeader(user);

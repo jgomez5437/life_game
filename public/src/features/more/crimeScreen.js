@@ -5,6 +5,7 @@ import { renderLifeDashboard, addLog } from '../player/mainScreen.js';
 import { loadModule } from '../../core/moduleLoader.js';
 import { UI } from '../../ui/ui.js';
 import { Utils } from '../../ui/utils.js';
+import { unlockAchievement } from '../../core/achievementManager.js';
 
 const get = id => document.getElementById(id);
 
@@ -229,6 +230,9 @@ export function commitCrimeAction(crimeId) {
     }
 
     if (result.success) {
+        if (result.crime?.id === 'bank_heist') {
+            unlockAchievement('clean_getaway', user);
+        }
         if (result.isMurder) {
             showMurderCoverUpModal(result.victimName);
             addLog(`Committed murder against ${result.victimName}. Case remains unsolved.`, 'bad');

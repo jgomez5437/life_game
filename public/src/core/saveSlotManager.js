@@ -477,7 +477,14 @@ export function migrateState(rawState) {
             .slice(-5);
     }
 
-    // 12. Top-Level _slotId
+    // 12. Top-Level achievements
+    let achievements = {};
+    const rawAch = rawState.achievements || rawUser.achievements;
+    if (rawAch && typeof rawAch === 'object' && !Array.isArray(rawAch)) {
+        achievements = { ...rawAch };
+    }
+
+    // 13. Top-Level _slotId
     const slotIdCandidate = rawState._slotId || rawState.slotId;
     const _slotId = isValidSlotId(slotIdCandidate) ? slotIdCandidate : 'slot_1';
 
@@ -486,6 +493,7 @@ export function migrateState(rawState) {
         lifeLog,
         snapshots,
         assets: migratedUser.assets,
+        achievements,
         _slotId
     };
 }
@@ -671,6 +679,7 @@ export function buildCloudSavePayload(activeGameState = null) {
         // The Lists
         history: activeData.lifeLog || currentState?.lifeLog || [],
         assets: activeData.assets || activeUser.assets || [],
+        achievements: activeData.achievements || currentState?.achievements || {},
 
         // Time Machine snapshots (paid feature data)
         snapshots: activeData.snapshots || currentState?.snapshots || [],

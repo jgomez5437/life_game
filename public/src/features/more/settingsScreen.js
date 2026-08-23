@@ -4,6 +4,7 @@ import { Utils } from '../../ui/utils.js';
 import { saveGame, resetGame } from '../../core/main.js';
 import { renderLifeDashboard } from '../player/mainScreen.js';
 import { logout } from '../../auth/auth.js';
+import { getAchievementProgress } from '../../core/achievementManager.js';
 
 export function openSettingsModal() {
     const isCloud = !!state.userAuthId;
@@ -16,6 +17,7 @@ export function openSettingsModal() {
     const currentTheme = localStorage.getItem('life_game_theme') || 'dark';
     
     const isVip = hasPurchasedPack('vip_supporter');
+    const achievementProgress = getAchievementProgress();
 
     const htmlContent = `
         <div class="space-y-4">
@@ -72,6 +74,26 @@ export function openSettingsModal() {
                     </button>
                 </div>
                 `}
+            </div>
+
+            <!-- Achievements Hub -->
+            <div class="bg-gradient-to-r from-slate-800 via-slate-800 to-amber-950/30 p-3.5 rounded-xl border border-amber-500/30 shadow-md">
+                <div class="flex justify-between items-center gap-2">
+                    <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                        <div class="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
+                            <i class="fas fa-trophy text-sm"></i>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="font-bold text-white text-sm truncate">Achievements Trophy Room</h3>
+                            <div class="text-[11px] text-amber-300 font-semibold mt-0.5 truncate">
+                                ${achievementProgress.unlockedCount} / ${achievementProgress.total} Unlocked (${achievementProgress.percentage}%)
+                            </div>
+                        </div>
+                    </div>
+                    <button data-action="openAchievementsModal" class="bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-extrabold text-xs px-3 py-2 rounded-lg transition flex items-center gap-1.5 shadow-md shadow-amber-900/30 shrink-0">
+                        <i class="fas fa-medal"></i> Trophies
+                    </button>
+                </div>
             </div>
 
             <!-- Preferences -->
@@ -149,7 +171,7 @@ export function openSettingsModal() {
 
             <!-- Footer -->
             <div class="text-center pt-2 border-t border-slate-700 text-xs text-slate-500">
-                <span>Version 1.2.6</span>
+                <span>Version 1.3.0</span>
             </div>
         </div>
     `;
