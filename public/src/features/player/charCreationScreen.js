@@ -397,9 +397,9 @@ export async function submitCharacter() {
         if (state.userAuthId || user) {
             try {
                 if (typeof saveGame === 'function') {
-                    await saveGame();
+                    await saveGame(true);
                 } else if (typeof window !== 'undefined' && typeof window.saveGame === 'function') {
-                    await window.saveGame();
+                    await window.saveGame(true);
                 }
             } catch (cloudErr) {
                 console.warn("Cloud save warning during character creation:", cloudErr);
