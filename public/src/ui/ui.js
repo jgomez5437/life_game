@@ -635,5 +635,89 @@ export const UI = {
         </div>
         `;
         UI.renderScreen(html);
+    },
+
+    /**
+     * Centers or scrolls an active tab element into view inside a horizontally scrollable container.
+     * @param {string|HTMLElement} container - The container element or its ID
+     * @param {string|HTMLElement} activeElement - The active tab element or its CSS selector
+     * @param {Object} [options={}] - Options { behavior: 'smooth'|'auto', align: 'center'|'nearest' }
+     */
+    scrollTabIntoView: (container, activeElement, options = {}) => {
+        const containerEl = typeof container === 'string' ? document.getElementById(container) : container;
+        if (!containerEl) return;
+
+        const el = typeof activeElement === 'string' ? containerEl.querySelector(activeElement) : activeElement;
+        if (!el) return;
+
+        const behavior = options.behavior || 'smooth';
+        const align = options.align || 'center';
+
+        // Check if layout metrics exist (browser DOM vs test DOM)
+        if (typeof el.getBoundingClientRect === 'function' && typeof containerEl.getBoundingClientRect === 'function') {
+            const containerRect = containerEl.getBoundingClientRect();
+            const elRect = el.getBoundingClientRect();
+
+            if (containerRect.width > 0 && elRect.width > 0) {
+                if (align === 'center') {
+                    // Center the active tab horizontally within container
+                    const targetScrollLeft = (el.offsetLeft - containerEl.offsetLeft) - (containerEl.clientWidth / 2) + (el.clientWidth / 2);
+                    if (typeof containerEl.scrollTo === 'function') {
+                        containerEl.scrollTo({
+                            left: Math.max(0, targetScrollLeft),
+                            behavior: behavior
+                        });
+                    } else {
+                        containerEl.scrollLeft = Math.max(0, targetScrollLeft);
+                    }
+                    return;
+                } else if (align === 'nearest') {
+                    if (elRect.left < containerRect.left) {
+                        const diff = containerRect.left - elRect.left;
+                        containerEl.scrollLeft = Math.max(0, containerEl.scrollLeft - diff);
+                    } else if (elRect.right > containerRect.right) {
+                        const diff = elRect.right - containerRect.right;
+                        containerEl.scrollLeft = containerEl.scrollLeft + diff;
+                    }
+                    return;
+                }
+            }
+        }
+
+        // Fallback using offsetLeft / offsetWidth
+        if (el.offsetLeft !== undefined && containerEl.clientWidth > 0) {
+            const targetOffset = el.offsetLeft - (containerEl.clientWidth / 2) + ((el.offsetWidth || 0) / 2);
+            containerEl.scrollLeft = Math.max(0, targetOffset);
+            return;
+        }
+
+        // Native standard scrollIntoView fallback
+        if (typeof el.scrollIntoView === 'function') {
+            try {
+                el.scrollIntoView({ behavior, block: 'nearest', inline: 'center' });
+            } catch (e) {
+                // Ignore unsupported scrollIntoView option errors in older environments
+            }
+        }
+    },
+
+    /**
+     * Preserves scroll position across re-renders, and ensures active tab is locked/centered in view.
+     * @param {string|HTMLElement} container - The container element or its ID
+     * @param {string|HTMLElement} [activeElement] - The active tab element or its CSS selector
+     * @param {number} [savedScrollLeft] - Optional previous scrollLeft captured before re-render
+     */
+    preserveTabScroll: (container, activeElement = null, savedScrollLeft = null) => {
+        const containerEl = typeof container === 'string' ? document.getElementById(container) : container;
+        if (!containerEl) return;
+
+        if (typeof savedScrollLeft === 'number' && savedScrollLeft > 0) {
+            containerEl.scrollLeft = savedScrollLeft;
+        }
+
+        if (activeElement) {
+            // Check if active tab is visible; if not or if switching tabs, scroll it into view
+            UI.scrollTabIntoView(containerEl, activeElement, { behavior: 'auto', align: 'center' });
+        }
     }
 };
