@@ -7,12 +7,16 @@ const _elements = {
     get bank() { return document.getElementById('header-bank'); },
     get healthText() { return document.getElementById('ui-health'); },
     get healthContainer() { return document.getElementById('health-container'); },
+    get healthBarFill() { return document.getElementById('health-bar-fill'); },
     get happinessText() { return document.getElementById('ui-happiness'); },
     get happinessContainer() { return document.getElementById('happiness-container'); },
+    get happinessBarFill() { return document.getElementById('happiness-bar-fill'); },
     get smartsText() { return document.getElementById('ui-smarts'); },
     get smartsContainer() { return document.getElementById('smarts-container'); },
+    get smartsBarFill() { return document.getElementById('smarts-bar-fill'); },
     get looksText() { return document.getElementById('ui-looks'); },
     get looksContainer() { return document.getElementById('looks-container'); },
+    get looksBarFill() { return document.getElementById('looks-bar-fill'); },
     get headerMainRow() { return document.getElementById('header-main-row'); },
     get statsRibbon() { return document.getElementById('header-stats-ribbon'); },
     get headerBrand() { return document.getElementById('header-brand'); },
@@ -214,7 +218,119 @@ function _restorePreviousModal() {
     }
 }
 
+let _lastHeaderStats = null;
+
 export const UI = {
+    /**
+     * Spawns a transient floating badge indicator and pulse effect over a header stat pill or bank.
+     * @param {string|HTMLElement} target - 'health' | 'happiness' | 'smarts' | 'looks' | 'money' or DOM element
+     * @param {number} delta - Numerical change (+15, -10, +5200, etc.)
+     * @param {string} [customLabel] - Optional label (e.g. 'Smarts', 'Health', etc.)
+     * @param {string} [customEmoji] - Optional emoji (e.g. '🧠', '❤️', '💵')
+     * @param {boolean} [isMoney] - Whether this is a monetary change
+     */
+    showStatDelta: (target, delta, customLabel = '', customEmoji = '', isMoney = false) => {
+        if (!delta || isNaN(delta) || delta === 0) return;
+
+        let container = null;
+        let defaultLabel = '';
+        let defaultEmoji = '';
+
+        if (typeof target === 'string') {
+            switch (target.toLowerCase()) {
+                case 'health':
+                    container = _elements.healthContainer;
+                    defaultLabel = 'Health';
+                    defaultEmoji = '❤️';
+                    break;
+                case 'happiness':
+                    container = _elements.happinessContainer;
+                    defaultLabel = 'Happiness';
+                    defaultEmoji = '😊';
+                    break;
+                case 'smarts':
+                    container = _elements.smartsContainer;
+                    defaultLabel = 'Smarts';
+                    defaultEmoji = '🧠';
+                    break;
+                case 'looks':
+                    container = _elements.looksContainer;
+                    defaultLabel = 'Looks';
+                    defaultEmoji = '✨';
+                    break;
+                case 'money':
+                case 'bank':
+                    container = _elements.bankWrapper || _elements.bank;
+                    defaultLabel = '';
+                    defaultEmoji = '💵';
+                    isMoney = true;
+                    break;
+                default:
+                    container = document.getElementById(target);
+            }
+        } else if (target && target.nodeType) {
+            container = target;
+        }
+
+        if (!container) return;
+
+        const isPositive = delta > 0;
+        const sign = isPositive ? '+' : '-';
+        const label = customLabel || defaultLabel;
+        const emoji = customEmoji || defaultEmoji;
+
+        let text = '';
+        if (isMoney) {
+            const formattedAbs = Utils.formatMoney(Math.abs(delta));
+            text = `${sign}${formattedAbs} ${emoji}`.trim();
+        } else {
+            const absVal = Math.abs(delta);
+            const labelPart = label ? ` ${label}` : '';
+            const emojiPart = emoji ? ` ${emoji}` : '';
+            text = `${sign}${absVal}%${labelPart}${emojiPart}`.trim();
+        }
+
+        const badge = document.createElement('div');
+        badge.className = `floating-stat-delta ${isPositive ? 'delta-positive' : 'delta-negative'}`;
+        badge.textContent = text;
+
+        // Container pulse effect
+        const pulseClass = isPositive ? 'pill-pulse-pos' : 'pill-pulse-neg';
+        container.classList.remove('pill-pulse-pos', 'pill-pulse-neg');
+        if (container.offsetWidth !== undefined) {
+            void container.offsetWidth;
+        }
+        container.classList.add(pulseClass);
+        setTimeout(() => {
+            if (container) container.classList.remove(pulseClass);
+        }, 650);
+
+        // Append badge
+        container.appendChild(badge);
+
+        // Auto remove badge on animation end or fallback timeout
+        const removeBadge = () => {
+            if (badge && badge.parentNode) {
+                badge.parentNode.removeChild(badge);
+            }
+        };
+
+        badge.addEventListener('animationend', removeBadge, { once: true });
+        setTimeout(removeBadge, 1400);
+    },
+
+    /**
+     * Returns current cached header stats for testing or debugging.
+     */
+    getLastHeaderStats: () => _lastHeaderStats,
+
+    /**
+     * Sets cached header stats baseline.
+     */
+    setLastHeaderStats: (stats) => {
+        _lastHeaderStats = stats ? { ...stats } : null;
+    },
+
     /** * @param {Object} stats - { username, name, age, money, city, health, happiness, smarts, looks }
      */
     updateHeader: (stats) => {
@@ -258,6 +374,9 @@ export const UI = {
             _elements.healthText.innerText = `${healthVal}%`;
             _elements.healthText.textContent = `${healthVal}%`;
         }
+        if (_elements.healthBarFill) {
+            _elements.healthBarFill.style.width = `${Math.min(100, Math.max(0, healthVal))}%`;
+        }
         if (_elements.healthContainer) {
             _elements.healthContainer.classList.remove('text-green-400', 'text-yellow-400', 'text-red-500');
             if (healthVal > 70) {
@@ -274,6 +393,9 @@ export const UI = {
         if (_elements.happinessText) {
             _elements.happinessText.innerText = `${happinessVal}%`;
             _elements.happinessText.textContent = `${happinessVal}%`;
+        }
+        if (_elements.happinessBarFill) {
+            _elements.happinessBarFill.style.width = `${Math.min(100, Math.max(0, happinessVal))}%`;
         }
         if (_elements.happinessContainer) {
             _elements.happinessContainer.classList.remove('text-amber-400', 'text-yellow-400', 'text-red-500');
@@ -292,6 +414,9 @@ export const UI = {
             _elements.smartsText.innerText = `${smartsVal}%`;
             _elements.smartsText.textContent = `${smartsVal}%`;
         }
+        if (_elements.smartsBarFill) {
+            _elements.smartsBarFill.style.width = `${Math.min(100, Math.max(0, smartsVal))}%`;
+        }
         if (_elements.smartsContainer) {
             _elements.smartsContainer.classList.remove('text-blue-400', 'text-indigo-300', 'text-slate-400');
             if (smartsVal > 70) {
@@ -309,6 +434,9 @@ export const UI = {
             _elements.looksText.innerText = `${looksVal}%`;
             _elements.looksText.textContent = `${looksVal}%`;
         }
+        if (_elements.looksBarFill) {
+            _elements.looksBarFill.style.width = `${Math.min(100, Math.max(0, looksVal))}%`;
+        }
         if (_elements.looksContainer) {
             _elements.looksContainer.classList.remove('text-pink-400', 'text-purple-300', 'text-slate-400');
             if (looksVal > 70) {
@@ -321,6 +449,7 @@ export const UI = {
         }
 
         // 7. BANK UPDATE
+        const moneyVal = stats.money !== undefined ? stats.money : 0;
         if (stats.money !== undefined && _elements.bank) {
             const formattedMoney = Utils.formatMoney(stats.money);
             _elements.bank.innerText = formattedMoney;
@@ -334,7 +463,33 @@ export const UI = {
             }
         }
 
-        // 8. AVATAR UPDATE
+        // 8. STAT DELTA BADGES (Transient Indicators)
+        if (_lastHeaderStats !== null) {
+            const deltaHealth = healthVal - _lastHeaderStats.health;
+            const deltaHappiness = happinessVal - _lastHeaderStats.happiness;
+            const deltaSmarts = smartsVal - _lastHeaderStats.smarts;
+            const deltaLooks = looksVal - _lastHeaderStats.looks;
+            const deltaMoney = (stats.money !== undefined && _lastHeaderStats.money !== undefined)
+                ? (moneyVal - _lastHeaderStats.money)
+                : 0;
+
+            if (deltaHealth !== 0) UI.showStatDelta('health', deltaHealth, 'Health', '❤️');
+            if (deltaHappiness !== 0) UI.showStatDelta('happiness', deltaHappiness, 'Happiness', '😊');
+            if (deltaSmarts !== 0) UI.showStatDelta('smarts', deltaSmarts, 'Smarts', '🧠');
+            if (deltaLooks !== 0) UI.showStatDelta('looks', deltaLooks, 'Looks', '✨');
+            if (deltaMoney !== 0) UI.showStatDelta('money', deltaMoney, '', '💵', true);
+        }
+
+        // Cache current stats
+        _lastHeaderStats = {
+            health: healthVal,
+            happiness: happinessVal,
+            smarts: smartsVal,
+            looks: looksVal,
+            money: stats.money !== undefined ? moneyVal : (_lastHeaderStats?.money ?? 0)
+        };
+
+        // 9. AVATAR UPDATE
         const avatarContainer = document.getElementById('avatar-container');
         if (avatarContainer) {
             avatarContainer.innerHTML = renderAvatar(stats);
@@ -345,6 +500,7 @@ export const UI = {
      * Resets header to clean login branding for login screen and character creation.
      */
     resetHeader: () => {
+        _lastHeaderStats = null;
         if (_elements.headerBrand) _elements.headerBrand.classList.remove('hidden');
         if (_elements.headerMainRow) _elements.headerMainRow.classList.add('hidden');
         if (_elements.statsRibbon) _elements.statsRibbon.classList.add('hidden');
@@ -365,6 +521,9 @@ export const UI = {
             _elements.healthText.innerText = '100%';
             _elements.healthText.textContent = '100%';
         }
+        if (_elements.healthBarFill) {
+            _elements.healthBarFill.style.width = '100%';
+        }
         if (_elements.healthContainer) {
             _elements.healthContainer.classList.remove('text-yellow-400', 'text-red-500');
             _elements.healthContainer.classList.add('text-green-400');
@@ -372,6 +531,9 @@ export const UI = {
         if (_elements.happinessText) {
             _elements.happinessText.innerText = '100%';
             _elements.happinessText.textContent = '100%';
+        }
+        if (_elements.happinessBarFill) {
+            _elements.happinessBarFill.style.width = '100%';
         }
         if (_elements.happinessContainer) {
             _elements.happinessContainer.classList.remove('text-yellow-400', 'text-red-500');
@@ -381,6 +543,9 @@ export const UI = {
             _elements.smartsText.innerText = '50%';
             _elements.smartsText.textContent = '50%';
         }
+        if (_elements.smartsBarFill) {
+            _elements.smartsBarFill.style.width = '50%';
+        }
         if (_elements.smartsContainer) {
             _elements.smartsContainer.classList.remove('text-indigo-300', 'text-slate-400');
             _elements.smartsContainer.classList.add('text-blue-400');
@@ -388,6 +553,9 @@ export const UI = {
         if (_elements.looksText) {
             _elements.looksText.innerText = '50%';
             _elements.looksText.textContent = '50%';
+        }
+        if (_elements.looksBarFill) {
+            _elements.looksBarFill.style.width = '50%';
         }
         if (_elements.looksContainer) {
             _elements.looksContainer.classList.remove('text-purple-300', 'text-slate-400');

@@ -19,15 +19,19 @@ describe('Header Stats & UI Manager', () => {
                 </div>
                 <div id="header-stats-ribbon" class="hidden">
                     <div id="health-container" class="text-green-400">
+                        <div id="health-bar-fill" style="width: 100%;"></div>
                         <span id="ui-health">100%</span>
                     </div>
                     <div id="happiness-container" class="text-amber-400">
+                        <div id="happiness-bar-fill" style="width: 100%;"></div>
                         <span id="ui-happiness">100%</span>
                     </div>
                     <div id="smarts-container" class="text-blue-400">
+                        <div id="smarts-bar-fill" style="width: 50%;"></div>
                         <span id="ui-smarts">50%</span>
                     </div>
                     <div id="looks-container" class="text-pink-400">
+                        <div id="looks-bar-fill" style="width: 50%;"></div>
                         <span id="ui-looks">50%</span>
                     </div>
                 </div>
@@ -63,6 +67,11 @@ describe('Header Stats & UI Manager', () => {
         expect(document.getElementById('ui-happiness').textContent).toBe('88%');
         expect(document.getElementById('ui-smarts').textContent).toBe('78%');
         expect(document.getElementById('ui-looks').textContent).toBe('82%');
+
+        expect(document.getElementById('health-bar-fill').style.width).toBe('95%');
+        expect(document.getElementById('happiness-bar-fill').style.width).toBe('88%');
+        expect(document.getElementById('smarts-bar-fill').style.width).toBe('78%');
+        expect(document.getElementById('looks-bar-fill').style.width).toBe('82%');
     });
 
     test('UI.updateHeader applies dynamic color threshold classes correctly', () => {
