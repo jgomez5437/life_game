@@ -285,4 +285,61 @@ describe('Persistent Global Bottom Navigation & Active Tab States', () => {
         renderPrisonDashboard();
         expect(document.getElementById('bottom-nav').classList.contains('hidden')).toBe(true);
     });
+
+    describe('Optional Bottom Navigation Preference', () => {
+        beforeEach(() => {
+            localStorage.clear();
+        });
+
+        test('UI.isBottomNavEnabled returns true by default and false when toggled off', () => {
+            expect(UI.isBottomNavEnabled()).toBe(true);
+
+            localStorage.setItem('life_game_bottom_nav', 'false');
+            expect(UI.isBottomNavEnabled()).toBe(false);
+
+            localStorage.setItem('life_game_bottom_nav', 'true');
+            expect(UI.isBottomNavEnabled()).toBe(true);
+        });
+
+        test('UI.updateBottomNav keeps bottom-nav hidden when disabled in preferences', () => {
+            localStorage.setItem('life_game_bottom_nav', 'false');
+
+            UI.updateBottomNav('home');
+            const bottomNav = document.getElementById('bottom-nav');
+            expect(bottomNav.classList.contains('hidden')).toBe(true);
+
+            UI.updateBottomNav('assets');
+            expect(bottomNav.classList.contains('hidden')).toBe(true);
+        });
+
+        test('renderLifeDashboard renders inline 5-button action bar when bottom nav is disabled in settings', () => {
+            localStorage.setItem('life_game_bottom_nav', 'false');
+
+            renderLifeDashboard(state.gameState);
+
+            const bottomNav = document.getElementById('bottom-nav');
+            expect(bottomNav.classList.contains('hidden')).toBe(true);
+
+            const gameContainer = document.getElementById('game-container');
+            expect(gameContainer.innerHTML).toContain('data-action="renderAssets"');
+            expect(gameContainer.innerHTML).toContain('data-action="renderActivities"');
+            expect(gameContainer.innerHTML).toContain('data-action="ageUp"');
+            expect(gameContainer.innerHTML).toContain('data-action="renderRelationships"');
+            expect(gameContainer.innerHTML).toContain('data-action="renderMoreDashboard"');
+        });
+
+        test('renderLifeDashboard does not render inline 5-button action bar when bottom nav is enabled (default)', () => {
+            localStorage.setItem('life_game_bottom_nav', 'true');
+
+            renderLifeDashboard(state.gameState);
+
+            const bottomNav = document.getElementById('bottom-nav');
+            expect(bottomNav.classList.contains('hidden')).toBe(false);
+
+            const gameContainer = document.getElementById('game-container');
+            // The container shouldn't have inline action buttons
+            const inlineAgeUp = gameContainer.querySelector('[data-action="ageUp"]');
+            expect(inlineAgeUp).toBeNull();
+        });
+    });
 });
