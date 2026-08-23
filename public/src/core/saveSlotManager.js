@@ -581,13 +581,15 @@ export function getSlotsStore() {
 /**
  * Hydrates and synchronizes the save slots store from cloud game data.
  * Supports both multi-slot cloud payloads and legacy single-slot cloud saves.
+ * @param {Object} cloudGameData - Raw game data from cloud DB
+ * @param {boolean} [forceCloud=false] - If true, ignores local store and hydrates strictly from cloud
  */
-export function hydrateSlotsStoreFromCloud(cloudGameData) {
+export function hydrateSlotsStoreFromCloud(cloudGameData, forceCloud = false) {
     if (!cloudGameData || typeof cloudGameData !== 'object') {
         return getSlotsStore();
     }
 
-    const localStore = getSlotsStore();
+    const localStore = forceCloud ? { activeSlotId: 'slot_1', slots: {} } : getSlotsStore();
     const cleanData = sanitizeGameState(cloudGameData);
     let store = { activeSlotId: 'slot_1', slots: {} };
     let needsCloudSync = false;
@@ -610,7 +612,7 @@ export function hydrateSlotsStoreFromCloud(cloudGameData) {
                     const localAge = localData?.user?.age ?? -1;
 
                     // If local slot has newer progress (higher age or more recent timestamp with active character)
-                    const isLocalNewer = localData?.user && localData.user.lifeStatus !== 'Deceased' &&
+                    const isLocalNewer = !forceCloud && localData?.user && localData.user.lifeStatus !== 'Deceased' &&
                         (localAge > cloudAge || (localAge === cloudAge && localSaved > cloudSaved));
 
                     if (isLocalNewer) {
@@ -634,7 +636,7 @@ export function hydrateSlotsStoreFromCloud(cloudGameData) {
         });
 
         // Preserve any local-only slots that don't exist in cloud yet (e.g. newly created branches)
-        if (localStore.slots && typeof localStore.slots === 'object') {
+        if (!forceCloud && localStore.slots && typeof localStore.slots === 'object') {
             Object.keys(localStore.slots).forEach(localKey => {
                 if (!store.slots[localKey] && isValidSlotId(localKey) && localStore.slots[localKey]?.data) {
                     store.slots[localKey] = deepClone(localStore.slots[localKey]);
@@ -661,7 +663,7 @@ export function hydrateSlotsStoreFromCloud(cloudGameData) {
         const localData = localSlot?.data;
         const localAge = localData?.user?.age ?? -1;
 
-        const isLocalNewer = localData?.user && localData.user.lifeStatus !== 'Deceased' && localAge > cloudAge;
+        const isLocalNewer = !forceCloud && localData?.user && localData.user.lifeStatus !== 'Deceased' && localAge > cloudAge;
 
         if (isLocalNewer) {
             store.slots['slot_1'] = deepClone(localSlot);
@@ -682,7 +684,7 @@ export function hydrateSlotsStoreFromCloud(cloudGameData) {
         persistSlotsStore(store);
     }
 
-    store._needsCloudSync = needsCloudSync;
+    store._needsCloudSync = forceCloud ? false : needsCloudSync;
     return store;
 }
 
@@ -916,14 +918,27 @@ export function saveToSlot(slotId = null, customName = null) {
 
     // Also update legacy and guest keys for backward compatibility if primary save succeeded
     if (persistResult?.success) {
-        try {
-            localStorage.setItem('life_game_save', JSON.stringify(cleanState));
-        } catch (e) {}
-        try {
-            if (Utils && Utils.guestStorage && Utils.guestStorage.SAVE_KEY) {
-                localStorage.setItem(Utils.guestStorage.SAVE_KEY, JSON.stringify(cleanState));
-            }
-        } catch (e) {}
+        if (!state.userAuthId) {
+            // Guest mode: mirror save into legacy and guest storage keys
+            try {
+                localStorage.setItem('life_game_save', JSON.stringify(cleanState));
+            } catch (e) {}
+            try {
+                if (Utils && Utils.guestStorage && Utils.guestStorage.SAVE_KEY) {
+                    localStorage.setItem(Utils.guestStorage.SAVE_KEY, JSON.stringify(cleanState));
+                }
+            } catch (e) {}
+        } else {
+            // Authenticated mode: purge guest storage keys so they never trigger false conflict modals
+            try {
+                localStorage.removeItem('life_game_save');
+            } catch (e) {}
+            try {
+                if (Utils && Utils.guestStorage && typeof Utils.guestStorage.clearSave === 'function') {
+                    Utils.guestStorage.clearSave();
+                }
+            } catch (e) {}
+        }
     }
 
     return persistResult;

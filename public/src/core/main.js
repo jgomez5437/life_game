@@ -336,7 +336,8 @@ let _isSaveInFlight = false;
 let _hasPendingSave = false;
 
 //updates game info
-export function updateGameInfo(dbUser) {
+export function updateGameInfo(dbUser, options = {}) {
+    const forceCloud = options.forceCloud || false;
     console.log("Updating game state from DB...");
     let rawData = dbUser.game_data || {};
     if (typeof rawData === 'string') {
@@ -353,7 +354,7 @@ export function updateGameInfo(dbUser) {
     }
 
     // Hydrate all slots into localStorage store from cloud payload
-    const store = hydrateSlotsStoreFromCloud(rawData);
+    const store = hydrateSlotsStoreFromCloud(rawData, forceCloud);
 
     // Extract active slot data
     const activeSlotId = store.activeSlotId || rawData.activeSlotId || rawData._slotId || 'slot_1';
@@ -376,8 +377,11 @@ export function updateGameInfo(dbUser) {
         if (Utils && Utils.guestStorage && typeof Utils.guestStorage.clearSave === 'function') {
             Utils.guestStorage.clearSave();
         }
-        // If local progress was newer than cloud data, sync to cloud immediately
-        if (store?._needsCloudSync && state.gameState.user) {
+        try {
+            localStorage.removeItem('life_game_save');
+        } catch (e) {}
+        // If local progress was newer than cloud data, sync to cloud immediately (unless forceCloud was specified)
+        if (!forceCloud && store?._needsCloudSync && state.gameState.user) {
             console.log("Local progress is newer than cloud database. Synchronizing to cloud...");
             saveGame(true);
         }
@@ -736,7 +740,7 @@ export async function showPurchaseSuccessModal(packId) {
 }
 
 // --- Updated Game Initializer ---
-async function initGame() {
+export async function initGame() {
     console.log("Initializing Game Logic...");
 
     // 1. Check Auth0 Status
@@ -927,24 +931,33 @@ async function initGame() {
                     if (state.gameState?.user) {
                         GameLogic.backfillRelationshipGender(state.gameState.user.relationships);
                     }
+                    if (Utils && Utils.guestStorage && typeof Utils.guestStorage.clearSave === 'function') {
+                        Utils.guestStorage.clearSave();
+                    }
+                    try {
+                        localStorage.removeItem('life_game_save');
+                    } catch (e) {}
                     await saveGame(true);
-                    Utils.guestStorage.clearSave();
                     renderLifeDashboard(state.gameState);
                     UI.showModal("Character Saved!", `Your guest character (${guestName}) has been saved to your account.`);
+                },
+                "Keep Cloud Character",
+                () => {
+                    console.log("User chose Account Character. Loading Cloud save...");
+                    // 1. Completely purge ALL local guest storage data
+                    if (Utils && Utils.guestStorage && typeof Utils.guestStorage.clearSave === 'function') {
+                        Utils.guestStorage.clearSave();
+                    }
+                    try {
+                        localStorage.removeItem('life_game_save');
+                        localStorage.removeItem('life_game_slots');
+                    } catch (e) {}
+                    UI.hideModal();
+                    // 2. Load cloud save with forceCloud = true so discarded local guest slots never override cloud save
+                    updateGameInfo(dbUser, { forceCloud: true });
+                    UI.showModal("Cloud Save Loaded", `Welcome back! Loaded your account character (${cloudName}).`);
                 }
             );
-
-            const cancelBtn = document.getElementById('modal-cancel');
-            if (cancelBtn) {
-                cancelBtn.innerText = "Keep Cloud Character";
-                cancelBtn.onclick = () => {
-                    console.log("User chose Account Character. Loading Cloud save...");
-                    Utils.guestStorage.clearSave();
-                    UI.hideModal();
-                    updateGameInfo(dbUser);
-                    UI.showModal("Cloud Save Loaded", `Welcome back! Loaded your account character (${cloudName}).`);
-                };
-            }
             return;
         }
 
@@ -956,8 +969,15 @@ async function initGame() {
                 GameLogic.backfillRelationshipGender(state.gameState.user.relationships);
             }
             
+            // Clean up guest storage keys before saving to cloud
+            if (Utils && Utils.guestStorage && typeof Utils.guestStorage.clearSave === 'function') {
+                Utils.guestStorage.clearSave();
+            }
+            try {
+                localStorage.removeItem('life_game_save');
+            } catch (e) {}
+
             await saveGame(true);
-            Utils.guestStorage.clearSave();
 
             if (typeof renderLifeDashboard === "function") {
                 renderLifeDashboard(state.gameState);
