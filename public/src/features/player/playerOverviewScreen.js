@@ -145,8 +145,8 @@ export function openPlayerOverviewModal() {
                         <span class="text-emerald-400 flex items-center gap-1"><i class="fas fa-heart text-[10px]"></i> Health</span>
                         <span class="${healthBadgeColor}">${currentHealth}%</span>
                     </div>
-                    <div class="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
-                        <div class="h-full bg-emerald-500 transition-all duration-300" style="width: ${currentHealth}%"></div>
+                    <div class="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden border border-slate-700/40 p-0.5">
+                        <div class="h-full bg-gradient-to-r from-emerald-500 to-green-400 rounded-full transition-all duration-500 ease-out shadow-sm" style="width: ${Math.min(100, Math.max(0, currentHealth))}%"></div>
                     </div>
                 </div>
 
@@ -156,8 +156,8 @@ export function openPlayerOverviewModal() {
                         <span class="text-amber-400 flex items-center gap-1"><i class="fas fa-smile text-[10px]"></i> Happiness</span>
                         <span class="text-amber-400">${currentHappiness}%</span>
                     </div>
-                    <div class="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
-                        <div class="h-full bg-amber-400 transition-all duration-300" style="width: ${currentHappiness}%"></div>
+                    <div class="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden border border-slate-700/40 p-0.5">
+                        <div class="h-full bg-gradient-to-r from-amber-500 to-yellow-400 rounded-full transition-all duration-500 ease-out shadow-sm" style="width: ${Math.min(100, Math.max(0, currentHappiness))}%"></div>
                     </div>
                 </div>
 
@@ -167,8 +167,8 @@ export function openPlayerOverviewModal() {
                         <span class="text-blue-400 flex items-center gap-1"><i class="fas fa-brain text-[10px]"></i> Smarts</span>
                         <span class="text-blue-400">${currentSmarts}%</span>
                     </div>
-                    <div class="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
-                        <div class="h-full bg-blue-500 transition-all duration-300" style="width: ${currentSmarts}%"></div>
+                    <div class="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden border border-slate-700/40 p-0.5">
+                        <div class="h-full bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full transition-all duration-500 ease-out shadow-sm" style="width: ${Math.min(100, Math.max(0, currentSmarts))}%"></div>
                     </div>
                 </div>
 
@@ -178,8 +178,8 @@ export function openPlayerOverviewModal() {
                         <span class="text-pink-400 flex items-center gap-1"><i class="fas fa-sparkles text-[10px]"></i> Looks</span>
                         <span class="text-pink-400">${currentLooks}%</span>
                     </div>
-                    <div class="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
-                        <div class="h-full bg-pink-500 transition-all duration-300" style="width: ${currentLooks}%"></div>
+                    <div class="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden border border-slate-700/40 p-0.5">
+                        <div class="h-full bg-gradient-to-r from-pink-500 to-rose-400 rounded-full transition-all duration-500 ease-out shadow-sm" style="width: ${Math.min(100, Math.max(0, currentLooks))}%"></div>
                     </div>
                 </div>
             </div>
