@@ -408,12 +408,29 @@ export const UI = {
     },
 
     /**
+     * Checks if bottom navigation bar is enabled in user preferences (default: true).
+     * @returns {boolean}
+     */
+    isBottomNavEnabled: () => {
+        try {
+            return localStorage.getItem('life_game_bottom_nav') !== 'false';
+        } catch (e) {
+            return true;
+        }
+    },
+
+    /**
      * Updates the persistent global bottom navigation bar state and active tab.
      * @param {'home'|'assets'|'work'|'social'|'more'} activeTab
      */
     updateBottomNav: (activeTab = 'home') => {
         const bottomNav = _elements.bottomNav || document.getElementById('bottom-nav');
         if (!bottomNav) return;
+
+        if (!UI.isBottomNavEnabled()) {
+            UI.hideBottomNav();
+            return;
+        }
 
         bottomNav.classList.remove('hidden');
 

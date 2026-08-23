@@ -256,6 +256,7 @@ export const promptSignOut = lazy('settings', 'promptSignOut');
 export const handleSignOut = lazy('settings', 'handleSignOut');
 export const toggleSettingSFX = lazy('settings', 'toggleSettingSFX');
 export const toggleSettingCompact = lazy('settings', 'toggleSettingCompact');
+export const toggleSettingBottomNav = lazy('settings', 'toggleSettingBottomNav');
 export const toggleSettingTheme = lazy('settings', 'toggleSettingTheme');
 export const applyTheme = lazy('settings', 'applyTheme');
 
@@ -1232,6 +1233,7 @@ const routeHandlers = {
   handleSignOut,
   toggleSettingSFX,
   toggleSettingCompact,
+  toggleSettingBottomNav,
   toggleSettingTheme,
   openPlayerOverviewModal,
   renderStoreScreen,

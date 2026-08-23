@@ -7,6 +7,7 @@ import {
     handleSignOut,
     toggleSettingSFX,
     toggleSettingCompact,
+    toggleSettingBottomNav,
     toggleSettingTheme,
     applyTheme
 } from '../../../public/src/features/more/settingsScreen.js';
@@ -53,7 +54,7 @@ describe('Settings Screen & Sign Out Functionality', () => {
         state.auth0Client = null;
     });
 
-    test('openSettingsModal displays Guest Local Mode, Login button, version 1.2.4, and no bottom close button', () => {
+    test('openSettingsModal displays Guest Local Mode, Login button, version 1.2.5, and no bottom close button', () => {
         state.userAuthId = null;
         openSettingsModal();
 
@@ -62,7 +63,9 @@ describe('Settings Screen & Sign Out Functionality', () => {
         expect(content.innerHTML).toContain('Guest Local Mode');
         expect(content.innerHTML).toContain('data-action="login"');
         expect(content.innerHTML).toContain('Log In &amp; Save to Cloud');
-        expect(content.innerHTML).toContain('Version 1.2.4');
+        expect(content.innerHTML).toContain('Bottom Navigation Bar');
+        expect(content.innerHTML).toContain('data-action="toggleSettingBottomNav"');
+        expect(content.innerHTML).toContain('Version 1.2.5');
         expect(content.innerHTML).not.toContain('data-action="hideModal"');
         expect(content.innerHTML).not.toContain('data-action="promptSignOut"');
     });
@@ -190,6 +193,17 @@ describe('Settings Screen & Sign Out Functionality', () => {
 
         toggleSettingCompact();
         expect(localStorage.getItem('life_game_compact')).toBe('false');
+    });
+
+    test('toggleSettingBottomNav toggles bottom nav preference in localStorage and updates toggle state', () => {
+        openSettingsModal();
+        expect(localStorage.getItem('life_game_bottom_nav')).toBeNull(); // default true
+
+        toggleSettingBottomNav();
+        expect(localStorage.getItem('life_game_bottom_nav')).toBe('false');
+
+        toggleSettingBottomNav();
+        expect(localStorage.getItem('life_game_bottom_nav')).toBe('true');
     });
 
     test('toggleSettingTheme switches between dark and light themes', () => {

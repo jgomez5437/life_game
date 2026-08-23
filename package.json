@@ -1,6 +1,6 @@
 {
   "name": "game",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "description": "",
   "main": "game-file.js",
   "packageManager": "npm@10.8.2",

@@ -220,6 +220,7 @@ export const ACTION_TO_MODULE = {
     handleSignOut: 'settings',
     toggleSettingSFX: 'settings',
     toggleSettingCompact: 'settings',
+    toggleSettingBottomNav: 'settings',
     toggleSettingTheme: 'settings',
     applyTheme: 'settings',
 

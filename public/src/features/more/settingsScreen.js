@@ -12,6 +12,7 @@ export function openSettingsModal() {
     
     const sfxEnabled = localStorage.getItem('life_game_sfx') !== 'false';
     const compactMode = localStorage.getItem('life_game_compact') === 'true';
+    const bottomNavEnabled = localStorage.getItem('life_game_bottom_nav') !== 'false';
     const currentTheme = localStorage.getItem('life_game_theme') || 'dark';
     
     const isVip = hasPurchasedPack('vip_supporter');
@@ -106,6 +107,16 @@ export function openSettingsModal() {
 
                 <div class="flex justify-between items-center py-1 border-t border-slate-700/60 pt-2">
                     <div>
+                        <div class="font-bold text-white text-sm">Bottom Navigation Bar</div>
+                        <div class="text-xs text-slate-400">Show 5-option navigation bar at bottom of screen</div>
+                    </div>
+                    <button data-action="toggleSettingBottomNav" id="setting-bottom-nav-btn" class="toggle-switch w-11 h-6 rounded-full p-0.5 border cursor-pointer ${bottomNavEnabled ? 'bg-emerald-500 border-emerald-400/50 shadow-sm shadow-emerald-500/40' : 'bg-slate-700/80 border-slate-600/60'} flex items-center">
+                        <div class="toggle-knob w-5 h-5 rounded-full bg-white shadow-md ${bottomNavEnabled ? 'translate-x-5' : 'translate-x-0'}"></div>
+                    </button>
+                </div>
+
+                <div class="flex justify-between items-center py-1 border-t border-slate-700/60 pt-2">
+                    <div>
                         <div class="font-bold text-white text-sm">Sound Effects</div>
                         <div class="text-xs text-slate-400">Audio feedback on actions</div>
                     </div>
@@ -138,7 +149,7 @@ export function openSettingsModal() {
 
             <!-- Footer -->
             <div class="text-center pt-2 border-t border-slate-700 text-xs text-slate-500">
-                <span>Version 1.2.4</span>
+                <span>Version 1.2.5</span>
             </div>
         </div>
     `;
@@ -305,3 +316,46 @@ export function toggleSettingCompact() {
         }
     }
 }
+
+export function toggleSettingBottomNav() {
+    const current = localStorage.getItem('life_game_bottom_nav') !== 'false';
+    const next = !current;
+    localStorage.setItem('life_game_bottom_nav', next.toString());
+    
+    const btn = document.getElementById('setting-bottom-nav-btn');
+    if (btn) {
+        const knob = btn.querySelector('.toggle-knob');
+        if (next) {
+            btn.classList.remove('bg-slate-700/80', 'border-slate-600/60');
+            btn.classList.add('bg-emerald-500', 'border-emerald-400/50', 'shadow-sm', 'shadow-emerald-500/40');
+            if (knob) {
+                knob.classList.remove('translate-x-0');
+                knob.classList.add('translate-x-5');
+            }
+        } else {
+            btn.classList.remove('bg-emerald-500', 'border-emerald-400/50', 'shadow-sm', 'shadow-emerald-500/40');
+            btn.classList.add('bg-slate-700/80', 'border-slate-600/60');
+            if (knob) {
+                knob.classList.remove('translate-x-5');
+                knob.classList.add('translate-x-0');
+            }
+        }
+    } else {
+        openSettingsModal();
+    }
+
+    if (next) {
+        UI.updateBottomNav('home');
+    } else {
+        UI.hideBottomNav();
+    }
+
+    // Refresh active life dashboard if open behind modal
+    if (state.gameState && state.gameState.user && typeof renderLifeDashboard === 'function') {
+        const dashboard = document.querySelector('[data-action="ageUp"]') || document.getElementById('game-container');
+        if (dashboard) {
+            renderLifeDashboard();
+        }
+    }
+}
+

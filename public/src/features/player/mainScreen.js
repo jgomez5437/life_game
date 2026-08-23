@@ -839,15 +839,42 @@ export function renderLifeDashboard(maybeGameState) {
     ` : '';
 
     //Define the Final HTML String
+    const isBottomNav = UI.isBottomNavEnabled ? UI.isBottomNavEnabled() : localStorage.getItem('life_game_bottom_nav') !== 'false';
+    const inlineNavHtml = !isBottomNav ? `
+        <div class="grid grid-cols-5 gap-1.5 sm:gap-2 pt-2 h-16 sm:h-18 shrink-0">
+            <button data-action="renderAssets" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700 transition" title="Assets">
+                <i class="fas fa-coins mb-1 text-lg sm:text-xl text-yellow-400"></i>
+                <span class="text-[9px] sm:text-[10px] uppercase tracking-wider font-bold">Assets</span>
+            </button>
+            <button data-action="renderActivities" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700 transition" title="Work & Education">
+                <i class="fas fa-user-graduate mb-1 text-lg sm:text-xl text-blue-400"></i>
+                <span class="text-[9px] sm:text-[10px] uppercase tracking-wider font-bold">Work</span>
+            </button>
+            <button data-action="ageUp" class="btn-age-up btn-primary text-white font-bold rounded-xl shadow-lg flex flex-col items-center justify-center transition hover:brightness-110" title="Age Up (+1 Year)">
+                <i class="fas fa-arrow-up mb-1 text-lg sm:text-xl"></i>
+                <span class="text-[9px] sm:text-[10px] uppercase tracking-wider font-bold">Age Up +</span>
+            </button>
+            <button data-action="renderRelationships" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700 transition" title="Relationships & Social">
+                <i class="fas fa-users mb-1 text-lg sm:text-xl text-pink-400"></i>
+                <span class="text-[9px] sm:text-[10px] uppercase tracking-wider font-bold">Social</span>
+            </button>
+            <button data-action="renderMoreDashboard" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700 transition" title="More Options & Activities">
+                <i class="fas fa-ellipsis-h mb-1 text-lg sm:text-xl text-slate-400"></i>
+                <span class="text-[9px] sm:text-[10px] uppercase tracking-wider font-bold">More</span>
+            </button>
+        </div>
+    ` : '';
+
     const dashboardHTML = `
         <div class="flex flex-col h-full max-w-lg mx-auto">
             ${vipBannerHtml}
-            <div class="flex-1 overflow-y-auto bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
+            <div class="flex-1 overflow-y-auto ${!isBottomNav ? 'mb-2' : ''} bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
                 <h3 class="font-bold text-slate-300 mb-4 sticky top-0 bg-transparent backdrop-blur-md py-1 border-b border-slate-700/50">Life History</h3>
                 <div class="space-y-2">
                     ${logHtml.length > 0 ? logHtml : '<div class="text-slate-600 text-sm italic">Life has just begun...</div>'}
                 </div>
             </div>
+            ${inlineNavHtml}
         </div>
     `;
     
