@@ -382,7 +382,7 @@ export function answerInterview(answerIdx) {
         renderActivities();
     } else {
         // ── Wrong — deduct course cost and offer retry ────────────────────────
-        const courseCost = Math.min(200, user.money);
+        const courseCost = Math.min(200, Math.max(0, user.money));
         user.money -= courseCost;
 
         const costNote = courseCost > 0

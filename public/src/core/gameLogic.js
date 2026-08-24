@@ -695,8 +695,13 @@ function updateOwnedVehicles(user, marketForce) {
 
             // Auto Insurance Policy Fee
             if (asset.insured) {
-                const insuranceFee = Math.max(20, Math.floor(asset.value * 0.008));
-                user.money -= insuranceFee;
+                if (asset.condition > 0) {
+                    const insuranceFee = Math.max(20, Math.floor(asset.value * 0.008));
+                    user.money -= insuranceFee;
+                } else {
+                    asset.insured = false;
+                    addLog(`Your insurance policy on the ${asset.name} was canceled because it is totaled (0% condition).`, 'bad');
+                }
             }
 
             // Warnings

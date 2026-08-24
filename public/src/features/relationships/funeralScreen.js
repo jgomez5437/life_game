@@ -317,6 +317,7 @@ export const confirmFuneralPlan = (index) => {
     ];
     
     const opt = options[index];
+    if (!opt || (user.money || 0) < opt.cost) return;
     user.money -= opt.cost;
     
     addLog(`You chose to ${opt.name.toLowerCase()} ${deceased.name} for ${Utils.formatMoney(opt.cost)}.`, 'neutral');
