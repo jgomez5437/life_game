@@ -1182,19 +1182,30 @@ export function deleteSlot(slotId, skipConfirm = false) {
     const slotName = store.slots[slotId].name;
     const doDelete = () => {
         delete store.slots[slotId];
+        let needsToLoadNewSlot = false;
         if (store.activeSlotId === slotId) {
             store.activeSlotId = Object.keys(store.slots)[0];
+            needsToLoadNewSlot = true;
         }
         // Sync in-memory _slotId so saveToSlot() doesn't re-create the deleted slot
         if (state.gameState && state.gameState._slotId === slotId) {
             state.gameState._slotId = store.activeSlotId;
         }
         persistSlotsStore(store);
-        renderSaveSlotManagerModal();
-        if (typeof window !== 'undefined' && typeof window.saveGame === 'function' && state.userAuthId) {
-            window.saveGame();
+
+        if (needsToLoadNewSlot) {
+            loadSlot(store.activeSlotId);
+            // Wait a tick before showing the deleted modal so it overwrites the "Load" modal from loadSlot
+            setTimeout(() => {
+                UI.showModal("Slot Deleted", `Deleted "${Utils.escapeHtml(slotName)}".`);
+            }, 100);
+        } else {
+            renderSaveSlotManagerModal();
+            if (typeof window !== 'undefined' && typeof window.saveGame === 'function' && state.userAuthId) {
+                window.saveGame();
+            }
+            UI.showModal("Slot Deleted", `Deleted "${Utils.escapeHtml(slotName)}".`);
         }
-        UI.showModal("Slot Deleted", `Deleted "${Utils.escapeHtml(slotName)}".`);
     };
 
     if (skipConfirm || typeof UI === 'undefined' || typeof UI.showConfirm !== 'function' || typeof document === 'undefined') {
