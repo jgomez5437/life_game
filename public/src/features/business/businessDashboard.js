@@ -872,7 +872,8 @@ function showDecisionEventModal(eventObj, onComplete) {
                 <p class="text-sm text-slate-300 mb-4">${eventObj.description}</p>
                 <div class="space-y-2 pt-1">${choicesHtml}</div>
             </div>
-        `
+        `,
+        showCloseBtn: false
     });
 
     // Attach temporary choice handler

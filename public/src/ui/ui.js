@@ -726,8 +726,9 @@ export const UI = {
     /**
      * @param {string|Object} titleOrOptions
      * @param {string} [htmlContent]
+     * @param {Object} [extraOptions]
      */
-    showCustomModal: (titleOrOptions, htmlContent) => {
+    showCustomModal: (titleOrOptions, htmlContent, extraOptions = {}) => {
         _pushCurrentModal();
         let title, content, confirmText, cancelText, onConfirm, onClose, showCloseBtn;
 
@@ -738,13 +739,15 @@ export const UI = {
             cancelText = titleOrOptions.cancelText;
             onConfirm = titleOrOptions.onConfirm;
             onClose = titleOrOptions.onClose;
-            showCloseBtn = titleOrOptions.showCloseBtn;
+            showCloseBtn = titleOrOptions.showCloseBtn !== undefined ? titleOrOptions.showCloseBtn : true;
         } else if (typeof titleOrOptions === 'string' && titleOrOptions.trim().startsWith('<') && !htmlContent) {
             title = '';
             content = titleOrOptions;
+            showCloseBtn = extraOptions?.showCloseBtn !== undefined ? extraOptions.showCloseBtn : true;
         } else {
             title = titleOrOptions || '';
             content = htmlContent || '';
+            showCloseBtn = extraOptions?.showCloseBtn !== undefined ? extraOptions.showCloseBtn : true;
         }
 
         const opts = { title, content, confirmText, cancelText, onConfirm, onClose, showCloseBtn };

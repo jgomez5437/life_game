@@ -76,6 +76,10 @@ describe('Central Module Loader & Background Preloader Engine', () => {
             expect(ACTION_TO_MODULE['renderAssets']).toBe('assets');
             expect(ACTION_TO_MODULE['enterBusinessMode']).toBe('businessDashboard');
             expect(ACTION_TO_MODULE['renderCasinoHub']).toBe('casino');
+            expect(ACTION_TO_MODULE['openBlackjackBetting']).toBe('casino');
+            expect(ACTION_TO_MODULE['startBlackjackGame']).toBe('casino');
+            expect(ACTION_TO_MODULE['blackjackHit']).toBe('casino');
+            expect(ACTION_TO_MODULE['blackjackStand']).toBe('casino');
             expect(ACTION_TO_MODULE['renderCrimeDashboard']).toBe('crime');
             expect(ACTION_TO_MODULE['renderPrisonDashboard']).toBe('prison');
             expect(ACTION_TO_MODULE['renderStoreScreen']).toBe('store');

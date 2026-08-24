@@ -729,6 +729,9 @@ export function renderGodModeModal() {
                 <button data-action="applyGodModeStats" class="py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-xs transition flex items-center justify-center gap-1">
                     <i class="fas fa-save"></i> Save Changes
                 </button>
+                <button data-action="hideModal" class="col-span-2 w-full bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-2 rounded-xl text-xs transition border border-slate-600 flex items-center justify-center gap-1 mt-1">
+                    <i class="fas fa-times"></i> Close
+                </button>
             </div>
         </div>
     `;
@@ -737,7 +740,8 @@ export function renderGodModeModal() {
         title: "God Mode Stat Editor",
         content: html,
         confirmText: null,
-        cancelText: null
+        cancelText: null,
+        showCloseBtn: true
     });
 }
 
@@ -806,7 +810,8 @@ export function openGodModeHubModal() {
             `,
             confirmText: "Unlock God Mode ($2.99)",
             cancelText: "Cancel",
-            onConfirm: () => buyPack('god_mode')
+            onConfirm: () => buyPack('god_mode'),
+            showCloseBtn: true
         });
         return;
     }
@@ -861,6 +866,10 @@ export function openGodModeHubModal() {
                     </button>
                 </div>
             </div>
+
+            <button data-action="hideModal" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-2.5 rounded-xl text-xs transition border border-slate-600 flex items-center justify-center gap-2 mt-2">
+                <i class="fas fa-times"></i> Close Hub
+            </button>
         </div>
     `;
 
@@ -868,7 +877,8 @@ export function openGodModeHubModal() {
         title: "God Mode Control Center",
         content: htmlContent,
         confirmText: null,
-        cancelText: null
+        cancelText: null,
+        showCloseBtn: true
     });
 }
 

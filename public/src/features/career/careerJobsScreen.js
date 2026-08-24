@@ -202,8 +202,13 @@ function _showInterviewModal(question, jobLabel) {
                 <p class="text-white font-medium leading-snug">${question.question}</p>
             </div>
             ${answersHtml}
+            <button data-action="hideModal" class="w-full text-center bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white text-xs font-bold py-2.5 rounded-xl transition mt-2 border border-slate-700">
+                <i class="fas fa-times mr-1"></i> Walk Away from Interview
+            </button>
         </div>
-    `);
+    `, {
+        showCloseBtn: true
+    });
 }
 
 function _hireCareer(trackKey) {

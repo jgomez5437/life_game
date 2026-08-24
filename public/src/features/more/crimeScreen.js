@@ -208,7 +208,11 @@ export function openCrimeModal(crimeId) {
         </div>
     `;
 
-    UI.showCustomModal(`Attempt ${crime.name}`, modalHtml);
+    UI.showCustomModal({
+        title: `Attempt ${crime.name}`,
+        content: modalHtml,
+        showCloseBtn: true
+    });
 }
 
 export function commitCrimeAction(crimeId) {
@@ -380,7 +384,11 @@ export function showArrestModal(crime, extraCharges = []) {
         </div>
     `;
 
-    UI.showCustomModal("Police Arrest", html);
+    UI.showCustomModal({
+        title: "Police Arrest",
+        content: html,
+        showCloseBtn: false
+    });
 }
 
 export function openBribeModal() {
@@ -405,7 +413,11 @@ export function openBribeModal() {
             </div>
         </div>
     `;
-    UI.showCustomModal("Bribe Officer", html);
+    UI.showCustomModal({
+        title: "Bribe Officer",
+        content: html,
+        showCloseBtn: true
+    });
 }
 
 export function submitBribeAction() {
@@ -508,7 +520,11 @@ export function showCourtArraignmentModal(errorMsg = null) {
         </div>
     `;
 
-    UI.showCustomModal("Court Trial Arraignment", html);
+    UI.showCustomModal({
+        title: "Court Trial Arraignment",
+        content: html,
+        showCloseBtn: false
+    });
 }
 
 export function selectLegalCounsel(lawyerTier) {

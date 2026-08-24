@@ -773,7 +773,11 @@ export const submitPropertyListing = (propertyId, tierId) => {
             </div>
         `;
 
-        UI.showCustomModal(`Buyer Offer - ${Utils.escapeHtml(property.name)}`, modalHtml);
+        UI.showCustomModal({
+            title: `Buyer Offer - ${Utils.escapeHtml(property.name)}`,
+            content: modalHtml,
+            showCloseBtn: true
+        });
     } else {
         saveGame();
         addLog(`Listed ${property.name} at ${result.tierName} (${Utils.formatMoney(result.listPrice)}), but no buyers submitted an offer.`, 'neutral');
@@ -988,7 +992,11 @@ export const processNextTenantDefaultEvent = () => {
             </div>
         `;
 
-        UI.showCustomModal(`Lease Expiration - ${Utils.escapeHtml(event.propertyName)}`, modalHtml);
+        UI.showCustomModal({
+            title: `Lease Expiration - ${Utils.escapeHtml(event.propertyName)}`,
+            content: modalHtml,
+            showCloseBtn: false
+        });
         return;
     }
 
@@ -1029,7 +1037,11 @@ export const processNextTenantDefaultEvent = () => {
             </div>
         `;
 
-        UI.showCustomModal(`Tenant Damage - ${Utils.escapeHtml(event.propertyName)}`, modalHtml);
+        UI.showCustomModal({
+            title: `Tenant Damage - ${Utils.escapeHtml(event.propertyName)}`,
+            content: modalHtml,
+            showCloseBtn: false
+        });
         return;
     }
 
@@ -1069,7 +1081,11 @@ export const processNextTenantDefaultEvent = () => {
         </div>
     `;
 
-    UI.showCustomModal(`Tenant Overdue - ${Utils.escapeHtml(event.propertyName)}`, modalHtml);
+    UI.showCustomModal({
+        title: `Tenant Overdue - ${Utils.escapeHtml(event.propertyName)}`,
+        content: modalHtml,
+        showCloseBtn: false
+    });
 };
 
 export const demandTenantRepairPayment = (propertyId, tenantId, repairCost) => {

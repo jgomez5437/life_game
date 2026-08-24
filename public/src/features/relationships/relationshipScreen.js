@@ -1283,10 +1283,17 @@ export const openRingSelectionModal = (personId) => {
             <button data-action="renderJewelryDealer" data-args="&apos;ring&apos;" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold py-2 px-3 rounded-lg transition border border-slate-700">
                 <i class="fas fa-shopping-cart mr-1"></i> Go Ring Shopping
             </button>
+            <button data-action="hideModal" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-bold py-2 px-3 rounded-lg transition border border-slate-600 flex items-center justify-center gap-1.5">
+                <i class="fas fa-times"></i> Cancel Proposal
+            </button>
         </div>
     `;
 
-    UI.showModal("Select Proposal Ring", modalContent);
+    UI.showCustomModal({
+        title: "Select Proposal Ring",
+        content: modalContent,
+        showCloseBtn: true
+    });
 };
 
 export const proposeWithRing = (personId, ringAssetId) => {
@@ -1301,26 +1308,26 @@ export const proposeWithRing = (personId, ringAssetId) => {
     }
 
     const ring = user.assets[ringIndex];
-    person.interactedThisYear = true;
+    user.assets.splice(ringIndex, 1); // Consume the ring
 
     const accepted = GameLogic.calculateProposalAcceptance(person.status, ring.value);
+    const pronoun = person.gender === 'female' ? 'She' : (person.gender === 'male' ? 'He' : 'They');
 
     if (accepted) {
-        user.assets.splice(ringIndex, 1);
-        person.type = person.gender === 'male' ? 'Fiancé' : 'Fiancée';
-        person.status = Math.min(100, (person.status || 0) + 25);
-
-        addLog(`You proposed to ${person.name} with a ${ring.name} (${Utils.formatMoney(ring.value)}), and they said YES!`, 'good');
-        const pronoun = person.gender === 'male' ? 'He' : 'She';
+        person.type = 'Fiancé';
+        person.status = 100;
+        addLog(`Proposed to ${person.name} with a ${ring.name}. ${pronoun} said YES!`, 'good');
+        UI.updateHeader(user);
         UI.showModal(`${pronoun} Said Yes!`, `You proposed to ${Utils.escapeHtml(person.name)} with a ${Utils.escapeHtml(ring.name)} and they accepted! You are now engaged!`);
     } else {
         person.status = Math.max(0, (person.status || 0) - 15);
-        addLog(`You proposed to ${person.name} with a ${ring.name}, but they weren't ready.`, 'bad');
+        addLog(`Proposed to ${person.name} with a ${ring.name}. ${pronoun} rejected your proposal. (-15 Relationship Status)`, 'bad');
+        UI.updateHeader(user);
         UI.showModal('Rejected', `${Utils.escapeHtml(person.name)} wasn't ready to accept your proposal. (-15 Relationship Status)`);
     }
 
-    UI.updateHeader(user);
-    setTimeout(() => renderPersonInteraction(personId), 300);
+    if (typeof window.saveGame === 'function') window.saveGame();
+    renderPersonInteraction(personId);
 };
 
 // --- MAKE A MOVE & HOOKUP / AFFAIR DYNAMICS ---
@@ -1348,65 +1355,63 @@ export const handleMakeAMove = (personId) => {
     if (!success) {
         person.status = Math.max(0, (person.status || 0) - 15);
         addLog(`You made a move on ${person.name}, but they turned you down.`, 'bad');
-        UI.showModal('Not Tonight 😬', `<p class="text-slate-300 text-sm">${Utils.escapeHtml(person.name)} turned down your move. Things are a bit awkward between you now. (-15 Relationship Status)</p>`);
         UI.updateHeader(user);
+        UI.showModal('Not Tonight 😬', `<p class="text-slate-300 text-sm">${Utils.escapeHtml(person.name)} turned down your move. Things are a bit awkward between you now. (-15 Relationship Status)</p>`);
         if (typeof window.saveGame === 'function') window.saveGame();
         renderPersonInteraction(personId);
         return;
     }
 
     currentHookupPersonId = personId;
-    const scenarioText = GameLogic.getRandomHookupScenario(person.name);
+    const scenarioText = GameLogic.getRandomHookupScenario ? GameLogic.getRandomHookupScenario(person.name) : "Things are heating up!";
     renderSteamyHookupModal(person, scenarioText);
 };
 
-export const renderSteamyHookupModal = (person, scenarioText) => {
+export const renderSteamyHookupModal = (person, scenarioText = '') => {
     if (!person || isDeadNPC(person)) return;
     const user = state.gameState?.user;
     if (!user) return;
     const partner = (user.relationships || []).find(r => r.category === 'spouse' || r.category === 'partner');
     const isUnfaithful = !!partner && partner.id !== person.id;
 
+    currentHookupPersonId = person.id;
+
     const html = `
         <div class="text-center py-2 fade-in max-w-sm mx-auto">
-            <div class="w-20 h-20 mx-auto rounded-full bg-pink-500/10 border-2 border-pink-400 overflow-hidden mb-3 shadow-lg flex items-center justify-center">
+            <div class="w-20 h-20 mx-auto rounded-full bg-pink-500/20 border-2 border-pink-400 overflow-hidden mb-3 shadow-lg flex items-center justify-center">
                 ${renderAvatar(person)}
             </div>
-            <h3 class="text-xl font-bold text-white mb-1 flex items-center justify-center gap-2">
-                <i class="fas fa-fire-flame-curved text-pink-400"></i> Intimate Moment
+            <h3 class="text-xl font-bold text-pink-400 mb-1 flex items-center justify-center gap-2">
+                <i class="fas fa-fire"></i> Steamy Opportunity
             </h3>
-            <p class="text-sm italic text-pink-200 bg-pink-950/40 p-3 rounded-xl border border-pink-500/30 mb-4">
-                "${Utils.escapeHtml(scenarioText)}"
+            <p class="text-xs text-slate-300 mb-3">
+                ${scenarioText ? Utils.escapeHtml(scenarioText) : `Things are heating up with <strong class="text-white">${Utils.escapeHtml(person.name)}</strong>!`}
             </p>
-
             ${isUnfaithful ? `
-            <div class="bg-amber-950/50 border border-amber-500/40 p-2.5 rounded-xl text-left mb-4 flex items-start gap-2.5">
-                <i class="fas fa-triangle-exclamation text-amber-400 text-base mt-0.5"></i>
-                <div class="text-xs">
-                    <span class="font-bold text-amber-300 block">Infidelity Warning</span>
-                    <span class="text-amber-200/80">You are currently in a relationship with <strong class="text-white">${Utils.escapeHtml(partner.name)}</strong>. Hooking up will initiate a Secret Affair and carries a risk of getting caught!</span>
+                <div class="bg-amber-950/50 border border-amber-500/50 text-amber-300 text-xs font-semibold p-2.5 rounded-xl mb-4 text-left">
+                    <i class="fas fa-triangle-exclamation mr-1 text-amber-400"></i>
+                    <strong>Cheating Risk:</strong> You are currently in a relationship with <strong>${Utils.escapeHtml(partner.name)}</strong>. If discovered, this affair will cause serious damage!
                 </div>
-            </div>
             ` : ''}
 
             <div class="space-y-2 text-left">
-                <button data-action="confirmHookupChoice" data-args="&apos;protection&apos;" class="w-full bg-slate-800 hover:bg-slate-700 border border-emerald-500/50 hover:border-emerald-400 p-3 rounded-xl transition flex items-center gap-3 group">
-                    <div class="w-9 h-9 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-base font-bold group-hover:scale-105 transition">
-                        <i class="fas fa-shield-halved"></i>
+                <button data-action="confirmHookupChoice" data-args="&apos;protection&apos;" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-pink-500 p-3 rounded-xl transition flex items-center gap-3 group">
+                    <div class="w-9 h-9 rounded-lg bg-pink-500/20 text-pink-400 flex items-center justify-center text-base group-hover:scale-105 transition">
+                        <i class="fas fa-shield-heart"></i>
                     </div>
                     <div>
-                        <div class="font-bold text-white text-xs">Use Protection</div>
-                        <div class="text-[11px] text-emerald-400">Safe hookup (Tiny ~2% pregnancy chance)</div>
+                        <div class="font-bold text-white text-xs">Hook Up (With Protection)</div>
+                        <div class="text-[11px] text-slate-400">Boost relationship status (+15), minimal pregnancy risk</div>
                     </div>
                 </button>
 
-                <button data-action="confirmHookupChoice" data-args="&apos;risk&apos;" class="w-full bg-slate-800 hover:bg-slate-700 border border-amber-500/50 hover:border-amber-400 p-3 rounded-xl transition flex items-center gap-3 group">
-                    <div class="w-9 h-9 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center text-base font-bold group-hover:scale-105 transition">
-                        <i class="fas fa-bolt"></i>
+                <button data-action="confirmHookupChoice" data-args="&apos;no_protection&apos;" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-rose-500 p-3 rounded-xl transition flex items-center gap-3 group">
+                    <div class="w-9 h-9 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center text-base group-hover:scale-105 transition">
+                        <i class="fas fa-fire-flame-curved"></i>
                     </div>
                     <div>
-                        <div class="font-bold text-white text-xs">Take a Risk (No Protection)</div>
-                        <div class="text-[11px] text-amber-400">High thrill (High ~45% pregnancy chance)</div>
+                        <div class="font-bold text-white text-xs">Hook Up (No Protection)</div>
+                        <div class="text-[11px] text-rose-300 font-medium">Major relationship boost (+25), high pregnancy risk!</div>
                     </div>
                 </button>
 
@@ -1423,8 +1428,14 @@ export const renderSteamyHookupModal = (person, scenarioText) => {
         </div>
     `;
 
-    UI.showModal('Steamy Opportunity', html);
+    UI.showCustomModal({
+        title: 'Steamy Opportunity',
+        content: html,
+        showCloseBtn: false
+    });
 };
+
+export const openHookupModal = handleMakeAMove;
 
 export const confirmHookupChoice = (choice) => {
     const user = state.gameState?.user;
@@ -1586,7 +1597,11 @@ export const renderAgeUpCheatingDiscoveredModal = (discoveryInfo) => {
         </div>
     `;
 
-    UI.showModal('Cheating Discovered!', html);
+    UI.showCustomModal({
+        title: 'Cheating Discovered!',
+        content: html,
+        showCloseBtn: false
+    });
 };
 
 export const handleCheatingConfrontationChoice = (choice) => {
