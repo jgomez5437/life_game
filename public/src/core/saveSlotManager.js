@@ -154,16 +154,20 @@ export function migrateState(rawState) {
     const smarts = (origUser && typeof origUser.smarts === 'number' && Number.isNaN(origUser.smarts)) ? 50 : toNum(u.smarts, 50, 0, 100);
     const looks = toNum(u.looks, 50, 0, 100);
     const money = toNum(u.money, 0, -Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER);
-    const isDead = toBool(u.isDead || u.is_dead, false);
+    const rawIsDead = toBool(u.isDead || u.is_dead, false);
+    const rawLifeStatus = toStr(u.lifeStatus || u.life_status, '');
+    const isDead = rawIsDead || rawLifeStatus === 'Deceased' || (typeof u.deathCause === 'string' && u.deathCause.trim() !== '');
     const inPrison = toBool(u.inPrison, false);
 
     // Life Status validation
-    const validLifeStatuses = ["Baby", "Child", "Teen", "Young Adult", "Adult", "Senior", "Deceased", "Inmate"];
-    let lifeStatus = toStr(u.lifeStatus || u.life_status, '');
-    if (!validLifeStatuses.includes(lifeStatus)) {
-        if (isDead) lifeStatus = "Deceased";
-        else if (inPrison) lifeStatus = "Inmate";
+    const validLifeStatuses = ["Baby", "Toddler", "Child", "Teen", "Young Adult", "Adult", "Senior", "Deceased", "Inmate"];
+    let lifeStatus = rawLifeStatus;
+    if (isDead) {
+        lifeStatus = "Deceased";
+    } else if (!validLifeStatuses.includes(lifeStatus)) {
+        if (inPrison) lifeStatus = "Inmate";
         else if (age < 3) lifeStatus = "Baby";
+        else if (age < 5) lifeStatus = "Toddler";
         else if (age < 13) lifeStatus = "Child";
         else if (age < 18) lifeStatus = "Teen";
         else if (age < 25) lifeStatus = "Young Adult";
@@ -352,7 +356,9 @@ export function migrateState(rawState) {
         money,
         lifeStatus,
         isDead,
-        deathCause: u.deathCause ? toStr(u.deathCause, 'natural causes') : null,
+        isAlive: !isDead,
+        deathCause: isDead ? toStr(u.deathCause, 'natural causes') : null,
+        deathAge: isDead ? toNum(u.deathAge !== undefined ? u.deathAge : u.age, age, 0, 150) : null,
 
         isStudent,
         universityEnrolled,
@@ -611,9 +617,9 @@ export function hydrateSlotsStoreFromCloud(cloudGameData, forceCloud = false) {
                     const localSaved = localSlot?.lastSaved || 0;
                     const localAge = localData?.user?.age ?? -1;
 
-                    // If local slot has newer progress (higher age or more recent timestamp with active character)
-                    const isLocalNewer = !forceCloud && localData?.user && localData.user.lifeStatus !== 'Deceased' &&
-                        (localAge > cloudAge || (localAge === cloudAge && localSaved > cloudSaved));
+                    // If local slot has newer progress (higher age or more recent timestamp)
+                    const isLocalNewer = !forceCloud && localData?.user &&
+                        (localAge > cloudAge || (localAge === cloudAge && localSaved > cloudSaved) || (localSaved > cloudSaved && localAge >= cloudAge));
 
                     if (isLocalNewer) {
                         store.slots[key] = {
@@ -662,8 +668,10 @@ export function hydrateSlotsStoreFromCloud(cloudGameData, forceCloud = false) {
         const localSlot = localStore.slots?.['slot_1'];
         const localData = localSlot?.data;
         const localAge = localData?.user?.age ?? -1;
+        const localSaved = localSlot?.lastSaved || 0;
 
-        const isLocalNewer = !forceCloud && localData?.user && localData.user.lifeStatus !== 'Deceased' && localAge > cloudAge;
+        const isLocalNewer = !forceCloud && localData?.user &&
+            (localAge > cloudAge || (localAge === cloudAge && localSaved > Date.now() - 3600000));
 
         if (isLocalNewer) {
             store.slots['slot_1'] = deepClone(localSlot);
@@ -972,13 +980,13 @@ export function loadSlot(slotId) {
     }
     restoredState._slotId = slotId;
 
-    // Check if slot has higher recorded annual snapshot to recover past age
-    if (Array.isArray(restoredState.snapshots) && restoredState.snapshots.length > 0) {
+    // Check if slot has higher recorded annual snapshot to recover past age (only if character is alive)
+    if (!restoredState.user.isDead && restoredState.user.lifeStatus !== 'Deceased' && Array.isArray(restoredState.snapshots) && restoredState.snapshots.length > 0) {
         restoredState.snapshots = restoredState.snapshots.slice(-5);
         const highestSnapshot = restoredState.snapshots.slice().sort((a, b) => b.age - a.age)[0];
         if (highestSnapshot && highestSnapshot.data && highestSnapshot.age > (restoredState.user?.age || 0)) {
             const snapshotData = migrateState(highestSnapshot.data);
-            if (snapshotData && snapshotData.user) {
+            if (snapshotData && snapshotData.user && !snapshotData.user.isDead) {
                 snapshotData.snapshots = restoredState.snapshots;
                 snapshotData._slotId = slotId;
                 state.gameState = snapshotData;
@@ -989,7 +997,7 @@ export function loadSlot(slotId) {
             state.gameState = restoredState;
         }
     } else {
-        restoredState.snapshots = [];
+        if (!Array.isArray(restoredState.snapshots)) restoredState.snapshots = [];
         state.gameState = restoredState;
     }
 
@@ -1012,8 +1020,14 @@ export function loadSlot(slotId) {
         window.saveGame();
     }
 
-    // Re-render main dashboard
-    if (typeof window !== 'undefined' && typeof window.renderLifeDashboard === 'function') {
+    // Re-render main dashboard or death screen
+    if (state.gameState?.user?.lifeStatus === "Deceased") {
+        import('../features/player/mainScreen.js').then(m => {
+            if (typeof m.renderDeathScreen === 'function') {
+                m.renderDeathScreen(state.gameState.user, state.gameState.user.deathCause || "natural causes");
+            }
+        }).catch(() => {});
+    } else if (typeof window !== 'undefined' && typeof window.renderLifeDashboard === 'function') {
         window.renderLifeDashboard(state.gameState);
     } else {
         import('../features/player/mainScreen.js').then(m => {

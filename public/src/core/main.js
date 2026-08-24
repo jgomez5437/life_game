@@ -336,7 +336,7 @@ let _isSaveInFlight = false;
 let _hasPendingSave = false;
 
 //updates game info
-export function updateGameInfo(dbUser, options = {}) {
+export async function updateGameInfo(dbUser, options = {}) {
     const forceCloud = options.forceCloud || false;
     console.log("Updating game state from DB...");
     let rawData = dbUser.game_data || {};
@@ -392,13 +392,13 @@ export function updateGameInfo(dbUser, options = {}) {
         console.log("Dead character detected. Locking to death screen.");
         const cause = state.gameState.user.deathCause || "natural causes";
         if (typeof renderDeathScreen === "function") {
-            renderDeathScreen(state.gameState.user, cause);
+            await renderDeathScreen(state.gameState.user, cause);
         }
     } else if (state.gameState?.user && typeof renderLifeDashboard === "function") {
-        renderLifeDashboard(state.gameState); 
+        await renderLifeDashboard(state.gameState); 
     } else if (typeof renderCharCreation === "function") {
         console.log("No valid character state found in save. Directing to Character Creation.");
-        renderCharCreation();
+        await renderCharCreation();
     } else {
         console.error("❌ renderLifeDashboard function not found!");
     }
@@ -942,7 +942,7 @@ export async function initGame() {
                     UI.showModal("Character Saved!", `Your guest character (${guestName}) has been saved to your account.`);
                 },
                 "Keep Cloud Character",
-                () => {
+                async () => {
                     console.log("User chose Account Character. Loading Cloud save...");
                     // 1. Completely purge ALL local guest storage data
                     if (Utils && Utils.guestStorage && typeof Utils.guestStorage.clearSave === 'function') {
@@ -954,7 +954,7 @@ export async function initGame() {
                     } catch (e) {}
                     UI.hideModal();
                     // 2. Load cloud save with forceCloud = true so discarded local guest slots never override cloud save
-                    updateGameInfo(dbUser, { forceCloud: true });
+                    await updateGameInfo(dbUser, { forceCloud: true });
                     UI.showModal("Cloud Save Loaded", `Welcome back! Loaded your account character (${cloudName}).`);
                 }
             );
@@ -980,7 +980,7 @@ export async function initGame() {
             await saveGame(true);
 
             if (typeof renderLifeDashboard === "function") {
-                renderLifeDashboard(state.gameState);
+                await renderLifeDashboard(state.gameState);
                 UI.showModal("Character Saved!", `Welcome ${Utils.escapeHtml(user.nickname || 'Player')}! Your character has been saved to your account.`);
             }
             return;
@@ -988,7 +988,7 @@ export async function initGame() {
 
         // SCENARIO 3: No Guest Save -> Load Cloud Save, Recover Local Slot, or Start Character Creation
         if (dbUser) {
-            updateGameInfo(dbUser);
+            await updateGameInfo(dbUser);
         } else {
             // Check if local slots store has an existing character that hasn't synced to cloud yet
             let localRecovered = null;
@@ -997,7 +997,7 @@ export async function initGame() {
                 const store = getSlotsStore();
                 const activeId = store.activeSlotId || 'slot_1';
                 const activeSlot = store.slots[activeId] || Object.values(store.slots)[0];
-                if (activeSlot?.data?.user && activeSlot.data.user.lifeStatus !== 'Deceased') {
+                if (activeSlot?.data?.user) {
                     localRecovered = migrateState(activeSlot.data);
                     recoveredSlotId = activeId;
                     if (localRecovered) localRecovered._slotId = activeId;
@@ -1012,7 +1012,7 @@ export async function initGame() {
                         const parsed = JSON.parse(legacy);
                         if (parsed && (parsed.user || parsed.name || parsed.stats)) {
                             const migrated = migrateState(parsed);
-                            if (migrated && migrated.user && migrated.user.lifeStatus !== 'Deceased') {
+                            if (migrated && migrated.user) {
                                 localRecovered = migrated;
                             }
                         }
@@ -1025,12 +1025,18 @@ export async function initGame() {
                 state.gameState = localRecovered;
                 GameLogic.backfillRelationshipGender(state.gameState.user.relationships);
                 saveGame(true);
-                if (typeof renderLifeDashboard === "function") {
-                    renderLifeDashboard(state.gameState);
+                if (state.gameState.user.lifeStatus === "Deceased") {
+                    console.log("Dead character recovered from local slot. Locking to death screen.");
+                    const cause = state.gameState.user.deathCause || "natural causes";
+                    if (typeof renderDeathScreen === "function") {
+                        await renderDeathScreen(state.gameState.user, cause);
+                    }
+                } else if (typeof renderLifeDashboard === "function") {
+                    await renderLifeDashboard(state.gameState);
                 }
             } else {
                 console.log("No save file found. Starting Character Creation.");
-                renderCharCreation();
+                await renderCharCreation();
             }
         }
 
@@ -1081,23 +1087,20 @@ export async function initGame() {
             }
         }
         
-        if (loadedState) {
-            // THE FIX: Intercept and destroy dead guest saves
-            if (loadedState.user && loadedState.user.lifeStatus === "Deceased") {
-                console.log("Guest character is dead. Wiping local save.");
-                
-                state.gameState = null;
-                if (Utils.guestStorage.saveGame) {
-                    Utils.guestStorage.saveGame(); 
+        if (loadedState && loadedState.user) {
+            state.gameState = loadedState;
+            GameLogic.backfillRelationshipGender(state.gameState.user?.relationships);
+
+            if (state.gameState.user.lifeStatus === "Deceased") {
+                console.log("Guest character is deceased. Locking to death screen.");
+                const cause = state.gameState.user.deathCause || "natural causes";
+                if (typeof renderDeathScreen === "function") {
+                    await renderDeathScreen(state.gameState.user, cause);
                 }
-                
-                renderLoginScreen();
             } else {
                 console.log(`Loading active save slot (${loadedState._slotId}) from storage...`);
-                state.gameState = loadedState;
-                GameLogic.backfillRelationshipGender(state.gameState.user?.relationships);
                 if (typeof renderLifeDashboard === "function") {
-                    renderLifeDashboard(state.gameState);
+                    await renderLifeDashboard(state.gameState);
                 } else {
                     console.error("renderLifeDashboard function not found!");
                 }

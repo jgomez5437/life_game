@@ -312,6 +312,9 @@ describe('Modal Header Exit Button & Interactive Navigation Suite', () => {
         const closeBtn = document.getElementById('modal-close-btn');
 
         // 1. Steamy Opportunity (Hookup choice)
+        state.gameState.user.relationships = [
+            { id: 'npc_1', name: 'Jane Doe', category: 'partner', type: 'Girlfriend', status: 100, age: 27, gender: 'female' }
+        ];
         openHookupModal('npc_1');
         expect(titleEl.textContent).toBe("Steamy Opportunity");
         expect(closeBtn.classList.contains('hidden')).toBe(true);

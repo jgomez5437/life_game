@@ -1,6 +1,7 @@
 import { state, hasPurchasedPack } from './state.js';
 import { UI } from '../ui/ui.js';
 import { Utils } from '../ui/utils.js';
+import { GameLogic } from './gameLogic.js';
 import { deepClone, sanitizeGameState, migrateState } from './saveSlotManager.js';
 
 const buyPack = async (...args) => (await import('../features/store/storeScreen.js')).buyPack(...args);
@@ -106,8 +107,11 @@ export function rewindToAge(targetAge) {
 
     // Restore surviving status if deceased
     if (restoredState.user) {
-        restoredState.user.lifeStatus = "Alive";
+        restoredState.user.isDead = false;
+        restoredState.user.isAlive = true;
         delete restoredState.user.deathCause;
+        delete restoredState.user.deathAge;
+        restoredState.user.lifeStatus = GameLogic?.checkLifeStatus ? GameLogic.checkLifeStatus(restoredState.user) : (restoredState.user.age < 18 ? "Student" : "Adult");
     }
 
     // Keep snapshots up to target age

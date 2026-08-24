@@ -118,7 +118,10 @@ export async function ageUp() {
 
 function handleDeath(user, cause) {
     user.lifeStatus = "Deceased";
+    user.isDead = true;
+    user.isAlive = false;
     user.deathCause = cause;
+    user.deathAge = user.age;
     addLog(`You died at age ${user.age} from ${cause}`, 'bad');
     
     // Auto-save the death state before transitioning
@@ -296,7 +299,9 @@ export const continueAsChild = (childIndex, inheritedMoney) => {
         assets: [],
         relationships: inheritedRelationships,
         appearance: AvatarLogic.ensureAppearance(selectedChild),
-        avatarVersion: selectedChild.avatarVersion || 0
+        avatarVersion: selectedChild.avatarVersion || 0,
+        isDead: false,
+        isAlive: true
     };
 
     // Calculate initial life status
@@ -305,6 +310,7 @@ export const continueAsChild = (childIndex, inheritedMoney) => {
     // 2. Overwrite Single Source of Truth
     state.gameState.user = newUserState;
     state.gameState.pastLives = updatedPastLives;
+    state.gameState.snapshots = [];
     
     // 3. Purge and restart Life Log at child's chronological age
     const inheritanceLogMsg = safeInheritedMoney > 0
@@ -319,6 +325,10 @@ export const continueAsChild = (childIndex, inheritedMoney) => {
             { msg: inheritanceLogMsg, color: inheritanceLogColor }
         ]
     }];
+
+    // Capture child's initial annual snapshot
+    captureAnnualSnapshot(state.gameState);
+    saveToSlot();
 
     // 4. Force cloud sync of the new character state, then mount UI
     if (typeof saveGame === "function") saveGame(true);
