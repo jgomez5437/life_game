@@ -204,6 +204,9 @@ export function migrateState(rawState) {
     const careerTrack = u.careerTrack ? toStr(u.careerTrack, null) : null;
     const careerLevel = toNum(u.careerLevel, 0, 0);
     const yearsInRole = toNum(u.yearsInRole, 0, 0);
+    const yearsInCareer = toNum(u.yearsInCareer, 0, 0);
+    const isRetired = toBool(u.isRetired, false);
+    const retirementPension = toNum(u.retirementPension, 0, 0);
     const consecutivePoorYears = toNum(u.consecutivePoorYears, 0, 0);
     const monthlyOutflow = toNum(u.monthlyOutflow || u.monthly_outflow, 0, 0);
     const studentLoans = toNum(u.studentLoans || u.student_loans, 0, 0);
@@ -382,6 +385,9 @@ export function migrateState(rawState) {
         careerTrack,
         careerLevel,
         yearsInRole,
+        yearsInCareer,
+        isRetired,
+        retirementPension,
         consecutivePoorYears,
         monthlyOutflow,
         studentLoans,

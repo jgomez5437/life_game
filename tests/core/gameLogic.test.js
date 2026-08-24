@@ -986,8 +986,27 @@ describe('Real Estate Properties & Mortgage Pure Logic', () => {
         const userWithBoth = { jobTitle: 'Engineer', jobSalary: 60000, hasBusiness: true, ceoSalary: 8000 };
         expect(GameLogic.calculateUserMonthlyIncome(userWithBoth)).toBe(13000);
 
+        const retiredUser = { isRetired: true, retirementPension: 66000 };
+        expect(GameLogic.calculateUserMonthlyIncome(retiredUser)).toBe(5500);
+
+        const retiredUserWithJob = { isRetired: true, retirementPension: 66000, jobTitle: 'Consultant', jobSalary: 48000 };
+        expect(GameLogic.calculateUserMonthlyIncome(retiredUserWithJob)).toBe(9500);
+
         const unemployedUser = { money: 50000 };
         expect(GameLogic.calculateUserMonthlyIncome(unemployedUser)).toBe(0);
+    });
+
+    test('getMinRetireYears returns correct years for military, law enforcement, and other tracks', () => {
+        expect(GameLogic.getMinRetireYears('military')).toBe(20);
+        expect(GameLogic.getMinRetireYears({ careerTrack: 'military' })).toBe(20);
+
+        expect(GameLogic.getMinRetireYears('law_enforcement')).toBe(25);
+        expect(GameLogic.getMinRetireYears({ careerTrack: 'law_enforcement' })).toBe(25);
+
+        expect(GameLogic.getMinRetireYears('corporate_track')).toBe(30);
+        expect(GameLogic.getMinRetireYears({ careerTrack: 'medicine' })).toBe(30);
+        expect(GameLogic.getMinRetireYears({})).toBe(30);
+        expect(GameLogic.getMinRetireYears(null)).toBe(30);
     });
 
     test('calculateTotalMonthlyMortgages sums active property mortgages', () => {

@@ -554,6 +554,31 @@ if (user.age < 15) {
     }
 
     // 5. CAREERS SECTION
+    if (user.isRetired && user.retirementPension > 0) {
+        content += `
+            <div class="bg-slate-800 p-4 rounded-xl border border-amber-500/40 mb-4">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-amber-900/50 flex items-center justify-center text-amber-400">
+                            <i class="fas fa-cocktail"></i>
+                        </div>
+                        <h3 class="font-bold text-white">Retirement Pension</h3>
+                    </div>
+                    <span class="text-xs font-semibold px-2 py-0.5 bg-amber-500/20 text-amber-300 rounded border border-amber-500/30">
+                        +${Utils.formatMoney(Math.floor(user.retirementPension / 12))}/mo
+                    </span>
+                </div>
+                <div class="bg-slate-900 p-3 rounded border border-slate-700 flex justify-between items-center">
+                    <div>
+                        <div class="text-sm text-amber-400 font-bold">Retired</div>
+                        <div class="text-xs text-green-400">${Utils.formatMoney(user.retirementPension)}/yr pension</div>
+                    </div>
+                    <span class="text-xs text-emerald-400 font-bold flex items-center gap-1"><i class="fas fa-check-circle"></i> Active</span>
+                </div>
+            </div>
+        `;
+    }
+
     if (user.age < 18) {
          // ... (Keep your existing "Locked" code here) ...
          content += `
