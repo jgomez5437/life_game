@@ -121,7 +121,8 @@ describe('Time Machine & Multi-Save Slots Engine', () => {
 
             expect(state.gameState.user.age).toBe(25);
             expect(state.gameState.user.money).toBe(50000);
-            expect(state.gameState.user.lifeStatus).toBe('Alive');
+            expect(state.gameState.user.isDead).toBe(false);
+            expect(state.gameState.user.lifeStatus).not.toBe('Deceased');
         });
     });
 

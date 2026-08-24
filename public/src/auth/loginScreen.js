@@ -41,8 +41,8 @@ export const renderLoginScreen = () => {
             </div>
         </div>
         
-        <div class="mt-8 text-xs text-slate-300 font-medium">
-            © 2026 Start a Life • v1.4.3
+        <div class="text-center text-xs text-slate-500 mt-6">
+            &copy; 2026 Start a Life &bull; v1.4.4
         </div>
     </div>
     `;
