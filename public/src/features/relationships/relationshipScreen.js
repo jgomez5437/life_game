@@ -1,5 +1,6 @@
 import { state, hasPurchasedPack } from '../../core/state.js';
-import { renderLifeDashboard, addLog } from '../player/mainScreen.js';
+import { renderLifeDashboard, renderDeathScreen, addLog } from '../player/mainScreen.js';
+import { processNextFuneral, processNextTeacherReplacement } from './funeralScreen.js';
 import { GameLogic } from '../../core/gameLogic.js';
 import { Utils } from '../../ui/utils.js';
 import { UI } from '../../ui/ui.js';
@@ -68,7 +69,23 @@ export const addNewRelationship = (name, age, type, status, category = 'friend')
 
 // --- RENDER SCREEN ---
 export const renderRelationships = () => {
-    const user = state.gameState.user;
+    const user = state.gameState?.user;
+    if (!user) return;
+
+    if (user.lifeStatus === 'Deceased') {
+        renderDeathScreen(user, user.deathCause || 'natural causes');
+        return;
+    }
+
+    if (state.gameState?.pendingFunerals && state.gameState.pendingFunerals.length > 0) {
+        processNextFuneral();
+        return;
+    }
+
+    if (state.gameState?.pendingTeacherReplacements && state.gameState.pendingTeacherReplacements.length > 0) {
+        processNextTeacherReplacement();
+        return;
+    }
 
     if (!user.relationships) {
         user.relationships = [];

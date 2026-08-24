@@ -8,7 +8,7 @@ import { deepClone, sanitizeGameState, migrateState, hydrateSlotsStoreFromCloud,
 import { resolveAdState, onVipPurchased, resetAdState, isAdFree, getAdState } from './adManager.js';
 
 // --- Dynamic Module Loader & Background Preloader ---
-import { lazy, preloadForContext, attachIntentPreloaders } from './moduleLoader.js';
+import { lazy, loadModule, preloadForContext, attachIntentPreloaders } from './moduleLoader.js';
 
 export {
     MAJORS,
@@ -1452,13 +1452,76 @@ const routeHandlers = {
   closeAllModals: () => UI.closeAllModals()
 };
 
+const DEATH_ACTION_WHITELIST = new Set([
+    'continueAsChild',
+    'resetGame',
+    'openTimeMachineModal',
+    'executeTimeRewind',
+    'showFullEulogy',
+    'hideModal',
+    'closeAllModals'
+]);
+
+const FUNERAL_ACTION_WHITELIST = new Set([
+    'chooseFuneralType',
+    'cancelFuneralPlan',
+    'confirmFuneralPlan',
+    'donateBody',
+    'lookTheOtherWay',
+    'goToFuneral',
+    'skipFuneral',
+    'respondNewTeacher',
+    'processNextTeacherReplacement',
+    'hideModal',
+    'closeAllModals'
+]);
+
 document.addEventListener('click', (e) => {
     const actionElement = e.target.closest('[data-action]');
     if (actionElement) {
         if (actionElement.disabled || actionElement.hasAttribute('disabled') || actionElement.getAttribute('aria-disabled') === 'true' || actionElement.classList.contains('disabled')) {
             return;
         }
+
         const action = actionElement.dataset.action;
+
+        // 1. Universal Modal Lock: If a modal is open, block any clicks originating outside the modal
+        if (typeof UI !== 'undefined' && typeof UI.isModalOpen === 'function' && UI.isModalOpen()) {
+            const isInsideModal = !!actionElement.closest('#modal-overlay');
+            if (!isInsideModal) {
+                // Drop click to prevent background screen switching
+                return;
+            }
+        }
+
+        // 2. Deceased Character Lock: If deceased, restrict actions to death screen whitelist only
+        if (state.gameState?.user?.lifeStatus === 'Deceased') {
+            if (!DEATH_ACTION_WHITELIST.has(action)) {
+                console.warn(`[Navigation Lock] Blocked action "${action}" for deceased character. Locking to death screen.`);
+                if (typeof renderDeathScreen === 'function') {
+                    renderDeathScreen(state.gameState.user, state.gameState.user.deathCause || 'natural causes');
+                }
+                return;
+            }
+        }
+
+        // 3. Pending Funerals & Teacher Replacements Lock: Require choice before switching screens
+        const hasPendingFunerals = state.gameState?.pendingFunerals && state.gameState.pendingFunerals.length > 0;
+        const hasPendingTeachers = state.gameState?.pendingTeacherReplacements && state.gameState.pendingTeacherReplacements.length > 0;
+        if (hasPendingFunerals || hasPendingTeachers) {
+            if (!FUNERAL_ACTION_WHITELIST.has(action)) {
+                console.warn(`[Navigation Lock] Blocked action "${action}" while funeral/teacher prompt is pending.`);
+                loadModule('funeral').then(m => {
+                    if (hasPendingFunerals && m && typeof m.processNextFuneral === 'function') {
+                        m.processNextFuneral();
+                    } else if (hasPendingTeachers && m && typeof m.processNextTeacherReplacement === 'function') {
+                        m.processNextTeacherReplacement();
+                    }
+                });
+                return;
+            }
+        }
+
         const argsStr = actionElement.dataset.args;
         let args = [];
         if (argsStr !== undefined && argsStr !== null && argsStr.trim() !== '') {
@@ -1494,6 +1557,14 @@ document.addEventListener('click', (e) => {
 document.addEventListener('change', (e) => {
     const actionElement = e.target.closest('[data-action]');
     if (actionElement) {
+        // Universal Modal Lock check for input changes
+        if (typeof UI !== 'undefined' && typeof UI.isModalOpen === 'function' && UI.isModalOpen()) {
+            const isInsideModal = !!actionElement.closest('#modal-overlay');
+            if (!isInsideModal) {
+                return;
+            }
+        }
+
         const action = actionElement.dataset.action;
         if (routeHandlers[action]) {
             try {

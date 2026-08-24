@@ -1,6 +1,7 @@
 import { GameLogic } from '../../core/gameLogic.js';
 import { state } from '../../core/state.js';
-import { renderLifeDashboard, addLog } from '../player/mainScreen.js';
+import { renderLifeDashboard, renderDeathScreen, addLog } from '../player/mainScreen.js';
+import { processNextFuneral, processNextTeacherReplacement } from '../relationships/funeralScreen.js';
 import { saveGame } from '../../core/main.js';
 import { UI } from '../../ui/ui.js';
 import { Utils, COUNTRIES_DATA } from '../../ui/utils.js';
@@ -56,7 +57,23 @@ export function openSkillsModal() {
 }
 
 export function renderMoreDashboard() {
-    const user = state.gameState.user;
+    const user = state.gameState?.user;
+    if (!user) return;
+
+    if (user.lifeStatus === 'Deceased') {
+        renderDeathScreen(user, user.deathCause || 'natural causes');
+        return;
+    }
+
+    if (state.gameState?.pendingFunerals && state.gameState.pendingFunerals.length > 0) {
+        processNextFuneral();
+        return;
+    }
+
+    if (state.gameState?.pendingTeacherReplacements && state.gameState.pendingTeacherReplacements.length > 0) {
+        processNextTeacherReplacement();
+        return;
+    }
     const gymLocked = (user.age || 0) < 12;
     const dietLocked = (user.age || 0) <= 12;
     const lotteryLocked = (user.age || 0) < 18;

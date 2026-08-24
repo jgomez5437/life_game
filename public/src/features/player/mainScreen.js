@@ -204,6 +204,7 @@ export function renderDeathScreen(user, cause) {
         </div>
     `;
     
+    UI.resetHeader();
     UI.hideBottomNav();
     UI.renderScreen(deathHTML);
 
@@ -809,10 +810,38 @@ function handleAppearanceAging(user) {
 export function renderLifeDashboard(maybeGameState) {
     // --- Data Preparation ---
     const currentState = maybeGameState || state.gameState;
-    if (!state || !currentState.user) {
+    if (!state || !currentState || !currentState.user) {
         console.warn("renderLifeDashboard called before game state existed.");
-        return;}
+        return;
+    }
     const user = currentState.user;
+
+    // Guard 1: Deceased check -> Lock to death screen
+    if (user && user.lifeStatus === "Deceased") {
+        renderDeathScreen(user, user.deathCause || "natural causes");
+        return;
+    }
+
+    // Guard 2: Pending funerals check -> Lock to funeral screen
+    if (currentState.pendingFunerals && currentState.pendingFunerals.length > 0) {
+        loadModule('funeral').then(m => {
+            if (m && typeof m.processNextFuneral === 'function') {
+                m.processNextFuneral();
+            }
+        });
+        return;
+    }
+
+    // Guard 3: Pending teacher replacements check -> Lock to teacher replacement screen
+    if (currentState.pendingTeacherReplacements && currentState.pendingTeacherReplacements.length > 0) {
+        loadModule('funeral').then(m => {
+            if (m && typeof m.processNextTeacherReplacement === 'function') {
+                m.processNextTeacherReplacement();
+            }
+        });
+        return;
+    }
+
     if (user && user.inPrison) {
         loadModule('prison').then(m => {
             if (m && typeof m.renderPrisonDashboard === 'function') {
