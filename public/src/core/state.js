@@ -10,6 +10,10 @@ export const state = {
 // but we can provide helper functions if we need to completely overwrite the state.
 export function setGameState(newState) {
     state.gameState = newState;
+    if (state.gameState) {
+        if (!state.gameState.pendingEvents) state.gameState.pendingEvents = [];
+        if (!state.gameState.completedEventsHistory) state.gameState.completedEventsHistory = [];
+    }
     if (state.verifiedPurchases && state.gameState?.user) {
         state.gameState.user.purchases = [...state.verifiedPurchases];
     }
