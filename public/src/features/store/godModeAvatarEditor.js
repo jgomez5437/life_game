@@ -133,18 +133,25 @@ function renderGodModeAvatarModalContent() {
                 `).join('')}
             </div>
 
-            <div class="flex gap-2 pt-2 border-t border-slate-700">
-                <button data-action="randomizeGodModeAvatarTraits" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 rounded-xl py-2 font-bold text-xs transition flex items-center justify-center gap-1.5">
+            <div class="grid grid-cols-3 gap-2 pt-2 border-t border-slate-700">
+                <button data-action="randomizeGodModeAvatarTraits" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 rounded-xl py-2 font-bold text-xs transition flex items-center justify-center gap-1">
                     <i class="fas fa-dice text-amber-400"></i> Randomize
                 </button>
-                <button data-action="saveGodModeAvatar" class="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl py-2 font-bold text-xs transition flex items-center justify-center gap-1.5 shadow">
-                    <i class="fas fa-check"></i> Save Changes
+                <button data-action="hideModal" class="bg-slate-700 hover:bg-slate-600 text-slate-200 border border-slate-600 rounded-xl py-2 font-bold text-xs transition flex items-center justify-center gap-1">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button data-action="saveGodModeAvatar" class="bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl py-2 font-bold text-xs transition flex items-center justify-center gap-1 shadow">
+                    <i class="fas fa-check"></i> Save
                 </button>
             </div>
         </div>
     `;
 
-    UI.showModal("God Mode Avatar Editor", html);
+    UI.showCustomModal({
+        title: "God Mode Avatar Editor",
+        content: html,
+        showCloseBtn: true
+    });
 }
 
 export function updateGodModeAvatarTrait(key) {

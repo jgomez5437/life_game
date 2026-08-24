@@ -250,6 +250,10 @@ export function renderTimeMachineModal() {
                     </button>
                 </div>
             ` : ''}
+
+            <button data-action="hideModal" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-2.5 rounded-xl text-xs transition border border-slate-600 flex items-center justify-center gap-2 mt-2">
+                <i class="fas fa-times"></i> Close Time Machine
+            </button>
         </div>
     `;
 
@@ -257,6 +261,7 @@ export function renderTimeMachineModal() {
         title: "Time Machine & Timeline Scrubber",
         content: modalHTML,
         confirmText: null,
-        cancelText: null
+        cancelText: null,
+        showCloseBtn: true
     });
 }

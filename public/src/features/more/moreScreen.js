@@ -406,10 +406,17 @@ export function openDietSelectionModal() {
                     `;
                 }).join('')}
             </div>
+            <button data-action="hideModal" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-2.5 rounded-xl text-xs transition border border-slate-600 flex items-center justify-center gap-2 mt-3">
+                <i class="fas fa-times"></i> Cancel / Keep Current Diet
+            </button>
         </div>
     `;
 
-    UI.showCustomModal("Choose Diet Plan", html);
+    UI.showCustomModal({
+        title: "Choose Diet Plan",
+        content: html,
+        showCloseBtn: true
+    });
 }
 
 export function selectDiet(dietId) {
@@ -435,6 +442,7 @@ export function selectDiet(dietId) {
 
 export function openLotteryModal() {
     const user = state.gameState.user;
+    if (!user) return;
     if ((user.age || 0) < 18) {
         UI.showModal("Too Young", "You must be at least 18 years old to play the lottery.");
         return;
@@ -486,7 +494,11 @@ export function openLotteryModal() {
     if (modalOverlay && !modalOverlay.classList.contains('hidden')) {
         UI.replaceModalContent("Lottery Station", html);
     } else {
-        UI.showCustomModal("Lottery Station", html);
+        UI.showCustomModal({
+            title: "Lottery Station",
+            content: html,
+            showCloseBtn: true
+        });
     }
 }
 
@@ -588,9 +600,17 @@ export function openTravelModal() {
                 <div class="font-bold text-white text-lg border-l-4 border-yellow-400 pl-2">Luxury International Tour (${Utils.formatMoney(10000)})</div>
                 <div class="text-sm text-slate-400 pl-3">A once-in-a-lifetime journey across the globe. (+15 Health, +35 Happiness)</div>
             </button>
+
+            <button data-action="hideModal" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-2.5 rounded-xl text-xs transition border border-slate-600 flex items-center justify-center gap-2 mt-1">
+                <i class="fas fa-times"></i> Cancel Vacation
+            </button>
         </div>
     `;
-    UI.showCustomModal("Travel & Vacations", htmlContent);
+    UI.showCustomModal({
+        title: "Travel & Vacations",
+        content: htmlContent,
+        showCloseBtn: true
+    });
 }
 
 export function bookTrip(tier) {

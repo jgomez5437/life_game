@@ -924,10 +924,18 @@ export function openContrabandPhoneModal() {
             <div class="text-[11px] text-amber-400/90 italic flex items-center gap-1.5 bg-amber-950/40 p-2 rounded-lg border border-amber-900/50">
                 <i class="fas fa-triangle-exclamation"></i> Guard shakedowns or phone calls carry a 15% risk of discovery (+1 yr sentence penalty & solitary).
             </div>
+
+            <button data-action="hideModal" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-2.5 rounded-xl text-xs transition border border-slate-600 flex items-center justify-center gap-2">
+                <i class="fas fa-times"></i> Close Phone
+            </button>
         </div>
     `;
 
-    UI.showCustomModal("Contraband Cellphone", html);
+    UI.showCustomModal({
+        title: "Contraband Cellphone",
+        content: html,
+        showCloseBtn: true
+    });
 }
 
 export function submitContrabandPhoneAction(action, targetId) {
@@ -985,10 +993,18 @@ export function openDealerBuyModal() {
                     </div>
                 `).join('')}
             </div>
+
+            <button data-action="hideModal" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-2.5 rounded-xl text-xs transition border border-slate-600 flex items-center justify-center gap-2">
+                <i class="fas fa-times"></i> Exit Store
+            </button>
         </div>
     `;
 
-    UI.showCustomModal("Contraband Dealer - Buy", html);
+    UI.showCustomModal({
+        title: "Contraband Dealer - Buy",
+        content: html,
+        showCloseBtn: true
+    });
 }
 
 export function openDealerSellModal() {
@@ -1035,10 +1051,18 @@ export function openDealerSellModal() {
             </div>
 
             ${itemsHtml}
+
+            <button data-action="hideModal" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-2.5 rounded-xl text-xs transition border border-slate-600 flex items-center justify-center gap-2">
+                <i class="fas fa-times"></i> Exit Store
+            </button>
         </div>
     `;
 
-    UI.showCustomModal("Contraband Dealer - Sell", html);
+    UI.showCustomModal({
+        title: "Contraband Dealer - Sell",
+        content: html,
+        showCloseBtn: true
+    });
 }
 
 export function handleSellContrabandAction(itemIndex) {
@@ -1176,6 +1200,12 @@ export function openInmateDetailModal(inmateId) {
         </button>
     `;
 
+    actionButtons += `
+        <button data-action="hideModal" class="col-span-2 w-full bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 transition border border-slate-600 mt-1">
+            <i class="fas fa-arrow-left"></i> Close Interaction
+        </button>
+    `;
+
     const html = `
         <div class="space-y-4 text-left">
             <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex items-center gap-4">
@@ -1208,7 +1238,11 @@ export function openInmateDetailModal(inmateId) {
         </div>
     `;
 
-    UI.showCustomModal(Utils.escapeHtml(inmate.name), html);
+    UI.showCustomModal({
+        title: Utils.escapeHtml(inmate.name),
+        content: html,
+        showCloseBtn: true
+    });
 }
 
 export function openAttackPromptModal(targetType, targetId) {
@@ -1261,7 +1295,11 @@ export function openAttackPromptModal(targetType, targetId) {
         </div>
     `;
 
-    UI.showCustomModal("Confirm Attack", html);
+    UI.showCustomModal({
+        title: "Confirm Attack",
+        content: html,
+        showCloseBtn: true
+    });
 }
 
 export function executeInmateAttack(targetType, targetId, weaponType) {
@@ -1336,7 +1374,11 @@ export function renderNewCellmateModal(newCm) {
         </div>
     `;
 
-    UI.showCustomModal("New Cellmate Assigned", html);
+    UI.showCustomModal({
+        title: "New Cellmate Assigned",
+        content: html,
+        showCloseBtn: true
+    });
     renderPrisonDashboard();
 }
 

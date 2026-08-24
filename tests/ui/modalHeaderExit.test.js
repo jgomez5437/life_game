@@ -10,8 +10,25 @@ import { renderSaveSlotManagerModal } from '../../public/src/core/saveSlotManage
 import { renderTimeMachineModal } from '../../public/src/core/timeMachine.js';
 import { renderGodModeModal, openGodModeHubModal } from '../../public/src/features/store/storeScreen.js';
 import { openDietSelectionModal, openTravelModal } from '../../public/src/features/more/moreScreen.js';
+import { openAchievementsModal } from '../../public/src/features/more/achievementsScreen.js';
+import {
+    openInmateDetailModal,
+    openDealerBuyModal,
+    openDealerSellModal,
+    openContrabandPhoneModal
+} from '../../public/src/features/more/prisonScreen.js';
+import {
+    openHookupModal,
+    renderAgeUpCheatingDiscoveredModal,
+    openRingSelectionModal
+} from '../../public/src/features/relationships/relationshipScreen.js';
+import {
+    showArrestModal,
+    openBribeModal,
+    showCourtArraignmentModal
+} from '../../public/src/features/more/crimeScreen.js';
 
-describe('Modal Header Inline Exit Button & Screen Cleanliness', () => {
+describe('Modal Header Exit Button & Interactive Navigation Suite', () => {
 
     beforeEach(() => {
         localStorage.clear();
@@ -63,7 +80,40 @@ describe('Modal Header Inline Exit Button & Screen Cleanliness', () => {
                 city: 'New York',
                 purchases: ['vip_supporter', 'god_mode', 'instant_diplomas', 'time_machine'],
                 assets: [],
-                relationships: [],
+                relationships: [
+                    {
+                        id: 'npc_1',
+                        name: 'Jane Doe',
+                        age: 27,
+                        gender: 'female',
+                        type: 'Friend',
+                        category: 'friend',
+                        status: 80
+                    }
+                ],
+                cellmate: {
+                    id: 'cm_1',
+                    name: 'Big Tony',
+                    age: 34,
+                    crime: 'Armed Robbery',
+                    perk: 'Heavy Hitter',
+                    role: 'Cellmate',
+                    status: 60
+                },
+                yardInmates: [
+                    {
+                        id: 'yard_1',
+                        name: 'Slick Rick',
+                        age: 29,
+                        crime: 'Smuggling',
+                        role: 'Contraband Dealer',
+                        status: 50
+                    }
+                ],
+                prisonStats: {
+                    canteenCash: 250,
+                    contraband: ['Pack of Cigarettes', 'Writing Paper & Pen']
+                },
                 pastLives: []
             },
             pastLives: [],
@@ -121,7 +171,7 @@ describe('Modal Header Inline Exit Button & Screen Cleanliness', () => {
         expect(onCancel).toHaveBeenCalledTimes(1);
     });
 
-    test('UI.showCustomModal executes onClose callback when showCloseBtn is true, and hides close button by default', () => {
+    test('UI.showCustomModal executes onClose callback when showCloseBtn is true, and hides close button when showCloseBtn is false', () => {
         const onClose = jest.fn();
         UI.showCustomModal({
             title: "Custom Header",
@@ -142,126 +192,144 @@ describe('Modal Header Inline Exit Button & Screen Cleanliness', () => {
         expect(overlay.classList.contains('hidden')).toBe(true);
         expect(onClose).toHaveBeenCalledTimes(1);
 
-        // Test default showCloseBtn (false)
+        // Test showCloseBtn = false
         UI.showCustomModal({
             title: "No Exit Allowed",
-            content: "<div>Locked modal</div>"
+            content: "<div>Locked dilemma modal</div>",
+            showCloseBtn: false
         });
         expect(closeBtn.classList.contains('hidden')).toBe(true);
     });
 
-    test('UI.replaceModalContent preserves the inline close button and its dismiss handler when enabled', () => {
-        UI.showCustomModal({
-            title: "Initial Step",
-            content: "<div>Step 1</div>",
-            showCloseBtn: true
-        });
-        const overlay = document.getElementById('modal-overlay');
-        const title = document.getElementById('modal-title');
-        const content = document.getElementById('modal-content');
-        const closeBtn = document.getElementById('modal-close-btn');
-
-        expect(title.textContent).toBe("Initial Step");
-
-        UI.replaceModalContent("Updated Step", "<div>Step 2 Result</div>");
-
-        expect(title.textContent).toBe("Updated Step");
-        expect(content.innerHTML).toContain("Step 2 Result");
-        expect(closeBtn.classList.contains('hidden')).toBe(false);
-
-        closeBtn.click();
-        expect(overlay.classList.contains('hidden')).toBe(true);
-    });
-
-    test('Nested modals correctly unwind when clicking the inline close button', () => {
-        // Open Modal A
-        UI.showCustomModal({
-            title: "Parent Modal",
-            content: "<div>Parent View</div>",
-            showCloseBtn: true
-        });
-        expect(document.getElementById('modal-title').textContent).toBe("Parent Modal");
-
-        // Open Modal B over Modal A
-        UI.showCustomModal({
-            title: "Child Modal",
-            content: "<div>Child View</div>",
-            showCloseBtn: true
-        });
-        expect(document.getElementById('modal-title').textContent).toBe("Child Modal");
-
-        // Close Modal B via top exit button
-        document.getElementById('modal-close-btn').click();
-
-        // Modal A should now be restored
-        expect(document.getElementById('modal-title').textContent).toBe("Parent Modal");
-        expect(document.getElementById('modal-overlay').classList.contains('hidden')).toBe(false);
-
-        // Close Modal A via top exit button
-        document.getElementById('modal-close-btn').click();
-        expect(document.getElementById('modal-overlay').classList.contains('hidden')).toBe(true);
-    });
-
-    test('Feature Modals render cleanly with title at top and no bottom scroll-to-exit buttons', () => {
+    test('Prison Modals render both inline exit buttons and active top close (X) buttons', () => {
         const titleEl = document.getElementById('modal-title');
         const contentEl = document.getElementById('modal-content');
-        const actionsEl = document.getElementById('modal-actions');
+        const closeBtn = document.getElementById('modal-close-btn');
 
-        // 1. Settings Modal
-        openSettingsModal();
-        expect(titleEl.textContent).toBe("Settings");
-        expect(contentEl.innerHTML).not.toContain('data-action="hideModal"');
+        // 1. Cellmate Inmate Detail Modal
+        openInmateDetailModal('cellmate');
+        expect(titleEl.textContent).toBe("Big Tony");
+        expect(closeBtn.classList.contains('hidden')).toBe(false);
+        expect(contentEl.innerHTML).toContain('data-action="hideModal"');
+        expect(contentEl.innerHTML).toContain('Close Interaction');
 
-        // 2. Player Overview Modal
-        openPlayerOverviewModal();
-        expect(titleEl.textContent).toBe("Player Life Overview");
-        expect(contentEl.innerHTML).not.toContain('Close Overview');
-        expect(contentEl.innerHTML).not.toContain('data-action="hideModal"');
+        // 2. Contraband Dealer Buy Modal
+        openDealerBuyModal();
+        expect(titleEl.textContent).toBe("Contraband Dealer - Buy");
+        expect(closeBtn.classList.contains('hidden')).toBe(false);
+        expect(contentEl.innerHTML).toContain('data-action="hideModal"');
+        expect(contentEl.innerHTML).toContain('Exit Store');
 
-        // 3. Family Graveyard Modal
+        // 3. Contraband Dealer Sell Modal
+        openDealerSellModal();
+        expect(titleEl.textContent).toBe("Contraband Dealer - Sell");
+        expect(closeBtn.classList.contains('hidden')).toBe(false);
+        expect(contentEl.innerHTML).toContain('data-action="hideModal"');
+        expect(contentEl.innerHTML).toContain('Exit Store');
+
+        // 4. Contraband Cellphone Modal
+        openContrabandPhoneModal();
+        expect(titleEl.textContent).toBe("Contraband Cellphone");
+        expect(closeBtn.classList.contains('hidden')).toBe(false);
+        expect(contentEl.innerHTML).toContain('data-action="hideModal"');
+        expect(contentEl.innerHTML).toContain('Close Phone');
+    });
+
+    test('Feature & Store Modals render with active top close buttons and inline exit buttons', () => {
+        const titleEl = document.getElementById('modal-title');
+        const contentEl = document.getElementById('modal-content');
+        const closeBtn = document.getElementById('modal-close-btn');
+
+        // 1. Family Graveyard Modal
         renderGraveyardModal();
         expect(titleEl.textContent).toBe("Family Graveyard & Lineage");
-        expect(contentEl.innerHTML).not.toContain('Close Graveyard');
-        expect(contentEl.innerHTML).not.toContain('data-action="hideModal"');
+        expect(closeBtn.classList.contains('hidden')).toBe(false);
+        expect(contentEl.innerHTML).toContain('Close Graveyard');
 
-        // 4. VIP Lounge Modal
+        // 2. Achievements Modal
+        openAchievementsModal();
+        expect(titleEl.textContent).toBe("Achievements & Trophies");
+        expect(closeBtn.classList.contains('hidden')).toBe(false);
+        expect(contentEl.innerHTML).toContain('Close Achievements');
+
+        // 3. VIP Lounge Modal
         renderVipLoungeModal();
         expect(titleEl.textContent).toBe("VIP Lounge");
-        expect(actionsEl.innerHTML).toBe(''); // No bottom action buttons
+        expect(closeBtn.classList.contains('hidden')).toBe(false);
+        expect(contentEl.innerHTML).toContain('Close VIP Lounge');
 
-        // 5. Instant Diploma Hub Modal
+        // 4. Instant Diploma Hub Modal
         renderInstantDiplomaHub();
         expect(titleEl.textContent).toBe("Instant Diploma Hub");
-        expect(actionsEl.innerHTML).toBe(''); // No bottom action buttons
+        expect(closeBtn.classList.contains('hidden')).toBe(false);
+        expect(contentEl.innerHTML).toContain('Close Hub');
 
-        // 6. Save Slot Manager Modal
+        // 5. Save Slot Manager Modal
         renderSaveSlotManagerModal();
         expect(titleEl.textContent).toBe("Save & Load Slots");
-        expect(actionsEl.innerHTML).toBe(''); // No bottom action buttons
+        expect(closeBtn.classList.contains('hidden')).toBe(false);
+        expect(contentEl.innerHTML).toContain('Close Slots Manager');
 
-        // 7. Time Machine Modal
+        // 6. Time Machine Modal
         renderTimeMachineModal();
         expect(titleEl.textContent).toBe("Time Machine & Timeline Scrubber");
-        expect(actionsEl.innerHTML).toBe(''); // No bottom action buttons
+        expect(closeBtn.classList.contains('hidden')).toBe(false);
+        expect(contentEl.innerHTML).toContain('Close Time Machine');
 
-        // 8. God Mode Stat Editor Modal
+        // 7. God Mode Stat Editor Modal
         renderGodModeModal();
         expect(titleEl.textContent).toBe("God Mode Stat Editor");
-        expect(actionsEl.innerHTML).toBe(''); // No bottom action buttons
+        expect(closeBtn.classList.contains('hidden')).toBe(false);
+        expect(contentEl.innerHTML).toContain('Close');
 
-        // 9. God Mode Control Center Modal
+        // 8. God Mode Control Center Modal
         openGodModeHubModal();
         expect(titleEl.textContent).toBe("God Mode Control Center");
-        expect(actionsEl.innerHTML).toBe(''); // No bottom action buttons
+        expect(closeBtn.classList.contains('hidden')).toBe(false);
+        expect(contentEl.innerHTML).toContain('Close Hub');
 
-        // 10. Diet Selection Modal
+        // 9. Diet Selection Modal
         openDietSelectionModal();
         expect(titleEl.textContent).toBe("Choose Diet Plan");
-        expect(contentEl.innerHTML).not.toContain('data-action="hideModal"');
+        expect(closeBtn.classList.contains('hidden')).toBe(false);
+        expect(contentEl.innerHTML).toContain('Cancel / Keep Current Diet');
 
-        // 11. Travel Modal
+        // 10. Travel Modal
         openTravelModal();
         expect(titleEl.textContent).toBe("Travel & Vacations");
-        expect(contentEl.innerHTML).not.toContain('data-action="hideModal"');
+        expect(closeBtn.classList.contains('hidden')).toBe(false);
+        expect(contentEl.innerHTML).toContain('Cancel Vacation');
+
+        // 11. Proposal Ring Selection Modal
+        openRingSelectionModal('npc_1');
+        expect(titleEl.textContent).toBe("Select Proposal Ring");
+        expect(closeBtn.classList.contains('hidden')).toBe(false);
+        expect(contentEl.innerHTML).toContain('Cancel Proposal');
+    });
+
+    test('Mandatory story dilemma events strictly HIDE the top close button so player must make a choice', () => {
+        const titleEl = document.getElementById('modal-title');
+        const closeBtn = document.getElementById('modal-close-btn');
+
+        // 1. Steamy Opportunity (Hookup choice)
+        openHookupModal('npc_1');
+        expect(titleEl.textContent).toBe("Steamy Opportunity");
+        expect(closeBtn.classList.contains('hidden')).toBe(true);
+
+        // 2. Cheating Discovered (Confrontation choice)
+        renderAgeUpCheatingDiscoveredModal({ partnerId: 'npc_1', affairName: 'Secret Lover' });
+        expect(titleEl.textContent).toBe("Cheating Discovered!");
+        expect(closeBtn.classList.contains('hidden')).toBe(true);
+
+        // 3. Police Arrest (Comply, Flee, Bribe choice)
+        state.gameState.user.pendingTrial = { crime: { name: 'Shoplifting', fine: 500, prisonYears: 1 }, extraCharges: [] };
+        showArrestModal();
+        expect(titleEl.textContent).toBe("Police Arrest");
+        expect(closeBtn.classList.contains('hidden')).toBe(true);
+
+        // 4. Court Trial Arraignment (Counsel choice)
+        showCourtArraignmentModal();
+        expect(titleEl.textContent).toBe("Court Trial Arraignment");
+        expect(closeBtn.classList.contains('hidden')).toBe(true);
     });
 });

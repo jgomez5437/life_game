@@ -209,10 +209,6 @@ export const visitGymOneTime = lazy('more', 'visitGymOneTime');
 export const startBetterDiet = lazy('more', 'startBetterDiet');
 export const cancelBetterDiet = lazy('more', 'cancelBetterDiet');
 export const visitDoctor = lazy('more', 'visitDoctor');
-export const openBlackjackBetting = lazy('more', 'openBlackjackBetting');
-export const startBlackjackGame = lazy('more', 'startBlackjackGame');
-export const blackjackHit = lazy('more', 'blackjackHit');
-export const blackjackStand = lazy('more', 'blackjackStand');
 export const openTravelModal = lazy('more', 'openTravelModal');
 export const bookTrip = lazy('more', 'bookTrip');
 export const openDietSelectionModal = lazy('more', 'openDietSelectionModal');
@@ -242,6 +238,10 @@ export const returnFromCrimeOrArrest = lazy('crime', 'returnFromCrimeOrArrest');
 
 // Casino
 export const renderCasinoHub = lazy('casino', 'renderCasinoHub');
+export const openBlackjackBetting = lazy('casino', 'openBlackjackBetting');
+export const startBlackjackGame = lazy('casino', 'startBlackjackGame');
+export const blackjackHit = lazy('casino', 'blackjackHit');
+export const blackjackStand = lazy('casino', 'blackjackStand');
 export const openRouletteModal = lazy('casino', 'openRouletteModal');
 export const confirmRouletteBet = lazy('casino', 'confirmRouletteBet');
 export const confirmRouletteSingleNumberBet = lazy('casino', 'confirmRouletteSingleNumberBet');

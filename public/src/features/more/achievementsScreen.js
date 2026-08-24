@@ -146,6 +146,10 @@ export function openAchievementsModal(filter = null) {
             <div class="space-y-2.5 max-h-[440px] overflow-y-auto pr-1">
                 ${cardsHtml}
             </div>
+
+            <button data-action="hideModal" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-2.5 rounded-xl text-xs transition border border-slate-600 flex items-center justify-center gap-2 mt-3">
+                <i class="fas fa-times"></i> Close Achievements
+            </button>
         </div>
     `;
 
@@ -153,7 +157,11 @@ export function openAchievementsModal(filter = null) {
     if (overlay && !overlay.classList.contains('hidden')) {
         UI.replaceModalContent("Achievements & Trophies", html);
     } else {
-        UI.showCustomModal("Achievements & Trophies", html);
+        UI.showCustomModal({
+            title: "Achievements & Trophies",
+            content: html,
+            showCloseBtn: true
+        });
     }
 }
 
