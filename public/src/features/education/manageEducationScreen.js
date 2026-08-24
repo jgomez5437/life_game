@@ -133,18 +133,22 @@ export function workHarder() {
     const user = state.gameState.user;
     if(user.schoolActions >= 2) return;
     user.schoolActions++;
-    user.schoolPerformance = Math.min(100, user.schoolPerformance + 20);
+    user.schoolPerformance = Math.min(100, (user.schoolPerformance || 50) + 20);
     const smartsGain = Math.floor(Math.random() * 3) + 2;
-    user.smarts = Math.max(0, Math.min(100, (user.smarts || 50) + smartsGain));
+    GameLogic.adjustStat(user, 'smarts', smartsGain);
     addLog(`Studied hard! Improved grades (+20%) and gained +${smartsGain} Smarts.`, 'good');
+    UI.updateHeader(user);
     renderLifeDashboard(state.gameState);
 }
 export function skipSchool() {
     const user = state.gameState.user;
     if(user.schoolActions >= 2) return;
     user.schoolActions++;
-    user.schoolPerformance = Math.max(0, user.schoolPerformance - 10);
-    addLog("Skipped school to hang out. Grades suffered.", 'bad');
+    user.schoolPerformance = Math.max(0, (user.schoolPerformance || 50) - 10);
+    GameLogic.adjustStat(user, 'happiness', 5);
+    GameLogic.adjustStat(user, 'smarts', -2);
+    addLog("Skipped school to hang out (+5 Happiness, -2 Smarts). Grades suffered.", 'bad');
+    UI.updateHeader(user);
     renderLifeDashboard(state.gameState); 
 }
 

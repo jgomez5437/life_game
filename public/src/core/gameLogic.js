@@ -57,7 +57,32 @@ function sanitizeBusinessName(rawInput) {
 
 function clampStat(val, fallback = 50) {
     const num = typeof val === 'number' && !isNaN(val) ? val : fallback;
-    return Math.max(0, Math.min(100, num));
+    return Math.max(0, Math.min(100, Math.round(num)));
+}
+
+function setStat(user, statName, value) {
+    if (!user || typeof statName !== 'string') return 0;
+    const fallback = (statName === 'health' || statName === 'happiness') ? 100 : 50;
+    const clamped = clampStat(value, fallback);
+    user[statName] = clamped;
+    if (user.stats && typeof user.stats === 'object') {
+        user.stats[statName] = clamped;
+    }
+    return clamped;
+}
+
+function adjustStat(user, statName, delta) {
+    if (!user || typeof statName !== 'string' || typeof delta !== 'number' || isNaN(delta)) return 0;
+    const fallback = (statName === 'health' || statName === 'happiness') ? 100 : 50;
+    const current = typeof user[statName] === 'number' && !isNaN(user[statName])
+        ? user[statName]
+        : (user.stats && typeof user.stats[statName] === 'number' && !isNaN(user.stats[statName]) ? user.stats[statName] : fallback);
+    const nextVal = clampStat(current + delta, fallback);
+    user[statName] = nextVal;
+    if (user.stats && typeof user.stats === 'object') {
+        user.stats[statName] = nextVal;
+    }
+    return nextVal - current;
 }
 
 export function isAlive(user) {
@@ -1371,44 +1396,50 @@ function spinSlotMachine(user, betAmount, injectedReels = null) {
  */
 function calculateTripOutcome(tier, roll = Math.random()) {
     let baseHealthBoost = 0;
+    let baseHappinessBoost = 0;
     let baseCost = 0;
     let tripName = "";
 
     if (tier === 1) {
         baseCost = 500;
         baseHealthBoost = 5;
+        baseHappinessBoost = 10;
         tripName = "Local Getaway";
     } else if (tier === 2) {
         baseCost = 2000;
         baseHealthBoost = 10;
+        baseHappinessBoost = 20;
         tripName = "Cross-Country Trip";
     } else if (tier === 3) {
         baseCost = 10000;
         baseHealthBoost = 15;
+        baseHappinessBoost = 35;
         tripName = "Luxury International Tour";
     }
 
     const events = [
-        { msg: "You had a perfectly relaxing trip.", healthMod: 0, moneyMod: 0 },
-        { msg: "You found a hidden gem and felt completely revitalized!", healthMod: 5, moneyMod: 0 },
-        { msg: "You were attacked on vacation.", healthMod: -20, moneyMod: 0 },
-        { msg: "You got food poisoning from a shady restaurant.", healthMod: -5, moneyMod: 0 },
-        { msg: "You lost your wallet at the beach.", healthMod: 0, moneyMod: -200 },
-        { msg: "You won a local contest and got some cash!", healthMod: 0, moneyMod: 300 },
-        { msg: "Your luggage was lost, ruining your mood.", healthMod: -2, moneyMod: 0 },
-        { msg: "You met a fantastic new friend who showed you around.", healthMod: 3, moneyMod: 0 }
+        { msg: "You had a perfectly relaxing trip.", healthMod: 0, happinessMod: 5, moneyMod: 0 },
+        { msg: "You found a hidden gem and felt completely revitalized!", healthMod: 5, happinessMod: 10, moneyMod: 0 },
+        { msg: "You were attacked on vacation.", healthMod: -20, happinessMod: -25, moneyMod: 0 },
+        { msg: "You got food poisoning from a shady restaurant.", healthMod: -5, happinessMod: -10, moneyMod: 0 },
+        { msg: "You lost your wallet at the beach.", healthMod: 0, happinessMod: -10, moneyMod: -200 },
+        { msg: "You won a local contest and got some cash!", healthMod: 0, happinessMod: 15, moneyMod: 300 },
+        { msg: "Your luggage was lost, ruining your mood.", healthMod: -2, happinessMod: -15, moneyMod: 0 },
+        { msg: "You met a fantastic new friend who showed you around.", healthMod: 3, happinessMod: 10, moneyMod: 0 }
     ];
 
     const eventIndex = Math.floor(roll * events.length);
     const selectedEvent = events[eventIndex];
 
     const finalHealthBoost = baseHealthBoost + selectedEvent.healthMod;
+    const finalHappinessBoost = Math.max(0, baseHappinessBoost + (selectedEvent.happinessMod || 0));
 
     return {
         tripName,
         cost: baseCost,
         moneyChange: selectedEvent.moneyMod,
         healthChange: finalHealthBoost,
+        happinessChange: finalHappinessBoost,
         eventMessage: selectedEvent.msg
     };
 }
@@ -4603,6 +4634,14 @@ function attemptCrime(crimeId, user, targetPersonId = null) {
             targetPerson.type = 'Enemy';
         }
 
+        if (crime.category === 'heist') {
+            adjustStat(user, 'happiness', 20);
+        } else if (crime.category === 'juvenile') {
+            adjustStat(user, 'happiness', 5);
+        } else if (crimeId !== 'murder') {
+            adjustStat(user, 'happiness', 10);
+        }
+
         return {
             success: true,
             isMurder: false,
@@ -4614,18 +4653,23 @@ function attemptCrime(crimeId, user, targetPersonId = null) {
     } else {
         if (crime.category === 'juvenile') {
             let msg = `You were caught performing ${crime.name}! Your parents grounded you and you lost 15 Happiness.`;
-            user.happiness = clampStat((user.happiness || 50) - 15);
+            let hapPenalty = -15;
 
             if (crime.id === 'prank_call') {
                 msg = `Your prank call was traced by an angry recipient who complained to your parents! You were grounded and lost 10 Happiness.`;
-                user.happiness = clampStat((user.happiness || 50) - 10);
+                hapPenalty = -10;
             } else if (crime.id === 'egging_house') {
                 msg = `The homeowner caught you with an egg in hand and made you scrub their front driveway! You lost 15 Happiness.`;
+                hapPenalty = -15;
             } else if (crime.id === 'porch_pirate') {
                 msg = `A neighbor caught you taking a package and alerted your school principal. You received 3 days of detention and lost 15 Happiness.`;
+                hapPenalty = -15;
             } else if (crime.id === 'shoplift_minor') {
                 msg = `The store manager caught you swiping snacks, confiscated the items, and banned you from the store. You lost 15 Happiness.`;
+                hapPenalty = -15;
             }
+
+            adjustStat(user, 'happiness', hapPenalty);
 
             return {
                 success: false,
@@ -4649,6 +4693,8 @@ function attemptCrime(crimeId, user, targetPersonId = null) {
             targetPerson.category = 'enemy';
             targetPerson.type = 'Enemy';
         }
+
+        adjustStat(user, 'happiness', -20);
 
         return {
             success: false,
@@ -4686,9 +4732,11 @@ function handleArrestAction(user, actionType, bribeAmount = 0) {
 
         if (Math.random() < bribeChance) {
             user.pendingTrial = null;
+            adjustStat(user, 'happiness', 15);
             return { success: true, outcome: 'escaped', message: `The officer took your ${Utils.formatMoney(bribeAmount)} bribe and let you walk away!` };
         } else {
             pending.extraCharges.push("Bribery of a Law Enforcement Officer");
+            adjustStat(user, 'happiness', -15);
             return { success: true, outcome: 'bribe_failed', message: `The officer rejected your bribe and added felony bribery charges!` };
         }
     }
@@ -4697,9 +4745,12 @@ function handleArrestAction(user, actionType, bribeAmount = 0) {
         const healthChance = (clampStat(user.health, 50) / 100) * 0.55;
         if (Math.random() < healthChance) {
             user.pendingTrial = null;
+            adjustStat(user, 'happiness', 15);
             return { success: true, outcome: 'escaped', message: "You sprinted down an alley, lost the sirens, and escaped police custody!" };
         } else {
             pending.extraCharges.push("Resisting Arrest & Evading Officers");
+            adjustStat(user, 'health', -10);
+            adjustStat(user, 'happiness', -15);
             return { success: true, outcome: 'flee_failed', message: "Officers tackled you to the ground and added resisting arrest charges!" };
         }
     }
@@ -4744,6 +4795,7 @@ function calculateTrialVerdict(user, lawyerTier) {
 
     if (acquitted) {
         user.pendingTrial = null;
+        adjustStat(user, 'happiness', 25);
         return {
             verdict: 'not_guilty',
             crime,
@@ -4798,7 +4850,7 @@ function applySentencing(user, verdictResult) {
         }
     }
 
-    user.happiness = clampStat((user.happiness || 50) - 35);
+    adjustStat(user, 'happiness', -35);
 }
 
 function calculatePrisonSecurity(crimeCategory, crimeId, sentenceYears) {
@@ -5181,8 +5233,8 @@ function attackPrisonInmate(user, targetType, targetId, weaponType = 'fists') {
             }
         }
     } else {
-        user.health = clampStat((user.health || 50) - 35);
-        user.happiness = clampStat((user.happiness || 50) - 20);
+        adjustStat(user, 'health', -35);
+        adjustStat(user, 'happiness', -20);
 
         const guardCaught = Math.random() < 0.35; // 35% chance guards break up lost fight
 
@@ -5219,13 +5271,13 @@ function workoutPrisonYard(user, workoutType) {
 
     if (workoutType === 'bench_press') {
         stats.respect = Math.min(100, (stats.respect || 25) + 5);
-        user.health = clampStat((user.health || 50) + 4);
+        adjustStat(user, 'health', 4);
         return { success: true, msg: "Pumped iron at the yard bench press. Built muscle and gained +5 Respect!" };
     }
 
     if (workoutType === 'cardio') {
-        user.health = clampStat((user.health || 50) + 6);
-        user.looks = clampStat((user.looks || 50) + 2);
+        adjustStat(user, 'health', 6);
+        adjustStat(user, 'looks', 2);
         return { success: true, msg: "Ran laps around the yard track. Improved Health and Stamina!" };
     }
 
@@ -5269,8 +5321,8 @@ function interactYardInmate(user, inmateId, actionType) {
             stats.guardRelation = Math.max(0, (stats.guardRelation || 50) - 15);
             return { success: true, msg: `You challenged ${inmate.name} for Yard Supremacy and WON the brawl! Gained +40 Respect!` };
         } else {
-            user.health = clampStat((user.health || 50) - 30);
-            user.happiness = clampStat((user.happiness || 50) - 20);
+            adjustStat(user, 'health', -30);
+            adjustStat(user, 'happiness', -20);
             return { success: false, msg: `${inmate.name} defeated you in the yard brawl! Lost 30 Health and 20 Happiness.` };
         }
     }
@@ -5354,7 +5406,7 @@ function useContrabandPhone(user, phoneAction, targetId = null) {
         if (!rel) return { success: false, msg: "Contact not found." };
 
         rel.status = Math.min(100, (rel.status || 50) + 20);
-        user.happiness = clampStat((user.happiness || 50) + 10);
+        adjustStat(user, 'happiness', 10);
         return {
             success: true,
             msg: `Secretly texted and called ${rel.name} on your contraband phone! Reconnected outside (+20 status, +10 Happiness)!`
@@ -5363,7 +5415,7 @@ function useContrabandPhone(user, phoneAction, targetId = null) {
 
     if (phoneAction === 'legal') {
         stats.lawStudied = (stats.lawStudied || 0) + 35;
-        user.smarts = clampStat((user.smarts || 50) + 3);
+        adjustStat(user, 'smarts', 3);
         return {
             success: true,
             msg: "Called your private legal team hotline. Consulted appellate attorneys directly from your cell (+35 Law Study Points, +3 Smarts)!"
@@ -5393,14 +5445,14 @@ function doSolitaryActivity(user, actType) {
     if (!stats || stats.solitaryTurns <= 0) return { success: false, msg: "Not in solitary confinement." };
 
     if (actType === 'pushups') {
-        user.health = clampStat((user.health || 50) + 2);
+        adjustStat(user, 'health', 2);
         stats.respect = Math.min(100, (stats.respect || 25) + 1);
         return { success: true, msg: "Did 100 cell push-ups in solitary confinement (+2 Health, +1 Respect)." };
     }
 
     if (actType === 'meditate') {
-        user.smarts = clampStat((user.smarts || 50) + 3);
-        user.health = clampStat((user.health || 50) + 1);
+        adjustStat(user, 'smarts', 3);
+        adjustStat(user, 'health', 1);
         return { success: true, msg: "Meditated on your life choices in solitary isolation (+3 Smarts, +1 Health)." };
     }
 
@@ -5432,7 +5484,7 @@ function buyCanteenItem(user, itemId) {
     stats.canteenCash -= item.price;
 
     if (item.type === 'snack') {
-        user.happiness = clampStat((user.happiness || 50) + 5);
+        adjustStat(user, 'happiness', 5);
         return { success: true, msg: `Enjoyed a ${item.name}. Gained +5 Happiness!` };
     } else {
         stats.contraband.push(item.name);
@@ -5444,7 +5496,8 @@ function sellContrabandItem(user, itemIndexOrName) {
     if (!user || !user.prisonStats) return { success: false, msg: "Not in prison." };
     if (!isAlive(user)) return { success: false, msg: "Cannot sell contraband while dead or at 0 HP." };
     const stats = user.prisonStats;
-    if (!Array.isArray(stats.contraband) || stats.contraband.length === 0) {
+    if (!Array.isArray(stats.contraband)) stats.contraband = [];
+    if (stats.contraband.length === 0) {
         return { success: false, msg: "You have no contraband items to sell." };
     }
 
@@ -5485,7 +5538,7 @@ function studyPrisonLaw(user) {
     if (!isAlive(user)) return { success: false, msg: "Cannot study law while dead or at 0 HP." };
     const stats = user.prisonStats;
     stats.lawStudied = (stats.lawStudied || 0) + 15;
-    user.smarts = clampStat((user.smarts || 50) + 2);
+    adjustStat(user, 'smarts', 2);
     return { success: true, msg: "Spent hours in the prison legal library studying appeal precedent. +15 Law Study points, +2 Smarts!" };
 }
 
@@ -5608,7 +5661,7 @@ function sendPrisonLetter(user, relId) {
     }
 
     rel.status = Math.min(100, (rel.status || 50) + 15);
-    user.happiness = clampStat((user.happiness || 50) + 4);
+    adjustStat(user, 'happiness', 4);
 
     return {
         success: true,
@@ -5635,7 +5688,7 @@ function requestConjugalVisit(user, relId) {
     }
 
     rel.status = Math.min(100, (rel.status || 50) + 25);
-    user.happiness = clampStat((user.happiness || 50) + 15);
+    adjustStat(user, 'happiness', 15);
 
     let pregnancyOccurred = false;
     const isUserFemale = user.gender === 'female';
@@ -5666,6 +5719,8 @@ function requestConjugalVisit(user, relId) {
 }
 
 export const GameLogic = {
+    adjustStat,
+    setStat,
     generateRandomStats,
     calculateSmartsDelta,
     calculateLooksDelta,
@@ -5839,7 +5894,6 @@ export const GameLogic = {
         }
     },
     isAlive,
-    launchIPO,
     clampStat,
     calculatePrisonSecurity,
     generateCellmate,
@@ -5862,7 +5916,3 @@ export const GameLogic = {
     doSolitaryActivity,
     attackPrisonInmate
 };
-
-
-
-

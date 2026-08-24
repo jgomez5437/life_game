@@ -329,7 +329,9 @@ export const donateBody = () => {
 
 export const lookTheOtherWay = () => {
     const deceased = state.gameState.pendingFunerals[0];
-    addLog(`You ignored the responsibility of ${deceased.name}'s remains. The state handled it.`, 'bad');
+    const user = state.gameState.user;
+    GameLogic.adjustStat(user, 'happiness', -10);
+    addLog(`You ignored the responsibility of ${deceased.name}'s remains. The state handled it. (-10 Happiness)`, 'bad');
     UI.showModal("Shameful", `You turned a blind eye to your own ${Utils.escapeHtml(deceased.type)}'s remains. The city handled a pauper's grave for them.`);
     finishFuneralAndNext(deceased);
 };
@@ -342,6 +344,8 @@ export const goToFuneral = () => {
 
 export const skipFuneral = () => {
     const deceased = state.gameState.pendingFunerals[0];
+    const user = state.gameState.user;
+    GameLogic.adjustStat(user, 'happiness', -5);
     addLog(`You skipped ${deceased.name}'s funeral.`, 'neutral');
     finishFuneralAndNext(deceased);
 };
@@ -349,6 +353,10 @@ export const skipFuneral = () => {
 const finishFuneralAndNext = (deceased) => {
     const user = state.gameState.user;
     
+    // Grief deduction based on relationship closeness
+    const griefDeduction = ['spouse', 'child'].includes(deceased.category) ? -25 : (['family', 'partner'].includes(deceased.category) ? -15 : -10);
+    GameLogic.adjustStat(user, 'happiness', griefDeduction);
+
     // Process inheritance
     if (deceased.inheritanceAmt > 0) {
         user.money += deceased.inheritanceAmt;
@@ -367,6 +375,8 @@ const finishFuneralAndNext = (deceased) => {
             yearDied: user.age
         });
     }
+
+    UI.updateHeader(user);
 
     // Remove from queue
     state.gameState.pendingFunerals.shift();

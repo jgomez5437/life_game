@@ -308,9 +308,10 @@ export function visitGymOneTime() {
         user.money -= actualCost;
         const healthGain = boost;
         const looksGain = Math.floor(Math.random() * 4) + 2;
-        user.health = Math.max(0, Math.min(100, (user.health || 50) + healthGain));
-        user.looks = Math.max(0, Math.min(100, (user.looks || 50) + looksGain));
-        addLog(`Worked out at the gym! Restored +${healthGain}% Health and gained +${looksGain} Looks.`, 'good');
+        GameLogic.adjustStat(user, 'health', healthGain);
+        GameLogic.adjustStat(user, 'looks', looksGain);
+        GameLogic.adjustStat(user, 'happiness', 3);
+        addLog(`Worked out at the gym! Restored +${healthGain}% Health, +3% Happiness, and gained +${looksGain} Looks.`, 'good');
         UI.updateHeader(user);
         renderMoreDashboard();
     } else {
@@ -487,9 +488,8 @@ export function buyLotteryTicket(ticketTypeId) {
             return;
         }
 
-        UI.updateHeader(user);
-
         if (result.payout > 0) {
+            GameLogic.adjustStat(user, 'happiness', result.payout >= 50000 ? 50 : 25);
             if (result.payout >= 100000 || (ticketTypeId === 'mega' && result.payout >= 50000)) {
                 unlockAchievement('mega_jackpot', user);
             }
@@ -497,6 +497,8 @@ export function buyLotteryTicket(ticketTypeId) {
         } else {
             addLog(`Bought a ${result.ticketName} but didn't win anything.`, 'neutral');
         }
+
+        UI.updateHeader(user);
 
         const outcomeHtml = result.payout > 0 ? `
             <div class="text-center py-3">
@@ -536,7 +538,9 @@ export function visitDoctor() {
     
     if (user.money >= cost) {
         user.money -= cost;
-        user.health = Math.max(0, Math.min(100, (user.health || 50) + boost));
+        GameLogic.adjustStat(user, 'health', boost);
+        user.hasFlu = false;
+        user.isSick = false;
         addLog("You visited the doctor and feel much healthier.", 'good');
         UI.updateHeader(user);
         renderMoreDashboard();
@@ -557,15 +561,15 @@ export function openTravelModal() {
         <div class="flex flex-col gap-3">
             <button data-action="bookTrip" data-args="1" class="bg-slate-700 hover:bg-slate-600 p-4 rounded-xl text-left border border-slate-600 transition">
                 <div class="font-bold text-white text-lg">Local Getaway (${Utils.formatMoney(500)})</div>
-                <div class="text-sm text-slate-400">A short break to refresh your mind. (+5 Health)</div>
+                <div class="text-sm text-slate-400">A short break to refresh your mind. (+5 Health, +10 Happiness)</div>
             </button>
             <button data-action="bookTrip" data-args="2" class="bg-slate-700 hover:bg-slate-600 p-4 rounded-xl text-left border border-slate-600 transition">
                 <div class="font-bold text-white text-lg">Cross-Country Trip (${Utils.formatMoney(2000)})</div>
-                <div class="text-sm text-slate-400">Explore new horizons and take a breather. (+10 Health)</div>
+                <div class="text-sm text-slate-400">Explore new horizons and take a breather. (+10 Health, +20 Happiness)</div>
             </button>
             <button data-action="bookTrip" data-args="3" class="bg-slate-700 hover:bg-slate-600 p-4 rounded-xl text-left border border-slate-600 transition">
                 <div class="font-bold text-white text-lg border-l-4 border-yellow-400 pl-2">Luxury International Tour (${Utils.formatMoney(10000)})</div>
-                <div class="text-sm text-slate-400 pl-3">A once-in-a-lifetime journey across the globe. (+15 Health)</div>
+                <div class="text-sm text-slate-400 pl-3">A once-in-a-lifetime journey across the globe. (+15 Health, +35 Happiness)</div>
             </button>
         </div>
     `;
@@ -579,18 +583,17 @@ export function bookTrip(tier) {
         return;
     }
     
-    const dummyOutcome = GameLogic.calculateTripOutcome(tier);
-    if (user.money < dummyOutcome.cost) {
+    const outcome = GameLogic.calculateTripOutcome(tier);
+    if (user.money < outcome.cost) {
         UI.showModal("Not enough money", "You cannot afford this trip.");
         return;
     }
-
-    const outcome = GameLogic.calculateTripOutcome(tier);
     
     user.money -= outcome.cost;
     user.money += outcome.moneyChange;
     
-    user.health = Math.max(0, Math.min(100, (user.health || 50) + outcome.healthChange));
+    GameLogic.adjustStat(user, 'health', outcome.healthChange);
+    GameLogic.adjustStat(user, 'happiness', outcome.happinessChange || 10);
     
     let moneyMsg = "";
     if (outcome.moneyChange > 0) moneyMsg = `<br><span class="text-green-400">+$${outcome.moneyChange}</span>`;
@@ -612,6 +615,9 @@ export function bookTrip(tier) {
             <div class="flex justify-center gap-4 text-sm font-bold">
                 <div class="${outcome.healthChange >= 0 ? 'text-green-400' : 'text-red-400'}">
                     <i class="fas fa-heart"></i> ${outcome.healthChange > 0 ? '+' : ''}${outcome.healthChange} Health
+                </div>
+                <div class="${(outcome.happinessChange || 0) >= 0 ? 'text-amber-400' : 'text-red-400'}">
+                    <i class="fas fa-smile"></i> +${outcome.happinessChange || 0} Happiness
                 </div>
                 ${outcome.moneyChange !== 0 ? `
                 <div class="${outcome.moneyChange > 0 ? 'text-green-400' : 'text-red-400'}">

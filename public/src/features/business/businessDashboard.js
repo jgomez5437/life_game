@@ -1037,6 +1037,8 @@ export function launchIPO() {
                 const res = GameLogic.launchIPO(user, float);
                 if (res.success) {
                     unlockAchievement('unicorn_tycoon', user);
+                    GameLogic.adjustStat(user, 'happiness', 35);
+                    UI.updateHeader(user);
                     addLog(res.msg, 'major');
                     if (typeof saveGame === 'function') saveGame();
                     UI.showModal('🎉 Historic IPO Listing!', res.msg);
@@ -1111,7 +1113,9 @@ export function sellBusiness() {
             isProcessingBusinessAction = true;
             try {
                 user.money = Math.min(MAX_PLAYER_MONEY, (user.money || 0) + playerPayout);
-                addLog(`Completed acquisition sale of ${user.companyName} for ${Utils.formatMoney(playerPayout)}!`, 'major');
+                GameLogic.adjustStat(user, 'happiness', 30);
+                UI.updateHeader(user);
+                addLog(`Completed acquisition sale of ${user.companyName} for ${Utils.formatMoney(playerPayout)}! (+30 Happiness)`, 'major');
 
                 user.hasBusiness        = false;
                 user.isPublic           = false;

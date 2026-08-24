@@ -310,7 +310,8 @@ export const buyVehicleCash = (carId) => {
 
     user.assets.push(newAsset);
 
-    addLog(`Purchased a ${cleanName} for ${Utils.formatMoney(car.price)} in cash.`, 'good');
+    GameLogic.adjustStat(user, 'happiness', 10);
+    addLog(`Purchased a ${cleanName} for ${Utils.formatMoney(car.price)} in cash. (+10 Happiness)`, 'good');
     saveGame();
 
     UI.updateHeader(user);
@@ -360,7 +361,8 @@ export const buyVehicleLoan = (carId) => {
 
     user.assets.push(newAsset);
 
-    addLog(`Financed a ${cleanName} with ${Utils.formatMoney(loanInfo.downPayment)} down (${Utils.formatMoney(loanInfo.monthlyPayment)}/mo loan).`, 'good');
+    GameLogic.adjustStat(user, 'happiness', 10);
+    addLog(`Financed a ${cleanName} with ${Utils.formatMoney(loanInfo.downPayment)} down (${Utils.formatMoney(loanInfo.monthlyPayment)}/mo loan). (+10 Happiness)`, 'good');
     saveGame();
 
     UI.updateHeader(user);
@@ -621,7 +623,8 @@ export const buyPropertyCash = (propertyId) => {
     if (!user.assets) user.assets = [];
     user.assets.push(newAsset);
 
-    addLog(`Purchased ${prop.name} for ${Utils.formatMoney(prop.price)} in cash.`, 'good');
+    GameLogic.adjustStat(user, 'happiness', 20);
+    addLog(`Purchased ${prop.name} for ${Utils.formatMoney(prop.price)} in cash. (+20 Happiness)`, 'good');
     saveGame();
     UI.updateHeader(user);
     renderRealEstateDealer();
@@ -662,7 +665,8 @@ export const buyPropertyMortgage = (propertyId) => {
     if (!user.assets) user.assets = [];
     user.assets.push(newAsset);
 
-    addLog(`Acquired ${prop.name} with a mortgage (${Utils.formatMoney(monthlyMortgage)}/month).`, 'good');
+    GameLogic.adjustStat(user, 'happiness', 20);
+    addLog(`Acquired ${prop.name} with a mortgage (${Utils.formatMoney(monthlyMortgage)}/month). (+20 Happiness)`, 'good');
     saveGame();
     UI.updateHeader(user);
     renderRealEstateDealer();
@@ -801,7 +805,8 @@ export const buyJewelry = (itemId) => {
     if (!user.assets) user.assets = [];
     user.assets.push(newAsset);
 
-    addLog(`Purchased ${item.name} for ${Utils.formatMoney(item.price)}.`, 'good');
+    GameLogic.adjustStat(user, 'happiness', 5);
+    addLog(`Purchased ${item.name} for ${Utils.formatMoney(item.price)}. (+5 Happiness)`, 'good');
     saveGame();
     UI.updateHeader(user);
     renderJewelryDealer();

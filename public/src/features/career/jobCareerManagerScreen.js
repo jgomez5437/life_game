@@ -151,7 +151,9 @@ export function workHarderJob() {
     const boost = userSmarts >= 75 ? 20 : userSmarts >= 50 ? 15 : 10;
     user.jobPerformance = Math.min(100, user.jobPerformance + boost);
     user.careerActionTaken = true;
-    addLog(`Worked hard at your job (+${boost}% performance). Boss is impressed.`, 'good');
+    GameLogic.adjustStat(user, 'happiness', -2);
+    addLog(`Worked hard at your job (+${boost}% performance, -2 Happiness). Boss is impressed.`, 'good');
+    UI.updateHeader(user);
     renderCareerManager();
 }
 export function slackOffJob() {
@@ -159,7 +161,9 @@ export function slackOffJob() {
     if (user.careerActionTaken) return;
     user.jobPerformance = Math.max(0, user.jobPerformance - 15);
     user.careerActionTaken = true;
-    addLog("Slacked off at work. Performance suffered.", 'bad');
+    GameLogic.adjustStat(user, 'happiness', 5);
+    addLog("Slacked off at work (+5 Happiness). Performance suffered (-15%).", 'bad');
+    UI.updateHeader(user);
     renderCareerManager();
 }
 export function confirmQuitCareer() {
@@ -195,7 +199,9 @@ export function quitCareer() {
     m.classList.add('hidden');
     m.classList.remove('flex');
     
-    addLog(`Resigned from position as ${oldJob}.`, 'major'); 
+    GameLogic.adjustStat(user, 'happiness', -5);
+    addLog(`Resigned from position as ${oldJob}. (-5 Happiness)`, 'major'); 
+    UI.updateHeader(user);
     
     renderActivities();
 }

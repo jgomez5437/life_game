@@ -185,7 +185,9 @@ export function initBusiness() {
     user.businessHistory      = [];
     user.businessUpgrades     = [];
     GameLogic.resetBusinessQuarterTracking(user);
+    GameLogic.adjustStat(user, 'happiness', 15);
+    UI.updateHeader(user);
 
-    addLog(`Founded ${name} (${ind.name})! Invested ${Utils.formatMoney(ind.startupCost)}.`, 'good');
+    addLog(`Founded ${name} (${ind.name})! Invested ${Utils.formatMoney(ind.startupCost)}. (+15 Happiness)`, 'good');
     renderBusinessDashboard();
 }

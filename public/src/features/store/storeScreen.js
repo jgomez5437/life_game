@@ -4,6 +4,7 @@ import { saveGame } from '../../core/main.js';
 import { getAuthToken, login } from '../../auth/auth.js';
 import { UI } from '../../ui/ui.js';
 import { onVipPurchased } from '../../core/adManager.js';
+import { GameLogic } from '../../core/gameLogic.js';
 
 const get = id => document.getElementById(id);
 
@@ -747,10 +748,10 @@ export function maxGodModeStats() {
     }
     const user = state.gameState?.user;
     if (!user) return;
-    user.health = 100;
-    user.happiness = 100;
-    user.smarts = 100;
-    user.looks = 100;
+    GameLogic.setStat(user, 'health', 100);
+    GameLogic.setStat(user, 'happiness', 100);
+    GameLogic.setStat(user, 'smarts', 100);
+    GameLogic.setStat(user, 'looks', 100);
     saveGame();
     UI.updateHeader(user);
     UI.showModal("God Mode", "All stats maxed out to 100%!");
@@ -768,10 +769,10 @@ export function applyGodModeStats() {
     const sm = document.getElementById('god-smarts');
     const lk = document.getElementById('god-looks');
 
-    if (h) user.health = Math.max(0, Math.min(100, parseInt(h.value, 10) || 0));
-    if (hap) user.happiness = Math.max(0, Math.min(100, parseInt(hap.value, 10) || 0));
-    if (sm) user.smarts = Math.max(0, Math.min(100, parseInt(sm.value, 10) || 0));
-    if (lk) user.looks = Math.max(0, Math.min(100, parseInt(lk.value, 10) || 0));
+    if (h) GameLogic.setStat(user, 'health', parseInt(h.value, 10) || 0);
+    if (hap) GameLogic.setStat(user, 'happiness', parseInt(hap.value, 10) || 0);
+    if (sm) GameLogic.setStat(user, 'smarts', parseInt(sm.value, 10) || 0);
+    if (lk) GameLogic.setStat(user, 'looks', parseInt(lk.value, 10) || 0);
 
     saveGame();
     UI.updateHeader(user);
