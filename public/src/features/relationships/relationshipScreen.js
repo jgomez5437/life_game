@@ -1054,7 +1054,7 @@ export const performRelationshipAction = (personId, actionKey) => {
     }
 
     if (action.key === 'file_divorce') {
-        const alimony = Math.floor((user.money || 0) * 0.5);
+        const alimony = (user.money || 0) > 0 ? Math.floor(user.money * 0.5) : 0;
         user.money -= alimony;
         person.category = 'ex';
         person.type = person.gender === 'male' ? 'Ex-Husband' : 'Ex-Wife';
