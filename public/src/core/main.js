@@ -741,6 +741,203 @@ export async function showPurchaseSuccessModal(packId) {
     });
 }
 
+/**
+ * Loads cloud save state for an authenticated user with explicit status distinction.
+ * Distinguishes between:
+ * - 'success': Cloud load succeeded and returned valid character save
+ * - 'no_save': Account exists or 404, but has no active save file
+ * - 'auth_error': 401/403 session expired or invalid
+ * - 'rate_limited': 429 rate limit reached
+ * - 'network_error': 5xx or fetch network drop
+ * 
+ * @param {Object} user - Auth0 user object
+ * @returns {Promise<{ status: string, dbUser?: Object, error?: string, statusCode?: number }>}
+ */
+export async function fetchCloudSave(user) {
+    if (!user || !user.sub) {
+        return { status: 'auth_error', statusCode: 401, error: 'User profile missing' };
+    }
+
+    const sub = encodeURIComponent(user.sub);
+    let authToken = await getAuthToken(false);
+    let attempts = 0;
+    const maxAttempts = 3;
+
+    while (attempts < maxAttempts) {
+        attempts++;
+        try {
+            if (!authToken) {
+                authToken = await getAuthToken(true);
+            }
+            if (!authToken) {
+                return { status: 'auth_error', statusCode: 401, error: 'Authentication token unavailable' };
+            }
+
+            const response = await fetch(`/api/load?auth0_id=${sub}`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+
+            // Handle 200 OK
+            if (response.ok) {
+                const data = await response.json();
+                let parsedGameData = data?.game_data;
+                if (typeof parsedGameData === 'string') {
+                    try { parsedGameData = JSON.parse(parsedGameData); } catch (e) {}
+                }
+                if (parsedGameData && typeof parsedGameData === 'object' && Object.keys(parsedGameData).length > 0) {
+                    const hasChar = parsedGameData.user || parsedGameData.stats || parsedGameData.name || parsedGameData.username ||
+                        (parsedGameData.slots && typeof parsedGameData.slots === 'object' && Object.values(parsedGameData.slots).some(s => s && (s.data?.user || s.data?.name || s.data?.stats)));
+                    if (hasChar) {
+                        return { status: 'success', dbUser: { ...data, game_data: parsedGameData } };
+                    }
+                }
+                // Account exists in DB but game_data has no active character
+                return { status: 'no_save', dbUser: data };
+            }
+
+            // Handle 404 Not Found (New player) -> Check /api/login in sync mode
+            if (response.status === 404) {
+                try {
+                    const fallbackResp = await fetch('/api/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${authToken}`
+                        },
+                        body: JSON.stringify({
+                            email: user.email,
+                            username: user.nickname || 'Player',
+                            gender: 'male',
+                            city: 'New York'
+                        })
+                    });
+                    if (fallbackResp.ok) {
+                        const fallbackData = await fallbackResp.json();
+                        let parsedFallback = fallbackData?.game_data;
+                        if (typeof parsedFallback === 'string') {
+                            try { parsedFallback = JSON.parse(parsedFallback); } catch (e) {}
+                        }
+                        if (parsedFallback && typeof parsedFallback === 'object' && Object.keys(parsedFallback).length > 0) {
+                            const hasChar = parsedFallback.user || parsedFallback.stats || parsedFallback.name || parsedFallback.username ||
+                                (parsedFallback.slots && typeof parsedFallback.slots === 'object' && Object.values(parsedFallback.slots).some(s => s && (s.data?.user || s.data?.name || s.data?.stats)));
+                            if (hasChar) {
+                                return { status: 'success', dbUser: { ...fallbackData, game_data: parsedFallback } };
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.warn("Login fallback initialization skipped:", e);
+                }
+                return { status: 'no_save' };
+            }
+
+            // Handle 401/403 Unauthorized -> Force silent refresh and retry once
+            if (response.status === 401 || response.status === 403) {
+                console.warn(`[CloudSave] 401/403 received from /api/load (attempt ${attempts}). Force-refreshing token...`);
+                authToken = await getAuthToken(true);
+                if (!authToken) {
+                    return { status: 'auth_error', statusCode: response.status, error: 'Session expired. Please sign in again.' };
+                }
+                // Retry request once with refreshed token
+                const retryRes = await fetch(`/api/load?auth0_id=${sub}`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                if (retryRes.ok) {
+                    const data = await retryRes.json();
+                    let parsedGameData = data?.game_data;
+                    if (typeof parsedGameData === 'string') {
+                        try { parsedGameData = JSON.parse(parsedGameData); } catch (e) {}
+                    }
+                    if (parsedGameData && typeof parsedGameData === 'object' && Object.keys(parsedGameData).length > 0) {
+                        const hasChar = parsedGameData.user || parsedGameData.stats || parsedGameData.name || parsedGameData.username ||
+                            (parsedGameData.slots && typeof parsedGameData.slots === 'object' && Object.values(parsedGameData.slots).some(s => s && (s.data?.user || s.data?.name || s.data?.stats)));
+                        if (hasChar) {
+                            return { status: 'success', dbUser: { ...data, game_data: parsedGameData } };
+                        }
+                    }
+                    return { status: 'no_save', dbUser: data };
+                }
+                if (retryRes.status === 401 || retryRes.status === 403) {
+                    return { status: 'auth_error', statusCode: retryRes.status, error: 'Authentication session expired. Please sign in again.' };
+                }
+                if (retryRes.status === 429) {
+                    return { status: 'rate_limited', statusCode: 429, error: 'Too many requests. Please wait a moment.' };
+                }
+                return { status: 'network_error', statusCode: retryRes.status, error: 'Server temporarily unavailable.' };
+            }
+
+            // Handle 429 Rate Limit
+            if (response.status === 429) {
+                console.warn(`[CloudSave] 429 Rate limited on attempt ${attempts}.`);
+                if (attempts < maxAttempts) {
+                    await new Promise(r => setTimeout(r, 1000));
+                    continue;
+                }
+                return { status: 'rate_limited', statusCode: 429, error: 'Rate limit exceeded. Please wait a moment and retry.' };
+            }
+
+            // Handle 5xx Server Errors
+            if (response.status >= 500) {
+                console.warn(`[CloudSave] 5xx Server error (${response.status}) on attempt ${attempts}.`);
+                if (attempts < maxAttempts) {
+                    await new Promise(r => setTimeout(r, 600 * attempts));
+                    continue;
+                }
+                return { status: 'network_error', statusCode: response.status, error: 'Server error encountered while retrieving save data.' };
+            }
+
+        } catch (fetchErr) {
+            console.error(`[CloudSave] Network error checking cloud save (attempt ${attempts}):`, fetchErr);
+            if (attempts < maxAttempts) {
+                await new Promise(r => setTimeout(r, 600 * attempts));
+                continue;
+            }
+            return { status: 'network_error', error: fetchErr.message || 'Network connection failed' };
+        }
+    }
+
+    return { status: 'network_error', error: 'Failed to connect to cloud service after multiple attempts.' };
+}
+
+/**
+ * Renders a recoverable error modal when cloud save loading fails for an authenticated player.
+ * Prevents accidental Character Creation routing that could cause permanent cloud save loss.
+ */
+export function showCloudLoadRecoveryModal({ title, message, errorType = 'network', onRetry, onLogin }) {
+    if (typeof UI !== 'undefined' && typeof UI.showCustomModal === 'function') {
+        const iconClass = errorType === 'auth' ? 'fa-user-lock text-amber-400' : 'fa-wifi text-red-400';
+        const bgIconClass = errorType === 'auth' ? 'bg-amber-950/60 border-amber-500/40' : 'bg-red-950/60 border-red-500/40';
+
+        UI.showCustomModal({
+            title: title || (errorType === 'auth' ? "Session Expired" : "Unable to Load Cloud Save"),
+            content: `
+                <div class="space-y-3 text-left">
+                    <div class="bg-slate-900 p-3.5 rounded-xl border border-slate-700 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl ${bgIconClass} border flex items-center justify-center text-lg shrink-0">
+                            <i class="fas ${iconClass}"></i>
+                        </div>
+                        <div>
+                            <div class="text-sm font-bold text-white">${Utils.escapeHtml(title || "Cloud Save Sync")}</div>
+                            <div class="text-xs text-slate-400 font-medium">Your account data is safe</div>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        ${Utils.escapeHtml(message || "We encountered an issue retrieving your cloud save data. To protect your characters from being overwritten, please retry or sign in again.")}
+                    </p>
+                </div>
+            `,
+            confirmText: "Retry Connection",
+            cancelText: "Sign In Again",
+            onConfirm: () => {
+                if (typeof onRetry === 'function') onRetry();
+            },
+            onCancel: () => {
+                if (typeof onLogin === 'function') onLogin();
+            }
+        });
+    }
+}
+
 // --- Updated Game Initializer ---
 export async function initGame() {
     console.log("Initializing Game Logic...");
@@ -825,74 +1022,9 @@ export async function initGame() {
             }
         }
 
-        // Try to load existing cloud save with retry
-        let dbUser = null;
-        for (let attempt = 1; attempt <= 3; attempt++) {
-            try {
-                const authToken = await getAuthToken();
-                if (authToken) {
-                    const response = await fetch(`/api/load?auth0_id=${encodeURIComponent(user.sub)}`, {
-                        headers: { 'Authorization': `Bearer ${authToken}` }
-                    });
-                    if (response.ok) {
-                        const data = await response.json();
-                        let parsedGameData = data?.game_data;
-                        if (typeof parsedGameData === 'string') {
-                            try { parsedGameData = JSON.parse(parsedGameData); } catch (e) {}
-                        }
-                        if (parsedGameData && typeof parsedGameData === 'object' && Object.keys(parsedGameData).length > 0) {
-                            const hasChar = parsedGameData.user || parsedGameData.stats || parsedGameData.name || parsedGameData.username ||
-                                (parsedGameData.slots && typeof parsedGameData.slots === 'object' && Object.values(parsedGameData.slots).some(s => s && (s.data?.user || s.data?.name || s.data?.stats)));
-                            if (hasChar) {
-                                dbUser = { ...data, game_data: parsedGameData };
-                                break;
-                            }
-                        }
-                    }
-                }
-            } catch (e) {
-                console.error(`Error checking cloud save (attempt ${attempt}):`, e);
-            }
-            if (!dbUser && attempt < 3) {
-                await new Promise(r => setTimeout(r, 600));
-            }
-        }
-
-        // Fallback: If /api/load failed, check if user exists via /api/login in sync mode
-        if (!dbUser) {
-            try {
-                const fallbackToken = await getAuthToken();
-                const fallbackResp = await fetch('/api/login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${fallbackToken}`
-                    },
-                    body: JSON.stringify({
-                        email: user.email,
-                        username: user.nickname || 'Player',
-                        gender: 'male',
-                        city: 'New York'
-                    })
-                });
-                if (fallbackResp.ok) {
-                    const fallbackData = await fallbackResp.json();
-                    let parsedFallback = fallbackData?.game_data;
-                    if (typeof parsedFallback === 'string') {
-                        try { parsedFallback = JSON.parse(parsedFallback); } catch (e) {}
-                    }
-                    if (parsedFallback && typeof parsedFallback === 'object' && Object.keys(parsedFallback).length > 0) {
-                        const hasChar = parsedFallback.user || parsedFallback.stats || parsedFallback.name || parsedFallback.username ||
-                            (parsedFallback.slots && typeof parsedFallback.slots === 'object' && Object.values(parsedFallback.slots).some(s => s && (s.data?.user || s.data?.name || s.data?.stats)));
-                        if (hasChar) {
-                            dbUser = { ...fallbackData, game_data: parsedFallback };
-                        }
-                    }
-                }
-            } catch (e) {
-                console.warn("Login fallback check skipped:", e);
-            }
-        }
+        // Fetch cloud save state with explicit error categorization
+        const cloudResult = await fetchCloudSave(user);
+        const dbUser = (cloudResult.status === 'success') ? cloudResult.dbUser : null;
 
         // SCENARIO 1: Both Guest Save AND Cloud Save exist -> CONFLICT RESOLUTION MODAL
         if (hasGuestSave && dbUser) {
@@ -963,8 +1095,8 @@ export async function initGame() {
             return;
         }
 
-        // SCENARIO 2: Guest Save exists, but NO Cloud Save exists -> Auto Migration
-        if (hasGuestSave) {
+        // SCENARIO 2: Guest Save exists, and Cloud Save is confirmed absent -> Auto Migration
+        if (hasGuestSave && cloudResult.status === 'no_save') {
             console.log("Migrating active guest character to logged-in cloud account...");
             state.gameState = migrateState(guestSave);
             if (state.gameState?.user) {
@@ -988,11 +1120,11 @@ export async function initGame() {
             return;
         }
 
-        // SCENARIO 3: No Guest Save -> Load Cloud Save, Recover Local Slot, or Start Character Creation
-        if (dbUser) {
+        // SCENARIO 3: Cloud Save cleanly loaded -> Load Cloud Save into UI
+        if (cloudResult.status === 'success' && dbUser) {
             await updateGameInfo(dbUser);
-        } else {
-            // Check if local slots store has an existing character that hasn't synced to cloud yet
+        } else if (cloudResult.status === 'no_save') {
+            // SCENARIO 4: Legitimate clean account with no cloud save -> Check local slot recovery or route to Character Creation
             let localRecovered = null;
             let recoveredSlotId = 'slot_1';
             try {
@@ -1037,8 +1169,75 @@ export async function initGame() {
                     await renderLifeDashboard(state.gameState);
                 }
             } else {
-                console.log("No save file found. Starting Character Creation.");
+                console.log("No save file found on new account. Starting Character Creation.");
                 await renderCharCreation();
+            }
+        } else {
+            // SCENARIO 5: Cloud load FAILED (auth_error, rate_limited, network_error)
+            console.warn(`[InitGame] Cloud load failed with status: ${cloudResult.status} (${cloudResult.error}). Checking local recovery...`);
+
+            // Try local recovery from slots store, active guest save, or legacy save
+            let localRecovered = null;
+            let recoveredSlotId = 'slot_1';
+            try {
+                const store = getSlotsStore();
+                const activeId = store.activeSlotId || 'slot_1';
+                const activeSlot = store.slots[activeId] || (store.slots && Object.values(store.slots)[0]);
+                if (activeSlot?.data?.user) {
+                    localRecovered = migrateState(activeSlot.data);
+                    recoveredSlotId = activeId;
+                    if (localRecovered) localRecovered._slotId = activeId;
+                }
+            } catch (e) {}
+
+            if (!localRecovered && hasGuestSave) {
+                localRecovered = migrateState(guestSave);
+            }
+
+            if (!localRecovered) {
+                try {
+                    const legacy = localStorage.getItem('life_game_save');
+                    if (legacy) {
+                        const parsed = JSON.parse(legacy);
+                        if (parsed && (parsed.user || parsed.name || parsed.stats)) {
+                            const migrated = migrateState(parsed);
+                            if (migrated && migrated.user) {
+                                localRecovered = migrated;
+                            }
+                        }
+                    }
+                } catch (e) {}
+            }
+
+            if (localRecovered && localRecovered.user) {
+                console.log(`Playing from local cached slot (${recoveredSlotId}) due to cloud load failure.`);
+                state.gameState = localRecovered;
+                GameLogic.backfillRelationshipGender(state.gameState.user.relationships);
+                if (typeof renderLifeDashboard === "function") {
+                    await renderLifeDashboard(state.gameState);
+                }
+                if (cloudResult.status === 'auth_error') {
+                    UI.showModal("Session Notice", "Your session has expired. You are playing from local save cache. Please log in again to sync progress to cloud.");
+                } else {
+                    UI.showModal("Offline Notice", "Could not connect to cloud sync service. Loaded character from local device storage.");
+                }
+            } else {
+                // Cloud failed AND local recovery failed: NEVER boot to Character Creation!
+                const isAuth = cloudResult.status === 'auth_error';
+                const title = isAuth ? "Session Expired" : "Unable to Load Cloud Save";
+                const message = isAuth
+                    ? "Your login session could not be verified to fetch your cloud save. Please sign in again or retry to continue your character."
+                    : (cloudResult.status === 'rate_limited'
+                        ? "Too many requests to the cloud service. Please wait a moment and click Retry."
+                        : "A network error occurred while retrieving your cloud save. Please check your connection and retry.");
+
+                showCloudLoadRecoveryModal({
+                    title,
+                    message,
+                    errorType: isAuth ? 'auth' : (cloudResult.status === 'rate_limited' ? 'rate_limit' : 'network'),
+                    onRetry: () => initGame(),
+                    onLogin: () => login()
+                });
             }
         }
 

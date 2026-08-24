@@ -30,25 +30,29 @@ export async function configureAuth() {
     }
 };
 
-export async function getAuthToken() {
+export async function getAuthToken(forceRefresh = false) {
     if (!state.auth0Client) return '';
 
     // 1. Check if we have cached ID token claims that are still valid (not expired)
-    try {
-        const claims = await state.auth0Client.getIdTokenClaims();
-        const nowSec = Math.floor(Date.now() / 1000);
-        // If claims exist with a raw token and expiration is at least 60 seconds in the future
-        if (claims?.__raw && typeof claims.exp === 'number' && claims.exp > nowSec + 60) {
-            return claims.__raw;
+    if (!forceRefresh) {
+        try {
+            const claims = await state.auth0Client.getIdTokenClaims();
+            const nowSec = Math.floor(Date.now() / 1000);
+            // If claims exist with a raw token and expiration is at least 60 seconds in the future
+            if (claims?.__raw && typeof claims.exp === 'number' && claims.exp > nowSec + 60) {
+                return claims.__raw;
+            }
+        } catch (e) {
+            console.warn("Could not retrieve ID token claims, attempting silent refresh:", e);
         }
-    } catch (e) {
-        console.warn("Could not retrieve ID token claims, attempting silent refresh:", e);
     }
 
-    // 2. Token is expired, near expiration, or claims not yet cached; refresh silently
+    // 2. Token is expired, near expiration, or forceRefresh requested; refresh silently
     try {
         if (typeof state.auth0Client.getTokenSilently === 'function') {
-            const tokenRes = await state.auth0Client.getTokenSilently({ detailedResponse: true });
+            const options = { detailedResponse: true };
+            if (forceRefresh) options.cacheMode = 'off';
+            const tokenRes = await state.auth0Client.getTokenSilently(options);
             if (tokenRes?.id_token) {
                 return tokenRes.id_token;
             }
