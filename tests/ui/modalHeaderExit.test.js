@@ -19,7 +19,9 @@ import {
 } from '../../public/src/features/more/prisonScreen.js';
 import {
     openHookupModal,
+    confirmHookupChoice,
     renderAgeUpCheatingDiscoveredModal,
+    handleCheatingConfrontationChoice,
     openRingSelectionModal
 } from '../../public/src/features/relationships/relationshipScreen.js';
 import {
@@ -336,5 +338,59 @@ describe('Modal Header Exit Button & Interactive Navigation Suite', () => {
         showCourtArraignmentModal();
         expect(titleEl.textContent).toBe("Court Trial Arraignment");
         expect(closeBtn.classList.contains('hidden')).toBe(true);
+    });
+
+    test('Making a choice in Steamy Opportunity or Cheating Discovered does not stack modal history and soft-lock the user', () => {
+        const overlay = document.getElementById('modal-overlay');
+        const titleEl = document.getElementById('modal-title');
+
+        // Setup test user
+        state.gameState.user.relationships = [
+            { id: 'npc_test', name: 'Alex Doe', category: 'partner', type: 'Girlfriend', status: 100, age: 27, gender: 'female' }
+        ];
+
+        // 1. Steamy Opportunity Choice -> Result Modal -> Close Result Modal -> Overlay Hidden
+        const randSpy = jest.spyOn(Math, 'random').mockReturnValue(0.1);
+        openHookupModal('npc_test');
+        expect(titleEl.textContent).toBe("Steamy Opportunity");
+
+        // User makes choice: End the night
+        confirmHookupChoice('end');
+        expect(titleEl.textContent).toBe("Night Ended");
+
+        // Click dismiss button on result modal
+        const dismissBtn1 = document.getElementById('modal-btn');
+        expect(dismissBtn1).not.toBeNull();
+        dismissBtn1.click();
+        expect(overlay.classList.contains('hidden')).toBe(true);
+        expect(titleEl.textContent).not.toBe("Steamy Opportunity");
+
+        // 2. Steamy Opportunity Choice -> Hookup -> Close Result Modal -> Overlay Hidden
+        openHookupModal('npc_test');
+        expect(titleEl.textContent).toBe("Steamy Opportunity");
+        confirmHookupChoice('protection');
+        expect(titleEl.textContent).toContain("Steamy");
+
+        // Click dismiss button on result modal
+        const dismissBtn2 = document.getElementById('modal-btn');
+        expect(dismissBtn2).not.toBeNull();
+        dismissBtn2.click();
+        expect(overlay.classList.contains('hidden')).toBe(true);
+        expect(titleEl.textContent).not.toBe("Steamy Opportunity");
+
+        // 3. Cheating Discovered Choice -> Result Modal -> Close Result Modal -> Overlay Hidden
+        renderAgeUpCheatingDiscoveredModal({ partnerId: 'npc_test', affairName: 'Secret Lover' });
+        expect(titleEl.textContent).toBe("Cheating Discovered!");
+
+        handleCheatingConfrontationChoice('walk_away');
+        expect(titleEl.textContent).toBe("Separated 🚪");
+
+        const dismissBtn3 = document.getElementById('modal-btn');
+        expect(dismissBtn3).not.toBeNull();
+        dismissBtn3.click();
+        expect(overlay.classList.contains('hidden')).toBe(true);
+        expect(titleEl.textContent).not.toBe("Cheating Discovered!");
+
+        randSpy.mockRestore();
     });
 });
