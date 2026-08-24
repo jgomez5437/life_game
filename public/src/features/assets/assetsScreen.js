@@ -221,6 +221,29 @@ export function renderAssets() {
                             </div>
                         `;
                     })()}
+
+                    ${user.isRetired && user.retirementPension > 0 ? `
+                        <div class="bg-slate-800 p-4 rounded-xl border border-amber-500/40 shadow-sm shadow-amber-950/30">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-full bg-amber-900/40 text-amber-400 flex items-center justify-center">
+                                        <i class="fas fa-cocktail"></i>
+                                    </div>
+                                    <h3 class="font-bold text-white">Retirement Pension</h3>
+                                </div>
+                                <span class="bg-amber-950/80 text-amber-300 border border-amber-700/60 text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full">
+                                    +${Utils.formatMoney(Math.floor(user.retirementPension / 12))}/mo
+                                </span>
+                            </div>
+                            <div class="bg-slate-900 p-3 rounded border border-slate-700 flex justify-between items-center">
+                                <div>
+                                    <div class="text-sm text-white font-bold">${Utils.formatMoney(user.retirementPension)}/yr</div>
+                                    <div class="text-xs text-amber-400/90 font-medium">Guaranteed Annual Payout</div>
+                                </div>
+                                <span class="text-xs text-green-400 font-bold flex items-center gap-1"><i class="fas fa-check-circle"></i> Active</span>
+                            </div>
+                        </div>
+                    ` : ''}
                 </div>
 
                 <div class="mb-6">

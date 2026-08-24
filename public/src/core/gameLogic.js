@@ -2532,11 +2532,19 @@ function calculateTotalRentalIncome(assets) {
     }, 0);
 }
 
+function getMinRetireYears(userOrTrack) {
+    const trackKey = typeof userOrTrack === 'string' ? userOrTrack : (userOrTrack?.careerTrack || '');
+    if (trackKey === 'military') return 20;
+    if (trackKey === 'law_enforcement') return 25;
+    return 30;
+}
+
 function calculateUserMonthlyIncome(user) {
     if (!user) return 0;
     let monthlyIncome = 0;
     if (user.hasBusiness && user.ceoSalary) monthlyIncome += user.ceoSalary;
     if (user.jobTitle && user.jobSalary) monthlyIncome += Math.floor(user.jobSalary / 12);
+    if (user.isRetired && user.retirementPension) monthlyIncome += Math.floor(user.retirementPension / 12);
     monthlyIncome += calculateTotalRentalIncome(user.assets);
     return monthlyIncome;
 }
@@ -5916,5 +5924,6 @@ export const GameLogic = {
     useContrabandPhone,
     sellContrabandItem,
     doSolitaryActivity,
-    attackPrisonInmate
+    attackPrisonInmate,
+    getMinRetireYears
 };

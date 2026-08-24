@@ -21,7 +21,7 @@ export function renderCareerManager() {
     const p = user.jobPerformance;
     const actionTaken = user.careerActionTaken;
     
-    const minRetireYears = user.careerTrack === 'military' ? 20 : 30;
+    const minRetireYears = GameLogic.getMinRetireYears ? GameLogic.getMinRetireYears(user) : (user.careerTrack === 'military' ? 20 : (user.careerTrack === 'law_enforcement' ? 25 : 30));
     const currentYears = user.yearsInCareer || 0;
     const canRetire = currentYears >= minRetireYears;
 

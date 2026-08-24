@@ -200,6 +200,12 @@ export function openPlayerOverviewModal() {
                     </div>
                     <div class="text-sm font-bold text-emerald-400">+${Utils.formatMoney(monthlyIncome)}<span class="text-[9px] text-slate-400 font-normal">/mo</span></div>
                     <div class="text-[10px] text-slate-400 mt-0.5">${Utils.formatMoney(totalAnnualIncome)}<span class="text-[9px] text-slate-500">/yr</span></div>
+                    ${user.isRetired && user.retirementPension > 0 ? `
+                        <div class="text-[9px] text-amber-400 font-semibold mt-1 border-t border-slate-700/60 pt-1 flex items-center justify-between">
+                            <span><i class="fas fa-cocktail text-[8px] mr-1"></i>Pension</span>
+                            <span>${Utils.formatMoney(user.retirementPension)}/yr</span>
+                        </div>
+                    ` : ''}
                 </div>
 
                 <div class="bg-slate-800 p-3 rounded-xl border border-slate-700">
@@ -258,6 +264,15 @@ export function openPlayerOverviewModal() {
 
             <!-- Life Context Details -->
             <div class="bg-slate-800 p-3.5 rounded-xl border border-slate-700 space-y-2.5 text-xs">
+                ${user.isRetired && user.retirementPension > 0 ? `
+                    <div class="flex justify-between items-center border-b border-slate-700/60 pb-2">
+                        <span class="text-slate-400 flex items-center gap-1.5 font-medium">
+                            <i class="fas fa-cocktail text-amber-400"></i> Pension
+                        </span>
+                        <span class="font-bold text-amber-400 text-right">${Utils.formatMoney(user.retirementPension)}/yr <span class="text-slate-400 text-[10px] font-normal">(+${Utils.formatMoney(Math.floor(user.retirementPension / 12))}/mo)</span></span>
+                    </div>
+                ` : ''}
+
                 <div class="flex justify-between items-center border-b border-slate-700/60 pb-2">
                     <span class="text-slate-400 flex items-center gap-1.5 font-medium">
                         <i class="fas fa-graduation-cap text-indigo-400"></i> Education
