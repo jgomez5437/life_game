@@ -77,6 +77,8 @@ export const ACTION_TO_MODULE = {
     slackOffJob: 'jobCareerManager',
     confirmQuitCareer: 'jobCareerManager',
     quitCareer: 'jobCareerManager',
+    confirmRetire: 'jobCareerManager',
+    retire: 'jobCareerManager',
     renderActivities: 'occupation',
     openUniversityModal: 'occupation',
     attemptEnrollment: 'occupation',

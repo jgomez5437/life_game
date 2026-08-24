@@ -52,6 +52,8 @@ export const retryInterview = lazy('careerJobs', 'retryInterview');
 
 export const confirmQuitCareer = lazy('jobCareerManager', 'confirmQuitCareer');
 export const quitCareer = lazy('jobCareerManager', 'quitCareer');
+export const confirmRetire = lazy('jobCareerManager', 'confirmRetire');
+export const retire = lazy('jobCareerManager', 'retire');
 export const renderCareerManager = lazy('jobCareerManager', 'renderCareerManager');
 export const workHarderJob = lazy('jobCareerManager', 'workHarderJob');
 export const slackOffJob = lazy('jobCareerManager', 'slackOffJob');
@@ -1273,6 +1275,8 @@ const routeHandlers = {
   purchaseUpgrade,
   confirmQuitCareer,
   quitCareer,
+  confirmRetire,
+  retire,
   attemptEnrollment,
   openGradEnrollmentModal,
   attemptGradEnrollment,

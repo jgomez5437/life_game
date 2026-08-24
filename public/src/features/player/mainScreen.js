@@ -378,6 +378,8 @@ async function handleFinances(user) {
 
     // 2. Job Salary + annual adjustments
     if (user.jobTitle) {
+        user.yearsInCareer = (user.yearsInCareer || 0) + 1;
+        
         if (user.careerTrack === 'mafia_syndicate') {
             const crimes = user.mafiaCrimesThisYear || 0;
             if (crimes < 3) {
@@ -446,7 +448,7 @@ async function handleFinances(user) {
                                 GameLogic.adjustStat(user, 'happiness', -25);
                                 addLog(`Terminated from ${user.jobTitle} due to sustained poor performance. (-25 Happiness)`, 'bad');
                                 user.jobTitle = null; user.jobSalary = 0; user.jobPerformance = 50;
-                                user.careerTrack = null; user.careerLevel = 0; user.yearsInRole = 0;
+                                user.careerTrack = null; user.careerLevel = 0; user.yearsInRole = 0; user.yearsInCareer = 0;
                                 user.consecutivePoorYears = 0; user.careerActionTaken = false; user.hasSeenJobSalary = false;
                             }
                         } else {
@@ -492,11 +494,16 @@ async function handleFinances(user) {
                 } else if (user.jobPerformance <= 20 && Math.random() < 0.4) {
                     GameLogic.adjustStat(user, 'happiness', -25);
                     addLog(`Your employer let you go from ${user.jobTitle} due to poor performance. (-25 Happiness)`, 'bad');
-                    user.jobTitle = null; user.jobSalary = 0; user.jobPerformance = 50;
+                    user.jobTitle = null; user.jobSalary = 0; user.jobPerformance = 50; user.yearsInCareer = 0;
                     user.careerActionTaken = false; user.hasSeenJobSalary = false;
                 }
             }
         }
+    }
+
+    if (user.isRetired && user.retirementPension > 0) {
+        user.money += user.retirementPension;
+        addLog(`Received your pension of ${Utils.formatMoney(user.retirementPension)}.`, 'good');
     }
 
     // 3. Living Expenses

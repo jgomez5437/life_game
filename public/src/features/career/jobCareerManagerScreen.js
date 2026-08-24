@@ -20,6 +20,10 @@ export function renderCareerManager() {
 
     const p = user.jobPerformance;
     const actionTaken = user.careerActionTaken;
+    
+    const minRetireYears = user.careerTrack === 'military' ? 20 : 30;
+    const currentYears = user.yearsInCareer || 0;
+    const canRetire = currentYears >= minRetireYears;
 
     let barColor = 'bg-red-500';
     if (p > 75) barColor = 'bg-green-500';
@@ -126,6 +130,18 @@ export function renderCareerManager() {
                     </div>
                     <i class="fas fa-chevron-right text-slate-600"></i>
                 </button>
+                <button ${!canRetire ? 'disabled' : 'data-action="confirmRetire"'} class="${!canRetire ? 'bg-slate-700 p-4 rounded-xl border border-slate-600 flex items-center justify-between opacity-50 cursor-not-allowed' : 'bg-amber-900/40 p-4 rounded-xl border border-amber-600/50 flex items-center justify-between hover:bg-amber-900/60 transition group'} mt-2">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-amber-900/50 flex items-center justify-center text-amber-400">
+                            <i class="fas fa-cocktail"></i>
+                        </div>
+                        <div class="text-left">
+                            <h3 class="font-bold ${!canRetire ? 'text-slate-400' : 'text-amber-400 group-hover:text-amber-300'}">Retire</h3>
+                            <div class="text-xs ${!canRetire ? 'text-slate-500' : 'text-amber-500/70'}">${!canRetire ? `Not Eligible - ${currentYears} / ${minRetireYears} Years` : 'Claim Pension & Stop Working'}</div>
+                        </div>
+                    </div>
+                    ${canRetire ? '<i class="fas fa-chevron-right text-amber-500"></i>' : ''}
+                </button>
                 <button data-action="confirmQuitCareer" class="bg-red-900/50 p-4 rounded-xl border border-red-700 flex items-center justify-between hover:bg-red-900 transition group mt-4 mb-8">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-full bg-red-900/30 flex items-center justify-center text-red-400">
@@ -166,6 +182,46 @@ export function slackOffJob() {
     UI.updateHeader(user);
     renderCareerManager();
 }
+export function confirmRetire() {
+    const user = state.gameState.user;
+    const pension = Math.floor(user.jobSalary * 0.66);
+    UI.showCustomModal("Retire?", `
+        <div class="text-center">
+            <p class="text-white mb-4">Are you sure you want to retire from your position as <strong>${Utils.escapeHtml(user.jobTitle)}</strong>?</p>
+            <p class="text-amber-400 font-bold mb-6">You will receive a pension of ${Utils.formatMoney(pension)}/yr.</p>
+            <div class="grid grid-cols-2 gap-3">
+                <button data-action="retire" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-lg">Yes, Retire</button>
+                <button data-action="hideModal" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-lg">Cancel</button>
+            </div>
+        </div>
+    `);
+}
+
+export function retire() {
+    const user = state.gameState.user;
+    const oldJob = user.jobTitle;
+    const pension = Math.floor(user.jobSalary * 0.66);
+    
+    user.isRetired = true;
+    user.retirementPension = (user.retirementPension || 0) + pension;
+    
+    user.jobTitle = null;
+    user.jobSalary = 0;
+    user.jobPerformance = 50;
+    user.careerActionTaken = false;
+    user.careerTrack = null;
+    user.careerLevel = 0;
+    user.yearsInRole = 0;
+    user.yearsInCareer = 0;
+    user.consecutivePoorYears = 0;
+    user.hasSeenJobSalary = false;
+    
+    UI.hideModal();
+    addLog(`Retired from your position as ${oldJob}. You will now receive a pension of ${Utils.formatMoney(pension)}/yr.`, 'major');
+    UI.updateHeader(user);
+    renderActivities();
+}
+
 export function confirmQuitCareer() {
     const user = state.gameState.user;
     const m = get('modal-overlay');
@@ -192,6 +248,7 @@ export function quitCareer() {
     user.careerTrack = null;
     user.careerLevel = 0;
     user.yearsInRole = 0;
+    user.yearsInCareer = 0;
     user.consecutivePoorYears = 0;
     user.hasSeenJobSalary = false;
     // Close Modal
