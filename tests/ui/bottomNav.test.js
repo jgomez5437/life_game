@@ -342,4 +342,73 @@ describe('Persistent Global Bottom Navigation & Active Tab States', () => {
             expect(inlineAgeUp).toBeNull();
         });
     });
+
+    describe('Modal, Deceased & Funeral Screen Navigation Locks', () => {
+        test('UI.isModalOpen accurately reports modal overlay open/closed lifecycle', () => {
+            expect(UI.isModalOpen()).toBe(false);
+
+            UI.showModal('Test Title', 'Test Content');
+            expect(UI.isModalOpen()).toBe(true);
+
+            UI.hideModal();
+            expect(UI.isModalOpen()).toBe(false);
+
+            UI.showCustomModal({ title: 'Custom Title', content: 'Custom Content' });
+            expect(UI.isModalOpen()).toBe(true);
+
+            UI.closeAllModals();
+            expect(UI.isModalOpen()).toBe(false);
+        });
+
+        test('UI.updateBottomNav suppresses bottom-nav when character is deceased', () => {
+            state.gameState.user.lifeStatus = 'Deceased';
+
+            UI.updateBottomNav('home');
+            expect(document.getElementById('bottom-nav').classList.contains('hidden')).toBe(true);
+
+            UI.updateBottomNav('assets');
+            expect(document.getElementById('bottom-nav').classList.contains('hidden')).toBe(true);
+
+            UI.updateBottomNav('work');
+            expect(document.getElementById('bottom-nav').classList.contains('hidden')).toBe(true);
+        });
+
+        test('UI.updateBottomNav suppresses bottom-nav when funerals or teacher replacements are pending', () => {
+            state.gameState.pendingFunerals = [{ id: 'rel_1', name: 'Grandmother', type: 'Grandmother' }];
+
+            UI.updateBottomNav('home');
+            expect(document.getElementById('bottom-nav').classList.contains('hidden')).toBe(true);
+
+            state.gameState.pendingFunerals = [];
+            state.gameState.pendingTeacherReplacements = [{ deceasedTeacherName: 'Mr. White' }];
+
+            UI.updateBottomNav('work');
+            expect(document.getElementById('bottom-nav').classList.contains('hidden')).toBe(true);
+        });
+
+        test('Feature screens lock to Death Screen when character is deceased', () => {
+            state.gameState.user.lifeStatus = 'Deceased';
+            state.gameState.user.deathCause = 'Heart Attack';
+
+            renderAssets();
+            expect(document.getElementById('bottom-nav').classList.contains('hidden')).toBe(true);
+            expect(document.getElementById('game-container').innerHTML).toContain('You Died');
+
+            renderActivities();
+            expect(document.getElementById('bottom-nav').classList.contains('hidden')).toBe(true);
+            expect(document.getElementById('game-container').innerHTML).toContain('You Died');
+
+            renderRelationships();
+            expect(document.getElementById('bottom-nav').classList.contains('hidden')).toBe(true);
+            expect(document.getElementById('game-container').innerHTML).toContain('You Died');
+
+            renderMoreDashboard();
+            expect(document.getElementById('bottom-nav').classList.contains('hidden')).toBe(true);
+            expect(document.getElementById('game-container').innerHTML).toContain('You Died');
+
+            renderLifeDashboard();
+            expect(document.getElementById('bottom-nav').classList.contains('hidden')).toBe(true);
+            expect(document.getElementById('game-container').innerHTML).toContain('You Died');
+        });
+    });
 });

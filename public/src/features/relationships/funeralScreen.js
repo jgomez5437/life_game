@@ -78,6 +78,7 @@ export const processNextTeacherReplacement = () => {
         </div>
     `;
 
+    UI.hideBottomNav();
     UI.renderScreen(modalHtml);
 };
 
@@ -236,6 +237,7 @@ const renderFuneralScreen = (deceased) => {
         </div>
     `;
 
+    UI.hideBottomNav();
     UI.renderScreen(html);
 };
 
@@ -293,6 +295,7 @@ export const chooseFuneralType = () => {
         </div>
     `;
 
+    UI.hideBottomNav();
     UI.renderScreen(screenHtml);
 };
 

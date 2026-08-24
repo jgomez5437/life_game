@@ -2,8 +2,8 @@ import { GameLogic } from '../../core/gameLogic.js';
 import { state } from '../../core/state.js';
 import { saveGame } from '../../core/main.js';
 import { renderShoppingHub } from './goShoppingScreen.js';
-import { renderLifeDashboard, addLog } from '../player/mainScreen.js';
-import { processNextFuneral } from '../relationships/funeralScreen.js';
+import { renderLifeDashboard, renderDeathScreen, addLog } from '../player/mainScreen.js';
+import { processNextFuneral, processNextTeacherReplacement } from '../relationships/funeralScreen.js';
 import { Utils } from '../../ui/utils.js';
 import { UI } from '../../ui/ui.js';
 import { renderAvatar } from '../../ui/avatarRenderer.js';
@@ -58,38 +58,26 @@ function getVehicleListHtml(assets) {
     const currentAge = (state.gameState.user && state.gameState.user.age) || 18;
 
     return vehicles.map(v => {
-        if (v.name && typeof v.name === 'string' && v.name.startsWith('New ')) {
-            v.name = v.name.replace(/^New\s+/i, '');
-        }
-        let condColor = 'text-green-400';
-        if (v.condition < 40) condColor = 'text-red-500'; 
-        else if (v.condition < 75) condColor = 'text-yellow-500'; 
-        const style = GameLogic.getVehicleIcon(v.type);
+        const condColor = v.condition > 70 ? 'text-green-400' : v.condition > 40 ? 'text-yellow-400' : 'text-red-400';
+        const primaryBadge = v.isPrimary ? `<span class="bg-blue-900/60 text-blue-300 border border-blue-700 text-[9px] uppercase px-1.5 py-0.5 rounded font-bold">Primary</span>` : '';
+        const insuredBadge = v.insured ? `<span class="bg-emerald-900/60 text-emerald-300 border border-emerald-700 text-[9px] uppercase px-1.5 py-0.5 rounded font-bold">Insured</span>` : '';
 
-        const acquiredAge = v.acquiredAge !== undefined ? v.acquiredAge : currentAge;
-        const ownedYears = Math.max(0, currentAge - acquiredAge);
-        const hasLoan = v.loan && v.loan.remainingBalance > 0;
-        
         return `
-            <div data-action="renderVehicleManager" data-args="${v.id}" class="cursor-pointer hover:bg-slate-700 transition bg-slate-800 p-4 rounded-xl border border-slate-700 flex items-center justify-between mb-3 group">
+            <div data-action="renderVehicleManager" data-args="&apos;${v.id}&apos;" class="cursor-pointer hover:bg-slate-700 transition bg-slate-800 p-4 rounded-xl border border-slate-700 flex items-center justify-between mb-3 group">
                 <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center border border-slate-600 group-hover:border-slate-500 shrink-0">
-                        <i class="fas ${style.icon} ${style.color} text-xl"></i>
+                    <div class="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center border border-slate-600 group-hover:border-slate-500">
+                        <i class="fas fa-car text-blue-400 text-xl"></i>
                     </div>
                     <div>
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <h4 class="font-bold text-white text-sm group-hover:text-blue-300 transition">${v.name}</h4>
-                            ${v.isPrimary ? `<span class="bg-blue-900/80 text-blue-300 text-[10px] font-bold px-1.5 py-0.5 rounded border border-blue-700">Primary Ride</span>` : ''}
-                            <span class="bg-slate-900 text-slate-300 text-[10px] font-bold px-1.5 py-0.5 rounded border border-slate-700">Age: ${ownedYears} yrs</span>
-                        </div>
-                        <div class="text-xs text-slate-400 capitalize mt-0.5 flex items-center gap-2 flex-wrap">
-                            <span>${v.type}</span> • <span class="${condColor}">${v.condition}% Cond.</span>
-                            ${v.insured ? `<span class="text-teal-400 font-semibold">• Insured</span>` : ''}
-                            ${hasLoan ? `<span class="text-amber-400 font-semibold">• Loan: ${Utils.formatMoney(v.loan.remainingBalance)}</span>` : ''}
+                        <h4 class="font-bold text-white text-sm group-hover:text-blue-300 transition">${v.name}</h4>
+                        <div class="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
+                            <span>Condition: <span class="${condColor} font-bold">${v.condition}%</span></span>
+                            ${primaryBadge}
+                            ${insuredBadge}
                         </div>
                     </div>
                 </div>
-                <div class="text-right shrink-0">
+                <div class="text-right">
                     <div class="text-green-400 font-bold text-sm">Value: ${Utils.formatMoney(v.value)}</div>
                     <i class="fas fa-chevron-right text-slate-600 text-xs mt-1"></i>
                 </div>
@@ -103,32 +91,30 @@ function getPropertyListHtml(assets) {
     const properties = assets.filter(a => a.category === 'property');
 
     if (properties.length === 0) {
-        return `<div class="bg-slate-800 p-4 rounded border border-slate-700 text-slate-500 italic text-sm text-center">You don't own any properties.</div>`;
+        return `<div class="bg-slate-800 p-4 rounded border border-slate-700 text-slate-500 italic text-sm text-center">You don't own any real estate.</div>`;
     }
 
     return properties.map(p => {
-        const style = GameLogic.getPropertyIcon(p.type);
-        const hasMortgage = p.mortgage && p.mortgage.remainingBalance > 0;
-        const subtext = hasMortgage 
-            ? `<span class="text-yellow-400 font-bold">Mortgage: ${Utils.formatMoney(p.mortgage.remainingBalance)} (${Utils.formatMoney(p.mortgage.monthlyPayment)}/mo)</span>`
-            : `<span class="text-green-400 font-bold">Paid Off</span>`;
-
-        const cond = p.condition !== undefined ? p.condition : 100;
-        const maxCond = p.maxCondition !== undefined ? p.maxCondition : 100;
-        let condColor = 'text-green-400';
-        if (cond < 40) condColor = 'text-red-500';
-        else if (cond < 75) condColor = 'text-yellow-500';
+        const isRented = p.isRented && p.tenant;
+        const tenantBadge = isRented 
+            ? `<span class="bg-green-900/60 text-green-300 border border-green-700 text-[9px] uppercase px-1.5 py-0.5 rounded font-bold"><i class="fas fa-user-check text-[8px] mr-0.5"></i> Rented ($${p.tenant.rent.toLocaleString()}/mo)</span>`
+            : `<span class="bg-slate-700 text-slate-400 text-[9px] uppercase px-1.5 py-0.5 rounded font-bold">Vacant</span>`;
+        
+        const mortgageBadge = p.hasMortgage && p.mortgage && p.mortgage.principal > 0
+            ? `<span class="bg-amber-900/60 text-amber-300 border border-amber-700 text-[9px] uppercase px-1.5 py-0.5 rounded font-bold"><i class="fas fa-landmark text-[8px] mr-0.5"></i> Mortgage ($${Math.round(p.mortgage.monthlyPayment).toLocaleString()}/mo)</span>`
+            : `<span class="bg-blue-900/40 text-blue-300 text-[9px] uppercase px-1.5 py-0.5 rounded font-bold">Paid Off</span>`;
 
         return `
-            <div data-action="renderPropertyManager" data-args="${p.id}" class="cursor-pointer hover:bg-slate-700 transition bg-slate-800 p-4 rounded-xl border border-slate-700 flex items-center justify-between mb-3 group">
+            <div data-action="renderPropertyManager" data-args="&apos;${p.id}&apos;" class="cursor-pointer hover:bg-slate-700 transition bg-slate-800 p-4 rounded-xl border border-slate-700 flex items-center justify-between mb-3 group">
                 <div class="flex items-center gap-4">
                     <div class="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center border border-slate-600 group-hover:border-slate-500">
-                        <i class="fas ${style.icon} ${style.color} text-xl"></i>
+                        <i class="fas fa-home text-green-400 text-xl"></i>
                     </div>
                     <div>
                         <h4 class="font-bold text-white text-sm group-hover:text-green-300 transition">${p.name}</h4>
-                        <div class="text-xs text-slate-400 capitalize">
-                            ${p.type} • <span class="${condColor}">${cond}% Cond</span> • ${subtext}
+                        <div class="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5 flex-wrap">
+                            ${tenantBadge}
+                            ${mortgageBadge}
                         </div>
                     </div>
                 </div>
@@ -143,7 +129,23 @@ function getPropertyListHtml(assets) {
 
 // --- MAIN FUNCTION ---
 export function renderAssets() {
-    const user = state.gameState.user;
+    const user = state.gameState?.user;
+    if (!user) return;
+
+    if (user.lifeStatus === 'Deceased') {
+        renderDeathScreen(user, user.deathCause || 'natural causes');
+        return;
+    }
+
+    if (state.gameState?.pendingFunerals && state.gameState.pendingFunerals.length > 0) {
+        processNextFuneral();
+        return;
+    }
+
+    if (state.gameState?.pendingTeacherReplacements && state.gameState.pendingTeacherReplacements.length > 0) {
+        processNextTeacherReplacement();
+        return;
+    }
 
     let monthlyIncome = GameLogic.calculateUserMonthlyIncome(user);
     let monthlyOutflow = GameLogic.calculateUserMonthlyOutflow(user);

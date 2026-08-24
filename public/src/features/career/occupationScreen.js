@@ -1,6 +1,7 @@
 import { GameLogic } from '../../core/gameLogic.js';
 import { state, hasPurchasedPack } from '../../core/state.js';
-import { renderLifeDashboard, addLog, refreshClassmates } from '../player/mainScreen.js';
+import { renderLifeDashboard, renderDeathScreen, addLog, refreshClassmates } from '../player/mainScreen.js';
+import { processNextFuneral, processNextTeacherReplacement } from '../relationships/funeralScreen.js';
 import { Utils } from '../../ui/utils.js';
 import { MAJORS, CAREER_TRACKS, SPECIAL_CAREER_TRACKS, PART_TIME_JOBS, GRAD_SCHOOLS } from '../../core/constants.js';
 import { UI } from '../../ui/ui.js';
@@ -312,7 +313,24 @@ function getStatus() {
 };
 
 export const renderActivities = () => {
-    const user = state.gameState.user;
+    const user = state.gameState?.user;
+    if (!user) return;
+
+    if (user.lifeStatus === 'Deceased') {
+        renderDeathScreen(user, user.deathCause || 'natural causes');
+        return;
+    }
+
+    if (state.gameState?.pendingFunerals && state.gameState.pendingFunerals.length > 0) {
+        processNextFuneral();
+        return;
+    }
+
+    if (state.gameState?.pendingTeacherReplacements && state.gameState.pendingTeacherReplacements.length > 0) {
+        processNextTeacherReplacement();
+        return;
+    }
+
     const isAdult = user.age >= 18;
     let content = '';
     const currentStatusText = updateLifeStatus();

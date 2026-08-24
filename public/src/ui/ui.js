@@ -1,5 +1,6 @@
 import { Utils } from './utils.js';
 import { renderAvatar } from './avatarRenderer.js';
+import { state } from '../core/state.js';
 
 const _elements = {
     get name() { return document.getElementById('header-name'); },
@@ -576,6 +577,15 @@ export const UI = {
     },
 
     /**
+     * Checks if a modal dialog is currently open.
+     * @returns {boolean}
+     */
+    isModalOpen: () => {
+        const overlay = _elements.modalOverlay || document.getElementById('modal-overlay');
+        return !!(overlay && !overlay.classList.contains('hidden'));
+    },
+
+    /**
      * Checks if bottom navigation bar is enabled in user preferences (default: true).
      * @returns {boolean}
      */
@@ -595,6 +605,20 @@ export const UI = {
         const bottomNav = _elements.bottomNav || document.getElementById('bottom-nav');
         if (!bottomNav) return;
 
+        // Guard 1: Never show bottom navigation if character is dead
+        if (state?.gameState?.user?.lifeStatus === 'Deceased') {
+            UI.hideBottomNav();
+            return;
+        }
+
+        // Guard 2: Never show bottom navigation if a funeral or teacher replacement is pending
+        if ((state?.gameState?.pendingFunerals && state.gameState.pendingFunerals.length > 0) ||
+            (state?.gameState?.pendingTeacherReplacements && state.gameState.pendingTeacherReplacements.length > 0)) {
+            UI.hideBottomNav();
+            return;
+        }
+
+        // Guard 3: User preference check
         if (!UI.isBottomNavEnabled()) {
             UI.hideBottomNav();
             return;
