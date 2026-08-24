@@ -1117,6 +1117,7 @@ export const demandTenantRepairPayment = (propertyId, tenantId, repairCost) => {
     const event = queue.shift();
 
     const roll = Math.random();
+    UI.closeAllModals();
     if (roll < 0.70) {
         addLog(`Asked tenant ${event ? event.tenantName : 'tenant'} to pay for repairs on ${event ? event.propertyName : 'property'}. They agreed and paid ${Utils.formatMoney(repairCost)}!`, 'good');
         UI.updateHeader(user);
@@ -1148,6 +1149,7 @@ export const demandTenantRentPayment = (propertyId, tenantId, missedAmount) => {
     const event = queue.shift();
 
     const roll = Math.random();
+    UI.closeAllModals();
     if (roll < 0.70) {
         user.money += missedAmount;
         addLog(`Demanded overdue rent from ${event ? event.tenantName : 'tenant'}. They paid back ${Utils.formatMoney(missedAmount)}!`, 'good');
@@ -1183,6 +1185,7 @@ export const evictTenantFromEvent = (propertyId) => {
     if (state.gameState && Array.isArray(state.gameState.pendingTenantEvents)) {
         state.gameState.pendingTenantEvents = state.gameState.pendingTenantEvents.filter(e => e.propertyId !== propertyId);
     }
+    UI.closeAllModals();
     if (result.success) {
         addLog(`Evicted tenant ${result.tenantName} from ${result.propertyName}. Property is now vacant.`, 'bad');
         UI.updateHeader(user);
@@ -1216,6 +1219,7 @@ export const renewLeaseWithIncrease = (propertyId, tenantId, requestedYears, inc
     const property = (user.assets || []).find(a => a.id === propertyId);
 
     const roll = Math.random();
+    UI.closeAllModals();
     if (roll < 0.80) { // 80% chance tenant accepts 5% increase
         if (property && property.tenant) {
             property.tenant.leaseYears = requestedYears;

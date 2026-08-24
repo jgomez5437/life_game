@@ -1448,6 +1448,7 @@ export const confirmHookupChoice = (choice) => {
     }
 
     if (choice === 'end') {
+        UI.closeAllModals();
         UI.showModal('Night Ended', `<p class="text-slate-300 text-sm">You decided not to take things further and excused yourself for the night.</p>`);
         renderPersonInteraction(person.id);
         return;
@@ -1497,6 +1498,7 @@ export const confirmHookupChoice = (choice) => {
         </div>
     `;
 
+    UI.closeAllModals();
     UI.showModal(title, modalContent);
     renderPersonInteraction(person.id);
 };
@@ -1615,6 +1617,7 @@ export const handleCheatingConfrontationChoice = (choice) => {
 
     if (choice === 'beg') {
         const forgives = Math.random() < 0.50;
+        UI.closeAllModals();
         if (forgives) {
             partner.status = Math.min(100, partner.status + 20);
             GameLogic.adjustStat(user, 'happiness', -15);
@@ -1633,6 +1636,7 @@ export const handleCheatingConfrontationChoice = (choice) => {
         }
         user.money -= 5000;
         const acceptsGift = Math.random() < 0.65;
+        UI.closeAllModals();
         if (acceptsGift) {
             partner.status = Math.min(100, partner.status + 15);
             GameLogic.adjustStat(user, 'happiness', -10);
@@ -1647,6 +1651,7 @@ export const handleCheatingConfrontationChoice = (choice) => {
     } else if (choice === 'blame') {
         partner.status = 0;
         const breaksUp = Math.random() < 0.90;
+        UI.closeAllModals();
         if (breaksUp) {
             GameLogic.adjustStat(user, 'happiness', -30);
             addLog(`You blamed ${partner.name} for your affair. Furious, they immediately divorced/broke up with you! (-30 Happiness)`, 'bad');
@@ -1660,6 +1665,7 @@ export const handleCheatingConfrontationChoice = (choice) => {
     } else if (choice === 'walk_away') {
         GameLogic.adjustStat(user, 'happiness', -25);
         addLog(`You walked away from your relationship with ${partner.name}. (-25 Happiness)`, 'bad');
+        UI.closeAllModals();
         UI.showModal('Separated 🚪', `<p class="text-slate-300 text-sm">You walked away and ended your relationship with ${Utils.escapeHtml(partner.name)}. (-25 Happiness)</p>`);
         GameLogic.breakUpWithPartner(user, partner);
     }
