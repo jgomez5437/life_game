@@ -39,6 +39,7 @@ export const MODULE_REGISTRY = {
     graveyard: () => import('../features/player/graveyardScreen.js'),
 
     // --- Tier 3: True Lazy Load ---
+    lifeEvents: () => import('../features/life/lifeEventModal.js'),
     casino: () => import('../features/more/casinoScreen.js'),
     crime: () => import('../features/more/crimeScreen.js'),
     prison: () => import('../features/more/prisonScreen.js')
@@ -185,6 +186,11 @@ export const ACTION_TO_MODULE = {
     skipFuneral: 'funeral',
     respondNewTeacher: 'funeral',
     processNextTeacherReplacement: 'funeral',
+
+    // Life Events
+    selectLifeEventChoice: 'lifeEvents',
+    finishLifeEvent: 'lifeEvents',
+    processNextLifeEvent: 'lifeEvents',
 
     // More, Settings & Casino
     renderMoreDashboard: 'more',

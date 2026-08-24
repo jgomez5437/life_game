@@ -5728,7 +5728,35 @@ function requestConjugalVisit(user, relId) {
     };
 }
 
+// ==========================================
+// Random Life Event Helpers
+// ==========================================
+
+export function calculateFightOutcome(userSmarts, userHealth, opponentSmarts, opponentHealth) {
+    // Determine winner based on a mix of health and smarts, with randomness
+    const userScore = (userHealth * 0.7) + (userSmarts * 0.3) + (Math.random() * 40);
+    const opponentScore = (opponentHealth * 0.7) + (opponentSmarts * 0.3) + (Math.random() * 40);
+    
+    return userScore >= opponentScore; // true if user wins
+}
+
+export function calculatePeerPressureOutcome(userSmarts, choiceRiskLevel) {
+    // choiceRiskLevel is 1 to 10
+    const resistance = userSmarts + (Math.random() * 50);
+    const threshold = choiceRiskLevel * 10;
+    return resistance >= threshold;
+}
+
+export function calculateTripSatisfaction(parentRelationshipStatus, baseTripQuality) {
+    // Mix relationship and trip quality
+    const satisfaction = (parentRelationshipStatus * 0.4) + (baseTripQuality * 0.6) + (Math.random() * 20 - 10);
+    return Math.min(100, Math.max(0, satisfaction));
+}
+
 export const GameLogic = {
+    calculateFightOutcome,
+    calculatePeerPressureOutcome,
+    calculateTripSatisfaction,
     adjustStat,
     setStat,
     generateRandomStats,

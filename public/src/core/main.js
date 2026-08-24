@@ -197,6 +197,11 @@ export const skipFuneral = lazy('funeral', 'skipFuneral');
 export const respondNewTeacher = lazy('funeral', 'respondNewTeacher');
 export const processNextTeacherReplacement = lazy('funeral', 'processNextTeacherReplacement');
 
+// Life Events
+export const selectLifeEventChoice = lazy('lifeEvents', 'selectLifeEventChoice');
+export const finishLifeEvent = lazy('lifeEvents', 'finishLifeEvent');
+export const processNextLifeEvent = lazy('lifeEvents', 'processNextLifeEvent');
+
 // Romance
 export const openWeddingPlanner = lazy('romance', 'openWeddingPlanner');
 export const confirmWeddingPlan = lazy('romance', 'confirmWeddingPlan');
@@ -1528,6 +1533,9 @@ const routeHandlers = {
   get skipFuneral() { return skipFuneral; },
   get respondNewTeacher() { return respondNewTeacher; },
   get processNextTeacherReplacement() { return processNextTeacherReplacement; },
+  get selectLifeEventChoice() { return selectLifeEventChoice; },
+  get finishLifeEvent() { return finishLifeEvent; },
+  get processNextLifeEvent() { return processNextLifeEvent; },
   renderMoreDashboard,
   renderCasinoHub,
   openRouletteModal,
@@ -1678,6 +1686,9 @@ const FUNERAL_ACTION_WHITELIST = new Set([
     'skipFuneral',
     'respondNewTeacher',
     'processNextTeacherReplacement',
+    'selectLifeEventChoice',
+    'finishLifeEvent',
+    'processNextLifeEvent',
     'hideModal',
     'closeAllModals'
 ]);
@@ -1711,19 +1722,28 @@ document.addEventListener('click', (e) => {
             }
         }
 
-        // 3. Pending Funerals & Teacher Replacements Lock: Require choice before switching screens
+        // 3. Pending Funerals, Teachers & Life Events Lock: Require choice before switching screens
         const hasPendingFunerals = state.gameState?.pendingFunerals && state.gameState.pendingFunerals.length > 0;
         const hasPendingTeachers = state.gameState?.pendingTeacherReplacements && state.gameState.pendingTeacherReplacements.length > 0;
-        if (hasPendingFunerals || hasPendingTeachers) {
+        const hasPendingLifeEvents = state.gameState?.pendingEvents && state.gameState.pendingEvents.length > 0;
+        if (hasPendingFunerals || hasPendingTeachers || hasPendingLifeEvents) {
             if (!FUNERAL_ACTION_WHITELIST.has(action)) {
-                console.warn(`[Navigation Lock] Blocked action "${action}" while funeral/teacher prompt is pending.`);
-                loadModule('funeral').then(m => {
-                    if (hasPendingFunerals && m && typeof m.processNextFuneral === 'function') {
-                        m.processNextFuneral();
-                    } else if (hasPendingTeachers && m && typeof m.processNextTeacherReplacement === 'function') {
-                        m.processNextTeacherReplacement();
-                    }
-                });
+                console.warn(`[Navigation Lock] Blocked action "${action}" while prompt is pending.`);
+                if (hasPendingFunerals || hasPendingTeachers) {
+                    loadModule('funeral').then(m => {
+                        if (hasPendingFunerals && m && typeof m.processNextFuneral === 'function') {
+                            m.processNextFuneral();
+                        } else if (hasPendingTeachers && m && typeof m.processNextTeacherReplacement === 'function') {
+                            m.processNextTeacherReplacement();
+                        }
+                    });
+                } else if (hasPendingLifeEvents) {
+                    loadModule('lifeEvents').then(m => {
+                        if (m && typeof m.processNextLifeEvent === 'function') {
+                            m.processNextLifeEvent();
+                        }
+                    });
+                }
                 return;
             }
         }

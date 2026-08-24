@@ -12,6 +12,7 @@ import { saveToSlot } from '../../core/saveSlotManager.js';
 import { EulogyGenerator } from '../../core/eulogyGenerator.js';
 import { loadModule, preloadForContext } from '../../core/moduleLoader.js';
 import { checkPeriodicAchievements } from '../../core/achievementManager.js';
+import { EventManager } from '../../core/eventManager.js';
 const get = id => document.getElementById(id);
 
 function checkSchoolActionTaken(user) {
@@ -78,6 +79,7 @@ export async function ageUp() {
     handleRelationships(user);
     handlePregnancy(user);
     handleAppearanceAging(user);
+    EventManager.evaluateAgeUpEvents(user, currentState);
 
     const infidelityDiscovery = GameLogic.checkAgeUpInfidelityDiscovery(user);
     if (infidelityDiscovery) {
@@ -854,6 +856,16 @@ export function renderLifeDashboard(maybeGameState) {
         loadModule('funeral').then(m => {
             if (m && typeof m.processNextTeacherReplacement === 'function') {
                 m.processNextTeacherReplacement();
+            }
+        });
+        return;
+    }
+
+    // Guard 4: Pending random life events check -> Lock to life event modal
+    if (currentState.pendingEvents && currentState.pendingEvents.length > 0) {
+        loadModule('lifeEvents').then(m => {
+            if (m && typeof m.processNextLifeEvent === 'function') {
+                m.processNextLifeEvent();
             }
         });
         return;
