@@ -206,6 +206,8 @@ function checkSchoolGraduated(currentSchoolYear, enrolledSchoolYears) {
 function checkLifeStatus(user) {
     if (user.inPrison) {
         return user.facilityName ? `Inmate (${user.facilityName})` : "Inmate";
+    } else if (user.isRetired && !user.jobTitle && !user.hasBusiness) {
+        return "Retired";
     } else if (user.gradSchoolEnrolled) {
        return `${user.gradSchoolType} Student`;
     } else if (user.universityEnrolled) {

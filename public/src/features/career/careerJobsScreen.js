@@ -219,6 +219,7 @@ function _hireCareer(trackKey) {
     user.careerTrack          = trackKey;
     user.careerLevel          = 0;
     user.yearsInRole          = 0;
+    user.yearsInCareer        = 0;
     user.consecutivePoorYears = 0;
     user.jobTitle             = entry.title;
     user.jobSalary            = scaledSalary;
@@ -235,6 +236,7 @@ function _hirePartTime(title, salary) {
     user.jobTitle          = title;
     user.jobSalary         = salary;
     user.jobPerformance    = 50;
+    user.yearsInCareer     = 0;
     user.careerActionTaken = false;
     user.hasSeenJobSalary  = true;
     GameLogic.adjustStat(user, 'happiness', 10);
@@ -493,6 +495,7 @@ export function confirmJoinSpecialCareer(trackKey) {
     user.careerTrack = trackKey;
     user.careerLevel = 0;
     user.yearsInRole = 0;
+    user.yearsInCareer = 0;
     user.jobPerformance = 100;
     const level = track.levels[0];
     user.jobTitle = level.title;
