@@ -56,7 +56,7 @@ export async function ageUp() {
     }
     
     // 1. Mortality Check
-    const currentHealth = user.stats?.health ?? user.health ?? 100; 
+    const currentHealth = user.health ?? user.stats?.health ?? 100; 
     const deathCheck = GameLogic.checkMortality(user.age, currentHealth);
     
     if (deathCheck.isDead) {
@@ -371,7 +371,8 @@ async function handleFinances(user) {
             const crimes = user.mafiaCrimesThisYear || 0;
             if (crimes < 3) {
                 addLog(`You failed to meet your Syndicate quota (${crimes}/3). The boss had you beaten. No pay this year.`, 'bad');
-                user.health = Math.max(0, Math.min(100, (user.health || 100) - 25));
+                GameLogic.adjustStat(user, 'health', -25);
+                GameLogic.adjustStat(user, 'happiness', -20);
                 user.yearsInRole = (user.yearsInRole || 0); // No progress
             } else {
                 user.money += user.jobSalary;
@@ -391,7 +392,8 @@ async function handleFinances(user) {
                         user.jobTitle = nextLevel.title;
                         user.jobSalary = nextSalary;
                         user.yearsInRole = 0;
-                        addLog(`You've been promoted to ${nextLevel.title} in the Syndicate! Cut: ${Utils.formatMoney(user.jobSalary)}/yr.`, 'major');
+                        GameLogic.adjustStat(user, 'happiness', 25);
+                        addLog(`You've been promoted to ${nextLevel.title} in the Syndicate! Cut: ${Utils.formatMoney(user.jobSalary)}/yr. (+25 Happiness)`, 'major');
                     }
                 }
             }
@@ -427,15 +429,18 @@ async function handleFinances(user) {
                                 user.jobSalary = demotedSalary;
                                 user.consecutivePoorYears = 0;
                                 user.yearsInRole = 0;
-                                addLog(`Demoted to ${demoted.title} due to sustained poor performance. New salary: ${Utils.formatMoney(user.jobSalary)}/yr.`, 'bad');
+                                GameLogic.adjustStat(user, 'happiness', -15);
+                                addLog(`Demoted to ${demoted.title} due to sustained poor performance. New salary: ${Utils.formatMoney(user.jobSalary)}/yr. (-15 Happiness)`, 'bad');
                             } else {
-                                addLog(`Terminated from ${user.jobTitle} due to sustained poor performance.`, 'bad');
+                                GameLogic.adjustStat(user, 'happiness', -25);
+                                addLog(`Terminated from ${user.jobTitle} due to sustained poor performance. (-25 Happiness)`, 'bad');
                                 user.jobTitle = null; user.jobSalary = 0; user.jobPerformance = 50;
                                 user.careerTrack = null; user.careerLevel = 0; user.yearsInRole = 0;
                                 user.consecutivePoorYears = 0; user.careerActionTaken = false; user.hasSeenJobSalary = false;
                             }
                         } else {
-                            addLog('Your employer issued a formal warning about your performance.', 'bad');
+                            GameLogic.adjustStat(user, 'happiness', -5);
+                            addLog('Your employer issued a formal warning about your performance. (-5 Happiness)', 'bad');
                         }
                     } else {
                         user.consecutivePoorYears = 0;
@@ -451,7 +456,8 @@ async function handleFinances(user) {
                                 user.jobSalary = Math.max(user.jobSalary, nextSalary);
                                 user.yearsInRole = 0;
                                 user.jobPerformance = 60;
-                                addLog(`Promoted to ${nextLevel.title}! New salary: ${Utils.formatMoney(user.jobSalary)}/yr.`, 'major');
+                                GameLogic.adjustStat(user, 'happiness', 20);
+                                addLog(`Promoted to ${nextLevel.title}! New salary: ${Utils.formatMoney(user.jobSalary)}/yr. (+20 Happiness)`, 'major');
                                 promoted = true;
                             }
                         }
@@ -460,7 +466,8 @@ async function handleFinances(user) {
                         if (!promoted && user.jobPerformance >= 80) {
                             const perfBonus = Math.floor(user.jobSalary * 0.05);
                             user.jobSalary += perfBonus;
-                            addLog(`Outstanding performance! Your salary increased to ${Utils.formatMoney(user.jobSalary)}/yr.`, 'good');
+                            GameLogic.adjustStat(user, 'happiness', 8);
+                            addLog(`Outstanding performance! Your salary increased to ${Utils.formatMoney(user.jobSalary)}/yr. (+8 Happiness)`, 'good');
                         }
                     }
                 }
@@ -469,9 +476,11 @@ async function handleFinances(user) {
                 if (user.jobPerformance >= 80) {
                     const perfBonus = Math.floor(user.jobSalary * 0.05);
                     user.jobSalary += perfBonus;
-                    addLog(`Outstanding performance! Your salary increased to ${Utils.formatMoney(user.jobSalary)}/yr.`, 'good');
+                    GameLogic.adjustStat(user, 'happiness', 8);
+                    addLog(`Outstanding performance! Your salary increased to ${Utils.formatMoney(user.jobSalary)}/yr. (+8 Happiness)`, 'good');
                 } else if (user.jobPerformance <= 20 && Math.random() < 0.4) {
-                    addLog(`Your employer let you go from ${user.jobTitle} due to poor performance.`, 'bad');
+                    GameLogic.adjustStat(user, 'happiness', -25);
+                    addLog(`Your employer let you go from ${user.jobTitle} due to poor performance. (-25 Happiness)`, 'bad');
                     user.jobTitle = null; user.jobSalary = 0; user.jobPerformance = 50;
                     user.careerActionTaken = false; user.hasSeenJobSalary = false;
                 }
@@ -558,7 +567,8 @@ function handleEducation(user) {
     // 1. High School Logic
     if (user.age === 18 || (user.age === 19 && user.highSchoolRetained)) {
         if (user.schoolPerformance > 25) {
-            addLog("You graduated High School! Enroll in University or find a job.", 'good');
+            GameLogic.adjustStat(user, 'happiness', 15);
+            addLog("You graduated High School! Enroll in University or find a job. (+15 Happiness)", 'good');
             user.highSchoolGraduated = true;
             user.highSchoolRetained = false;
             user.isStudent = false;
@@ -566,12 +576,14 @@ function handleEducation(user) {
             user.relationships.forEach(r => { if (r.isCurrentClassmate) r.isCurrentClassmate = false; });
             user.relationships = user.relationships.filter(r => r.category !== 'classmate');
         } else {
-            addLog("You failed. You must stay another year in High School.", 'bad');
+            GameLogic.adjustStat(user, 'happiness', -15);
+            addLog("You failed. You must stay another year in High School. (-15 Happiness)", 'bad');
             user.highSchoolRetained = true;
             user.isStudent = true;
         }
     } else if (user.age === 20 && user.highSchoolRetained) {
-        addLog("Your high school took pity on you. You passed with a GED.", 'green');
+        GameLogic.adjustStat(user, 'happiness', 5);
+        addLog("Your high school took pity on you. You passed with a GED. (+5 Happiness)", 'green');
         user.hasGED = true;
         user.highSchoolRetained = false;
         user.isStudent = false;
@@ -580,7 +592,8 @@ function handleEducation(user) {
     // 2. University Logic
     if (user.universityEnrolled) {
         if (user.schoolPerformance < 25) {
-            addLog(`You failed your University classes this year. You must retake the year.`, 'bad');
+            GameLogic.adjustStat(user, 'happiness', -15);
+            addLog(`You failed your University classes this year. You must retake the year. (-15 Happiness)`, 'bad');
         } else {
             user.universitySchoolYear++;
             if (GameLogic.checkSchoolGraduated(user.universitySchoolYear, 4)) {
@@ -590,7 +603,8 @@ function handleEducation(user) {
                 // Clear classmates on graduation
                 user.relationships.forEach(r => { if (r.isCurrentClassmate) r.isCurrentClassmate = false; });
                 user.relationships = user.relationships.filter(r => r.category !== 'classmate');
-                addLog(`You finished University with a degree in ${user.major}.`, 'good');
+                GameLogic.adjustStat(user, 'happiness', 20);
+                addLog(`You finished University with a degree in ${user.major}! (+20 Happiness)`, 'good');
             } else {
                 addLog(`Completed year ${user.universitySchoolYear} of University.`, 'neutral');
             }
@@ -600,7 +614,8 @@ function handleEducation(user) {
     // 3. Grad School Logic
     if (user.gradSchoolEnrolled) {
         if (user.schoolPerformance < 25) {
-            addLog(`You failed your Grad School classes this year. You must retake the year.`, 'bad');
+            GameLogic.adjustStat(user, 'happiness', -15);
+            addLog(`You failed your Grad School classes this year. You must retake the year. (-15 Happiness)`, 'bad');
         } else {
             user.gradSchoolYear++;
             const school = GRAD_SCHOOLS.find(s => s.name === user.gradSchoolType);
@@ -613,7 +628,8 @@ function handleEducation(user) {
                 // Clear classmates on graduation
                 user.relationships.forEach(r => { if (r.isCurrentClassmate) r.isCurrentClassmate = false; });
                 user.relationships = user.relationships.filter(r => r.category !== 'classmate');
-                addLog(`Graduated from ${user.gradSchoolType}!`, 'good');
+                GameLogic.adjustStat(user, 'happiness', 25);
+                addLog(`Graduated from ${user.gradSchoolType}! (+25 Happiness)`, 'good');
             } else {
                 addLog(`Completed year ${user.gradSchoolYear} of ${user.gradSchoolType}.`, 'neutral');
             }
@@ -671,7 +687,9 @@ function handleLifeEvents(user) {
             user.money += gift;
             addLog(`Found ${Utils.formatMoney(gift)} on the sidewalk!`, 'good');
         } else if (roll > 0.9) {
-            addLog("Got the flu. Stayed home for a week.", 'bad');
+            GameLogic.adjustStat(user, 'health', -10);
+            GameLogic.adjustStat(user, 'happiness', -10);
+            addLog("Got the flu. Stayed home for a week. (-10 Health, -10 Happiness)", 'bad');
         }
     } 
     // Adult Empty State

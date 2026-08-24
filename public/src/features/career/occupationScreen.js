@@ -127,7 +127,9 @@ function enrollSuccess(major, methodMsg) {
     const m = get('modal-overlay');
     m.classList.add('hidden');
     m.classList.remove('flex');
-    addLog(`Enrolled in University of ${user.city} for ${major}. You ${methodMsg}.`, 'good');
+    GameLogic.adjustStat(user, 'happiness', 10);
+    addLog(`Enrolled in University of ${user.city} for ${major}. You ${methodMsg}. (+10 Happiness)`, 'good');
+    UI.updateHeader(user);
     refreshClassmates(user);
     renderActivities();
 }
@@ -270,7 +272,9 @@ function gradEnrollSuccess(schoolType, methodMsg) {
     const m = get('modal-overlay');
     m.classList.add('hidden');
     m.classList.remove('flex');
-    addLog(`Enrolled in ${schoolType}. You ${methodMsg}.`, 'good');
+    GameLogic.adjustStat(user, 'happiness', 10);
+    addLog(`Enrolled in ${schoolType}. You ${methodMsg}. (+10 Happiness)`, 'good');
+    UI.updateHeader(user);
     refreshClassmates(user);
     renderActivities();
 };

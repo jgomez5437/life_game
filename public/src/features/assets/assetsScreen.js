@@ -1430,31 +1430,29 @@ export const takeJoyride = (id) => {
     const roll = Math.random();
 
     if (roll < 0.60) {
-        user.happiness = Math.max(0, Math.min(100, (user.happiness || 50) + 8));
-        if (user.stats) user.stats.happiness = user.happiness;
+        GameLogic.adjustStat(user, 'happiness', 8);
         addLog(`Took your ${vehicle.name} out for a scenic highway cruise. Loved every minute! (+8 Happiness)`, 'good');
         UI.showModal("Scenic Cruise", `You had a fantastic time cruising around in your ${Utils.escapeHtml(vehicle.name)}. People turned their heads! (+8 Happiness)`);
     } else if (roll < 0.85) {
-        user.happiness = Math.max(0, Math.min(100, (user.happiness || 50) + 4));
-        if (user.stats) user.stats.happiness = user.happiness;
+        GameLogic.adjustStat(user, 'happiness', 4);
         addLog(`Took a quick drive around town in your ${vehicle.name}. (+4 Happiness)`, 'good');
         UI.showModal("Nice Drive", `Enjoyed a relaxing drive around the city in your ${Utils.escapeHtml(vehicle.name)}. (+4 Happiness)`);
     } else if (roll < 0.95) {
         const fine = Math.min(350, Math.floor(vehicle.value * 0.005) + 150);
         user.money = Math.max(0, user.money - fine);
-        user.happiness = Math.max(0, Math.min(100, (user.happiness || 50) - 5));
-        if (user.stats) user.stats.happiness = user.happiness;
+        GameLogic.adjustStat(user, 'happiness', -5);
         addLog(`Pulled over while driving your ${vehicle.name}! Received a ${Utils.formatMoney(fine)} speeding ticket. (-5 Happiness)`, 'bad');
         UI.showModal("Speeding Ticket!", `A police officer caught you speeding in your ${Utils.escapeHtml(vehicle.name)}! Fined ${Utils.formatMoney(fine)}. (-5 Happiness)`);
     } else {
         const scratch = Math.floor(Math.random() * 8) + 5;
         vehicle.condition = Math.max(0, vehicle.condition - scratch);
+        GameLogic.adjustStat(user, 'happiness', -10);
         if (vehicle.insured) {
-            addLog(`Minor fender bender in your ${vehicle.name}! Insured policy covered all major repairs. (-${scratch}% condition)`, 'bad');
-            UI.showModal("Fender Bender!", `You clipped a curb in your ${Utils.escapeHtml(vehicle.name)}. Fortunately, your auto insurance policy covered the repair process!`);
+            addLog(`Minor fender bender in your ${vehicle.name}! Insured policy covered all major repairs. (-${scratch}% condition, -10 Happiness)`, 'bad');
+            UI.showModal("Fender Bender!", `You clipped a curb in your ${Utils.escapeHtml(vehicle.name)}. Fortunately, your auto insurance policy covered the repair process! (-10 Happiness)`);
         } else {
-            addLog(`Scratched your ${vehicle.name} while parking! (-${scratch}% condition)`, 'bad');
-            UI.showModal("Car Scratch!", `You accidentally scraped your ${Utils.escapeHtml(vehicle.name)} against a pillar. (-${scratch}% condition)`);
+            addLog(`Scratched your ${vehicle.name} while parking! (-${scratch}% condition, -10 Happiness)`, 'bad');
+            UI.showModal("Car Scratch!", `You accidentally scraped your ${Utils.escapeHtml(vehicle.name)} against a pillar. (-${scratch}% condition, -10 Happiness)`);
         }
     }
 

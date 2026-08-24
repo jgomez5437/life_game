@@ -87,6 +87,7 @@ export const confirmWeddingPlan = (personId, index) => {
         unlockAchievement('gold_digger', user);
     }
 
+    GameLogic.adjustStat(user, 'happiness', tier.cost >= 20000 ? 30 : 20);
     addLog(`You married ${person.name} in a ${tier.name.toLowerCase()} wedding!`, 'good');
     UI.updateHeader(user);
     UI.showModal('Congratulations!', `You are now married to ${Utils.escapeHtml(person.name)}!`, () => openNameChangeChoice(personId));

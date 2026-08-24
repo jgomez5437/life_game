@@ -721,13 +721,13 @@ export const handleNightOut = () => {
         UI.updateHeader(user);
         UI.showModal('New Friend! 🍻', `You had a fun night out and bonded with ${Utils.escapeHtml(friend.name)} (Age ${friend.age})!`);
     } else if (roll < 0.90) {
-        user.happiness = Math.max(0, Math.min(100, (user.happiness || 50) + 10));
+        GameLogic.adjustStat(user, 'happiness', 10);
         addLog(`You had an awesome night out enjoying food, music, and atmosphere (+10 Happiness).`, 'good');
         UI.updateHeader(user);
         UI.showModal('Great Night Out! 🎉', `You had a fantastic night out unwinding and having fun! (+10 Happiness)`);
     } else {
-        user.health = Math.max(0, Math.min(100, (user.health || 50) - 5));
-        user.happiness = Math.max(0, Math.min(100, (user.happiness || 50) + 5));
+        GameLogic.adjustStat(user, 'health', -5);
+        GameLogic.adjustStat(user, 'happiness', 5);
         addLog(`Your night out got a little chaotic after a heated argument, but you made it home safely (-5 Health).`, 'bad');
         UI.updateHeader(user);
         UI.showModal('Chaotic Night 😅', `Things got a little rowdy during your night out! You got bumped around (-5 Health), but still had a story to tell.`);
@@ -990,15 +990,19 @@ export const performRelationshipAction = (personId, actionKey) => {
         if (success) {
             person.category = 'friend';
             person.type = isTeacher ? 'Friend (Teacher)' : 'Friend';
+            GameLogic.adjustStat(user, 'happiness', 5);
             addLog(`${person.name} accepted your friend request!`, 'good');
+            UI.updateHeader(user);
             UI.showModal('Success', `${Utils.escapeHtml(person.name)} is now your friend!`);
             // Refresh screen to show the new category
             setTimeout(() => renderPersonInteraction(personId), 300);
         } else {
             // Rejection penalty of 10 points
             person.status = Math.max(0, person.status - 10);
+            GameLogic.adjustStat(user, 'happiness', -5);
             addLog(`${person.name} rejected your friend request.`, 'bad');
-            UI.showModal('Rejected', `${Utils.escapeHtml(person.name)} didn't want to be friends. (-10 Status)`);
+            UI.updateHeader(user);
+            UI.showModal('Rejected', `${Utils.escapeHtml(person.name)} didn't want to be friends. (-10 Status, -5 Happiness)`);
             setTimeout(() => renderPersonInteraction(personId), 300);
         }
         return; // Skip normal status update and logging
@@ -1008,7 +1012,9 @@ export const performRelationshipAction = (personId, actionKey) => {
         person.category = 'partner';
         person.type = person.gender === 'male' ? 'Boyfriend' : 'Girlfriend';
         person.interactedThisYear = true;
-        addLog(`You asked ${person.name} to be your ${person.type}, and they said yes!`, 'good');
+        GameLogic.adjustStat(user, 'happiness', 10);
+        addLog(`You asked ${person.name} to be your ${person.type}, and they said yes! (+10 Happiness)`, 'good');
+        UI.updateHeader(user);
         UI.showModal('Success', `${Utils.escapeHtml(person.name)} is now your ${Utils.escapeHtml(person.type)}!`);
         setTimeout(() => renderPersonInteraction(personId), 300);
         return;
@@ -1017,7 +1023,9 @@ export const performRelationshipAction = (personId, actionKey) => {
     if (action.key === 'break_up') {
         GameLogic.breakUpWithPartner(user, person);
         person.interactedThisYear = true;
-        addLog(`You broke up with ${person.name}.`, 'bad');
+        GameLogic.adjustStat(user, 'happiness', -15);
+        addLog(`You broke up with ${person.name}. (-15 Happiness)`, 'bad');
+        UI.updateHeader(user);
         UI.showModal('Break Up', `You and ${Utils.escapeHtml(person.name)} have gone your separate ways.`);
         setTimeout(() => renderPersonInteraction(personId), 300);
         return;
@@ -1034,7 +1042,8 @@ export const performRelationshipAction = (personId, actionKey) => {
         person.category = 'ex';
         person.type = person.gender === 'male' ? 'Ex-Husband' : 'Ex-Wife';
         person.interactedThisYear = true;
-        addLog(`You divorced ${person.name}, paying ${Utils.formatMoney(alimony)} in the settlement.`, 'bad');
+        GameLogic.adjustStat(user, 'happiness', -25);
+        addLog(`You divorced ${person.name}, paying ${Utils.formatMoney(alimony)} in the settlement. (-25 Happiness)`, 'bad');
         UI.showModal('Divorced', `You and ${Utils.escapeHtml(person.name)} are no longer married.`);
         UI.updateHeader(user);
         setTimeout(() => renderPersonInteraction(personId), 300);
@@ -1050,7 +1059,9 @@ export const performRelationshipAction = (personId, actionKey) => {
         if (success) {
             user.isExpecting = true;
             user.expectingWithId = person.id;
-            addLog(`You and ${person.name} are expecting a baby!`, 'good');
+            GameLogic.adjustStat(user, 'happiness', 15);
+            addLog(`You and ${person.name} are expecting a baby! (+15 Happiness)`, 'good');
+            UI.updateHeader(user);
             UI.showModal('Great News!', `You're expecting a baby with ${Utils.escapeHtml(person.name)}!`);
         } else {
             addLog(`You and ${person.name} tried for a baby, but no luck this year.`, 'neutral');
@@ -1068,6 +1079,15 @@ export const performRelationshipAction = (personId, actionKey) => {
     // Mark interaction for this year
     person.interactedThisYear = true;
 
+    // Adjust happiness for positive interactions or make love
+    if (action.key === 'make_love') {
+        GameLogic.adjustStat(user, 'happiness', 8);
+    } else if (delta > 0) {
+        GameLogic.adjustStat(user, 'happiness', Math.min(5, Math.max(1, Math.round(delta / 5))));
+    } else if (delta < 0) {
+        GameLogic.adjustStat(user, 'happiness', Math.max(-5, Math.min(-1, Math.round(delta / 5))));
+    }
+
     // --- PREGNANCY ROLL (Make Love for all romantic partners: married, engaged, or dating) ---
     // "Try for a Baby" is the deliberate action, but any romantic couple making love
     // carries a biological chance of conceiving.
@@ -1079,6 +1099,7 @@ export const performRelationshipAction = (personId, actionKey) => {
         if (GameLogic.calculatePregnancyChance(femaleAge, maleAge)) {
             user.isExpecting = true;
             user.expectingWithId = person.id;
+            GameLogic.adjustStat(user, 'happiness', 15);
             pregnancyAnnouncement = ` You're expecting a baby with ${Utils.escapeHtml(person.name)}!`;
             addLog(`You and ${person.name} are expecting a baby!`, 'good');
         }
@@ -1101,7 +1122,7 @@ export const performRelationshipAction = (personId, actionKey) => {
     const sign = delta > 0 ? `+${delta}` : delta;
     addLog(`${action.name}: ${person.name} (${sign} relationship)`, color);
 
-    // Update header (money might have changed)
+    // Update header (money and stats might have changed)
     UI.updateHeader(user);
 
     // Feedback modal
@@ -1153,6 +1174,8 @@ export const spendTimeWithAll = () => {
 
     if (interactionsCount > 0) {
         user.hasSpentTimeWithAll = true;
+        GameLogic.adjustStat(user, 'happiness', Math.min(20, Math.max(5, interactionsCount * 2)));
+        UI.updateHeader(user);
         UI.showModal('Success', `You spent time with ${interactionsCount} people.`);
         renderRelationships();
     } else {
@@ -1478,6 +1501,8 @@ export const renderAgeUpCheatingDiscoveredModal = (discoveryInfo) => {
 
     currentCheatingPartnerId = partner.id;
     partner.status = Math.max(0, (partner.status || 0) - 60);
+    GameLogic.adjustStat(user, 'happiness', -20);
+    UI.updateHeader(user);
 
     const canAffordGift = (user.money || 0) >= 5000;
 
@@ -1560,11 +1585,13 @@ export const handleCheatingConfrontationChoice = (choice) => {
         const forgives = Math.random() < 0.50;
         if (forgives) {
             partner.status = Math.min(100, partner.status + 20);
-            addLog(`You begged ${partner.name} for forgiveness. They reluctantly agreed to stay and attend counseling.`, 'neutral');
-            UI.showModal('Forgiven (For Now)', `<p class="text-slate-300 text-sm">${Utils.escapeHtml(partner.name)} agreed to try couples counseling, but trust will take a long time to rebuild. (+20 Relationship Status)</p>`);
+            GameLogic.adjustStat(user, 'happiness', -15);
+            addLog(`You begged ${partner.name} for forgiveness. They reluctantly agreed to stay and attend counseling. (-15 Happiness)`, 'neutral');
+            UI.showModal('Forgiven (For Now)', `<p class="text-slate-300 text-sm">${Utils.escapeHtml(partner.name)} agreed to try couples counseling, but trust will take a long time to rebuild. (+20 Relationship Status, -15 Happiness)</p>`);
         } else {
-            addLog(`${partner.name} refused your apology and broke off the relationship!`, 'bad');
-            UI.showModal('Relationship Over 💔', `<p class="text-slate-300 text-sm">${Utils.escapeHtml(partner.name)} could not forgive your betrayal and ended the relationship immediately!</p>`);
+            GameLogic.adjustStat(user, 'happiness', -25);
+            addLog(`${partner.name} refused your apology and broke off the relationship! (-25 Happiness)`, 'bad');
+            UI.showModal('Relationship Over 💔', `<p class="text-slate-300 text-sm">${Utils.escapeHtml(partner.name)} could not forgive your betrayal and ended the relationship immediately! (-25 Happiness)</p>`);
             GameLogic.breakUpWithPartner(user, partner);
         }
     } else if (choice === 'gift') {
@@ -1576,27 +1603,32 @@ export const handleCheatingConfrontationChoice = (choice) => {
         const acceptsGift = Math.random() < 0.65;
         if (acceptsGift) {
             partner.status = Math.min(100, partner.status + 15);
+            GameLogic.adjustStat(user, 'happiness', -10);
             addLog(`You bought ${partner.name} a $5,000 peace offering gift. They accepted it and agreed to stay.`, 'good');
             UI.showModal('Gift Accepted 🎁', `<p class="text-slate-300 text-sm">${Utils.escapeHtml(partner.name)} accepted the expensive gift and agreed to stay together for now.</p>`);
         } else {
-            addLog(`${partner.name} threw your $5,000 gift back at you and ended the relationship!`, 'bad');
-            UI.showModal('Gift Rejected 💔', `<p class="text-slate-300 text-sm">${Utils.escapeHtml(partner.name)} threw your gift back at you in anger and ended the relationship!</p>`);
+            GameLogic.adjustStat(user, 'happiness', -25);
+            addLog(`${partner.name} threw your $5,000 gift back at you and ended the relationship! (-25 Happiness)`, 'bad');
+            UI.showModal('Gift Rejected 💔', `<p class="text-slate-300 text-sm">${Utils.escapeHtml(partner.name)} threw your gift back at you in anger and ended the relationship! (-25 Happiness)</p>`);
             GameLogic.breakUpWithPartner(user, partner);
         }
     } else if (choice === 'blame') {
         partner.status = 0;
         const breaksUp = Math.random() < 0.90;
         if (breaksUp) {
-            addLog(`You blamed ${partner.name} for your affair. Furious, they immediately divorced/broke up with you!`, 'bad');
-            UI.showModal('Bitter Breakup 💥', `<p class="text-slate-300 text-sm">You blamed ${Utils.escapeHtml(partner.name)}. Outraged by your reaction, they immediately packed their bags and left!</p>`);
+            GameLogic.adjustStat(user, 'happiness', -30);
+            addLog(`You blamed ${partner.name} for your affair. Furious, they immediately divorced/broke up with you! (-30 Happiness)`, 'bad');
+            UI.showModal('Bitter Breakup 💥', `<p class="text-slate-300 text-sm">You blamed ${Utils.escapeHtml(partner.name)}. Outraged by your reaction, they immediately packed their bags and left! (-30 Happiness)</p>`);
             GameLogic.breakUpWithPartner(user, partner);
         } else {
-            addLog(`You argued with ${partner.name}. The fight was explosive, but you remain together with 0 status.`, 'bad');
-            UI.showModal('Explosive Argument 💥', `<p class="text-slate-300 text-sm">You blamed ${Utils.escapeHtml(partner.name)}. You had a massive fight, and your relationship is at rock bottom (Status: 0).</p>`);
+            GameLogic.adjustStat(user, 'happiness', -20);
+            addLog(`You argued with ${partner.name}. The fight was explosive, but you remain together with 0 status. (-20 Happiness)`, 'bad');
+            UI.showModal('Explosive Argument 💥', `<p class="text-slate-300 text-sm">You blamed ${Utils.escapeHtml(partner.name)}. You had a massive fight, and your relationship is at rock bottom (Status: 0, -20 Happiness).</p>`);
         }
     } else if (choice === 'walk_away') {
-        addLog(`You walked away from your relationship with ${partner.name}.`, 'bad');
-        UI.showModal('Separated 🚪', `<p class="text-slate-300 text-sm">You walked away and ended your relationship with ${Utils.escapeHtml(partner.name)}.</p>`);
+        GameLogic.adjustStat(user, 'happiness', -25);
+        addLog(`You walked away from your relationship with ${partner.name}. (-25 Happiness)`, 'bad');
+        UI.showModal('Separated 🚪', `<p class="text-slate-300 text-sm">You walked away and ended your relationship with ${Utils.escapeHtml(partner.name)}. (-25 Happiness)</p>`);
         GameLogic.breakUpWithPartner(user, partner);
     }
 

@@ -220,7 +220,9 @@ function _hireCareer(trackKey) {
     user.jobPerformance       = 50;
     user.careerActionTaken    = false;
     user.hasSeenJobSalary     = true;
-    addLog(`Hired as ${entry.title} in ${track.label}! Starting salary: ${Utils.formatMoney(scaledSalary)}/yr.`, 'good');
+    GameLogic.adjustStat(user, 'happiness', 15);
+    addLog(`Hired as ${entry.title} in ${track.label}! Starting salary: ${Utils.formatMoney(scaledSalary)}/yr. (+15 Happiness)`, 'good');
+    UI.updateHeader(user);
 }
 
 function _hirePartTime(title, salary) {
@@ -230,7 +232,9 @@ function _hirePartTime(title, salary) {
     user.jobPerformance    = 50;
     user.careerActionTaken = false;
     user.hasSeenJobSalary  = true;
-    addLog(`Hired as ${title}! Annual pay: ${Utils.formatMoney(salary)}.`, 'good');
+    GameLogic.adjustStat(user, 'happiness', 10);
+    addLog(`Hired as ${title}! Annual pay: ${Utils.formatMoney(salary)}. (+10 Happiness)`, 'good');
+    UI.updateHeader(user);
 }
 
 function startCareerInterview(trackKey) {

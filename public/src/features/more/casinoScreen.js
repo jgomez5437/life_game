@@ -338,11 +338,13 @@ function finishBlackjackGame(playerNaturalBlackjack) {
     
     if (outcome === 'win') {
         user.money += betAmount * 2;
+        GameLogic.adjustStat(user, 'happiness', betAmount >= 5000 ? 15 : 5);
         addLog(`Won ${Utils.formatMoney(betAmount)} at Blackjack!`, 'good');
     } else if (outcome === 'push') {
         user.money += betAmount;
         addLog(`Pushed ${Utils.formatMoney(betAmount)} at Blackjack.`, 'neutral');
     } else {
+        GameLogic.adjustStat(user, 'happiness', betAmount >= 5000 ? -10 : -3);
         addLog(`Lost ${Utils.formatMoney(betAmount)} at Blackjack.`, 'bad');
     }
     
@@ -449,30 +451,31 @@ export function confirmRouletteSingleNumberBet() {
 
 export function confirmRouletteBet(type, target) {
     if (isRouletteSpinning) return;
-    const amtInp = get('roulette-bet-amt');
-    if (!amtInp) return;
-    const betAmount = parseInt(amtInp.value, 10);
+    const betInput = get('roulette-bet-amt');
     const user = state.gameState?.user;
     if (!user) return;
 
+    const betAmount = betInput ? parseInt(betInput.value, 10) : 100;
+
     if (isNaN(betAmount) || betAmount < 25) {
-        UI.showModal("Invalid Bet", `Minimum roulette bet is ${Utils.formatMoney(25)}.`);
+        UI.showModal("Invalid Bet", `Minimum roulette wager is ${Utils.formatMoney(25)}.`);
         return;
     }
     if (user.money < betAmount) {
-        UI.showModal("Insufficient Cash", `You need ${Utils.formatMoney(betAmount)} to place this bet.`);
+        UI.showModal("Insufficient Funds", `You do not have ${Utils.formatMoney(betAmount)} to place this bet.`);
         return;
     }
 
     isRouletteSpinning = true;
 
-    // Spin animation sequence
+    // Show spinning wheel animation
     const spinHtml = `
         <div class="text-center py-6 space-y-4">
-            <div class="w-20 h-20 rounded-full border-4 border-amber-400 border-t-red-600 animate-spin mx-auto flex items-center justify-center text-2xl shadow-xl">
-                🎰
+            <div class="w-20 h-20 rounded-full border-4 border-amber-400 border-t-transparent animate-spin mx-auto flex items-center justify-center text-2xl">
+                🎡
             </div>
-            <div class="text-sm font-bold text-amber-300 animate-pulse">The ball is rolling...</div>
+            <div class="text-xs font-bold text-slate-300 uppercase tracking-widest animate-pulse">Wheel Spinning...</div>
+            <div class="text-[11px] text-slate-400">Ball dropped in European pocket cylinder</div>
         </div>
     `;
 
@@ -486,6 +489,11 @@ export function confirmRouletteBet(type, target) {
     setTimeout(() => {
         try {
             const result = GameLogic.playRoulette(user, type, target, betAmount);
+            if (result.isWin) {
+                GameLogic.adjustStat(user, 'happiness', result.netProfit >= 5000 ? 20 : 5);
+            } else {
+                GameLogic.adjustStat(user, 'happiness', betAmount >= 5000 ? -10 : -3);
+            }
             saveGame();
             UI.updateHeader(user);
 
@@ -631,6 +639,11 @@ export function confirmSlotsSpin(betAmount) {
             const result = GameLogic.spinSlotMachine(user, wager);
             if (result.isJackpot) {
                 unlockAchievement('mega_jackpot', user);
+            }
+            if (result.isWin) {
+                GameLogic.adjustStat(user, 'happiness', result.isJackpot ? 30 : (result.netProfit >= 5000 ? 15 : 5));
+            } else {
+                GameLogic.adjustStat(user, 'happiness', wager >= 1000 ? -8 : -2);
             }
             saveGame();
             UI.updateHeader(user);
