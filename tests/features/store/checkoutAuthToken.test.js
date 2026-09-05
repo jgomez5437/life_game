@@ -2,7 +2,7 @@ import { jest } from '@jest/globals';
 import { getAuthToken } from '../../../public/src/auth/auth.js';
 import { state } from '../../../public/src/core/state.js';
 import { UI } from '../../../public/src/ui/ui.js';
-import { buyPack } from '../../../public/src/features/store/storeScreen.js';
+import { buyPack, restorePurchases } from '../../../public/src/features/store/storeScreen.js';
 
 describe('Auth0 Token Lifecycle & Checkout Authentication Resilience', () => {
 
@@ -156,6 +156,68 @@ describe('Auth0 Token Lifecycle & Checkout Authentication Resilience', () => {
             }));
 
             consoleErrorSpy.mockRestore();
+        });
+
+        test('shows Already Owned modal and updates state when API returns 409', async () => {
+            const futureExp = Math.floor(Date.now() / 1000) + 3600;
+            state.auth0Client = {
+                getIdTokenClaims: jest.fn().mockResolvedValue({
+                    __raw: 'jwt.token.string',
+                    exp: futureExp
+                }),
+                getTokenSilently: jest.fn()
+            };
+
+            global.fetch = jest.fn().mockResolvedValue({
+                ok: false,
+                status: 409,
+                json: async () => ({ error: 'You already own this expansion pack.', alreadyOwned: true, packId: 'mafia_syndicate' })
+            });
+
+            const showModalSpy = jest.spyOn(UI, 'showModal').mockImplementation(() => {});
+
+            await buyPack('mafia_syndicate');
+
+            expect(showModalSpy).toHaveBeenCalledWith('Already Owned', expect.stringContaining('already own'));
+            expect(state.verifiedPurchases).toContain('mafia_syndicate');
+
+            showModalSpy.mockRestore();
+        });
+    });
+
+    describe('restorePurchases State Synchronization', () => {
+        test('updates state.verifiedPurchases and game state when /api/getPurchases returns packs', async () => {
+            state.userAuthId = 'auth0|test_user';
+            state.auth0Client = {
+                getIdTokenClaims: jest.fn().mockResolvedValue({
+                    __raw: 'valid.jwt.token',
+                    exp: Math.floor(Date.now() / 1000) + 3600
+                }),
+                getTokenSilently: jest.fn()
+            };
+            state.verifiedPurchases = [];
+            state.gameState = {
+                user: {
+                    username: 'Tester',
+                    purchases: []
+                }
+            };
+
+            global.fetch = jest.fn().mockResolvedValue({
+                ok: true,
+                status: 200,
+                json: async () => ({ purchases: ['god_mode', 'vip_supporter'] })
+            });
+
+            const showModalSpy = jest.spyOn(UI, 'showModal').mockImplementation(() => {});
+
+            await restorePurchases();
+
+            expect(state.verifiedPurchases).toEqual(['god_mode', 'vip_supporter']);
+            expect(state.gameState.user.purchases).toEqual(['god_mode', 'vip_supporter']);
+            expect(showModalSpy).toHaveBeenCalledWith('Purchases Restored', expect.stringContaining('2'));
+
+            showModalSpy.mockRestore();
         });
     });
 });

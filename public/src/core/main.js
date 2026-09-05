@@ -1013,8 +1013,9 @@ export async function initGame() {
             }
         }
 
-        // Fallback: If returned with purchase_success and pack_id (e.g. sandbox/direct return)
-        if (!verifiedPackId && purchaseSuccess === 'true' && purchasedPackId) {
+        // Fallback: If returned with purchase_success and pack_id (sandbox/direct return only allowed on localhost)
+        const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+        if (!verifiedPackId && isLocalhost && purchaseSuccess === 'true' && purchasedPackId) {
             verifiedPackId = purchasedPackId;
             let localP = [];
             try {

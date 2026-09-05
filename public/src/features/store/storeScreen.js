@@ -1,9 +1,9 @@
-import { state, hasPurchasedPack } from '../../core/state.js';
+import { state, hasPurchasedPack, setVerifiedPurchases } from '../../core/state.js';
 export { hasPurchasedPack };
 import { saveGame } from '../../core/main.js';
 import { getAuthToken, login } from '../../auth/auth.js';
 import { UI } from '../../ui/ui.js';
-import { onVipPurchased } from '../../core/adManager.js';
+import { onVipPurchased, resolveAdState } from '../../core/adManager.js';
 import { GameLogic } from '../../core/gameLogic.js';
 
 const get = id => document.getElementById(id);
@@ -537,6 +537,15 @@ export async function buyPack(packId) {
                 });
                 return;
             }
+            if (response.status === 409) {
+                if (Array.isArray(state.verifiedPurchases) && !state.verifiedPurchases.includes(packId)) {
+                    state.verifiedPurchases.push(packId);
+                }
+                setVerifiedPurchases(state.verifiedPurchases || [packId]);
+                renderStoreScreen();
+                UI.showModal("Already Owned", errData.error || `You already own ${pack.title}!`);
+                return;
+            }
             UI.showModal("Checkout Error", errData.error || "Failed to initiate payment session.");
             return;
         }
@@ -648,7 +657,8 @@ export async function restorePurchases() {
             if (response.ok) {
                 const data = await response.json();
                 if (Array.isArray(data.purchases)) {
-                    user.purchases = Array.from(new Set([...(user.purchases || []), ...data.purchases]));
+                    setVerifiedPurchases(data.purchases);
+                    resolveAdState(data.purchases);
                     saveGame();
                     UI.showModal("Purchases Restored", `Successfully restored ${data.purchases.length} purchased pack(s).`);
                     renderStoreScreen();
