@@ -522,8 +522,13 @@ async function handleFinances(user) {
 
     // 4. Student Loans
     const yearlyStudentLoanPayment = GameLogic.addStudentLoanPayment(user.age, user.studentLoans, user.isStudent); 
-    user.monthlyOutflow = (user.monthlyOutflow || 0) + yearlyStudentLoanPayment;
-    user.studentLoans -= yearlyStudentLoanPayment;
+    if (yearlyStudentLoanPayment > 0) {
+        user.money = (user.money || 0) - yearlyStudentLoanPayment;
+        user.studentLoans = Math.max(0, (user.studentLoans || 0) - yearlyStudentLoanPayment);
+        if (user.studentLoans === 0) {
+            addLog('Fully paid off your student loans!', 'good');
+        }
+    }
 
     // 5. Active Health Costs
     const healthCosts = GameLogic.calculateActiveHealthCosts(user.gymMembership, user.hasBetterDiet);
@@ -567,6 +572,9 @@ async function handleFinances(user) {
         user.money += spousalInfo.amount;
         addLog(`Your spouse ${spousalInfo.spouseName} contributed ${Utils.formatMoney(spousalInfo.amount)} to household income!`, 'good');
     }
+
+    // 11. Sync Monthly Outflow Snapshot
+    user.monthlyOutflow = GameLogic.calculateUserMonthlyOutflow(user);
 }
 
 export function refreshClassmates(user) {
