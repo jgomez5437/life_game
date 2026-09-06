@@ -2,7 +2,12 @@ import { sql } from '@vercel/postgres';
 import { checkRateLimit } from './lib/rateLimit.js';
 
 export default async function handler(request, response) {
-    // Enforce rate limiting: 30 health checks / min per IP
+    // Enforce method restriction: health checks must be GET or HEAD
+    if (request.method && request.method !== 'GET' && request.method !== 'HEAD') {
+        return response.status(405).json({ error: 'Method Not Allowed' });
+    }
+
+    // Enforce rate limiting: 60 health checks / min per IP
     if (!checkRateLimit(request, response, 'health')) {
         return;
     }
@@ -21,7 +26,7 @@ export default async function handler(request, response) {
         console.error('Database connection error:', error);
         return response.status(500).json({
             message: 'Database connection error',
-            error: error.message
+            error: 'Internal Server Error'
         });
     }
-}
+}
