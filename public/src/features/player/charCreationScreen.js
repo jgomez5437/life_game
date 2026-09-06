@@ -37,7 +37,9 @@ const APPEARANCE_SECTIONS = [
     { title: 'Eyes', fields: [
         { key: 'eyeShape', options: AvatarLogic.EYE_SHAPES },
         { key: 'eyeColor', options: AvatarLogic.EYE_COLORS },
-        { key: 'eyebrowStyle', options: AvatarLogic.EYEBROW_STYLES }
+        { key: 'eyelashStyle', label: 'Eyelashes', options: AvatarLogic.EYELASH_STYLES },
+        { key: 'eyebrowStyle', options: AvatarLogic.EYEBROW_STYLES },
+        { key: 'noseShape', label: 'Nose', options: AvatarLogic.NOSE_SHAPES }
     ]},
     { title: 'Extras', fields: [
         { key: 'facialHairStyle', options: AvatarLogic.FACIAL_HAIR_STYLES },
@@ -81,7 +83,7 @@ function renderAppearancePanel() {
             ${section.fields.map(f => `
                 <div class="flex items-center justify-between bg-slate-900 rounded-lg px-1 py-1.5 mb-1">
                     <button data-action="cycleTrait" data-args="'${f.key}', -1" class="text-slate-400 hover:text-white w-8 h-8"><i class="fas fa-chevron-left"></i></button>
-                    <div class="flex-1 text-center text-xs text-slate-300">${labelize(f.key)}: <span class="text-blue-300 font-bold">${labelize(draftAppearance[f.key])}</span></div>
+                    <div class="flex-1 text-center text-xs text-slate-300">${f.label || labelize(f.key)}: <span class="text-blue-300 font-bold">${labelize(draftAppearance[f.key])}</span></div>
                     <button data-action="cycleTrait" data-args="'${f.key}', 1" class="text-slate-400 hover:text-white w-8 h-8"><i class="fas fa-chevron-right"></i></button>
                 </div>
             `).join('')}

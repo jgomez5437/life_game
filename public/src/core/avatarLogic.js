@@ -22,6 +22,9 @@ const EYE_COLOR_HEX = {
 
 const EYEBROW_STYLES = ['thin', 'medium', 'thick', 'arched', 'straight'];
 
+const NOSE_SHAPES = ['small', 'medium', 'button', 'pointed', 'wide', 'aquiline'];
+const EYELASH_STYLES = ['none', 'subtle', 'full', 'dramatic'];
+
 const HAIR_STYLES = [
     'bald', 'buzzed', 'shortCrop', 'shortSidePart', 'pixieSpiky',
     'mediumStraight', 'curly', 'shoulderWave', 'longStraight',
@@ -206,6 +209,8 @@ function generateRandomAppearance(seed, gender) {
         eyeShape: draw('eyeShape', EYE_SHAPES),
         eyeColor: draw('eyeColor', EYE_COLORS),
         eyebrowStyle: draw('eyebrowStyle', EYEBROW_STYLES),
+        noseShape: draw('noseShape', NOSE_SHAPES),
+        eyelashStyle: isMale ? 'none' : draw('eyelashStyle', EYELASH_STYLES),
         hairStyle: draw('hairStyle', hairPool),
         hairColorBase: draw('hairColorBase', HAIR_COLORS),
         facialHairStyle: facialHairStyle,
@@ -252,6 +257,7 @@ export const AvatarLogic = {
     EYE_SHAPES,
     EYE_COLORS, EYE_COLOR_HEX,
     EYEBROW_STYLES,
+    NOSE_SHAPES, EYELASH_STYLES,
     HAIR_STYLES, HAIR_STYLES_WITH_BACK_LAYER,
     MALE_HAIR_STYLES, FEMALE_HAIR_STYLES,
     HAIR_COLORS, HAIR_COLOR_HEX,
