@@ -22,6 +22,11 @@ export function setGameState(newState) {
 export function setVerifiedPurchases(purchases) {
     const valid = Array.isArray(purchases) ? purchases : [];
     state.verifiedPurchases = [...valid];
+    if (state.userAuthId) {
+        try {
+            localStorage.setItem('life_game_purchases', JSON.stringify(valid));
+        } catch (e) {}
+    }
     if (state.gameState?.user) {
         state.gameState.user.purchases = [...valid];
         delete state.gameState.user.purchasedPacks;
