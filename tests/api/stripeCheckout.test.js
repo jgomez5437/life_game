@@ -4,7 +4,7 @@
 import { jest } from '@jest/globals';
 import Stripe from 'stripe';
 import { PACK_CATALOG, PRICE_TO_PACK, getPackById, getPackByPriceId, resolvePack, VALID_PACK_IDS } from '../../api/lib/validation.js';
-import checkoutHandler from '../../api/create-checkout-session.js';
+import checkoutHandler, { resolveOrigin } from '../../api/create-checkout-session.js';
 import webhookHandler from '../../api/stripe-webhook.js';
 import { clearRateLimits } from '../../api/lib/rateLimit.js';
 import { setTestAuthVerifier } from '../../api/lib/verifyAuth.js';
@@ -271,10 +271,20 @@ describe('C-6 Stripe Checkout & Webhook Security Hardening', () => {
                 expect(createdSessionArgs.line_items[0].price_data.product_data.name).toBe('God Mode & Stat Editor');
                 expect(createdSessionArgs.metadata.pack_id).toBe('god_mode');
                 expect(createdSessionArgs.metadata.user_auth_id).toBe('auth0|test_user_123');
+                expect(createdSessionArgs.payment_intent_data?.metadata?.pack_id).toBe('god_mode');
+                expect(createdSessionArgs.payment_intent_data?.metadata?.user_auth_id).toBe('auth0|test_user_123');
                 expect(createdSessionArgs.success_url).toContain('session_id={CHECKOUT_SESSION_ID}');
             } finally {
                 sessionsProto.create = originalCreate;
             }
+        });
+
+        test('resolveOrigin extracts origin, strips referer paths, and restricts to whitelist', () => {
+            expect(resolveOrigin({ headers: { origin: 'http://localhost:5173' } })).toBe('http://localhost:5173');
+            expect(resolveOrigin({ headers: { referer: 'http://localhost:5173/store?tab=career' } })).toBe('http://localhost:5173');
+            expect(resolveOrigin({ headers: { referer: 'https://preview-123.vercel.app/test' } })).toBe('https://preview-123.vercel.app');
+            expect(resolveOrigin({ headers: { origin: 'https://malicious-site.com' } })).toBe('https://startalife.app');
+            expect(resolveOrigin({})).toBe('https://startalife.app');
         });
     });
 
@@ -448,6 +458,86 @@ describe('C-6 Stripe Checkout & Webhook Security Hardening', () => {
             await webhookHandler(req, res);
             expect(res._getStatusCode()).toBe(200);
             expect(res._getJsonBody().received).toBe(true);
+        });
+
+        test('handles full refund by revoking entitlement', async () => {
+            const rawPayload = JSON.stringify({
+                id: 'evt_refund_1',
+                object: 'event',
+                type: 'charge.refunded',
+                data: {
+                    object: {
+                        id: 'ch_test_refunded',
+                        refunded: true,
+                        amount: 299,
+                        amount_refunded: 299,
+                        metadata: { pack_id: 'god_mode', user_auth_id: 'auth0|123' }
+                    }
+                }
+            });
+            const sig = Stripe.webhooks.generateTestHeaderString({ payload: rawPayload, secret: webhookSecret });
+
+            const { req, res } = createMockReqRes({
+                method: 'POST',
+                headers: { 'stripe-signature': sig },
+                rawPayload
+            });
+            await webhookHandler(req, res);
+            expect(res._getStatusCode()).toBe(200);
+            expect(res._getJsonBody().received).toBe(true);
+            expect(res._getJsonBody().revoked).toBe(true);
+        });
+
+        test('handles partial refund without revoking entitlement', async () => {
+            const rawPayload = JSON.stringify({
+                id: 'evt_partial_refund_1',
+                object: 'event',
+                type: 'charge.refunded',
+                data: {
+                    object: {
+                        id: 'ch_test_partial',
+                        refunded: false,
+                        amount: 299,
+                        amount_refunded: 50,
+                        metadata: { pack_id: 'god_mode', user_auth_id: 'auth0|123' }
+                    }
+                }
+            });
+            const sig = Stripe.webhooks.generateTestHeaderString({ payload: rawPayload, secret: webhookSecret });
+
+            const { req, res } = createMockReqRes({
+                method: 'POST',
+                headers: { 'stripe-signature': sig },
+                rawPayload
+            });
+            await webhookHandler(req, res);
+            expect(res._getStatusCode()).toBe(200);
+            expect(res._getJsonBody().received).toBe(true);
+            expect(res._getJsonBody().partial).toBe(true);
+        });
+
+        test('handles charge dispute event gracefully', async () => {
+            const rawPayload = JSON.stringify({
+                id: 'evt_dispute_1',
+                object: 'event',
+                type: 'charge.dispute.created',
+                data: {
+                    object: {
+                        id: 'dp_test_1',
+                        charge: 'ch_fake_charge_id'
+                    }
+                }
+            });
+            const sig = Stripe.webhooks.generateTestHeaderString({ payload: rawPayload, secret: webhookSecret });
+
+            const { req, res } = createMockReqRes({
+                method: 'POST',
+                headers: { 'stripe-signature': sig },
+                rawPayload
+            });
+            await webhookHandler(req, res);
+            expect(res._getStatusCode()).toBe(200);
+            expect(res._getJsonBody().disputeHandled).toBe(true);
         });
     });
 });
