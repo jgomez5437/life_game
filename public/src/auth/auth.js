@@ -96,6 +96,7 @@ export async function logout() {
     try {
         localStorage.removeItem('life_game_slots');
         localStorage.removeItem('life_game_save');
+        localStorage.removeItem('life_game_purchases');
     } catch (e) {}
     if (Utils && Utils.guestStorage && typeof Utils.guestStorage.clearSave === 'function') {
         Utils.guestStorage.clearSave();
@@ -103,6 +104,7 @@ export async function logout() {
     state.gameState = null;
     state.userAuthId = null;
     state.userEmail = null;
+    state.verifiedPurchases = null;
 
     if (state.auth0Client && typeof state.auth0Client.logout === 'function') {
         await state.auth0Client.logout({
