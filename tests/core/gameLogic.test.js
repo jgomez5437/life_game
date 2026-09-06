@@ -1021,6 +1021,77 @@ describe('Real Estate Properties & Mortgage Pure Logic', () => {
         expect(GameLogic.calculateTotalMonthlyMortgages(user)).toBe(2400);
     });
 
+    describe('calculatePropertyMonthlyOutflow', () => {
+        test('does not wipe accumulator when mortgaged property is followed by other assets', () => {
+            const assets = [
+                { category: 'property', name: 'House A', mortgage: { remainingBalance: 200000, monthlyPayment: 1200 } },
+                { category: 'vehicle', name: 'Sedan', value: 15000 },
+                { category: 'jewelry', name: 'Gold Watch', value: 5000 },
+                { category: 'property', name: 'Paid Off Cottage', mortgage: null }
+            ];
+            expect(GameLogic.calculatePropertyMonthlyOutflow(assets)).toBe(1200);
+        });
+
+        test('correctly sums multiple mortgaged properties interspersed with other assets', () => {
+            const assets = [
+                { category: 'vehicle', name: 'Sports Car', value: 80000 },
+                { category: 'property', name: 'Condo', mortgage: { remainingBalance: 150000, monthlyPayment: 850 } },
+                { category: 'jewelry', name: 'Diamond Ring', value: 12000 },
+                { category: 'property', name: 'Townhouse', mortgage: { remainingBalance: 250000, monthlyPayment: 1450 } },
+                { category: 'vehicle', name: 'Truck', value: 30000 }
+            ];
+            expect(GameLogic.calculatePropertyMonthlyOutflow(assets)).toBe(2300);
+        });
+
+        test('returns 0 for empty array, non-array, or falsy inputs', () => {
+            expect(GameLogic.calculatePropertyMonthlyOutflow([])).toBe(0);
+            expect(GameLogic.calculatePropertyMonthlyOutflow(null)).toBe(0);
+            expect(GameLogic.calculatePropertyMonthlyOutflow(undefined)).toBe(0);
+            expect(GameLogic.calculatePropertyMonthlyOutflow('not-an-array')).toBe(0);
+            expect(GameLogic.calculatePropertyMonthlyOutflow(42)).toBe(0);
+        });
+
+        test('gracefully handles sparse arrays, null items, and NaN/missing monthly payments', () => {
+            const assets = [
+                null,
+                undefined,
+                { category: 'property', mortgage: { remainingBalance: 100000, monthlyPayment: NaN } },
+                { category: 'property', mortgage: { remainingBalance: 100000, monthlyPayment: null } },
+                { category: 'property', mortgage: { remainingBalance: 100000 } },
+                { category: 'property', mortgage: { remainingBalance: 200000, monthlyPayment: 950 } }
+            ];
+            expect(GameLogic.calculatePropertyMonthlyOutflow(assets)).toBe(950);
+        });
+
+        test('polymorphically supports a user object with assets', () => {
+            const user = {
+                assets: [
+                    { category: 'property', mortgage: { remainingBalance: 180000, monthlyPayment: 1100 } },
+                    { category: 'vehicle', value: 10000 }
+                ]
+            };
+            expect(GameLogic.calculatePropertyMonthlyOutflow(user)).toBe(1100);
+        });
+
+        test('calculateUserMonthlyOutflow accurately includes mortgage outflow when followed by other assets', () => {
+            const user = {
+                age: 25,
+                city: 'Austin',
+                isStudent: false,
+                studentLoans: 0,
+                relationships: [],
+                assets: [
+                    { category: 'property', mortgage: { remainingBalance: 200000, monthlyPayment: 1200 } },
+                    { category: 'vehicle', value: 20000, insured: false },
+                    { category: 'jewelry', value: 5000, insured: false }
+                ]
+            };
+            const baseLiving = Math.round(GameLogic.addLivingExpenses(25, false, 'Austin') / 12);
+            const totalOutflow = GameLogic.calculateUserMonthlyOutflow(user);
+            expect(totalOutflow).toBe(baseLiving + 1200);
+        });
+    });
+
     test('canAffordMortgage blocks mortgage if user has no monthly income', () => {
         const user = { money: 100000 };
         const result = GameLogic.canAffordMortgage(user, 500);
