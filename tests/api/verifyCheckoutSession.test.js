@@ -318,4 +318,100 @@ describe('Stripe verify-checkout-session Security & Anti-Hijacking', () => {
         expect(res._getStatusCode()).toBe(429);
         expect(res._getJsonBody().error).toBe('Too Many Requests');
     });
+
+    test('REJECTS PROTOTYPE PROPERTY PACK ID: rejects prototype property keys in session metadata', async () => {
+        mockRetrieve = async () => ({
+            id: 'cs_test_proto_bypass',
+            payment_status: 'paid',
+            amount_total: 299,
+            metadata: { pack_id: 'toString', user_auth_id: 'auth0|alice' }
+        });
+
+        const { req, res } = createMockReqRes({
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer token_alice' },
+            body: { sessionId: 'cs_test_proto_bypass' }
+        });
+        await verifyHandler(req, res);
+        expect(res._getStatusCode()).toBe(400);
+        expect(res._getJsonBody().verified).toBe(false);
+        expect(res._getJsonBody().error).toContain('Invalid or unknown pack_id');
+    });
+
+    test('REJECTS UNAVAILABLE PACK: rejects packs where available is false', async () => {
+        mockRetrieve = async () => ({
+            id: 'cs_test_unreleased',
+            payment_status: 'paid',
+            amount_total: 399,
+            metadata: { pack_id: 'artist_pack', user_auth_id: 'auth0|alice' }
+        });
+
+        const { req, res } = createMockReqRes({
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer token_alice' },
+            body: { sessionId: 'cs_test_unreleased' }
+        });
+        await verifyHandler(req, res);
+        expect(res._getStatusCode()).toBe(400);
+        expect(res._getJsonBody().verified).toBe(false);
+        expect(res._getJsonBody().error).toContain('Pack is not available');
+    });
+
+    test('CURRENCY TAMPER GUARD: rejects session with mismatched currency', async () => {
+        mockRetrieve = async () => ({
+            id: 'cs_test_wrong_currency',
+            payment_status: 'paid',
+            amount_total: 299,
+            currency: 'jpy',
+            metadata: { pack_id: 'god_mode', user_auth_id: 'auth0|alice' }
+        });
+
+        const { req, res } = createMockReqRes({
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer token_alice' },
+            body: { sessionId: 'cs_test_wrong_currency' }
+        });
+        await verifyHandler(req, res);
+        expect(res._getStatusCode()).toBe(400);
+        expect(res._getJsonBody().verified).toBe(false);
+        expect(res._getJsonBody().error).toContain('Currency mismatch detected');
+    });
+
+    test('CURRENCY TAMPER GUARD: accepts session with matching currency', async () => {
+        mockRetrieve = async () => ({
+            id: 'cs_test_correct_currency',
+            payment_status: 'paid',
+            amount_total: 299,
+            currency: 'usd',
+            metadata: { pack_id: 'god_mode', user_auth_id: 'auth0|alice' }
+        });
+
+        const { req, res } = createMockReqRes({
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer token_alice' },
+            body: { sessionId: 'cs_test_correct_currency' }
+        });
+        await verifyHandler(req, res);
+        expect(res._getStatusCode()).toBe(200);
+        expect(res._getJsonBody().verified).toBe(true);
+    });
+
+    test('PRICE TAMPER GUARD: rejects non-integer or negative amounts', async () => {
+        mockRetrieve = async () => ({
+            id: 'cs_test_invalid_amount',
+            payment_status: 'paid',
+            amount_total: -299,
+            metadata: { pack_id: 'god_mode', user_auth_id: 'auth0|alice' }
+        });
+
+        const { req, res } = createMockReqRes({
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer token_alice' },
+            body: { sessionId: 'cs_test_invalid_amount' }
+        });
+        await verifyHandler(req, res);
+        expect(res._getStatusCode()).toBe(400);
+        expect(res._getJsonBody().verified).toBe(false);
+        expect(res._getJsonBody().error).toContain('Invalid payment amounts');
+    });
 });

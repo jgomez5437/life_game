@@ -1,8 +1,8 @@
-import { sanitizeEntitlements, injectVerifiedPurchases, VALID_PACK_IDS, checkPayloadSize, MAX_SAVE_PAYLOAD_BYTES } from '../../api/lib/validation.js';
+import { sanitizeEntitlements, injectVerifiedPurchases, VALID_PACK_IDS, getPackById, checkPayloadSize, MAX_SAVE_PAYLOAD_BYTES } from '../../api/lib/validation.js';
 
 describe('Save Endpoint Entitlement Validation (C-2 Fix)', () => {
 
-    // --- VALID_PACK_IDS ---
+    // --- VALID_PACK_IDS & getPackById Prototype Safety ---
 
     test('VALID_PACK_IDS contains all expected pack IDs', () => {
         const expected = [
@@ -13,6 +13,14 @@ describe('Save Endpoint Entitlement Validation (C-2 Fix)', () => {
             expect(VALID_PACK_IDS.has(id)).toBe(true);
         }
         expect(VALID_PACK_IDS.size).toBe(expected.length);
+    });
+
+    test('getPackById and VALID_PACK_IDS reject Object prototype property names', () => {
+        const protoKeys = ['toString', 'valueOf', 'constructor', '__proto__', 'hasOwnProperty', 'isPrototypeOf'];
+        for (const key of protoKeys) {
+            expect(VALID_PACK_IDS.has(key)).toBe(false);
+            expect(getPackById(key)).toBe(null);
+        }
     });
 
     // --- sanitizeEntitlements ---
