@@ -2,7 +2,7 @@ import { sql } from '@vercel/postgres';
 import Stripe from 'stripe';
 import { verifyAuth } from './lib/verifyAuth.js';
 import { checkRateLimit } from './lib/rateLimit.js';
-import { getPackById } from './lib/validation.js';
+import { getPackById, VALID_PACK_IDS } from './lib/validation.js';
 
 export default async function handler(request, response) {
   if (request.method !== 'POST') {
@@ -65,20 +65,48 @@ export default async function handler(request, response) {
       }
     }
 
-    // Validate pack ID against authoritative server catalog
-    const packId = session.metadata?.pack_id;
-    const pack = getPackById(packId);
+    // Validate pack ID against authoritative server catalog and canonical valid pack IDs
+    const rawPackId = session.metadata?.pack_id;
+    const packId = typeof rawPackId === 'string' ? rawPackId.trim() : null;
 
-    if (!packId || !pack) {
+    if (!packId || !VALID_PACK_IDS.has(packId)) {
       return response.status(400).json({
         verified: false,
         error: 'Invalid or unknown pack_id in checkout session metadata.'
       });
     }
 
+    const pack = getPackById(packId);
+
+    if (!pack || pack.available === false) {
+      return response.status(400).json({
+        verified: false,
+        error: 'Pack is not available or unrecognized in catalog.'
+      });
+    }
+
+    // Currency Tamper Guard: Verify session currency matches expected pack currency
+    const sessionCurrency = typeof session.currency === 'string' ? session.currency.toLowerCase() : null;
+    const expectedCurrency = (pack.currency || 'usd').toLowerCase();
+
+    if (sessionCurrency && sessionCurrency !== expectedCurrency) {
+      return response.status(400).json({
+        verified: false,
+        error: `Currency mismatch detected: received '${sessionCurrency}', expected '${expectedCurrency}'.`
+      });
+    }
+
     // Price Tamper Guard: Verify amount paid matches catalog price (accounting for discounts)
-    const amountPaid = typeof session.amount_total === 'number' ? session.amount_total : 0;
+    const amountPaid = typeof session.amount_total === 'number' ? session.amount_total : NaN;
     const discount = typeof session.total_details?.amount_discount === 'number' ? session.total_details.amount_discount : 0;
+
+    if (!Number.isInteger(amountPaid) || amountPaid < 0 || !Number.isInteger(discount) || discount < 0) {
+      return response.status(400).json({
+        verified: false,
+        error: 'Invalid payment amounts detected in checkout session.'
+      });
+    }
+
     const effectiveAmount = amountPaid + discount;
     const expectedAmount = pack.amount;
 

@@ -261,11 +261,22 @@ export const PRICE_TO_PACK = Object.entries(PACK_CATALOG).reduce((acc, [packId, 
 }, {});
 
 /**
+ * Canonical set of valid purchasable pack IDs.
+ * Derived directly from PACK_CATALOG to prevent drift.
+ */
+export const VALID_PACK_IDS = new Set(Object.keys(PACK_CATALOG));
+
+/**
  * Looks up a pack by its packId in the authoritative catalog.
+ * Defends against prototype property injection (e.g. 'toString', 'valueOf').
  */
 export function getPackById(packId) {
   if (!packId || typeof packId !== 'string') return null;
-  return PACK_CATALOG[packId] || null;
+  const trimmed = packId.trim();
+  if (!VALID_PACK_IDS.has(trimmed) || !Object.prototype.hasOwnProperty.call(PACK_CATALOG, trimmed)) {
+    return null;
+  }
+  return PACK_CATALOG[trimmed] || null;
 }
 
 /**
@@ -332,11 +343,6 @@ export function resolvePack(packId, priceId) {
   return { pack: finalPack };
 }
 
-/**
- * Canonical set of valid purchasable pack IDs.
- * Derived directly from PACK_CATALOG to prevent drift.
- */
-export const VALID_PACK_IDS = new Set(Object.keys(PACK_CATALOG));
 
 /**
  * Strips all entitlement fields from game_data at every location where
