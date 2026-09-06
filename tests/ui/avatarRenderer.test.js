@@ -97,4 +97,46 @@ describe('Avatar SVG Renderer', () => {
         expect(svg).toContain('<svg');
         expect(svg.toUpperCase()).toContain(AvatarLogic.LIPSTICK_COLOR_HEX.red.toUpperCase());
     });
+
+    test('SVG output contains skinGrad_ and irisGrad_ gradient IDs', () => {
+        const character = {
+            id: 'test-grad-1',
+            age: 20,
+            gender: 'male',
+            appearance: AvatarLogic.generateRandomAppearance('male')
+        };
+        const svg = renderAvatar(character);
+        expect(svg).toContain('skinGrad_');
+        expect(svg).toContain('irisGrad_');
+    });
+
+    test('renderAvatar supports legacy appearance objects without new traits', () => {
+        const legacyCharacter = {
+            id: 'legacy-1',
+            age: 30,
+            gender: 'female',
+            appearance: {
+                skinTone: 'tone3',
+                faceShape: 'round',
+                eyeShape: 'round',
+                eyeColor: 'hazel',
+                eyebrowStyle: 'thin',
+                hairStyle: 'shortStraight',
+                hairColorBase: 'black',
+                facialHairStyle: 'none',
+                facialHairColor: 'matchHair',
+                glassesStyle: 'none',
+                glassesColor: 'black',
+                lipstickColor: 'none',
+                blushColor: 'none',
+                grayStartAge: 50
+                // Missing noseShape and eyelashStyle
+            }
+        };
+
+        const svg = renderAvatar(legacyCharacter);
+        expect(svg).toContain('<svg');
+        // Check that fallback nose / lashes are handled without crashing
+        expect(svg).toContain('skinGrad_');
+    });
 });

@@ -12,4 +12,20 @@ describe('Avatar Logic & Age Stage Progression', () => {
         expect(AvatarLogic.getAgeStage(25)).toBe('adult');
         expect(AvatarLogic.getAgeStage(70)).toBe('adult');
     });
+
+    test('NOSE_SHAPES has 6 entries', () => {
+        expect(AvatarLogic.NOSE_SHAPES).toBeDefined();
+        expect(AvatarLogic.NOSE_SHAPES.length).toBe(6);
+    });
+
+    test('EYELASH_STYLES has 4 entries', () => {
+        expect(AvatarLogic.EYELASH_STYLES).toBeDefined();
+        expect(AvatarLogic.EYELASH_STYLES.length).toBe(4);
+    });
+
+    test('generateRandomAppearance includes noseShape and eyelashStyle', () => {
+        const appearance = AvatarLogic.generateRandomAppearance('female');
+        expect(appearance).toHaveProperty('noseShape');
+        expect(appearance).toHaveProperty('eyelashStyle');
+    });
 });

@@ -5,8 +5,15 @@ import { AvatarLogic } from '../core/avatarLogic.js';
 // wrinkle interpolation). Rendered SVG is never stored — only the trait
 // descriptor persists (see avatarLogic.js).
 
-const OUTLINE = '#2b2320';
+const OUTLINE = '#2b2320';  // fallback for non-skin elements (wrinkles, baby features)
 const DARK_LENS = '#141414';
+
+// Derives a warm outline color from the character's skin tone instead of
+// one universal cold brown. Darker skins get deeper/warmer outlines; lighter
+// skins get softer brown. Unifies each face's palette.
+function skinOutline(skinHex) {
+    return shadeColor(skinHex, -55);
+}
 
 // --- COLOR HELPERS -----------------------------------------------------------
 
@@ -43,31 +50,46 @@ const _cache = new Map();
 
 // --- LAYER 1: HEAD + EARS ---------------------------------------------------
 
-function headShape(faceShape, skinHex) {
+function headShape(faceShape, skinHex, skinGradUrl, outlineHex) {
+    const ol = outlineHex || skinOutline(skinHex);
+    const fill = skinGradUrl || skinHex;
     let head;
+    let chinShadow = ''; // ambient-occlusion shadow under the chin
     switch (faceShape) {
         case 'round':
             head = `<ellipse cx="50" cy="52" rx="33" ry="33"/>`;
+            chinShadow = `<ellipse cx="50" cy="78" rx="22" ry="6" fill="${shadeColor(skinHex, -30)}" opacity="0.12"/>`;
             break;
         case 'square':
             head = `<rect x="20" y="20" width="60" height="64" rx="12"/>`;
+            chinShadow = `<ellipse cx="50" cy="80" rx="24" ry="5" fill="${shadeColor(skinHex, -30)}" opacity="0.12"/>`;
             break;
         case 'heart':
             head = `<path d="M 50 16 C 68 16 80 30 78 46 C 76 62 64 70 50 88 C 36 70 24 62 22 46 C 20 30 32 16 50 16 Z"/>`;
+            chinShadow = `<ellipse cx="50" cy="82" rx="14" ry="5" fill="${shadeColor(skinHex, -30)}" opacity="0.12"/>`;
             break;
         case 'long':
             head = `<ellipse cx="50" cy="54" rx="26" ry="40"/>`;
+            chinShadow = `<ellipse cx="50" cy="88" rx="16" ry="5" fill="${shadeColor(skinHex, -30)}" opacity="0.12"/>`;
             break;
         case 'oval':
         default:
             head = `<ellipse cx="50" cy="52" rx="30" ry="36"/>`;
+            chinShadow = `<ellipse cx="50" cy="82" rx="18" ry="5" fill="${shadeColor(skinHex, -30)}" opacity="0.12"/>`;
     }
     return `
-        <g fill="${skinHex}" stroke="${OUTLINE}" stroke-width="2">
+        <g fill="${fill}" stroke="${ol}" stroke-width="2.2">
             <ellipse cx="17" cy="54" rx="5" ry="8"/>
             <ellipse cx="83" cy="54" rx="5" ry="8"/>
             ${head}
         </g>
+        <!-- ear inner shadows -->
+        <ellipse cx="17" cy="55" rx="2.5" ry="4" fill="${shadeColor(skinHex, -25)}" opacity="0.15"/>
+        <ellipse cx="83" cy="55" rx="2.5" ry="4" fill="${shadeColor(skinHex, -25)}" opacity="0.15"/>
+        <!-- cheekbone highlights -->
+        <ellipse cx="33" cy="49" rx="5" ry="3" fill="white" opacity="0.08"/>
+        <ellipse cx="67" cy="49" rx="5" ry="3" fill="white" opacity="0.08"/>
+        ${chinShadow}
     `;
 }
 
@@ -87,102 +109,276 @@ function getFaceProfile(faceShape) {
     return FACE_PROFILES[faceShape] || FACE_PROFILES.oval;
 }
 
+// Per-shape offsets for facial feature placement so each face shape feels
+// genuinely different — not just a different outline around the same face.
+// eyeY/browY/mouthY/noseY are the vertical center; eyeSpacing is half the
+// distance between eye centers (measured from center x=50).
+const FEATURE_OFFSETS = {
+    oval:   { eyeY: 52, eyeSpacing: 12, browY: 40, mouthY: 72, noseY: 63, blushY: 62 },
+    round:  { eyeY: 51, eyeSpacing: 11, browY: 39, mouthY: 70, noseY: 62, blushY: 60 },
+    square: { eyeY: 50, eyeSpacing: 13, browY: 38, mouthY: 72, noseY: 62, blushY: 62 },
+    heart:  { eyeY: 50, eyeSpacing: 12, browY: 38, mouthY: 74, noseY: 63, blushY: 64 },
+    long:   { eyeY: 53, eyeSpacing: 11, browY: 41, mouthY: 74, noseY: 65, blushY: 64 }
+};
+
+function getFeaturePos(faceShape) {
+    return FEATURE_OFFSETS[faceShape] || FEATURE_OFFSETS.oval;
+}
+
 // --- LAYER 1B: BLUSH ----------------------------------------------------------
 // Drawn directly on the skin, before eyebrows/eyes so it never sits on top
 // of those layers — just a soft flush low on each cheek.
 
-function blush(colorKey) {
+function blush(colorKey, faceShape) {
     if (!colorKey || colorKey === 'none') return '';
     const hex = AvatarLogic.BLUSH_COLOR_HEX[colorKey] || AvatarLogic.BLUSH_COLOR_HEX.pink;
+    const { blushY } = getFeaturePos(faceShape);
     return `<g fill="${hex}" opacity="0.35">
-        <ellipse cx="29" cy="62" rx="7" ry="4.5"/>
-        <ellipse cx="71" cy="62" rx="7" ry="4.5"/>
+        <ellipse cx="29" cy="${blushY}" rx="7" ry="4.5"/>
+        <ellipse cx="71" cy="${blushY}" rx="7" ry="4.5"/>
     </g>`;
 }
 
 // --- LAYER 2: EYEBROWS -------------------------------------------------------
 
-function eyebrows(style, colorHex) {
+function eyebrows(style, colorHex, faceShape) {
+    const { browY, eyeSpacing } = getFeaturePos(faceShape);
+    // Left brow spans from inner to outer; right is mirrored.
+    const li = 50 - eyeSpacing + 1;  // inner edge (near nose)
+    const lo = 50 - eyeSpacing - 7;  // outer edge
+    const ri = 50 + eyeSpacing - 1;
+    const ro = 50 + eyeSpacing + 7;
+    const dark = shadeColor(colorHex, -20);
+
     switch (style) {
-        case 'thick':
-            return `<g fill="${colorHex}">
-                <rect x="28" y="39" width="15" height="5" rx="2"/>
-                <rect x="57" y="39" width="15" height="5" rx="2"/>
+        case 'thick': {
+            // Tapered brow: thick in the middle, tapering at both ends
+            const lPath = `M ${lo} ${browY + 1} Q ${(lo + li) / 2} ${browY - 4} ${li} ${browY + 0.5} Q ${(lo + li) / 2} ${browY + 4} ${lo} ${browY + 1} Z`;
+            const rPath = `M ${ri} ${browY + 0.5} Q ${(ri + ro) / 2} ${browY - 4} ${ro} ${browY + 1} Q ${(ri + ro) / 2} ${browY + 4} ${ri} ${browY + 0.5} Z`;
+            // Hair-texture strokes inside thick brows
+            const hairL = `<g fill="none" stroke="${dark}" stroke-width="0.5" stroke-opacity="0.4" stroke-linecap="round">
+                <path d="M ${lo + 3} ${browY} L ${lo + 5} ${browY - 1.2}"/>
+                <path d="M ${lo + 7} ${browY + 0.5} L ${lo + 9} ${browY - 1}"/>
+                <path d="M ${lo + 11} ${browY + 0.3} L ${lo + 12.5} ${browY - 0.8}"/>
             </g>`;
+            const hairR = `<g fill="none" stroke="${dark}" stroke-width="0.5" stroke-opacity="0.4" stroke-linecap="round">
+                <path d="M ${ri + 3} ${browY - 1.2} L ${ri + 5} ${browY}"/>
+                <path d="M ${ri + 5} ${browY - 1} L ${ri + 7} ${browY + 0.5}"/>
+                <path d="M ${ri + 9} ${browY - 0.8} L ${ri + 10.5} ${browY + 0.3}"/>
+            </g>`;
+            return `<g fill="${colorHex}"><path d="${lPath}"/><path d="${rPath}"/></g>${hairL}${hairR}`;
+        }
         case 'arched':
-            return `<g fill="none" stroke="${colorHex}" stroke-width="3" stroke-linecap="round">
-                <path d="M 29 44 Q 36 35 43 42"/>
-                <path d="M 57 42 Q 64 35 71 44"/>
+            return `<g fill="none" stroke="${colorHex}" stroke-width="2.8" stroke-linecap="round">
+                <path d="M ${lo} ${browY + 3} Q ${(lo + li) / 2} ${browY - 6} ${li} ${browY + 1}"/>
+                <path d="M ${ri} ${browY + 1} Q ${(ri + ro) / 2} ${browY - 6} ${ro} ${browY + 3}"/>
             </g>`;
         case 'straight':
-            return `<g fill="${colorHex}">
-                <rect x="28" y="40.5" width="16" height="2.5" rx="1"/>
-                <rect x="56" y="40.5" width="16" height="2.5" rx="1"/>
+            return `<g fill="none" stroke="${colorHex}" stroke-width="2.2" stroke-linecap="round">
+                <path d="M ${lo} ${browY + 0.5} L ${li} ${browY + 0.5}"/>
+                <path d="M ${ri} ${browY + 0.5} L ${ro} ${browY + 0.5}"/>
             </g>`;
-        case 'medium':
-            return `<g fill="${colorHex}">
-                <rect x="29" y="40" width="14" height="3" rx="1.5"/>
-                <rect x="57" y="40" width="14" height="3" rx="1.5"/>
+        case 'medium': {
+            // Slightly tapered — wider center, thin tails
+            const lPath = `M ${lo} ${browY + 0.5} Q ${(lo + li) / 2} ${browY - 2.5} ${li} ${browY} Q ${(lo + li) / 2} ${browY + 2.8} ${lo} ${browY + 0.5} Z`;
+            const rPath = `M ${ri} ${browY} Q ${(ri + ro) / 2} ${browY - 2.5} ${ro} ${browY + 0.5} Q ${(ri + ro) / 2} ${browY + 2.8} ${ri} ${browY} Z`;
+            // Subtle hair texture on medium brows
+            const hairL = `<g fill="none" stroke="${dark}" stroke-width="0.4" stroke-opacity="0.35" stroke-linecap="round">
+                <path d="M ${lo + 4} ${browY + 0.3} L ${lo + 6} ${browY - 0.8}"/>
+                <path d="M ${lo + 9} ${browY + 0.2} L ${lo + 10.5} ${browY - 0.6}"/>
             </g>`;
+            const hairR = `<g fill="none" stroke="${dark}" stroke-width="0.4" stroke-opacity="0.35" stroke-linecap="round">
+                <path d="M ${ri + 4} ${browY - 0.8} L ${ri + 6} ${browY + 0.3}"/>
+                <path d="M ${ri + 7} ${browY - 0.6} L ${ri + 8.5} ${browY + 0.2}"/>
+            </g>`;
+            return `<g fill="${colorHex}"><path d="${lPath}"/><path d="${rPath}"/></g>${hairL}${hairR}`;
+        }
         case 'thin':
         default:
-            return `<g fill="${colorHex}">
-                <rect x="29" y="41" width="14" height="1.6" rx="0.8"/>
-                <rect x="57" y="41" width="14" height="1.6" rx="0.8"/>
+            return `<g fill="none" stroke="${colorHex}" stroke-width="1.4" stroke-linecap="round">
+                <path d="M ${lo} ${browY + 1} Q ${(lo + li) / 2} ${browY - 1.5} ${li} ${browY + 0.5}"/>
+                <path d="M ${ri} ${browY + 0.5} Q ${(ri + ro) / 2} ${browY - 1.5} ${ro} ${browY + 1}"/>
             </g>`;
     }
 }
 
 // --- LAYER 3: EYES ------------------------------------------------------------
 
-function oneEye(cx, cy, shape, colorHex, skinHex) {
-    switch (shape) {
-        case 'round':
-            return `<g>
-                <ellipse cx="${cx}" cy="${cy}" rx="6" ry="6" fill="white" stroke="${OUTLINE}" stroke-width="1.2"/>
-                <circle cx="${cx}" cy="${cy}" r="3.6" fill="${colorHex}"/>
-                <circle cx="${cx}" cy="${cy}" r="1.6" fill="#1b1b1b"/>
+// Eyelash strokes fanning from the outer corner of each eye.
+function eyelashes(cx, cy, rx, ry, style, isLeft) {
+    if (!style || style === 'none') return '';
+    const dir = isLeft ? -1 : 1;
+    const outerX = cx + dir * rx;
+    const outerY = cy - ry * 0.3;
+    switch (style) {
+        case 'subtle':
+            return `<g fill="none" stroke="#1b1b1b" stroke-width="0.8" stroke-linecap="round" stroke-opacity="0.6">
+                <path d="M ${outerX} ${outerY} L ${outerX + dir * 3} ${outerY - 2.5}"/>
+                <path d="M ${outerX - dir * 1} ${outerY - 1} L ${outerX + dir * 1.5} ${outerY - 3.5}"/>
             </g>`;
-        case 'hooded':
-            return `<g>
-                <ellipse cx="${cx}" cy="${cy}" rx="7" ry="3.5" fill="white" stroke="${OUTLINE}" stroke-width="1.2"/>
-                <circle cx="${cx}" cy="${cy}" r="3.2" fill="${colorHex}"/>
-                <circle cx="${cx}" cy="${cy}" r="1.4" fill="#1b1b1b"/>
-                <path d="M ${cx - 7} ${cy - 1} Q ${cx} ${cy - 7} ${cx + 7} ${cy - 1} L ${cx + 7} ${cy - 3} Q ${cx} ${cy - 8} ${cx - 7} ${cy - 3} Z" fill="${skinHex}"/>
+        case 'full':
+            return `<g fill="none" stroke="#1b1b1b" stroke-width="0.9" stroke-linecap="round" stroke-opacity="0.65">
+                <path d="M ${outerX} ${outerY} L ${outerX + dir * 3.5} ${outerY - 2}"/>
+                <path d="M ${outerX - dir * 1.5} ${outerY - 0.5} L ${outerX + dir * 1} ${outerY - 3.5}"/>
+                <path d="M ${outerX - dir * 3} ${outerY} L ${outerX - dir * 1.5} ${outerY - 3}"/>
             </g>`;
-        case 'monolid':
-            return `<g>
-                <ellipse cx="${cx}" cy="${cy}" rx="7" ry="2.6" fill="white" stroke="${OUTLINE}" stroke-width="1.2"/>
-                <circle cx="${cx}" cy="${cy}" r="2.8" fill="${colorHex}"/>
-                <circle cx="${cx}" cy="${cy}" r="1.2" fill="#1b1b1b"/>
+        case 'dramatic':
+            return `<g fill="none" stroke="#1b1b1b" stroke-width="1.1" stroke-linecap="round" stroke-opacity="0.7">
+                <path d="M ${outerX} ${outerY} L ${outerX + dir * 4} ${outerY - 1.5}"/>
+                <path d="M ${outerX - dir * 1} ${outerY - 0.3} L ${outerX + dir * 2} ${outerY - 3.5}"/>
+                <path d="M ${outerX - dir * 2.5} ${outerY} L ${outerX - dir * 1} ${outerY - 3.5}"/>
+                <path d="M ${outerX - dir * 4} ${outerY + 0.5} L ${outerX - dir * 3} ${outerY - 2.5}"/>
             </g>`;
-        case 'almond':
         default:
-            return `<g>
-                <ellipse cx="${cx}" cy="${cy}" rx="7" ry="4" fill="white" stroke="${OUTLINE}" stroke-width="1.2"/>
-                <circle cx="${cx}" cy="${cy}" r="3.2" fill="${colorHex}"/>
-                <circle cx="${cx}" cy="${cy}" r="1.4" fill="#1b1b1b"/>
-            </g>`;
+            return '';
     }
 }
 
-function eyes(shape, colorHex, skinHex) {
-    return oneEye(38, 52, shape, colorHex, skinHex) + oneEye(62, 52, shape, colorHex, skinHex);
+function oneEye(cx, cy, shape, colorHex, skinHex, outlineHex, irisGradUrl, eyelashStyle, isLeft) {
+    const ol = outlineHex || OUTLINE;
+    const irisFill = irisGradUrl || colorHex;
+    // Catch light — the white sparkle that makes eyes look alive
+    const catchLight = `<circle cx="${cx - 1.8}" cy="${cy - 1.5}" r="1.3" fill="white" opacity="0.85"/>`;
+    // Subtle lower eyelid hint
+    const lowerLid = `<path d="M ${cx - 5} ${cy + 2} Q ${cx} ${cy + 4} ${cx + 5} ${cy + 2}" fill="none" stroke="${ol}" stroke-width="0.5" stroke-opacity="0.15"/>`;
+
+    let eyeSvg;
+    switch (shape) {
+        case 'round':
+            eyeSvg = `<g>
+                <ellipse cx="${cx}" cy="${cy}" rx="6" ry="6" fill="white" stroke="${ol}" stroke-width="1"/>
+                <path d="M ${cx - 6} ${cy} Q ${cx} ${cy - 6} ${cx + 6} ${cy}" fill="none" stroke="${ol}" stroke-width="1.8" stroke-linecap="round"/>
+                <circle cx="${cx}" cy="${cy}" r="3.6" fill="${irisFill}"/>
+                <circle cx="${cx}" cy="${cy}" r="1.6" fill="#1b1b1b"/>
+                ${catchLight}
+                ${lowerLid}
+            </g>`;
+            return eyeSvg + eyelashes(cx, cy, 6, 6, eyelashStyle, isLeft);
+        case 'hooded':
+            eyeSvg = `<g>
+                <ellipse cx="${cx}" cy="${cy}" rx="7" ry="3.5" fill="white" stroke="${ol}" stroke-width="1"/>
+                <path d="M ${cx - 7} ${cy} Q ${cx} ${cy - 3.5} ${cx + 7} ${cy}" fill="none" stroke="${ol}" stroke-width="1.8" stroke-linecap="round"/>
+                <circle cx="${cx}" cy="${cy}" r="3.2" fill="${irisFill}"/>
+                <circle cx="${cx}" cy="${cy}" r="1.4" fill="#1b1b1b"/>
+                <path d="M ${cx - 7} ${cy - 1} Q ${cx} ${cy - 7} ${cx + 7} ${cy - 1} L ${cx + 7} ${cy - 3} Q ${cx} ${cy - 8} ${cx - 7} ${cy - 3} Z" fill="${skinHex}"/>
+                ${catchLight}
+            </g>`;
+            return eyeSvg + eyelashes(cx, cy, 7, 3.5, eyelashStyle, isLeft);
+        case 'monolid':
+            eyeSvg = `<g>
+                <ellipse cx="${cx}" cy="${cy}" rx="7" ry="2.6" fill="white" stroke="${ol}" stroke-width="1"/>
+                <path d="M ${cx - 7} ${cy} Q ${cx} ${cy - 2.6} ${cx + 7} ${cy}" fill="none" stroke="${ol}" stroke-width="1.6" stroke-linecap="round"/>
+                <circle cx="${cx}" cy="${cy}" r="2.8" fill="${irisFill}"/>
+                <circle cx="${cx}" cy="${cy}" r="1.2" fill="#1b1b1b"/>
+                ${catchLight}
+            </g>`;
+            return eyeSvg + eyelashes(cx, cy, 7, 2.6, eyelashStyle, isLeft);
+        case 'almond':
+        default:
+            eyeSvg = `<g>
+                <ellipse cx="${cx}" cy="${cy}" rx="7" ry="4" fill="white" stroke="${ol}" stroke-width="1"/>
+                <path d="M ${cx - 7} ${cy} Q ${cx} ${cy - 4} ${cx + 7} ${cy}" fill="none" stroke="${ol}" stroke-width="1.8" stroke-linecap="round"/>
+                <circle cx="${cx}" cy="${cy}" r="3.2" fill="${irisFill}"/>
+                <circle cx="${cx}" cy="${cy}" r="1.4" fill="#1b1b1b"/>
+                ${catchLight}
+                ${lowerLid}
+            </g>`;
+            return eyeSvg + eyelashes(cx, cy, 7, 4, eyelashStyle, isLeft);
+    }
+}
+
+function eyes(shape, colorHex, skinHex, faceShape, outlineHex, irisGradUrl, eyelashStyle) {
+    const { eyeY, eyeSpacing } = getFeaturePos(faceShape);
+    const lcx = 50 - eyeSpacing;
+    const rcx = 50 + eyeSpacing;
+    return oneEye(lcx, eyeY, shape, colorHex, skinHex, outlineHex, irisGradUrl, eyelashStyle, true) +
+           oneEye(rcx, eyeY, shape, colorHex, skinHex, outlineHex, irisGradUrl, eyelashStyle, false);
 }
 
 // --- LAYER 4: MOUTH (plain line, or a filled lipstick shape) ------------------
 
-function mouth(lipstickColorKey) {
+function mouth(lipstickColorKey, faceShape, skinHex) {
+    const { mouthY } = getFeaturePos(faceShape);
+    const ol = skinHex ? skinOutline(skinHex) : OUTLINE;
     if (!lipstickColorKey || lipstickColorKey === 'none') {
-        return `<path d="M 42 72 Q 50 78 58 72" fill="none" stroke="${OUTLINE}" stroke-width="2.2" stroke-linecap="round"/>`;
+        // Natural lip shape using skin-shadow colors instead of an invisible line
+        const lipColor = skinHex ? shadeColor(skinHex, -15) : '#c9908a';
+        const lipDark = skinHex ? shadeColor(skinHex, -28) : '#a87070';
+        return `<path d="M ${50 - 8} ${mouthY} Q ${50 - 4} ${mouthY - 2.5} 50 ${mouthY - 1} Q ${50 + 4} ${mouthY - 2.5} ${50 + 8} ${mouthY} Q ${50 + 4} ${mouthY + 4} 50 ${mouthY + 4.5} Q ${50 - 4} ${mouthY + 4} ${50 - 8} ${mouthY} Z" fill="${lipColor}" stroke="${lipDark}" stroke-width="0.8" opacity="0.55"/>
+            <path d="M ${50 - 7} ${mouthY} Q 50 ${mouthY + 1.2} ${50 + 7} ${mouthY}" fill="none" stroke="${lipDark}" stroke-width="0.6" stroke-opacity="0.45"/>
+            <path d="M ${50 - 2} ${mouthY - 0.5} L 50 ${mouthY - 1.2} L ${50 + 2} ${mouthY - 0.5}" fill="none" stroke="${lipDark}" stroke-width="0.4" stroke-opacity="0.2"/>`;
     }
     const hex = AvatarLogic.LIPSTICK_COLOR_HEX[lipstickColorKey] || AvatarLogic.LIPSTICK_COLOR_HEX.red;
     const dark = shadeColor(hex, -25);
-    // Closed lip shape (cupid's-bow top lip + fuller bottom lip) instead of
-    // the plain line, filled with the chosen color, plus a thin seam where
-    // the lips meet for definition.
-    return `<path d="M 42 72 Q 46 69 50 71 Q 54 69 58 72 Q 54 76.5 50 77.5 Q 46 76.5 42 72 Z" fill="${hex}" stroke="${dark}" stroke-width="1"/>
-        <path d="M 43 72 Q 50 73.6 57 72" fill="none" stroke="${dark}" stroke-width="0.7" stroke-opacity="0.6"/>`;
+    const light = shadeColor(hex, 15);
+    // Closed lip shape with gradient-like shading for volume
+    return `<path d="M ${50 - 8} ${mouthY} Q ${50 - 4} ${mouthY - 3} 50 ${mouthY - 1} Q ${50 + 4} ${mouthY - 3} ${50 + 8} ${mouthY} Q ${50 + 4} ${mouthY + 4.5} 50 ${mouthY + 5.5} Q ${50 - 4} ${mouthY + 4.5} ${50 - 8} ${mouthY} Z" fill="${hex}" stroke="${dark}" stroke-width="1"/>
+        <path d="M ${50 - 7} ${mouthY} Q 50 ${mouthY + 1.6} ${50 + 7} ${mouthY}" fill="none" stroke="${dark}" stroke-width="0.7" stroke-opacity="0.6"/>
+        <path d="M ${50 - 3} ${mouthY + 1.5} Q 50 ${mouthY + 3} ${50 + 3} ${mouthY + 1.5}" fill="${light}" opacity="0.25"/>`;
+}
+
+// --- LAYER 4B: NOSE -----------------------------------------------------------
+// Rendered as shadow-only (no hard outline) so it reads as natural contour
+// rather than a bolted-on feature. Uses skin shadow colors at low opacity.
+
+function nose(noseShape, skinHex, faceShape) {
+    const { noseY } = getFeaturePos(faceShape);
+    const shadow = shadeColor(skinHex, -18);
+    const op = '0.35';
+    const tipY = noseY + 3;
+    const bridgeTop = noseY - 8;
+
+    switch (noseShape) {
+        case 'medium':
+            return `<g fill="none" stroke="${shadow}" stroke-linecap="round" opacity="${op}">
+                <path d="M 48 ${bridgeTop} Q 47 ${noseY} 45 ${tipY}" stroke-width="1.2"/>
+                <path d="M 52 ${bridgeTop} Q 53 ${noseY} 55 ${tipY}" stroke-width="1.2"/>
+                <path d="M 45 ${tipY} Q 50 ${tipY + 2.5} 55 ${tipY}" stroke-width="1"/>
+            </g>`;
+        case 'button':
+            return `<g fill="none" stroke="${shadow}" stroke-linecap="round" opacity="${op}">
+                <path d="M 48.5 ${bridgeTop + 2} Q 48 ${noseY} 47 ${tipY}" stroke-width="1"/>
+                <path d="M 51.5 ${bridgeTop + 2} Q 52 ${noseY} 53 ${tipY}" stroke-width="1"/>
+                <ellipse cx="50" cy="${tipY}" rx="4" ry="2.5" stroke-width="1"/>
+            </g>`;
+        case 'pointed':
+            return `<g fill="none" stroke="${shadow}" stroke-linecap="round" opacity="${op}">
+                <path d="M 49 ${bridgeTop - 1} L 47 ${tipY}" stroke-width="1.3"/>
+                <path d="M 51 ${bridgeTop - 1} L 53 ${tipY}" stroke-width="1.3"/>
+                <path d="M 47 ${tipY} L 50 ${tipY + 2} L 53 ${tipY}" stroke-width="0.9"/>
+            </g>`;
+        case 'wide':
+            return `<g fill="none" stroke="${shadow}" stroke-linecap="round" opacity="${op}">
+                <path d="M 48 ${bridgeTop + 1} Q 47 ${noseY} 43 ${tipY}" stroke-width="1.2"/>
+                <path d="M 52 ${bridgeTop + 1} Q 53 ${noseY} 57 ${tipY}" stroke-width="1.2"/>
+                <path d="M 43 ${tipY} Q 50 ${tipY + 3} 57 ${tipY}" stroke-width="1.1"/>
+            </g>`;
+        case 'aquiline':
+            return `<g fill="none" stroke="${shadow}" stroke-linecap="round" opacity="${op}">
+                <path d="M 48 ${bridgeTop - 2} Q 46 ${bridgeTop + 3} 47.5 ${noseY} Q 46.5 ${noseY + 2} 46 ${tipY}" stroke-width="1.3"/>
+                <path d="M 52 ${bridgeTop - 2} Q 54 ${bridgeTop + 3} 52.5 ${noseY} Q 53.5 ${noseY + 2} 54 ${tipY}" stroke-width="1.3"/>
+                <path d="M 46 ${tipY} Q 50 ${tipY + 2} 54 ${tipY}" stroke-width="1"/>
+            </g>`;
+        case 'small':
+        default:
+            return `<g fill="none" stroke="${shadow}" stroke-linecap="round" opacity="${op}">
+                <path d="M 49 ${bridgeTop + 3} Q 48 ${noseY + 1} 47 ${tipY}" stroke-width="1"/>
+                <path d="M 51 ${bridgeTop + 3} Q 52 ${noseY + 1} 53 ${tipY}" stroke-width="1"/>
+                <path d="M 47 ${tipY} Q 50 ${tipY + 1.5} 53 ${tipY}" stroke-width="0.8"/>
+            </g>`;
+    }
+}
+
+// Philtrum: tiny V shadow between nose and upper lip
+function philtrum(skinHex, faceShape) {
+    const { noseY, mouthY } = getFeaturePos(faceShape);
+    const shadow = shadeColor(skinHex, -18);
+    const top = noseY + 5;
+    const bot = mouthY - 2;
+    return `<g fill="none" stroke="${shadow}" stroke-width="0.6" stroke-linecap="round" opacity="0.12">
+        <path d="M 49 ${top} Q 48.5 ${(top + bot) / 2} 49.5 ${bot}"/>
+        <path d="M 51 ${top} Q 51.5 ${(top + bot) / 2} 50.5 ${bot}"/>
+    </g>`;
 }
 
 // --- LAYER 5: FACIAL HAIR -----------------------------------------------------
@@ -266,12 +462,15 @@ function domeOuterY(x, hw, top) {
 
 // Fine strand lines following the dome's own curvature, fanning out from
 // the crown — reads as combed hair instead of a flat cap.
+// 10 strands (up from 6) with slightly varied curvature to avoid the
+// "evenly-spaced ruled lines" look.
 function domeStrandPaths(hw, top) {
-    return [-0.62, -0.32, -0.08, 0.16, 0.4, 0.62].map(f => {
+    return [-0.78, -0.58, -0.38, -0.2, -0.04, 0.1, 0.26, 0.44, 0.6, 0.76].map((f, i) => {
         const x = 50 + f * hw;
         const yTop = domeOuterY(x, hw, top) + 2.5;
         const yBot = DOME_BASE_Y - 1.5;
-        const bend = f * 3;
+        // Alternate bend direction slightly for organic feel
+        const bend = f * 3 + (i % 2 === 0 ? 0.8 : -0.6);
         return `M ${x.toFixed(1)} ${yTop.toFixed(1)} Q ${(x + bend).toFixed(1)} ${((yTop + yBot) / 2).toFixed(1)} ${x.toFixed(1)} ${yBot.toFixed(1)}`;
     });
 }
@@ -285,10 +484,25 @@ function domeHighlightPath(hw, top) {
     return `M ${x1} ${yMid + 4} Q ${(x1 + x2) / 2} ${peak + 3} ${x2} ${yMid - 2}`;
 }
 
+// Tiny strokes along the hairline edge to soften the hard geometric boundary.
+function hairlineStrokes(hw, top) {
+    const peak = domePeak(top);
+    const strokes = [];
+    for (let i = 0; i < 8; i++) {
+        const f = -0.7 + (i / 7) * 1.4;
+        const x = 50 + f * hw;
+        const y = domeOuterY(x, hw, top);
+        const dy = 2 + (i % 3) * 0.8;
+        strokes.push(`M ${x.toFixed(1)} ${(y + 1).toFixed(1)} L ${(x + (i % 2 ? 0.5 : -0.5)).toFixed(1)} ${(y + dy).toFixed(1)}`);
+    }
+    return strokes;
+}
+
 function domeTexture(hw, top, hairHex) {
     const strands = strandGroup(domeStrandPaths(hw, top), shadeColor(hairHex, -32), 0.4, 0.7);
     const highlight = `<path d="${domeHighlightPath(hw, top)}" fill="none" stroke="${shadeColor(hairHex, 32)}" stroke-width="1.3" stroke-linecap="round" stroke-opacity="0.5"/>`;
-    return strands + highlight;
+    const hairline = strandGroup(hairlineStrokes(hw, top), shadeColor(hairHex, -20), 0.25, 0.5);
+    return strands + highlight + hairline;
 }
 
 // Small tuft hanging from the temple past the ear — added on top of the
@@ -455,19 +669,27 @@ function hairFront(style, hairPaint, faceShape) {
             <g fill="none" stroke="${light}" stroke-width="0.8" stroke-linecap="round" stroke-opacity="0.55">${spikeHighlights}</g>`;
         }
         case 'curly': {
-            const xs = [-0.8, -0.47, 0, 0.47, 0.8, -1.03, 1.03];
-            const ys = [30, 17, 11, 17, 30, 42, 42];
-            const rs = [7, 8, 9, 8, 7, 6, 6];
+            // Overlapping rounded shapes of varying sizes — avoids the
+            // uniform "cluster of bubbles" look by mixing radii and offsets.
+            const xs =  [-0.85, -0.52, -0.15, 0.2, 0.55, 0.88, -1.05, 1.05, -0.3];
+            const ys =  [30,    16,    10,    14,  18,   30,   42,     42,    38   ];
+            const rs =  [7.5,   8.5,   9.5,   9,   8,   7,    6.5,    6.5,   5.5  ];
             const circles = xs.map((f, i) => `<circle cx="${(50 + f * hw).toFixed(1)}" cy="${(ys[i] + dy).toFixed(1)}" r="${rs[i]}"/>`).join('');
-            // Small inner swirl per curl cluster reads as coiled strands
-            // instead of plain circles.
+            // Double swirl per curl for richer texture
             const swirls = xs.map((f, i) => {
-                const cx = 50 + f * hw, cy = ys[i] + dy, r = rs[i] * 0.5;
-                return `<path d="M ${(cx - r).toFixed(1)} ${cy.toFixed(1)} Q ${cx.toFixed(1)} ${(cy - r * 1.6).toFixed(1)} ${(cx + r).toFixed(1)} ${cy.toFixed(1)} Q ${cx.toFixed(1)} ${(cy + r * 1.6).toFixed(1)} ${(cx - r).toFixed(1)} ${cy.toFixed(1)}"/>`;
+                const ccx = 50 + f * hw, ccy = ys[i] + dy, r = rs[i] * 0.5;
+                const r2 = rs[i] * 0.3;
+                return `<path d="M ${(ccx - r).toFixed(1)} ${ccy.toFixed(1)} Q ${ccx.toFixed(1)} ${(ccy - r * 1.6).toFixed(1)} ${(ccx + r).toFixed(1)} ${ccy.toFixed(1)} Q ${ccx.toFixed(1)} ${(ccy + r * 1.6).toFixed(1)} ${(ccx - r).toFixed(1)} ${ccy.toFixed(1)}"/>
+                    <path d="M ${(ccx + r2).toFixed(1)} ${(ccy - r2).toFixed(1)} Q ${(ccx + r2 * 2).toFixed(1)} ${ccy.toFixed(1)} ${(ccx + r2).toFixed(1)} ${(ccy + r2).toFixed(1)}"/>`;
+            }).join('');
+            // Scattered highlights on top curls
+            const highlights = xs.slice(0, 5).map((f, i) => {
+                const ccx = 50 + f * hw, ccy = ys[i] + dy;
+                return `<path d="M ${(ccx - 2).toFixed(1)} ${(ccy - rs[i] * 0.4).toFixed(1)} Q ${ccx.toFixed(1)} ${(ccy - rs[i] * 0.7).toFixed(1)} ${(ccx + 1.5).toFixed(1)} ${(ccy - rs[i] * 0.3).toFixed(1)}"/>`;
             }).join('');
             return `<g fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5">${circles}</g>
                 <g fill="none" stroke="${dark}" stroke-width="0.6" stroke-opacity="0.45">${swirls}</g>
-                <path d="M ${(50 - hw * 0.3).toFixed(1)} ${(11 + dy - 3).toFixed(1)} Q 50 ${(11 + dy - 6).toFixed(1)} ${(50 + hw * 0.15).toFixed(1)} ${(11 + dy - 2).toFixed(1)}" fill="none" stroke="${light}" stroke-width="1" stroke-linecap="round" stroke-opacity="0.5"/>`;
+                <g fill="none" stroke="${light}" stroke-width="0.8" stroke-linecap="round" stroke-opacity="0.45">${highlights}</g>`;
         }
         case 'ponytail':
         case 'bun':
@@ -591,6 +813,7 @@ function babyHair(hairPaint) {
 }
 
 function childHeadShape(faceShape, skinHex) {
+    const ol = skinOutline(skinHex);
     let head;
     switch (faceShape) {
         case 'round':
@@ -610,11 +833,15 @@ function childHeadShape(faceShape, skinHex) {
             head = `<ellipse cx="50" cy="53" rx="28" ry="33"/>`;
     }
     return `
-        <g fill="${skinHex}" stroke="${OUTLINE}" stroke-width="2">
+        <g fill="${skinHex}" stroke="${ol}" stroke-width="2">
             <ellipse cx="18" cy="53" rx="4.8" ry="7.5"/>
             <ellipse cx="82" cy="53" rx="4.8" ry="7.5"/>
             ${head}
         </g>
+        <ellipse cx="18" cy="54" rx="2.2" ry="3.5" fill="${shadeColor(skinHex, -25)}" opacity="0.15"/>
+        <ellipse cx="82" cy="54" rx="2.2" ry="3.5" fill="${shadeColor(skinHex, -25)}" opacity="0.15"/>
+        <ellipse cx="34" cy="48" rx="4" ry="2.5" fill="white" opacity="0.08"/>
+        <ellipse cx="66" cy="48" rx="4" ry="2.5" fill="white" opacity="0.08"/>
     `;
 }
 
@@ -635,22 +862,48 @@ function buildSvg(appearance, age, idSeed) {
     const eyeHex = AvatarLogic.EYE_COLOR_HEX[appearance.eyeColor] || AvatarLogic.EYE_COLOR_HEX.brown;
     const glassesHex = AvatarLogic.GLASSES_COLOR_HEX[appearance.glassesColor] || AvatarLogic.GLASSES_COLOR_HEX.black;
     const hairHex = resolveHairFeatureColor(appearance, age);
+    const outlineHex = skinOutline(skinHex);
+    const noseShape = appearance.noseShape || 'small';
+    const eyelashStyle = appearance.eyelashStyle || 'none';
+    const fs = appearance.faceShape || 'oval';
 
-    // Gradient id is namespaced per-character (idSeed) since several avatars
-    // can be inlined into the DOM at once and SVG ids are document-global.
-    const hairGradId = `hairGrad_${sanitizeId(idSeed)}`;
+    // --- Gradient defs (namespaced per-character to avoid SVG ID collisions) ---
+    const sid = sanitizeId(idSeed);
+    const hairGradId = `hairGrad_${sid}`;
+    const skinGradId = `skinGrad_${sid}`;
+    const irisGradId = `irisGrad_${sid}`;
+
     const hairDefs = `<linearGradient id="${hairGradId}" x1="15%" y1="0%" x2="85%" y2="100%">
         <stop offset="0%" stop-color="${shadeColor(hairHex, 26)}"/>
         <stop offset="48%" stop-color="${hairHex}"/>
         <stop offset="100%" stop-color="${shadeColor(hairHex, -22)}"/>
     </linearGradient>`;
+
+    // Radial skin gradient: lighter center (forehead/nose bridge highlight)
+    // fading to slightly darker edges for 3D roundness.
+    const skinDefs = `<radialGradient id="${skinGradId}" cx="45%" cy="38%" r="55%">
+        <stop offset="0%" stop-color="${shadeColor(skinHex, 12)}"/>
+        <stop offset="70%" stop-color="${skinHex}"/>
+        <stop offset="100%" stop-color="${shadeColor(skinHex, -8)}"/>
+    </radialGradient>`;
+
+    // Iris radial gradient: darker rim → lighter center for depth
+    const irisDefs = `<radialGradient id="${irisGradId}" cx="40%" cy="38%" r="55%">
+        <stop offset="0%" stop-color="${shadeColor(eyeHex, 20)}"/>
+        <stop offset="65%" stop-color="${eyeHex}"/>
+        <stop offset="100%" stop-color="${shadeColor(eyeHex, -25)}"/>
+    </radialGradient>`;
+
+    const allDefs = `<defs>${hairDefs}${skinDefs}${irisDefs}</defs>`;
     const hairPaint = { url: `url(#${hairGradId})`, hex: hairHex };
+    const skinGradUrl = `url(#${skinGradId})`;
+    const irisGradUrl = `url(#${irisGradId})`;
 
     let layers;
 
     if (stage === 'baby') {
         layers = [
-            `<defs>${hairDefs}</defs>`,
+            allDefs,
             babyHeadShape(skinHex),
             babyBlush(),
             babyEyes(eyeHex),
@@ -659,30 +912,34 @@ function buildSvg(appearance, age, idSeed) {
         ].join('');
     } else if (stage === 'child') {
         layers = [
-            `<defs>${hairDefs}</defs>`,
-            childHeadShape(appearance.faceShape, skinHex),
-            eyebrows(appearance.eyebrowStyle, hairHex),
-            eyes(appearance.eyeShape, eyeHex, skinHex),
-            mouth('none'),
-            hairBack(appearance.hairStyle, hairPaint, appearance.faceShape),
+            allDefs,
+            childHeadShape(fs, skinHex),
+            eyebrows(appearance.eyebrowStyle, hairHex, fs),
+            eyes(appearance.eyeShape, eyeHex, skinHex, fs, outlineHex, irisGradUrl, eyelashStyle),
+            nose(noseShape, skinHex, fs),
+            philtrum(skinHex, fs),
+            mouth('none', fs, skinHex),
+            hairBack(appearance.hairStyle, hairPaint, fs),
             glasses(appearance.glassesStyle, glassesHex),
-            hairFront(appearance.hairStyle, hairPaint, appearance.faceShape)
+            hairFront(appearance.hairStyle, hairPaint, fs)
         ].join('');
     } else {
         const facialHairHex = resolveFacialHairColor(appearance, age);
         const wrinkleOpacity = AvatarLogic.getWrinkleOpacity(age);
         layers = [
-            `<defs>${hairDefs}</defs>`,
-            headShape(appearance.faceShape, skinHex),
-            blush(appearance.blushColor),
-            eyebrows(appearance.eyebrowStyle, hairHex),
-            eyes(appearance.eyeShape, eyeHex, skinHex),
-            mouth(appearance.lipstickColor),
+            allDefs,
+            headShape(fs, skinHex, skinGradUrl, outlineHex),
+            blush(appearance.blushColor, fs),
+            eyebrows(appearance.eyebrowStyle, hairHex, fs),
+            eyes(appearance.eyeShape, eyeHex, skinHex, fs, outlineHex, irisGradUrl, eyelashStyle),
+            nose(noseShape, skinHex, fs),
+            philtrum(skinHex, fs),
+            mouth(appearance.lipstickColor, fs, skinHex),
             facialHair(appearance.facialHairStyle, facialHairHex),
             wrinkles(wrinkleOpacity),
-            hairBack(appearance.hairStyle, hairPaint, appearance.faceShape),
+            hairBack(appearance.hairStyle, hairPaint, fs),
             glasses(appearance.glassesStyle, glassesHex),
-            hairFront(appearance.hairStyle, hairPaint, appearance.faceShape)
+            hairFront(appearance.hairStyle, hairPaint, fs)
         ].join('');
     }
 

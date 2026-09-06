@@ -21,7 +21,9 @@ const APPEARANCE_SECTIONS = [
     { title: 'Eyes', fields: [
         { key: 'eyeShape', options: AvatarLogic.EYE_SHAPES },
         { key: 'eyeColor', options: AvatarLogic.EYE_COLORS },
-        { key: 'eyebrowStyle', options: AvatarLogic.EYEBROW_STYLES }
+        { key: 'eyelashStyle', label: 'Eyelashes', options: AvatarLogic.EYELASH_STYLES },
+        { key: 'eyebrowStyle', options: AvatarLogic.EYEBROW_STYLES },
+        { key: 'noseShape', label: 'Nose', options: AvatarLogic.NOSE_SHAPES }
     ]},
     { title: 'Extras', fields: [
         { key: 'facialHairStyle', options: AvatarLogic.FACIAL_HAIR_STYLES },
@@ -120,7 +122,7 @@ function renderGodModeAvatarModalContent() {
                         <div class="space-y-2">
                             ${section.fields.map(field => `
                                 <div>
-                                    <label class="text-[11px] text-slate-300 font-semibold block mb-1 capitalize">${field.key.replace(/([A-Z])/g, ' $1')}</label>
+                                    <label class="text-[11px] text-slate-300 font-semibold block mb-1 capitalize">${field.label || field.key.replace(/([A-Z])/g, ' $1')}</label>
                                     <select data-action="updateGodModeAvatarTrait" data-args="&apos;${field.key}&apos;" id="godmode_select_${field.key}" class="w-full bg-slate-900 border border-slate-700 rounded-lg text-white text-xs px-2.5 py-1.5 focus:outline-none focus:border-amber-400">
                                         ${field.options.map(opt => `
                                             <option value="${opt}" ${editorDraftAppearance[field.key] === opt ? 'selected' : ''}>${opt}</option>
