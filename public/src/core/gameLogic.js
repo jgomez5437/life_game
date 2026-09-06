@@ -2844,12 +2844,7 @@ function evictTenant(user, propertyId) {
 
 function calculateTotalMonthlyMortgages(user) {
     if (!user || !Array.isArray(user.assets)) return 0;
-    return user.assets.reduce((sum, asset) => {
-        if (asset.category === 'property' && asset.mortgage && asset.mortgage.remainingBalance > 0) {
-            return sum + (asset.mortgage.monthlyPayment || 0);
-        }
-        return sum;
-    }, 0);
+    return calculatePropertyMonthlyOutflow(user.assets);
 }
 
 function canAffordMortgage(user, newMonthlyPayment) {
@@ -2941,12 +2936,14 @@ function processMortgagePayments(user) {
 }
 
 function calculatePropertyMonthlyOutflow(assets) {
-    if (!Array.isArray(assets)) return 0;
-    return assets.reduce((sum, asset) => {
-        if (asset.category === 'property' && asset.mortgage && asset.mortgage.remainingBalance > 0) {
-            return sum + asset.mortgage.monthlyPayment;
+    const list = Array.isArray(assets) ? assets : (assets && Array.isArray(assets.assets) ? assets.assets : null);
+    if (!list) return 0;
+    return list.reduce((sum, asset) => {
+        if (asset && asset.category === 'property' && asset.mortgage && asset.mortgage.remainingBalance > 0) {
+            const payment = Math.max(0, Number(asset.mortgage.monthlyPayment) || 0);
+            return sum + payment;
         }
-        return 0;
+        return sum;
     }, 0);
 }
 
