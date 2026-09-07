@@ -28,4 +28,12 @@ describe('Avatar Logic & Age Stage Progression', () => {
         expect(appearance).toHaveProperty('noseShape');
         expect(appearance).toHaveProperty('eyelashStyle');
     });
+
+    test('HAIR_STYLES includes new styles (afro, mohawk, braids, undercut)', () => {
+        expect(AvatarLogic.HAIR_STYLES).toContain('afro');
+        expect(AvatarLogic.HAIR_STYLES).toContain('mohawk');
+        expect(AvatarLogic.HAIR_STYLES).toContain('braids');
+        expect(AvatarLogic.HAIR_STYLES).toContain('undercut');
+        expect(AvatarLogic.HAIR_STYLES.length).toBe(16);
+    });
 });

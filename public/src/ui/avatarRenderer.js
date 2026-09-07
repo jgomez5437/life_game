@@ -505,76 +505,187 @@ function domeTexture(hw, top, hairHex) {
     return strands + highlight + hairline;
 }
 
-// Small tuft hanging from the temple past the ear — added on top of the
-// short dome cap to build out medium/long styles without lowering the
-// dome's own hairline (which stayed correct for the short styles).
-function templeFlap(edge, sideDrop, dir) {
-    return `M ${edge} ${DOME_BASE_Y} Q ${edge + dir * 7} 42 ${edge + dir * 3} ${sideDrop} Q ${edge - dir * 3} ${sideDrop - 6} ${edge} ${DOME_BASE_Y} Z`;
+// Tighter, lower dome cap for shortCrop
+function cropDomeCapPath(hw, top) {
+    const peak = top - 8;
+    const innerTop = top + 2;
+    const innerSide = top + 10;
+    return `M ${50 - hw} ${DOME_BASE_Y - 2} Q 50 ${peak} ${50 + hw} ${DOME_BASE_Y - 2} Q ${50 + hw - 2} ${innerSide} 50 ${innerTop} Q ${50 - hw + 2} ${innerSide} ${50 - hw} ${DOME_BASE_Y - 2} Z`;
 }
 
-function templeFlapStrand(edge, sideDrop, dir) {
-    return `M ${edge + dir * 2} ${DOME_BASE_Y + 4} Q ${edge + dir * 5} ${(DOME_BASE_Y + sideDrop) / 2} ${edge + dir * 1.5} ${sideDrop - 5}`;
+// Forehead fringe wisps for shortCrop
+function cropFringe(hw, top, hairHex) {
+    const dark = shadeColor(hairHex, -28);
+    const innerTop = top + 2;
+    return `<g fill="none" stroke="${dark}" stroke-width="0.7" stroke-linecap="round" stroke-opacity="0.5">
+        <path d="M 43 ${innerTop - 1} Q 45 ${innerTop + 4} 44 ${innerTop + 6}"/>
+        <path d="M 47 ${innerTop} Q 49 ${innerTop + 5} 48 ${innerTop + 7}"/>
+        <path d="M 52 ${innerTop} Q 53 ${innerTop + 5} 55 ${innerTop + 6}"/>
+        <path d="M 57 ${innerTop - 1} Q 59 ${innerTop + 4} 58 ${innerTop + 5}"/>
+    </g>`;
+}
+
+// Slicked-back dome cap hugging closer to skull with flatter crown for ponytail/bun
+function slickedDomeCapPath(hw, top) {
+    const peak = top - 8;
+    const innerTop = top + 3;
+    const innerSide = top + 11;
+    return `M ${50 - hw} ${DOME_BASE_Y} Q 50 ${peak} ${50 + hw} ${DOME_BASE_Y} Q ${50 + hw - 1} ${innerSide} 50 ${innerTop} Q ${50 - hw + 1} ${innerSide} ${50 - hw} ${DOME_BASE_Y} Z`;
+}
+
+// Tension lines radiating towards pull point (e.g. top-back for bun or side-back for ponytail)
+function slickedTexture(hw, top, hairHex, targetX, targetY) {
+    const dark = shadeColor(hairHex, -30);
+    const light = shadeColor(hairHex, 28);
+    const peak = top - 8;
+    const innerTop = top + 3;
+    const lines = [-0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75].map(f => {
+        const xStart = 50 + f * (hw - 3);
+        const yStart = innerTop + Math.abs(f) * 6;
+        return `M ${xStart.toFixed(1)} ${yStart.toFixed(1)} Q ${(xStart * 0.6 + targetX * 0.4).toFixed(1)} ${(yStart * 0.6 + targetY * 0.4).toFixed(1)} ${(xStart * 0.3 + targetX * 0.7).toFixed(1)} ${(yStart * 0.3 + targetY * 0.7).toFixed(1)}`;
+    });
+    const strands = strandGroup(lines, dark, 0.45, 0.6);
+    const highlight = `<path d="M ${50 - hw * 0.35} ${peak + 3} Q 50 ${peak + 1} ${50 + hw * 0.2} ${peak + 4}" fill="none" stroke="${light}" stroke-width="1.1" stroke-linecap="round" stroke-opacity="0.4"/>`;
+    return strands + highlight;
+}
+
+// Soft curtain bangs framing the forehead for medium styles
+function curtainBangs(hw, top, hairHex) {
+    const dark = shadeColor(hairHex, -28);
+    const innerTop = top + 4;
+    return `<g fill="none" stroke="${dark}" stroke-width="0.8" stroke-linecap="round" stroke-opacity="0.5">
+        <path d="M 48 ${innerTop - 2} Q 45 ${innerTop + 5} 41 ${innerTop + 10}"/>
+        <path d="M 47 ${innerTop} Q 43 ${innerTop + 7} 40 ${innerTop + 13}"/>
+        <path d="M 52 ${innerTop - 2} Q 55 ${innerTop + 5} 59 ${innerTop + 10}"/>
+        <path d="M 53 ${innerTop} Q 57 ${innerTop + 7} 60 ${innerTop + 13}"/>
+    </g>`;
+}
+
+
+// Per-style side hair hanging past the ears. Replaces the generic
+// teardrop 'templeFlap' with shapes that vary by length and style.
+
+// Medium side hair — tucks behind ear, ends mid-cheek, slight inward curve.
+function sideHairMedium(edge, sideDrop, dir) {
+    const endY = sideDrop + 6;
+    return `M ${edge} ${DOME_BASE_Y} Q ${edge + dir * 6} 40 ${edge + dir * 5} ${endY - 4} Q ${edge + dir * 3} ${endY + 2} ${edge + dir * 1} ${endY} Q ${edge - dir * 1} ${endY - 8} ${edge} ${DOME_BASE_Y} Z`;
+}
+
+// Long straight side hair — hangs flat and close, sleek lines.
+function sideHairLong(edge, sideDrop, dir) {
+    const endY = sideDrop + 18;
+    return `M ${edge} ${DOME_BASE_Y} Q ${edge + dir * 6} 40 ${edge + dir * 5} ${sideDrop} C ${edge + dir * 6} ${sideDrop + 8} ${edge + dir * 4} ${endY - 4} ${edge + dir * 2} ${endY} Q ${edge} ${endY - 3} ${edge + dir * 0.5} ${endY - 8} C ${edge - dir * 1} ${sideDrop + 4} ${edge - dir * 1} 42 ${edge} ${DOME_BASE_Y} Z`;
+}
+
+// Wavy side hair — gentle S-curves, wider/more voluminous.
+function sideHairWavy(edge, sideDrop, dir) {
+    const endY = sideDrop + 14;
+    return `M ${edge} ${DOME_BASE_Y} Q ${edge + dir * 7} 38 ${edge + dir * 8} ${sideDrop - 4} C ${edge + dir * 4} ${sideDrop + 3} ${edge + dir * 9} ${sideDrop + 8} ${edge + dir * 5} ${endY - 2} Q ${edge + dir * 2} ${endY + 2} ${edge + dir * 1} ${endY} Q ${edge - dir * 1} ${endY - 6} ${edge - dir * 2} ${sideDrop} C ${edge - dir * 1} 44 ${edge} 38 ${edge} ${DOME_BASE_Y} Z`;
+}
+
+function sideHairStrand(edge, sideDrop, dir, endY) {
+    return `M ${edge + dir * 2} ${DOME_BASE_Y + 4} Q ${edge + dir * 5} ${(DOME_BASE_Y + endY) / 2} ${edge + dir * 2.5} ${endY - 5}`;
+}
+
+// Wispy tapered ends at the bottom of side hair
+function sideHairWisps(edge, dir, endY, hairHex) {
+    const dark = shadeColor(hairHex, -25);
+    return `<g fill="none" stroke="${dark}" stroke-width="0.5" stroke-linecap="round" stroke-opacity="0.35">
+        <path d="M ${edge + dir * 3} ${endY - 2} Q ${edge + dir * 4} ${endY + 2} ${edge + dir * 2.5} ${endY + 4}"/>
+        <path d="M ${edge + dir * 1.5} ${endY - 1} Q ${edge + dir * 2} ${endY + 3} ${edge + dir * 0.5} ${endY + 3}"/>
+    </g>`;
+}
+
+// Transition strokes from dome cap to cascade — bridges the gap above the ears
+function domeToBackTransition(edge, dir, hairHex) {
+    const dark = shadeColor(hairHex, -25);
+    return `<g fill="none" stroke="${dark}" stroke-width="0.6" stroke-linecap="round" stroke-opacity="0.3">
+        <path d="M ${edge + dir * 1} ${DOME_BASE_Y} Q ${edge + dir * 3} ${DOME_BASE_Y + 8} ${edge + dir * 2} ${DOME_BASE_Y + 16}"/>
+        <path d="M ${edge} ${DOME_BASE_Y + 2} Q ${edge + dir * 2} ${DOME_BASE_Y + 10} ${edge + dir * 1} ${DOME_BASE_Y + 18}"/>
+    </g>`;
 }
 
 function buzzedCapPath(hw, top) {
     const w = hw - 2;
-    const peak = top - 4;
-    const innerTop = top + 2;
-    const innerSide = top + 8;
-    return `M ${50 - w} 30 Q 50 ${peak} ${50 + w} 30 Q ${50 + w - 2} ${innerSide} 50 ${innerTop} Q ${50 - w + 2} ${innerSide} ${50 - w} 30 Z`;
+    const peak = top - 3;
+    const innerTop = top + 1;
+    const innerSide = top + 6;
+    return `M ${50 - w} 31 Q 50 ${peak} ${50 + w} 31 Q ${50 + w - 2} ${innerSide} 50 ${innerTop} Q ${50 - w + 2} ${innerSide} ${50 - w} 31 Z`;
 }
 
-// Short clipped ticks (not long strands) so a buzz cut reads as cropped
-// stubble rather than the same combed texture as the longer styles.
-function buzzedStrandPaths(hw, top) {
+// Scattered stipple dots instead of evenly-spaced ticks — reads as
+// cropped stubble instead of stitches on a cap.
+function buzzedStipple(hw, top) {
     const w = hw - 2;
-    const peak = top - 4;
-    return [-0.68, -0.4, -0.13, 0.13, 0.4, 0.68].map(f => {
-        const x = 50 + f * w;
-        const t = Math.abs(f) / 0.68;
-        const yTop = peak + 3 + t * 5;
-        return `M ${x.toFixed(1)} ${yTop.toFixed(1)} L ${x.toFixed(1)} ${(yTop + 3.5).toFixed(1)}`;
+    const peak = top - 3;
+    const dots = [];
+    // Deterministic scatter across the cap surface
+    const positions = [
+        [-0.65, 0.7], [-0.45, 0.4], [-0.3, 0.8], [-0.15, 0.3], [-0.5, 0.55],
+        [0.0, 0.6], [0.15, 0.35], [0.3, 0.75], [0.45, 0.45], [0.65, 0.65],
+        [-0.35, 0.2], [0.1, 0.85], [0.55, 0.3], [-0.55, 0.9], [0.4, 0.15],
+        [-0.1, 0.55], [0.25, 0.55], [-0.7, 0.5], [0.7, 0.5], [-0.2, 0.65],
+        [0.5, 0.8], [-0.6, 0.3], [0.6, 0.2], [0.0, 0.15]
+    ];
+    positions.forEach(([fx, fy]) => {
+        const x = 50 + fx * w;
+        const yTop = peak + 3 + Math.abs(fx) * 5;
+        const yBot = 30;
+        const y = yTop + (yBot - yTop) * fy;
+        const r = 0.5 + (fy * 0.3);
+        dots.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(1)}"/>`);
     });
+    return dots.join('');
 }
 
-// Smooth cascade (straight hair), anchored to the head's actual side edge.
+// Smooth cascade (straight hair) — slight natural curve, not perfectly flat.
 function leftCascade(edge, endY) {
-    return `M ${edge - 1} 24 C ${edge - 8} 45 ${edge - 8} 75 ${edge - 4} ${endY} L ${edge + 2} ${endY - 3} C ${edge} 70 ${edge} 45 ${edge + 2} 26 Z`;
+    return `M ${edge - 1} 24 C ${edge - 9} 44 ${edge - 8} 72 ${edge - 5} ${endY - 2} Q ${edge - 3} ${endY + 1} ${edge - 1} ${endY} L ${edge + 2} ${endY - 3} C ${edge} 70 ${edge} 45 ${edge + 2} 26 Z`;
 }
 function rightCascade(edge, endY) {
-    return `M ${edge + 1} 24 C ${edge + 8} 45 ${edge + 8} 75 ${edge + 4} ${endY} L ${edge - 2} ${endY - 3} C ${edge} 70 ${edge} 45 ${edge - 2} 26 Z`;
+    return `M ${edge + 1} 24 C ${edge + 9} 44 ${edge + 8} 72 ${edge + 5} ${endY - 2} Q ${edge + 3} ${endY + 1} ${edge + 1} ${endY} L ${edge - 2} ${endY - 3} C ${edge} 70 ${edge} 45 ${edge - 2} 26 Z`;
 }
 
-// Rippled cascade (wavy hair) — chains three alternating curves along the
-// outer edge instead of one smooth arc, so "wavy" reads distinctly from
-// "straight" at the same length.
+// Rippled cascade (wavy) — gentler amplitude (~30% less than before) so
+// waves read as natural undulation rather than aggressive zigzag.
 function leftCascadeWavy(edge, endY) {
-    const y1 = 24 + (endY - 24) * 0.35, y2 = 24 + (endY - 24) * 0.62, y3 = 24 + (endY - 24) * 0.85;
-    return `M ${edge - 1} 24 C ${edge - 12} ${y1 - 4} ${edge + 2} ${y1 + 4} ${edge - 10} ${y2 - 6} C ${edge - 17} ${y2 + 4} ${edge + 1} ${y3 - 3} ${edge - 4} ${endY} L ${edge + 2} ${endY - 3} C ${edge} 70 ${edge} 45 ${edge + 2} 26 Z`;
+    const y1 = 24 + (endY - 24) * 0.33, y2 = 24 + (endY - 24) * 0.58, y3 = 24 + (endY - 24) * 0.82;
+    return `M ${edge - 1} 24 C ${edge - 8} ${y1 - 3} ${edge + 1} ${y1 + 3} ${edge - 7} ${y2 - 4} C ${edge - 12} ${y2 + 3} ${edge + 1} ${y3 - 2} ${edge - 4} ${endY - 1} Q ${edge - 2} ${endY + 1} ${edge - 1} ${endY} L ${edge + 2} ${endY - 3} C ${edge} 70 ${edge} 45 ${edge + 2} 26 Z`;
 }
 function rightCascadeWavy(edge, endY) {
-    const y1 = 24 + (endY - 24) * 0.35, y2 = 24 + (endY - 24) * 0.62, y3 = 24 + (endY - 24) * 0.85;
-    return `M ${edge + 1} 24 C ${edge + 12} ${y1 - 4} ${edge - 2} ${y1 + 4} ${edge + 10} ${y2 - 6} C ${edge + 17} ${y2 + 4} ${edge - 1} ${y3 - 3} ${edge + 4} ${endY} L ${edge - 2} ${endY - 3} C ${edge} 70 ${edge} 45 ${edge - 2} 26 Z`;
+    const y1 = 24 + (endY - 24) * 0.33, y2 = 24 + (endY - 24) * 0.58, y3 = 24 + (endY - 24) * 0.82;
+    return `M ${edge + 1} 24 C ${edge + 8} ${y1 - 3} ${edge - 1} ${y1 + 3} ${edge + 7} ${y2 - 4} C ${edge + 12} ${y2 + 3} ${edge - 1} ${y3 - 2} ${edge + 4} ${endY - 1} Q ${edge + 2} ${endY + 1} ${edge + 1} ${endY} L ${edge - 2} ${endY - 3} C ${edge} 70 ${edge} 45 ${edge - 2} 26 Z`;
 }
 
-// Interior strand lines for a cascade — parallel offsets of the same outer
-// curve, inset toward center, so long hair shows a few individual locks
-// instead of one flat silhouette. Shared by straight and wavy cascades:
-// the outer path already carries the straight/wavy distinction, these are
-// just depth cues layered on top.
+// Interior cascade strands — 4 per side (up from 2) with a highlight strand.
 function cascadeStrandPaths(edge, endY, dir) {
-    return [3, 6.5].map(inset => {
-        const x1 = edge + dir * (1 - inset * 0.3);
-        const cx = edge + dir * (8 - inset * 0.6);
-        const x2 = edge + dir * (4 - inset * 0.5);
+    return [2, 4.5, 7, 9.5].map(inset => {
+        const x1 = edge + dir * (1 - inset * 0.2);
+        const cx = edge + dir * (8 - inset * 0.4);
+        const x2 = edge + dir * (4 - inset * 0.35);
         return `M ${x1.toFixed(1)} 27 C ${cx.toFixed(1)} 46 ${cx.toFixed(1)} 73 ${x2.toFixed(1)} ${(endY - 5).toFixed(1)}`;
     });
 }
 
 function cascadeTexture(leftEdge, rightEdge, endY, hairHex) {
     const dark = shadeColor(hairHex, -30);
+    const light = shadeColor(hairHex, 25);
     const paths = cascadeStrandPaths(leftEdge, endY, -1).concat(cascadeStrandPaths(rightEdge, endY, 1));
-    return strandGroup(paths, dark, 0.4, 0.7);
+    const strands = strandGroup(paths, dark, 0.4, 0.7);
+    // Highlight strand on each side for glossy volume
+    const highlightPaths = [
+        `M ${leftEdge - 3} 30 Q ${leftEdge - 4} ${(30 + endY) / 2} ${leftEdge - 2} ${endY - 8}`,
+        `M ${rightEdge + 3} 30 Q ${rightEdge + 4} ${(30 + endY) / 2} ${rightEdge + 2} ${endY - 8}`
+    ];
+    const highlights = strandGroup(highlightPaths, light, 0.8, 0.4);
+    // Tapered wispy ends
+    const wisps = `<g fill="none" stroke="${dark}" stroke-width="0.4" stroke-linecap="round" stroke-opacity="0.3">
+        <path d="M ${leftEdge - 4} ${endY - 1} Q ${leftEdge - 5} ${endY + 3} ${leftEdge - 3} ${endY + 4}"/>
+        <path d="M ${leftEdge - 2} ${endY} Q ${leftEdge - 1} ${endY + 2} ${leftEdge - 3} ${endY + 3}"/>
+        <path d="M ${rightEdge + 4} ${endY - 1} Q ${rightEdge + 5} ${endY + 3} ${rightEdge + 3} ${endY + 4}"/>
+        <path d="M ${rightEdge + 2} ${endY} Q ${rightEdge + 1} ${endY + 2} ${rightEdge + 3} ${endY + 3}"/>
+    </g>`;
+    return strands + highlights + wisps;
 }
 
 function hairBack(style, hairPaint, faceShape) {
@@ -588,27 +699,76 @@ function hairBack(style, hairPaint, faceShape) {
 
     switch (style) {
         case 'ponytail': {
-            // Tail is anchored close to the hair edge (rightEdge + a small
-            // constant) rather than far past it, so it hugs the skull and
-            // overlaps the ear — covering it — for every face width instead
-            // of floating off to the side on wider/rounder shapes.
             const tailCx = rightEdge + 3;
-            const tailCy = 56;
-            const rot = 8;
-            return `<g fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5">
-                <rect x="${tailCx - 5}" y="28" width="8" height="6" rx="2"/>
-                <ellipse cx="${tailCx}" cy="${tailCy}" rx="7" ry="23" transform="rotate(${rot} ${tailCx} ${tailCy})"/>
-            </g>
-            <g fill="none" stroke="${dark}" stroke-width="0.7" stroke-linecap="round" stroke-opacity="0.4">
-                <path d="M ${tailCx - 2} 35 Q ${tailCx} 55 ${tailCx - 1} 76" transform="rotate(${rot} ${tailCx} ${tailCy})"/>
-                <path d="M ${tailCx + 3} 35 Q ${tailCx + 5} 55 ${tailCx + 4} 76" transform="rotate(${rot} ${tailCx} ${tailCy})"/>
-            </g>
-            <path d="M ${tailCx - 3} 37 Q ${tailCx - 1} 48 ${tailCx - 2} 58" fill="none" stroke="${light}" stroke-width="1" stroke-linecap="round" stroke-opacity="0.5" transform="rotate(${rot} ${tailCx} ${tailCy})"/>`;
+            const tieY = 30;
+            const rot = 10;
+            // Gathered hair mass behind the ear leading to the tie
+            const gathered = `<path d="M ${rightEdge - 2} 22 Q ${rightEdge + 8} 24 ${tailCx} ${tieY} Q ${rightEdge + 1} ${tieY + 2} ${rightEdge - 4} ${tieY + 4} Q ${rightEdge - 2} 28 ${rightEdge - 2} 22 Z" fill="${fill}" stroke="${dark}" stroke-width="0.8" stroke-opacity="0.3"/>`;
+            // Rounded hair tie band with fabric fold shadow
+            const tie = `<ellipse cx="${tailCx}" cy="${tieY}" rx="4" ry="2.5" fill="${shadeColor(hex, -40)}" stroke="${OUTLINE}" stroke-width="1"/>
+                <path d="M ${tailCx - 2} ${tieY - 1} Q ${tailCx} ${tieY + 1} ${tailCx + 2} ${tieY - 1}" fill="none" stroke="${shadeColor(hex, -55)}" stroke-width="0.6" stroke-opacity="0.4"/>`;
+            // Tapered tail — wide at tie, narrowing to tip with natural gravity curve
+            const tail = `<path d="M ${tailCx - 5} ${tieY + 2} Q ${tailCx - 6} ${tieY + 20} ${tailCx - 3} ${tieY + 40} Q ${tailCx} ${tieY + 48} ${tailCx + 1} ${tieY + 45} Q ${tailCx + 3} ${tieY + 38} ${tailCx + 4} ${tieY + 20} Q ${tailCx + 5} ${tieY + 4} ${tailCx + 5} ${tieY + 2} Z" fill="${fill}" stroke="${OUTLINE}" stroke-width="1.2" transform="rotate(${rot} ${tailCx} ${tieY})"/>`;
+            // Strand lines along the tail
+            const strands = [-3, -1, 1, 3].map(offset => {
+                const sx = tailCx + offset * 0.8;
+                return `<path d="M ${sx} ${tieY + 3} Q ${sx + offset * 0.3} ${tieY + 22} ${sx - offset * 0.2} ${tieY + 38}" transform="rotate(${rot} ${tailCx} ${tieY})"/>`;
+            }).join('');
+            // Tip flare — hair tips splay outward
+            const tipFlare = `<g fill="none" stroke="${dark}" stroke-width="0.5" stroke-linecap="round" stroke-opacity="0.35" transform="rotate(${rot} ${tailCx} ${tieY})">
+                <path d="M ${tailCx - 2} ${tieY + 42} Q ${tailCx - 4} ${tieY + 47} ${tailCx - 5} ${tieY + 50}"/>
+                <path d="M ${tailCx} ${tieY + 44} Q ${tailCx} ${tieY + 49} ${tailCx - 1} ${tieY + 51}"/>
+                <path d="M ${tailCx + 1} ${tieY + 43} Q ${tailCx + 3} ${tieY + 48} ${tailCx + 2} ${tieY + 50}"/>
+            </g>`;
+            return `${gathered}${tail}
+                <g fill="none" stroke="${dark}" stroke-width="0.6" stroke-linecap="round" stroke-opacity="0.4">${strands}</g>
+                <path d="M ${tailCx - 3} ${tieY + 6} Q ${tailCx - 2} ${tieY + 18} ${tailCx - 2} ${tieY + 30}" fill="none" stroke="${light}" stroke-width="0.9" stroke-linecap="round" stroke-opacity="0.45" transform="rotate(${rot} ${tailCx} ${tieY})"/>
+                ${tie}${tipFlare}`;
         }
-        case 'bun':
-            return `<circle cx="50" cy="15" r="9" fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5"/>
-                <path d="M 45 9 Q 50 6 55 9 Q 52 15 50 21 Q 48 15 45 9 Z" fill="none" stroke="${dark}" stroke-width="0.7" stroke-opacity="0.45"/>
-                <path d="M 45 12 Q 47 9 50 8.5" fill="none" stroke="${light}" stroke-width="1" stroke-linecap="round" stroke-opacity="0.55"/>`;
+        case 'bun': {
+            // Asymmetric oblong instead of perfect circle
+            const bunCx = 50, bunCy = 14;
+            const bunPath = `M ${bunCx - 8} ${bunCy + 1} Q ${bunCx - 9} ${bunCy - 5} ${bunCx - 3} ${bunCy - 7} Q ${bunCx + 2} ${bunCy - 9} ${bunCx + 7} ${bunCy - 5} Q ${bunCx + 10} ${bunCy} ${bunCx + 7} ${bunCy + 5} Q ${bunCx + 3} ${bunCy + 8} ${bunCx - 4} ${bunCy + 7} Q ${bunCx - 9} ${bunCy + 5} ${bunCx - 8} ${bunCy + 1} Z`;
+            // Concentric spiral strokes for twisted texture
+            const spirals = `<g fill="none" stroke="${dark}" stroke-width="0.7" stroke-opacity="0.4">
+                <path d="M ${bunCx - 4} ${bunCy - 3} Q ${bunCx} ${bunCy - 6} ${bunCx + 4} ${bunCy - 2} Q ${bunCx + 6} ${bunCy + 2} ${bunCx + 2} ${bunCy + 4}"/>
+                <path d="M ${bunCx - 2} ${bunCy} Q ${bunCx + 1} ${bunCy - 3} ${bunCx + 3} ${bunCy} Q ${bunCx + 2} ${bunCy + 3} ${bunCx - 1} ${bunCy + 2}"/>
+                <path d="M ${bunCx} ${bunCy - 1} Q ${bunCx + 1} ${bunCy} ${bunCx} ${bunCy + 1}"/>
+            </g>`;
+            // Small visible tie at base
+            const tie = `<ellipse cx="${bunCx}" cy="${bunCy + 7}" rx="3" ry="1.5" fill="${shadeColor(hex, -40)}" stroke="${OUTLINE}" stroke-width="0.8"/>`;
+            // Escaped wisps hanging from the bun
+            const wisps = `<g fill="none" stroke="${dark}" stroke-width="0.5" stroke-linecap="round" stroke-opacity="0.3">
+                <path d="M ${bunCx - 5} ${bunCy + 5} Q ${bunCx - 7} ${bunCy + 10} ${bunCx - 6} ${bunCy + 15}"/>
+                <path d="M ${bunCx + 4} ${bunCy + 6} Q ${bunCx + 6} ${bunCy + 12} ${bunCx + 5} ${bunCy + 16}"/>
+            </g>`;
+            return `<path d="${bunPath}" fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5"/>
+                ${spirals}
+                <path d="M ${bunCx - 5} ${bunCy - 4} Q ${bunCx - 3} ${bunCy - 7} ${bunCx} ${bunCy - 7}" fill="none" stroke="${light}" stroke-width="0.9" stroke-linecap="round" stroke-opacity="0.5"/>
+                ${tie}${wisps}`;
+        }
+        case 'braids': {
+            // Two braided ropes hanging down each side
+            const braidWidth = 4;
+            function braid(startX, startY, endY, dir) {
+                const segments = [];
+                const segH = 7;
+                const numSegs = Math.floor((endY - startY) / segH);
+                // Alternating-side chevron pattern for weave texture
+                for (let i = 0; i < numSegs; i++) {
+                    const y = startY + i * segH;
+                    const xOff = (i % 2 === 0 ? 1 : -1) * 1.5;
+                    segments.push(`<path d="M ${startX - braidWidth * 0.5 + xOff} ${y} Q ${startX + xOff * 0.5} ${y + segH * 0.5} ${startX + braidWidth * 0.5 + xOff} ${y + segH}" fill="none" stroke="${dark}" stroke-width="0.7" stroke-opacity="0.4"/>`);
+                    segments.push(`<path d="M ${startX + braidWidth * 0.5 + xOff} ${y} Q ${startX + xOff * 0.5} ${y + segH * 0.5} ${startX - braidWidth * 0.5 + xOff} ${y + segH}" fill="none" stroke="${dark}" stroke-width="0.7" stroke-opacity="0.4"/>`);
+                }
+                // Braid silhouette
+                const silhouette = `<path d="M ${startX - braidWidth} ${startY} Q ${startX - braidWidth - 1} ${(startY + endY) / 2} ${startX - braidWidth + 1} ${endY} L ${startX + braidWidth - 1} ${endY} Q ${startX + braidWidth + 1} ${(startY + endY) / 2} ${startX + braidWidth} ${startY} Z" fill="${fill}" stroke="${OUTLINE}" stroke-width="1.2"/>`;
+                // Small tie at bottom
+                const tie = `<ellipse cx="${startX}" cy="${endY}" rx="3" ry="1.5" fill="${shadeColor(hex, -40)}" stroke="${OUTLINE}" stroke-width="0.8"/>`;
+                return silhouette + segments.join('') + tie;
+            }
+            return braid(leftEdge - 2, 28, 85, -1) + braid(rightEdge + 2, 28, 85, 1);
+        }
         case 'longWavy':
             return `<g fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5">
                 <path d="${leftCascadeWavy(leftEdge, 95)}"/>
@@ -634,82 +794,240 @@ function hairFront(style, hairPaint, faceShape) {
     const { url: fill, hex } = hairPaint;
     const light = shadeColor(hex, 30);
     const dark = shadeColor(hex, -32);
+    const lEdge = 50 - hw;
+    const rEdge = 50 + hw;
 
     switch (style) {
         case 'bald':
             return '';
+
         case 'buzzed':
-            return `<path d="${buzzedCapPath(hw, top)}" fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5"/>
-                ${strandGroup(buzzedStrandPaths(hw, top), dark, 0.5, 0.6)}`;
-        case 'shortSidePart': {
-            const flipX = 50 - hw * 0.35;
-            const attachY = domeOuterY(flipX, hw, top);
-            return `<g fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5">
-                <path d="${domeCapPath(hw, top)}"/>
-                <path d="M ${flipX} ${attachY + 2} L ${flipX + 10} ${attachY - 7} L ${flipX + 14} ${attachY + 3} Z"/>
-            </g>
-            ${domeTexture(hw, top, hex)}
-            <path d="M ${flipX + 2} ${attachY} L ${flipX + 11} ${attachY - 6}" fill="none" stroke="${dark}" stroke-width="0.6" stroke-opacity="0.45"/>`;
-        }
-        case 'pixieSpiky': {
-            const spikeXs = [-0.72, -0.4, 0.4, 0.72].map(f => 50 + f * hw);
-            const spikes = spikeXs.map(x => {
-                const attachY = domeOuterY(x, hw, top);
-                return `<path d="M ${x - 3} ${attachY + 2} L ${x} ${attachY - 9} L ${x + 3} ${attachY + 3} Z"/>`;
-            }).join('');
-            const spikeHighlights = spikeXs.map(x => {
-                const attachY = domeOuterY(x, hw, top);
-                return `<path d="M ${x - 1} ${attachY} L ${x - 0.3} ${attachY - 7.5}"/>`;
-            }).join('');
-            return `<g fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5">
-                <path d="${domeCapPath(hw, top)}"/>
-                ${spikes}
-            </g>
-            ${domeTexture(hw, top, hex)}
-            <g fill="none" stroke="${light}" stroke-width="0.8" stroke-linecap="round" stroke-opacity="0.55">${spikeHighlights}</g>`;
-        }
-        case 'curly': {
-            // Overlapping rounded shapes of varying sizes — avoids the
-            // uniform "cluster of bubbles" look by mixing radii and offsets.
-            const xs =  [-0.85, -0.52, -0.15, 0.2, 0.55, 0.88, -1.05, 1.05, -0.3];
-            const ys =  [30,    16,    10,    14,  18,   30,   42,     42,    38   ];
-            const rs =  [7.5,   8.5,   9.5,   9,   8,   7,    6.5,    6.5,   5.5  ];
-            const circles = xs.map((f, i) => `<circle cx="${(50 + f * hw).toFixed(1)}" cy="${(ys[i] + dy).toFixed(1)}" r="${rs[i]}"/>`).join('');
-            // Double swirl per curl for richer texture
-            const swirls = xs.map((f, i) => {
-                const ccx = 50 + f * hw, ccy = ys[i] + dy, r = rs[i] * 0.5;
-                const r2 = rs[i] * 0.3;
-                return `<path d="M ${(ccx - r).toFixed(1)} ${ccy.toFixed(1)} Q ${ccx.toFixed(1)} ${(ccy - r * 1.6).toFixed(1)} ${(ccx + r).toFixed(1)} ${ccy.toFixed(1)} Q ${ccx.toFixed(1)} ${(ccy + r * 1.6).toFixed(1)} ${(ccx - r).toFixed(1)} ${ccy.toFixed(1)}"/>
-                    <path d="M ${(ccx + r2).toFixed(1)} ${(ccy - r2).toFixed(1)} Q ${(ccx + r2 * 2).toFixed(1)} ${ccy.toFixed(1)} ${(ccx + r2).toFixed(1)} ${(ccy + r2).toFixed(1)}"/>`;
-            }).join('');
-            // Scattered highlights on top curls
-            const highlights = xs.slice(0, 5).map((f, i) => {
-                const ccx = 50 + f * hw, ccy = ys[i] + dy;
-                return `<path d="M ${(ccx - 2).toFixed(1)} ${(ccy - rs[i] * 0.4).toFixed(1)} Q ${ccx.toFixed(1)} ${(ccy - rs[i] * 0.7).toFixed(1)} ${(ccx + 1.5).toFixed(1)} ${(ccy - rs[i] * 0.3).toFixed(1)}"/>`;
-            }).join('');
-            return `<g fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5">${circles}</g>
-                <g fill="none" stroke="${dark}" stroke-width="0.6" stroke-opacity="0.45">${swirls}</g>
-                <g fill="none" stroke="${light}" stroke-width="0.8" stroke-linecap="round" stroke-opacity="0.45">${highlights}</g>`;
-        }
-        case 'ponytail':
-        case 'bun':
+            return `<path d="${buzzedCapPath(hw, top)}" fill="${fill}" stroke="${OUTLINE}" stroke-width="1.1"/>
+                <g fill="${dark}" opacity="0.55">${buzzedStipple(hw, top)}</g>`;
+
         case 'shortCrop':
-            return `<path d="${domeCapPath(hw, top)}" fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5"/>
-                ${domeTexture(hw, top, hex)}`;
-        case 'mediumStraight':
-        case 'shoulderWave':
-        case 'longStraight':
-        case 'longWavy':
-        default:
-            // Same dome/hairline as the short styles (already correctly clears the
-            // eyebrows) plus a temple flap on each side for the extra length.
+            return `<path d="${cropDomeCapPath(hw, top)}" fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5"/>
+                ${domeTexture(hw, top, hex)}
+                ${cropFringe(hw, top, hex)}`;
+
+        case 'shortSidePart': {
+            const partX = 50 - hw * 0.4;
+            const partY = domeOuterY(partX, hw, top) + 1;
+            // Swept wave from left part line over across the right side
+            const sweepPath = `M ${partX} ${partY} C ${partX + 4} ${partY - 8} ${50 + hw * 0.2} ${partY - 10} ${50 + hw * 0.65} ${partY - 2} C ${50 + hw * 0.85} ${partY + 4} ${50 + hw * 0.6} ${partY + 8} ${50 + hw * 0.4} ${partY + 4} C ${50 + hw * 0.1} ${partY + 2} ${partX + 8} ${partY + 3} ${partX} ${partY} Z`;
             return `<g fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5">
                 <path d="${domeCapPath(hw, top)}"/>
-                <path d="${templeFlap(50 - hw, sideDrop, -1)}"/>
-                <path d="${templeFlap(50 + hw, sideDrop, 1)}"/>
+                <path d="${sweepPath}"/>
             </g>
             ${domeTexture(hw, top, hex)}
-            ${strandGroup([templeFlapStrand(50 - hw, sideDrop, -1), templeFlapStrand(50 + hw, sideDrop, 1)], dark, 0.4, 0.6)}`;
+            <path d="M ${partX} ${partY} L ${partX - 0.5} ${partY - 5}" fill="none" stroke="${dark}" stroke-width="0.8" stroke-opacity="0.6"/>
+            <path d="M ${partX + 5} ${partY - 4} Q ${50} ${partY - 6} ${50 + hw * 0.45} ${partY}" fill="none" stroke="${dark}" stroke-width="0.7" stroke-opacity="0.5"/>
+            <path d="M ${partX + 8} ${partY - 6} Q ${50 + hw * 0.1} ${partY - 8} ${50 + hw * 0.4} ${partY - 3}" fill="none" stroke="${light}" stroke-width="0.9" stroke-linecap="round" stroke-opacity="0.55"/>`;
+        }
+
+        case 'pixieSpiky': {
+            const tuftSpecs = [
+                { f: -0.75, h: 7, lean: -3, w: 5 },
+                { f: -0.5,  h: 9, lean: -2, w: 6 },
+                { f: -0.22, h: 12, lean: -1, w: 6 },
+                { f: 0.05,  h: 13, lean: 1, w: 6.5 },
+                { f: 0.32,  h: 11, lean: 2.5, w: 6 },
+                { f: 0.58,  h: 9, lean: 3, w: 5.5 },
+                { f: 0.78,  h: 7, lean: 3.5, w: 4.5 }
+            ];
+            const tufts = tuftSpecs.map(t => {
+                const baseX = 50 + t.f * hw;
+                const baseY = domeOuterY(baseX, hw, top);
+                const tipX = baseX + t.lean;
+                const tipY = baseY - t.h;
+                return `<path d="M ${(baseX - t.w * 0.5).toFixed(1)} ${(baseY + 2).toFixed(1)} Q ${(baseX - t.w * 0.2 + t.lean * 0.3).toFixed(1)} ${((baseY + tipY) * 0.5).toFixed(1)} ${tipX.toFixed(1)} ${tipY.toFixed(1)} Q ${(baseX + t.w * 0.2 + t.lean * 0.7).toFixed(1)} ${((baseY + tipY) * 0.5).toFixed(1)} ${(baseX + t.w * 0.5).toFixed(1)} ${(baseY + 2).toFixed(1)} Z"/>`;
+            }).join('');
+            const tuftHighlights = tuftSpecs.map(t => {
+                const baseX = 50 + t.f * hw;
+                const baseY = domeOuterY(baseX, hw, top);
+                const tipX = baseX + t.lean;
+                const tipY = baseY - t.h;
+                return `<path d="M ${(baseX - 1).toFixed(1)} ${(baseY).toFixed(1)} Q ${(baseX + t.lean * 0.4).toFixed(1)} ${((baseY + tipY) * 0.5).toFixed(1)} ${(tipX - 0.3).toFixed(1)} ${(tipY + 1.5).toFixed(1)}"/>`;
+            }).join('');
+            return `<g fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5">
+                <path d="${domeCapPath(hw, top)}"/>
+                ${tufts}
+            </g>
+            ${domeTexture(hw, top, hex)}
+            <g fill="none" stroke="${light}" stroke-width="0.8" stroke-linecap="round" stroke-opacity="0.55">${tuftHighlights}</g>`;
+        }
+
+        case 'curly': {
+            // Curled lobes framing crown and temples
+            const curlLobes = [
+                { f: -0.9, y: 32, rx: 7, ry: 7.5 },
+                { f: -0.65, y: 22, rx: 8, ry: 8 },
+                { f: -0.32, y: 13, rx: 9, ry: 8.5 },
+                { f: 0.05, y: 9, rx: 9.5, ry: 9 },
+                { f: 0.42, y: 14, rx: 9, ry: 8.5 },
+                { f: 0.72, y: 23, rx: 8, ry: 8 },
+                { f: 0.92, y: 33, rx: 7, ry: 7.5 },
+                { f: -0.5, y: 35, rx: 6, ry: 6.5 },
+                { f: 0.55, y: 35, rx: 6, ry: 6.5 }
+            ];
+            const lobesSvg = curlLobes.map(c => {
+                const cx = 50 + c.f * hw, cy = c.y + dy;
+                return `<path d="M ${(cx - c.rx).toFixed(1)} ${cy.toFixed(1)} C ${(cx - c.rx).toFixed(1)} ${(cy - c.ry * 1.2).toFixed(1)} ${(cx + c.rx).toFixed(1)} ${(cy - c.ry * 1.2).toFixed(1)} ${(cx + c.rx).toFixed(1)} ${cy.toFixed(1)} C ${(cx + c.rx).toFixed(1)} ${(cy + c.ry * 1.1).toFixed(1)} ${(cx - c.rx).toFixed(1)} ${(cy + c.ry * 1.1).toFixed(1)} ${(cx - c.rx).toFixed(1)} ${cy.toFixed(1)} Z"/>`;
+            }).join('');
+            const coils = curlLobes.map(c => {
+                const cx = 50 + c.f * hw, cy = c.y + dy;
+                return `<path d="M ${(cx - c.rx * 0.5).toFixed(1)} ${cy.toFixed(1)} Q ${cx.toFixed(1)} ${(cy - c.ry * 0.7).toFixed(1)} ${(cx + c.rx * 0.4).toFixed(1)} ${cy.toFixed(1)} Q ${cx.toFixed(1)} ${(cy + c.ry * 0.6).toFixed(1)} ${(cx - c.rx * 0.2).toFixed(1)} ${(cy + 1).toFixed(1)}"/>`;
+            }).join('');
+            const curlHighlights = curlLobes.slice(1, 6).map(c => {
+                const cx = 50 + c.f * hw, cy = c.y + dy;
+                return `<path d="M ${(cx - c.rx * 0.4).toFixed(1)} ${(cy - c.ry * 0.4).toFixed(1)} Q ${cx.toFixed(1)} ${(cy - c.ry * 0.8).toFixed(1)} ${(cx + c.rx * 0.3).toFixed(1)} ${(cy - c.ry * 0.3).toFixed(1)}"/>`;
+            }).join('');
+            return `<g fill="${fill}" stroke="${OUTLINE}" stroke-width="1.4">${lobesSvg}</g>
+                <g fill="none" stroke="${dark}" stroke-width="0.7" stroke-linecap="round" stroke-opacity="0.5">${coils}</g>
+                <g fill="none" stroke="${light}" stroke-width="0.9" stroke-linecap="round" stroke-opacity="0.5">${curlHighlights}</g>`;
+        }
+
+        case 'ponytail': {
+            const tailAnchorX = 50 + hw + 3;
+            return `<path d="${slickedDomeCapPath(hw, top)}" fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5"/>
+                ${slickedTexture(hw, top, hex, tailAnchorX, 30)}`;
+        }
+
+        case 'bun':
+            return `<path d="${slickedDomeCapPath(hw, top)}" fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5"/>
+                ${slickedTexture(hw, top, hex, 50, 14)}`;
+
+        case 'mediumStraight':
+            return `<g fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5">
+                <path d="${domeCapPath(hw, top)}"/>
+                <path d="${sideHairMedium(lEdge, sideDrop, -1)}"/>
+                <path d="${sideHairMedium(rEdge, sideDrop, 1)}"/>
+            </g>
+            ${domeTexture(hw, top, hex)}
+            ${curtainBangs(hw, top, hex)}
+            <g fill="none" stroke="${dark}" stroke-width="0.5" stroke-opacity="0.5">
+                <path d="${sideHairStrand(lEdge, sideDrop, -1, sideDrop + 6)}"/>
+                <path d="${sideHairStrand(rEdge, sideDrop, 1, sideDrop + 6)}"/>
+            </g>
+            ${sideHairWisps(lEdge, -1, sideDrop + 6, hex)}
+            ${sideHairWisps(rEdge, 1, sideDrop + 6, hex)}`;
+
+        case 'shoulderWave':
+            return `<g fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5">
+                <path d="${domeCapPath(hw, top)}"/>
+                <path d="${sideHairWavy(lEdge, sideDrop, -1)}"/>
+                <path d="${sideHairWavy(rEdge, sideDrop, 1)}"/>
+            </g>
+            ${domeTexture(hw, top, hex)}
+            <path d="M 46 ${top - 6} Q 47 ${top + 3} 46 ${top + 6}" fill="none" stroke="${dark}" stroke-width="0.8" stroke-opacity="0.6"/>
+            <g fill="none" stroke="${dark}" stroke-width="0.5" stroke-opacity="0.5">
+                <path d="${sideHairStrand(lEdge, sideDrop, -1, sideDrop + 14)}"/>
+                <path d="${sideHairStrand(rEdge, sideDrop, 1, sideDrop + 14)}"/>
+            </g>
+            ${sideHairWisps(lEdge, -1, sideDrop + 14, hex)}
+            ${sideHairWisps(rEdge, 1, sideDrop + 14, hex)}
+            ${domeToBackTransition(lEdge, -1, hex)}
+            ${domeToBackTransition(rEdge, 1, hex)}`;
+
+        case 'longStraight':
+            return `<g fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5">
+                <path d="${domeCapPath(hw, top)}"/>
+                <path d="${sideHairLong(lEdge, sideDrop, -1)}"/>
+                <path d="${sideHairLong(rEdge, sideDrop, 1)}"/>
+            </g>
+            ${domeTexture(hw, top, hex)}
+            <path d="M 50 ${top - 8} L 50 ${top + 5}" fill="none" stroke="${dark}" stroke-width="0.8" stroke-opacity="0.65"/>
+            <g fill="none" stroke="${dark}" stroke-width="0.5" stroke-opacity="0.5">
+                <path d="${sideHairStrand(lEdge, sideDrop, -1, sideDrop + 18)}"/>
+                <path d="${sideHairStrand(rEdge, sideDrop, 1, sideDrop + 18)}"/>
+            </g>
+            ${sideHairWisps(lEdge, -1, sideDrop + 18, hex)}
+            ${sideHairWisps(rEdge, 1, sideDrop + 18, hex)}
+            ${domeToBackTransition(lEdge, -1, hex)}
+            ${domeToBackTransition(rEdge, 1, hex)}`;
+
+        case 'longWavy':
+            return `<g fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5">
+                <path d="${domeCapPath(hw, top)}"/>
+                <path d="${sideHairWavy(lEdge, sideDrop, -1)}"/>
+                <path d="${sideHairWavy(rEdge, sideDrop, 1)}"/>
+            </g>
+            ${domeTexture(hw, top, hex)}
+            <path d="M 47 ${top - 6} Q 48 ${top + 3} 47 ${top + 6}" fill="none" stroke="${dark}" stroke-width="0.8" stroke-opacity="0.6"/>
+            <g fill="none" stroke="${dark}" stroke-width="0.5" stroke-opacity="0.5">
+                <path d="${sideHairStrand(lEdge, sideDrop, -1, sideDrop + 14)}"/>
+                <path d="${sideHairStrand(rEdge, sideDrop, 1, sideDrop + 14)}"/>
+            </g>
+            ${sideHairWisps(lEdge, -1, sideDrop + 14, hex)}
+            ${sideHairWisps(rEdge, 1, sideDrop + 14, hex)}
+            ${domeToBackTransition(lEdge, -1, hex)}
+            ${domeToBackTransition(rEdge, 1, hex)}`;
+
+        case 'afro': {
+            const afroRadius = hw + 14;
+            const afroPath = `M ${50 - afroRadius} 42 C ${50 - afroRadius} 15 ${50 - afroRadius * 0.7} 4 50 4 C ${50 + afroRadius * 0.7} 4 ${50 + afroRadius} 15 ${50 + afroRadius} 42 C ${50 + afroRadius} 52 ${50 + hw + 2} 55 ${50 + hw - 1} 44 C ${50 + hw - 2} 32 50 30 ${50 - hw + 1} 44 C ${50 - hw - 2} 55 ${50 - afroRadius} 52 ${50 - afroRadius} 42 Z`;
+            const afroRings = [
+                `M ${50 - hw * 0.8} 20 Q 50 14 ${50 + hw * 0.8} 20`,
+                `M ${50 - hw * 0.6} 28 Q 50 24 ${50 + hw * 0.6} 28`,
+                `M ${50 - afroRadius * 0.7} 32 Q ${50 - afroRadius * 0.8} 22 ${50 - hw * 0.5} 16`,
+                `M ${50 + afroRadius * 0.7} 32 Q ${50 + afroRadius * 0.8} 22 ${50 + hw * 0.5} 16`
+            ];
+            const ringSvg = strandGroup(afroRings, dark, 0.7, 0.45);
+            const afroHighlight = `<path d="M 40 10 Q 50 7 60 10" fill="none" stroke="${light}" stroke-width="1.3" stroke-linecap="round" stroke-opacity="0.45"/>`;
+            return `<path d="${afroPath}" fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5"/>
+                ${ringSvg}
+                ${afroHighlight}`;
+        }
+
+        case 'mohawk': {
+            const crestTop = top - 18;
+            const crestPath = `M 43 32 Q 44 20 44 ${crestTop + 6} L 47 ${crestTop} L 50 ${crestTop + 3} L 53 ${crestTop - 2} L 56 ${crestTop + 5} Q 56 20 57 32 Q 50 30 43 32 Z`;
+            const crestSpikes = `<g fill="none" stroke="${dark}" stroke-width="0.7" stroke-opacity="0.5">
+                <path d="M 46 28 L 47 ${crestTop + 3}"/>
+                <path d="M 50 26 L 50 ${crestTop + 5}"/>
+                <path d="M 54 28 L 53 ${crestTop + 1}"/>
+            </g>`;
+            const crestHighlight = `<path d="M 48 ${crestTop + 2} L 52 ${crestTop}" fill="none" stroke="${light}" stroke-width="1" stroke-linecap="round" stroke-opacity="0.6"/>`;
+            return `<path d="${buzzedCapPath(hw, top)}" fill="${fill}" stroke="${OUTLINE}" stroke-width="1"/>
+                <g fill="${dark}" opacity="0.4">${buzzedStipple(hw, top)}</g>
+                <path d="${crestPath}" fill="${fill}" stroke="${OUTLINE}" stroke-width="1.4"/>
+                ${crestSpikes}
+                ${crestHighlight}`;
+        }
+
+        case 'braids': {
+            const cornrows = [-0.65, -0.4, -0.15, 0.15, 0.4, 0.65].map(f => {
+                const x = 50 + f * (hw - 4);
+                const yStart = DOME_BASE_Y - 2;
+                const yEnd = top + 2;
+                return `<path d="M ${x.toFixed(1)} ${yStart} Q ${(x * 0.8 + 50 * 0.2).toFixed(1)} ${((yStart + yEnd) * 0.5).toFixed(1)} ${(50 + f * 6).toFixed(1)} ${yEnd}"/>`;
+            });
+            return `<path d="${slickedDomeCapPath(hw, top)}" fill="${fill}" stroke="${OUTLINE}" stroke-width="1.4"/>
+                <g fill="none" stroke="${dark}" stroke-width="0.8" stroke-linecap="round" stroke-opacity="0.55">${cornrows.join('')}</g>
+                <path d="M ${50 - hw * 0.4} ${top + 4} Q 50 ${top + 1} ${50 + hw * 0.4} ${top + 4}" fill="none" stroke="${light}" stroke-width="0.9" stroke-opacity="0.4"/>`;
+        }
+
+        case 'undercut': {
+            const partX = 50 - hw * 0.35;
+            const sweepTop = top - 11;
+            const sweepPath = `M ${partX} 32 C ${partX} ${sweepTop + 2} 50 ${sweepTop} ${50 + hw * 0.7} ${sweepTop + 4} C ${50 + hw + 2} ${sweepTop + 14} ${50 + hw + 1} 48 ${50 + hw * 0.65} 52 C ${50 + hw * 0.3} 50 50 36 ${partX} 32 Z`;
+            return `<path d="${buzzedCapPath(hw, top)}" fill="${fill}" stroke="${OUTLINE}" stroke-width="1"/>
+                <g fill="${dark}" opacity="0.4">${buzzedStipple(hw, top)}</g>
+                <path d="${sweepPath}" fill="${fill}" stroke="${OUTLINE}" stroke-width="1.4"/>
+                <g fill="none" stroke="${dark}" stroke-width="0.7" stroke-opacity="0.45">
+                    <path d="M ${partX + 4} 26 Q 52 ${sweepTop + 3} ${50 + hw * 0.6} 44"/>
+                    <path d="M ${partX + 8} 24 Q 55 ${sweepTop + 5} ${50 + hw * 0.7} 48"/>
+                </g>
+                <path d="M 48 ${sweepTop + 1} Q ${50 + hw * 0.3} ${sweepTop + 2} ${50 + hw * 0.55} ${sweepTop + 6}" fill="none" stroke="${light}" stroke-width="1.1" stroke-linecap="round" stroke-opacity="0.55"/>`;
+        }
+
+        default:
+            return `<g fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5">
+                <path d="${domeCapPath(hw, top)}"/>
+                <path d="${sideHairMedium(lEdge, sideDrop, -1)}"/>
+                <path d="${sideHairMedium(rEdge, sideDrop, 1)}"/>
+            </g>
+            ${domeTexture(hw, top, hex)}`;
     }
 }
 

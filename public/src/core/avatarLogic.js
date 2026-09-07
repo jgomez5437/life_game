@@ -28,17 +28,17 @@ const EYELASH_STYLES = ['none', 'subtle', 'full', 'dramatic'];
 const HAIR_STYLES = [
     'bald', 'buzzed', 'shortCrop', 'shortSidePart', 'pixieSpiky',
     'mediumStraight', 'curly', 'shoulderWave', 'longStraight',
-    'longWavy', 'ponytail', 'bun'
+    'longWavy', 'ponytail', 'bun', 'afro', 'mohawk', 'braids', 'undercut'
 ];
 // Styles whose hair extends behind the ears/shoulders and needs a back layer.
-const HAIR_STYLES_WITH_BACK_LAYER = ['shoulderWave', 'longStraight', 'longWavy', 'ponytail', 'bun'];
+const HAIR_STYLES_WITH_BACK_LAYER = ['shoulderWave', 'longStraight', 'longWavy', 'ponytail', 'bun', 'braids'];
 
 // Gendered pools random generation draws from (see generateRandomAppearance)
 // so classmates/strangers/family land on a style typical for their gender.
 // Manual selection (character creation's appearance panel) is unaffected —
 // it always offers the full HAIR_STYLES list regardless of gender.
-const MALE_HAIR_STYLES = ['bald', 'buzzed', 'shortCrop', 'shortSidePart', 'pixieSpiky', 'mediumStraight', 'curly', 'shoulderWave', 'longStraight', 'longWavy', 'ponytail', 'bun'];
-const FEMALE_HAIR_STYLES = ['buzzed', 'shortCrop', 'shortSidePart', 'pixieSpiky', 'mediumStraight', 'curly', 'shoulderWave', 'longStraight', 'longWavy', 'ponytail', 'bun'];
+const MALE_HAIR_STYLES = ['bald', 'buzzed', 'shortCrop', 'shortSidePart', 'pixieSpiky', 'mediumStraight', 'curly', 'shoulderWave', 'longStraight', 'longWavy', 'ponytail', 'bun', 'afro', 'mohawk', 'undercut'];
+const FEMALE_HAIR_STYLES = ['buzzed', 'shortCrop', 'shortSidePart', 'pixieSpiky', 'mediumStraight', 'curly', 'shoulderWave', 'longStraight', 'longWavy', 'ponytail', 'bun', 'afro', 'braids'];
 
 const HAIR_COLORS = ['black', 'darkBrown', 'brown', 'lightBrown', 'blonde', 'red', 'gray'];
 const HAIR_COLOR_HEX = {
