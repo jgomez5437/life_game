@@ -1153,9 +1153,28 @@ body.light-mode .bg-white {
 
 /* Avatar Containers in Light Mode */
 body.light-mode #avatar-container,
-body.light-mode #avatar-preview {
+body.light-mode #avatar-preview,
+body.light-mode #avatar-mini-preview {
     background-color: #f8fafc !important;
     border-color: #cbd5e1 !important;
+}
+
+body.light-mode #avatar-stage-card,
+body.light-mode #mobile-sticky-dock {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+}
+
+body.light-mode #avatar-preview-container {
+    background-color: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
+}
+
+/* Character Creation Studio Zoom Transitions */
+#avatar-zoom-wrapper,
+#avatar-mini-zoom-wrapper {
+    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    transform-origin: 50% 50%;
 }
 
 

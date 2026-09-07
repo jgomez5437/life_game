@@ -1,7 +1,16 @@
 import { jest } from '@jest/globals';
 import { state, setVerifiedPurchases } from '../../../public/src/core/state.js';
 import { UI } from '../../../public/src/ui/ui.js';
-import { submitCharacter } from '../../../public/src/features/player/charCreationScreen.js';
+import {
+    submitCharacter,
+    renderCharCreation,
+    setCharTab,
+    toggleAvatarZoom,
+    setAvatarZoom,
+    pickTraitOption,
+    randomizePlayerName,
+    cycleTrait
+} from '../../../public/src/features/player/charCreationScreen.js';
 import { getSlotsStore } from '../../../public/src/core/saveSlotManager.js';
 
 describe('Character Creation Screen Suite', () => {
@@ -123,5 +132,98 @@ describe('Character Creation Screen Suite', () => {
         const logs = state.gameState.lifeLog.flatMap(l => l.events.map(e => e.msg));
         const hasBirthLog = logs.some(m => m.includes('Born in') || m.includes('born'));
         expect(hasBirthLog).toBe(true);
+    });
+
+    test('renderCharCreation mounts avatar studio stage, tabs, zoom buttons, and dice button', () => {
+        const renderScreenSpy = jest.spyOn(UI, 'renderScreen').mockImplementation((html) => {
+            document.body.innerHTML = html;
+        });
+
+        renderCharCreation();
+
+        expect(renderScreenSpy).toHaveBeenCalled();
+        expect(document.getElementById('avatar-preview')).not.toBeNull();
+        expect(document.getElementById('avatar-mini-preview')).not.toBeNull();
+        expect(document.getElementById('avatar-zoom-wrapper')).not.toBeNull();
+        expect(document.getElementById('btn-zoom-1')).not.toBeNull();
+        expect(document.getElementById('btn-zoom-2')).not.toBeNull();
+        expect(document.querySelector('[data-action="randomizePlayerName"]')).not.toBeNull();
+        expect(document.querySelector('[data-action="setCharTab"]')).not.toBeNull();
+    });
+
+    test('toggleAvatarZoom and setAvatarZoom toggle zoom levels and wrapper transforms', () => {
+        jest.spyOn(UI, 'renderScreen').mockImplementation((html) => {
+            document.body.innerHTML = html;
+        });
+        renderCharCreation();
+
+        const zoomWrapper = document.getElementById('avatar-zoom-wrapper');
+        const miniZoomWrapper = document.getElementById('avatar-mini-zoom-wrapper');
+
+        // Initially at 1x
+        expect(zoomWrapper.style.transform).toBe('scale(1) translateY(0)');
+
+        // Toggle to 1.75x
+        toggleAvatarZoom();
+        expect(zoomWrapper.style.transform).toBe('scale(1.75) translateY(6%)');
+        expect(miniZoomWrapper.style.transform).toBe('scale(1.75) translateY(6%)');
+
+        // Toggle back to 1x
+        toggleAvatarZoom();
+        expect(zoomWrapper.style.transform).toBe('scale(1) translateY(0)');
+
+        // Explicitly set zoom
+        setAvatarZoom(1.75);
+        expect(zoomWrapper.style.transform).toBe('scale(1.75) translateY(6%)');
+    });
+
+    test('setCharTab changes active category and updates appearance panel', () => {
+        jest.spyOn(UI, 'renderScreen').mockImplementation((html) => {
+            document.body.innerHTML = html;
+        });
+        renderCharCreation();
+
+        // Switch to 'hair' tab
+        setCharTab('hair');
+        const panel = document.getElementById('appearance-panel');
+        expect(panel.innerHTML).toContain('Hairstyle');
+        expect(panel.innerHTML).toContain('Hair Color');
+
+        // Switch to 'eyes' tab
+        setCharTab('eyes');
+        expect(panel.innerHTML).toContain('Eye Shape');
+        expect(panel.innerHTML).toContain('Eye Color');
+    });
+
+    test('pickTraitOption updates selected trait and renders swatch selection', () => {
+        jest.spyOn(UI, 'renderScreen').mockImplementation((html) => {
+            document.body.innerHTML = html;
+        });
+        renderCharCreation();
+
+        setCharTab('face');
+        pickTraitOption('skinTone', 'tone4');
+
+        const preview = document.getElementById('avatar-preview');
+        expect(preview.innerHTML).toContain('<svg');
+        const panel = document.getElementById('appearance-panel');
+        expect(panel.innerHTML).toContain('Tone 4');
+    });
+
+    test('randomizePlayerName generates a valid name into inp-name and updates badges', () => {
+        jest.spyOn(UI, 'renderScreen').mockImplementation((html) => {
+            document.body.innerHTML = html;
+        });
+        renderCharCreation();
+
+        const nameInput = document.getElementById('inp-name');
+        nameInput.value = '';
+
+        randomizePlayerName();
+
+        expect(nameInput.value.trim().length).toBeGreaterThan(0);
+        expect(nameInput.value).toContain(' '); // First and Last Name
+        const mobileDockName = document.getElementById('mobile-dock-name');
+        expect(mobileDockName.innerText).toBe(nameInput.value);
     });
 });
