@@ -134,7 +134,7 @@ describe('Character Creation Screen Suite', () => {
         expect(hasBirthLog).toBe(true);
     });
 
-    test('renderCharCreation mounts avatar studio stage, tabs, zoom buttons, and dice button', () => {
+    test('renderCharCreation mounts avatar studio stage, tabs, zoom buttons, dice button, and Start Life CTA', () => {
         const renderScreenSpy = jest.spyOn(UI, 'renderScreen').mockImplementation((html) => {
             document.body.innerHTML = html;
         });
@@ -143,12 +143,13 @@ describe('Character Creation Screen Suite', () => {
 
         expect(renderScreenSpy).toHaveBeenCalled();
         expect(document.getElementById('avatar-preview')).not.toBeNull();
-        expect(document.getElementById('avatar-mini-preview')).not.toBeNull();
+        expect(document.getElementById('avatar-mini-preview')).toBeNull(); // No secondary mini avatar
         expect(document.getElementById('avatar-zoom-wrapper')).not.toBeNull();
         expect(document.getElementById('btn-zoom-1')).not.toBeNull();
         expect(document.getElementById('btn-zoom-2')).not.toBeNull();
         expect(document.querySelector('[data-action="randomizePlayerName"]')).not.toBeNull();
         expect(document.querySelector('[data-action="setCharTab"]')).not.toBeNull();
+        expect(document.getElementById('btn-start-life')).not.toBeNull();
     });
 
     test('toggleAvatarZoom and setAvatarZoom toggle zoom levels and wrapper transforms', () => {
@@ -158,7 +159,6 @@ describe('Character Creation Screen Suite', () => {
         renderCharCreation();
 
         const zoomWrapper = document.getElementById('avatar-zoom-wrapper');
-        const miniZoomWrapper = document.getElementById('avatar-mini-zoom-wrapper');
 
         // Initially at 1x
         expect(zoomWrapper.style.transform).toBe('scale(1) translateY(0)');
@@ -166,7 +166,6 @@ describe('Character Creation Screen Suite', () => {
         // Toggle to 1.75x
         toggleAvatarZoom();
         expect(zoomWrapper.style.transform).toBe('scale(1.75) translateY(6%)');
-        expect(miniZoomWrapper.style.transform).toBe('scale(1.75) translateY(6%)');
 
         // Toggle back to 1x
         toggleAvatarZoom();
@@ -185,14 +184,18 @@ describe('Character Creation Screen Suite', () => {
 
         // Switch to 'hair' tab
         setCharTab('hair');
-        const panel = document.getElementById('appearance-panel');
-        expect(panel.innerHTML).toContain('Hairstyle');
-        expect(panel.innerHTML).toContain('Hair Color');
+        const hairPanel = document.getElementById('panel-hair');
+        expect(hairPanel.classList.contains('hidden')).toBe(false);
+        expect(hairPanel.innerHTML).toContain('Hairstyle');
+        expect(hairPanel.innerHTML).toContain('Hair Color');
 
         // Switch to 'eyes' tab
         setCharTab('eyes');
-        expect(panel.innerHTML).toContain('Eye Shape');
-        expect(panel.innerHTML).toContain('Eye Color');
+        const eyesPanel = document.getElementById('panel-eyes');
+        expect(eyesPanel.classList.contains('hidden')).toBe(false);
+        expect(hairPanel.classList.contains('hidden')).toBe(true);
+        expect(eyesPanel.innerHTML).toContain('Eye Shape');
+        expect(eyesPanel.innerHTML).toContain('Eye Color');
     });
 
     test('pickTraitOption updates selected trait and renders swatch selection', () => {
@@ -206,7 +209,7 @@ describe('Character Creation Screen Suite', () => {
 
         const preview = document.getElementById('avatar-preview');
         expect(preview.innerHTML).toContain('<svg');
-        const panel = document.getElementById('appearance-panel');
+        const panel = document.getElementById('panel-face');
         expect(panel.innerHTML).toContain('Tone 4');
     });
 
@@ -223,7 +226,30 @@ describe('Character Creation Screen Suite', () => {
 
         expect(nameInput.value.trim().length).toBeGreaterThan(0);
         expect(nameInput.value).toContain(' '); // First and Last Name
-        const mobileDockName = document.getElementById('mobile-dock-name');
-        expect(mobileDockName.innerText).toBe(nameInput.value);
+        const desktopName = document.getElementById('desktop-avatar-name');
+        expect(desktopName.innerText).toBe(nameInput.value);
+    });
+
+    test('setCharTab preserves input values across tab switches and keeps DOM inputs alive', () => {
+        jest.spyOn(UI, 'renderScreen').mockImplementation((html) => {
+            document.body.innerHTML = html;
+        });
+        renderCharCreation();
+
+        const nameInput = document.getElementById('inp-name');
+        expect(nameInput).not.toBeNull();
+        nameInput.value = 'Sir Lancelot';
+
+        // Switch to hair tab
+        setCharTab('hair');
+        expect(document.getElementById('panel-hair').classList.contains('hidden')).toBe(false);
+        expect(document.getElementById('panel-identity').classList.contains('hidden')).toBe(true);
+        // Form input is still alive with value intact
+        expect(document.getElementById('inp-name').value).toBe('Sir Lancelot');
+
+        // Switch back to identity
+        setCharTab('identity');
+        expect(document.getElementById('panel-identity').classList.contains('hidden')).toBe(false);
+        expect(document.getElementById('inp-name').value).toBe('Sir Lancelot');
     });
 });

@@ -18,6 +18,7 @@ let draftAppearance = null;
 let previewVersion = 0;
 let activeCategory = 'face'; // 'face' | 'hair' | 'eyes' | 'style'
 let zoomLevel = 1; // 1 = Portrait (1x), 1.75 = Face Close-up (1.75x)
+let activeTab = 'identity'; // 'identity' | 'face' | 'hair' | 'eyes' | 'style' | 'god_mode'
 
 export function updateCityDropdown(countryName) {
     const selectedCountry = (typeof countryName === 'string' ? countryName : null) || (get('inp-country') ? get('inp-country').value : 'United States');
@@ -28,7 +29,21 @@ export function updateCityDropdown(countryName) {
     }
 }
 
-// --- APPEARANCE DRAFT & CATEGORIES ---
+// --- COMPLETION TABS & APPEARANCE CATALOGS ---
+export function getCompletionTabs() {
+    const tabs = [
+        { id: 'identity', label: 'Identity', icon: 'fa-id-card' },
+        { id: 'face', label: 'Face', icon: 'fa-user' },
+        { id: 'hair', label: 'Hair', icon: 'fa-scissors' },
+        { id: 'eyes', label: 'Eyes', icon: 'fa-eye' },
+        { id: 'style', label: 'Style', icon: 'fa-glasses' }
+    ];
+    if (hasPurchasedPack('god_mode')) {
+        tabs.push({ id: 'god_mode', label: 'God Mode', icon: 'fa-bolt' });
+    }
+    return tabs;
+}
+
 export const APPEARANCE_CATEGORIES = [
     { id: 'face', label: 'Face', icon: 'fa-user' },
     { id: 'hair', label: 'Hair', icon: 'fa-scissors' },
@@ -96,8 +111,26 @@ function findField(key) {
 }
 
 export function setCharTab(tabId) {
-    activeCategory = tabId;
-    renderAppearancePanel();
+    activeTab = tabId;
+    const tabs = getCompletionTabs();
+    tabs.forEach(t => {
+        const btn = get(`tab-btn-${t.id}`);
+        if (btn) {
+            if (t.id === activeTab) {
+                btn.className = "flex-1 min-w-[70px] py-2 px-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 bg-blue-600 text-white shadow-md shadow-blue-500/25";
+            } else {
+                btn.className = "flex-1 min-w-[70px] py-2 px-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800/60";
+            }
+        }
+        const panel = get(`panel-${t.id}`);
+        if (panel) {
+            if (t.id === activeTab) {
+                panel.classList.remove('hidden');
+            } else {
+                panel.classList.add('hidden');
+            }
+        }
+    });
 }
 
 export function toggleAvatarZoom() {
@@ -117,11 +150,6 @@ function applyAvatarZoom() {
     if (wrapper) {
         wrapper.style.transform = transformVal;
     }
-    
-    const miniWrapper = get('avatar-mini-zoom-wrapper');
-    if (miniWrapper) {
-        miniWrapper.style.transform = transformVal;
-    }
 
     const btnZoom1 = get('btn-zoom-1');
     const btnZoom2 = get('btn-zoom-2');
@@ -139,17 +167,27 @@ function applyAvatarZoom() {
     if (zoomBadge) {
         zoomBadge.innerHTML = `<i class="fas ${zoomLevel > 1 ? 'fa-search-minus' : 'fa-search-plus'} text-blue-400 mr-1"></i><span>${zoomLevel > 1 ? '1.75x Close-Up' : '1x Portrait'}</span>`;
     }
+}
 
-    const mobileDockZoomLabel = get('mobile-dock-zoom-label');
-    if (mobileDockZoomLabel) {
-        mobileDockZoomLabel.innerText = zoomLevel > 1 ? '1.75x' : '1x';
+function updateAvatarPreview() {
+    previewVersion++;
+    const preview = get('avatar-preview');
+    if (preview) {
+        preview.innerHTML = renderAvatar({
+            id: 'char-creation-preview',
+            age: 25,
+            appearance: draftAppearance,
+            avatarVersion: previewVersion
+        });
     }
+    applyAvatarZoom();
 }
 
 export function pickTraitOption(key, value) {
     if (!draftAppearance) return;
     draftAppearance[key] = value;
-    renderAppearancePanel();
+    updateAvatarPreview();
+    renderAppearancePanels();
 }
 
 export function cycleTrait(key, direction) {
@@ -168,7 +206,8 @@ export function cycleTrait(key, direction) {
     const idx = options.indexOf(draftAppearance[key]);
     const next = (idx + direction + options.length) % options.length;
     draftAppearance[key] = options[next];
-    renderAppearancePanel();
+    updateAvatarPreview();
+    renderAppearancePanels();
 }
 
 export function randomizeSection(identifier) {
@@ -188,12 +227,14 @@ export function randomizeSection(identifier) {
         }
         draftAppearance[f.key] = options[Math.floor(Math.random() * options.length)];
     });
-    renderAppearancePanel();
+    updateAvatarPreview();
+    renderAppearancePanels();
 }
 
 export function randomizeAllTraits() {
     draftAppearance = AvatarLogic.generateRandomAppearance('draft-' + Math.random(), selectedGender);
-    renderAppearancePanel();
+    updateAvatarPreview();
+    renderAppearancePanels();
 }
 
 export function randomizePlayerName() {
@@ -207,10 +248,6 @@ export function randomizePlayerName() {
     const input = get('inp-name');
     if (input) {
         input.value = `${first} ${last}`;
-    }
-    const mobileDockName = get('mobile-dock-name');
-    if (mobileDockName) {
-        mobileDockName.innerText = `${first} ${last}`;
     }
     const desktopNameBadge = get('desktop-avatar-name');
     if (desktopNameBadge) {
@@ -298,61 +335,30 @@ function renderFieldControl(f) {
     `;
 }
 
-function renderAppearancePanel() {
-    previewVersion++;
-    const avatarSvg = renderAvatar({
-        id: 'char-creation-preview',
-        age: 25,
-        appearance: draftAppearance,
-        avatarVersion: previewVersion
-    });
+function renderAppearancePanels() {
+    const wrapper = get('appearance-panels-wrapper');
+    if (!wrapper) return;
+    wrapper.innerHTML = ['face', 'hair', 'eyes', 'style'].map(catId => {
+        const section = APPEARANCE_SECTIONS.find(s => s.category === catId);
+        if (!section) return '';
+        const isHidden = activeTab !== catId;
+        return `
+            <div id="panel-${catId}" class="${isHidden ? 'hidden' : ''} space-y-3">
+                ${section.fields.filter(f => {
+                    if (f.genderLimit && f.genderLimit !== selectedGender) return false;
+                    if (f.dependsOn && draftAppearance[f.dependsOn] === 'none') return false;
+                    return true;
+                }).map(f => renderFieldControl(f)).join('')}
 
-    const preview = get('avatar-preview');
-    if (preview) {
-        preview.innerHTML = avatarSvg;
-    }
-
-    const miniPreview = get('avatar-mini-preview');
-    if (miniPreview) {
-        miniPreview.innerHTML = avatarSvg;
-    }
-
-    applyAvatarZoom();
-
-    const panel = get('appearance-panel');
-    if (!panel) return;
-
-    const currentSection = APPEARANCE_SECTIONS.find(s => s.category === activeCategory) || APPEARANCE_SECTIONS[0];
-
-    panel.innerHTML = `
-        <!-- Category Tab Buttons -->
-        <div class="grid grid-cols-4 gap-1.5 p-1 bg-slate-950/80 border border-slate-800 rounded-2xl mb-4 select-none">
-            ${APPEARANCE_CATEGORIES.map(cat => `
-                <button type="button" data-action="setCharTab" data-args="'${cat.id}'" 
-                    class="${activeCategory === cat.id ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'} py-2 px-1 rounded-xl text-xs font-bold transition flex flex-col sm:flex-row items-center justify-center gap-1.5">
-                    <i class="fas ${cat.icon} text-xs"></i>
-                    <span>${cat.label}</span>
-                </button>
-            `).join('')}
-        </div>
-
-        <!-- Active Category Fields -->
-        <div class="space-y-3">
-            ${currentSection.fields.filter(f => {
-                if (f.genderLimit && f.genderLimit !== selectedGender) return false;
-                if (f.dependsOn && draftAppearance[f.dependsOn] === 'none') return false;
-                return true;
-            }).map(f => renderFieldControl(f)).join('')}
-
-            <!-- Randomize This Category -->
-            <div class="pt-2 flex justify-end">
-                <button type="button" data-action="randomizeSection" data-args="'${currentSection.category}'" class="text-xs font-semibold text-slate-400 hover:text-blue-300 transition flex items-center gap-1.5 py-1 px-2.5 rounded-lg hover:bg-slate-800/60">
-                    <i class="fas fa-dice text-blue-400"></i>
-                    <span>Randomize ${currentSection.title}</span>
-                </button>
+                <div class="pt-2 flex justify-end">
+                    <button type="button" data-action="randomizeSection" data-args="'${section.category}'" class="text-xs font-semibold text-slate-400 hover:text-blue-300 transition flex items-center gap-1.5 py-1 px-2.5 rounded-lg hover:bg-slate-800/60">
+                        <i class="fas fa-dice text-blue-400"></i>
+                        <span>Randomize ${section.title}</span>
+                    </button>
+                </div>
             </div>
-        </div>
-    `;
+        `;
+    }).join('');
 }
 
 export const renderCharCreation = () => {
@@ -361,222 +367,193 @@ export const renderCharCreation = () => {
     }
     UI.resetHeader();
     draftAppearance = AvatarLogic.generateRandomAppearance('draft-' + Math.random(), selectedGender);
+    activeTab = 'identity';
+
+    const tabs = getCompletionTabs();
 
     const creationHTML = `
-        <div class="fade-in max-w-4xl mx-auto px-2 sm:px-4 py-2">
+        <div class="fade-in max-w-xl mx-auto px-3 sm:px-4 py-2">
             <!-- Header Banner -->
-            <div class="text-center pt-1 pb-4">
-                <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-tr from-green-500/20 to-blue-500/20 border border-green-500/30 text-green-400 mb-2 shadow-inner">
-                    <i class="fas fa-baby text-2xl"></i>
+            <div class="text-center pt-1 pb-3">
+                <div class="inline-flex items-center justify-center w-10 h-10 rounded-2xl bg-gradient-to-tr from-green-500/20 to-blue-500/20 border border-green-500/30 text-green-400 mb-1.5 shadow-inner">
+                    <i class="fas fa-baby text-xl"></i>
                 </div>
                 <h2 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">New Life</h2>
-                <p class="text-xs sm:text-sm text-slate-400">Design your destiny and shape your identity.</p>
+                <p class="text-xs text-slate-400">Design your destiny and shape your identity.</p>
             </div>
 
-            <!-- Mobile Sticky Dock (Always visible on mobile as user scrolls) -->
-            <div id="mobile-sticky-dock" class="md:hidden sticky top-0 z-30 bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-2xl px-3 py-2 shadow-xl mb-4 flex items-center justify-between gap-3">
-                <div class="flex items-center gap-2.5 min-w-0 cursor-pointer" data-action="toggleAvatarZoom" title="Click to Toggle Zoom">
-                    <div class="w-12 h-12 rounded-2xl bg-slate-800 border-2 border-slate-600/80 overflow-hidden flex-shrink-0 relative shadow-inner">
-                        <div id="avatar-mini-zoom-wrapper" class="w-full h-full transition-transform duration-300 ease-out origin-center">
-                            <div id="avatar-mini-preview" class="w-full h-full flex items-center justify-center"></div>
-                        </div>
+            <!-- Single Showcase Avatar Stage at Top -->
+            <div id="avatar-stage-card" class="relative bg-slate-800/90 border border-slate-700/80 rounded-3xl p-4 sm:p-5 shadow-2xl overflow-hidden flex flex-col items-center mb-4">
+                <!-- Ambient Studio Glow Backdrop -->
+                <div class="absolute inset-0 bg-gradient-to-b from-blue-500/10 via-transparent to-slate-950/40 pointer-events-none"></div>
+                <div class="absolute -top-10 left-1/2 -translate-x-1/2 w-44 h-44 bg-blue-500/15 blur-3xl rounded-full pointer-events-none"></div>
+
+                <!-- Stage Header Row -->
+                <div class="relative z-10 w-full flex items-center justify-between mb-2.5 px-1 text-xs">
+                    <span id="desktop-avatar-name" class="font-bold text-white truncate max-w-[180px]">New Life</span>
+                    <span class="text-[10px] uppercase tracking-wider font-bold text-slate-400 bg-slate-900/80 px-2.5 py-0.5 rounded-full border border-slate-700">Preview (Age 25)</span>
+                </div>
+
+                <!-- The Avatar Viewport (Single Unified Avatar) -->
+                <div id="avatar-preview-container" data-action="toggleAvatarZoom" class="relative w-40 h-40 sm:w-48 sm:h-48 rounded-3xl bg-slate-900/90 border-2 border-slate-700/80 shadow-2xl overflow-hidden cursor-pointer hover:border-blue-500/50 transition-all duration-300 flex items-center justify-center select-none" title="Click to Toggle Close-Up / Portrait View">
+                    <div id="avatar-zoom-wrapper" class="w-full h-full flex items-center justify-center transition-transform duration-300 ease-out origin-center">
+                        <div id="avatar-preview" class="w-full h-full flex items-center justify-center"></div>
                     </div>
-                    <div class="min-w-0">
-                        <div id="mobile-dock-name" class="text-xs font-bold text-white truncate">New Life</div>
-                        <div class="text-[10px] text-blue-400 flex items-center gap-1 font-semibold">
-                            <i class="fas fa-search text-[9px]"></i> <span id="mobile-dock-zoom-label">1x</span>
-                        </div>
+
+                    <!-- Zoom Indicator Badge on the stage -->
+                    <div id="avatar-zoom-badge" class="absolute bottom-2 right-2 bg-slate-950/85 backdrop-blur-sm border border-slate-700/80 text-slate-300 text-[10px] px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1 shadow pointer-events-none">
+                        <i class="fas fa-search-plus text-blue-400"></i>
+                        <span>1x Portrait</span>
                     </div>
                 </div>
-                <div class="flex items-center gap-1.5 shrink-0">
-                    <button type="button" data-action="toggleAvatarZoom" class="bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white px-2.5 py-1.5 rounded-xl border border-slate-700 text-xs font-bold transition flex items-center gap-1 shadow-sm" title="Toggle Zoom">
-                        <i class="fas fa-magnifying-glass text-blue-400 text-xs"></i> Zoom
-                    </button>
-                    <button type="button" data-action="randomizeAllTraits" class="bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white p-2 rounded-xl border border-slate-700 text-xs font-bold transition shadow-sm" title="Randomize Appearance">
+
+                <!-- Zoom Controls & Quick Randomize -->
+                <div class="relative z-10 mt-3 flex items-center justify-center gap-2 w-full max-w-sm">
+                    <div class="flex items-center bg-slate-950/70 border border-slate-800 p-1 rounded-2xl shadow-inner">
+                        <button type="button" id="btn-zoom-1" data-action="setAvatarZoom" data-args="1" class="px-3 py-1.5 text-xs font-bold rounded-xl bg-blue-600 text-white shadow-md transition flex items-center gap-1.5">
+                            <i class="fas fa-portrait"></i> Portrait
+                        </button>
+                        <button type="button" id="btn-zoom-2" data-action="setAvatarZoom" data-args="1.75" class="px-3 py-1.5 text-xs font-bold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition flex items-center gap-1.5">
+                            <i class="fas fa-search-plus"></i> Close-Up
+                        </button>
+                    </div>
+                    <button type="button" data-action="randomizeAllTraits" class="bg-slate-900/90 hover:bg-slate-900 active:scale-95 text-slate-200 hover:text-white text-xs font-bold py-2 px-3 rounded-2xl border border-slate-700 hover:border-slate-600 flex items-center gap-1.5 transition shadow-sm" title="Randomize Appearance">
                         <i class="fas fa-dice text-blue-400 text-sm"></i>
+                        <span class="hidden sm:inline">Randomize</span>
                     </button>
                 </div>
             </div>
 
-            <!-- Responsive Grid: Split layout on desktop, stacked on mobile -->
-            <div class="grid grid-cols-1 md:grid-cols-12 gap-5 sm:gap-6 pb-8">
-                
-                <!-- Left Column: Sticky Avatar Studio Stage (md:col-span-5) -->
-                <div class="md:col-span-5">
-                    <div class="md:sticky md:top-4 space-y-4">
-                        <div id="avatar-stage-card" class="relative group bg-slate-800/90 border border-slate-700/80 rounded-3xl p-5 sm:p-6 shadow-2xl overflow-hidden flex flex-col items-center">
-                            <!-- Ambient Studio Glow Backdrop -->
-                            <div class="absolute inset-0 bg-gradient-to-b from-blue-500/10 via-transparent to-slate-950/40 pointer-events-none"></div>
-                            <div class="absolute -top-12 left-1/2 -translate-x-1/2 w-48 h-48 bg-blue-500/15 blur-3xl rounded-full pointer-events-none"></div>
-
-                            <!-- Stage Header Badge -->
-                            <div class="relative z-10 w-full flex items-center justify-between mb-3 text-xs">
-                                <span id="desktop-avatar-name" class="font-bold text-white truncate max-w-[140px]">New Life</span>
-                                <span class="text-[10px] uppercase tracking-wider font-bold text-slate-400 bg-slate-900/80 px-2.5 py-0.5 rounded-full border border-slate-700">Preview (Age 25)</span>
-                            </div>
-
-                            <!-- The Avatar Viewport (Rounded-3xl Modern Frame) -->
-                            <div id="avatar-preview-container" data-action="toggleAvatarZoom" class="relative w-44 h-44 sm:w-56 sm:h-56 rounded-3xl bg-slate-900/90 border-2 border-slate-700/80 shadow-2xl overflow-hidden cursor-pointer group-hover:border-blue-500/50 transition-all duration-300 flex items-center justify-center select-none" title="Click to Toggle Close-Up / Portrait View">
-                                <div id="avatar-zoom-wrapper" class="w-full h-full flex items-center justify-center transition-transform duration-300 ease-out origin-center">
-                                    <div id="avatar-preview" class="w-full h-full flex items-center justify-center"></div>
-                                </div>
-
-                                <!-- Zoom Indicator Badge on the stage -->
-                                <div id="avatar-zoom-badge" class="absolute bottom-2.5 right-2.5 bg-slate-950/85 backdrop-blur-sm border border-slate-700/80 text-slate-300 text-[10px] px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1 shadow pointer-events-none">
-                                    <i class="fas fa-search-plus text-blue-400"></i>
-                                    <span>1x Portrait</span>
-                                </div>
-                            </div>
-
-                            <!-- Interactive Zoom Controls -->
-                            <div class="mt-4 flex items-center justify-center gap-1.5 bg-slate-950/70 border border-slate-800 p-1 rounded-2xl shadow-inner">
-                                <button type="button" id="btn-zoom-1" data-action="setAvatarZoom" data-args="1" class="px-3 py-1.5 text-xs font-bold rounded-xl bg-blue-600 text-white shadow-md transition flex items-center gap-1.5">
-                                    <i class="fas fa-portrait"></i> Portrait
-                                </button>
-                                <button type="button" id="btn-zoom-2" data-action="setAvatarZoom" data-args="1.75" class="px-3 py-1.5 text-xs font-bold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition flex items-center gap-1.5">
-                                    <i class="fas fa-search-plus"></i> Close-Up
-                                </button>
-                            </div>
-
-                            <!-- Quick Randomize Button -->
-                            <div class="w-full mt-4 pt-3 border-t border-slate-700/60">
-                                <button type="button" data-action="randomizeAllTraits" class="w-full bg-slate-900/90 hover:bg-slate-900 active:scale-98 text-slate-200 hover:text-white text-xs font-bold py-2.5 px-3 rounded-xl border border-slate-700 hover:border-slate-600 flex items-center justify-center gap-2 transition shadow-sm">
-                                    <i class="fas fa-dice text-blue-400 text-sm"></i>
-                                    <span>Randomize Appearance</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Right Column: Identity & Customization Cards (md:col-span-7) -->
-                <div class="md:col-span-7 space-y-4">
-                    <!-- Identity Card -->
-                    <div class="bg-slate-800/90 border border-slate-700/80 rounded-3xl p-5 sm:p-6 shadow-xl space-y-4">
-                        <div class="flex items-center gap-2 border-b border-slate-700/60 pb-3">
-                            <i class="fas fa-id-card text-blue-400 text-sm"></i>
-                            <h3 class="text-sm font-bold uppercase tracking-wider text-slate-300">Identity & Origin</h3>
-                        </div>
-
-                        <!-- Full Name with Random Dice Button -->
-                        <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Full Name</label>
-                            <div class="relative flex items-center">
-                                <input type="text" id="inp-name" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-3 pr-12 text-white placeholder-slate-500 focus:border-blue-500 outline-none transition text-sm" placeholder="First and Last Name">
-                                <button type="button" data-action="randomizePlayerName" class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 text-blue-400 hover:text-blue-300 border border-slate-700 flex items-center justify-center transition shadow-sm" title="Generate Random Name">
-                                    <i class="fas fa-dice text-sm"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Gender Selector -->
-                        <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Gender</label>
-                            <div class="grid grid-cols-2 gap-2">
-                                <button type="button" data-action="selectGender" data-args="&apos;male&apos;" id="btn-male" class="p-3 rounded-xl border border-blue-500 bg-blue-900/30 text-blue-200 font-bold flex items-center justify-center gap-2 transition shadow-sm">
-                                    <i class="fas fa-mars text-blue-400"></i> Male
-                                </button>
-                                <button type="button" data-action="selectGender" data-args="&apos;female&apos;" id="btn-female" class="p-3 rounded-xl border border-slate-700 bg-slate-900 text-slate-400 font-bold flex items-center justify-center gap-2 transition hover:border-slate-600">
-                                    <i class="fas fa-venus text-pink-400"></i> Female
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Birth Location -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Birth Country</label>
-                                <select id="inp-country" data-action="updateCityDropdown" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-blue-500 transition text-sm">
-                                    ${COUNTRIES_DATA.map(c => `<option value="${c.name}">${c.name}</option>`).join('')}
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Birth City</label>
-                                <select id="inp-city" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-blue-500 transition text-sm">
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Appearance Customization Card with Tabs -->
-                    <div class="bg-slate-800/90 border border-slate-700/80 rounded-3xl p-5 sm:p-6 shadow-xl space-y-4">
-                        <div class="flex items-center justify-between border-b border-slate-700/60 pb-3">
-                            <div class="flex items-center gap-2">
-                                <i class="fas fa-palette text-blue-400 text-sm"></i>
-                                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-300">Appearance Studio</h3>
-                            </div>
-                            <span class="text-[10px] text-slate-400 font-semibold">Live Interactive Preview</span>
-                        </div>
-
-                        <!-- Tabbed Appearance Panel -->
-                        <div id="appearance-panel"></div>
-                    </div>
-
-                    <!-- God Mode Tuning (If Entitled) -->
-                    ${hasPurchasedPack('god_mode') ? `
-                        <div class="bg-gradient-to-b from-amber-500/10 via-slate-900/90 to-slate-900/90 border border-amber-500/40 p-5 sm:p-6 rounded-3xl space-y-4 shadow-xl">
-                            <div class="flex items-center justify-between border-b border-amber-500/30 pb-3">
-                                <span class="text-xs font-bold text-amber-300 flex items-center gap-1.5 uppercase tracking-wider">
-                                    <i class="fas fa-bolt text-amber-400"></i> God Mode Stat Tuning
-                                </span>
-                                <button type="button" data-action="maxCreationGodStats" class="text-[10px] bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 px-2.5 py-1 rounded-lg font-bold transition shadow-sm">
-                                    <i class="fas fa-sparkles mr-1"></i> Max All (100%)
-                                </button>
-                            </div>
-                            <div class="space-y-3">
-                                <div>
-                                    <div class="flex justify-between text-xs text-slate-300 font-bold mb-1">
-                                        <span>Health</span>
-                                        <span id="god-create-health-val" class="text-emerald-400 font-mono">100%</span>
-                                    </div>
-                                    <input type="range" id="god-create-health" min="0" max="100" value="100" oninput="document.getElementById('god-create-health-val').innerText = this.value + '%'" class="w-full accent-emerald-500">
-                                </div>
-                                <div>
-                                    <div class="flex justify-between text-xs text-slate-300 font-bold mb-1">
-                                        <span>Happiness</span>
-                                        <span id="god-create-happiness-val" class="text-amber-400 font-mono">100%</span>
-                                    </div>
-                                    <input type="range" id="god-create-happiness" min="0" max="100" value="100" oninput="document.getElementById('god-create-happiness-val').innerText = this.value + '%'" class="w-full accent-amber-400">
-                                </div>
-                                <div>
-                                    <div class="flex justify-between text-xs text-slate-300 font-bold mb-1">
-                                        <span>Smarts</span>
-                                        <span id="god-create-smarts-val" class="text-blue-400 font-mono">100%</span>
-                                    </div>
-                                    <input type="range" id="god-create-smarts" min="0" max="100" value="100" oninput="document.getElementById('god-create-smarts-val').innerText = this.value + '%'" class="w-full accent-blue-500">
-                                </div>
-                                <div>
-                                    <div class="flex justify-between text-xs text-slate-300 font-bold mb-1">
-                                        <span>Looks</span>
-                                        <span id="god-create-looks-val" class="text-pink-400 font-mono">100%</span>
-                                    </div>
-                                    <input type="range" id="god-create-looks" min="0" max="100" value="100" oninput="document.getElementById('god-create-looks-val').innerText = this.value + '%'" class="w-full accent-pink-500">
-                                </div>
-                            </div>
-                        </div>
-                    ` : ''}
-
-                    <!-- Start Life CTA Button -->
-                    <button type="button" data-action="submitCharacter" class="w-full btn-life text-white font-extrabold py-4 rounded-2xl text-lg sm:text-xl shadow-xl hover:shadow-emerald-500/20 active:scale-98 transition flex items-center justify-center gap-2">
-                        <span>Start Life</span>
-                        <i class="fas fa-arrow-right text-base"></i>
+            <!-- Completion Tabs Bar -->
+            <div class="flex items-center gap-1.5 p-1.5 bg-slate-950/80 border border-slate-800 rounded-2xl mb-4 overflow-x-auto select-none no-scrollbar">
+                ${tabs.map(tab => `
+                    <button type="button" id="tab-btn-${tab.id}" data-action="setCharTab" data-args="'${tab.id}'"
+                        class="flex-1 min-w-[70px] py-2 px-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${activeTab === tab.id ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'}">
+                        <i class="fas ${tab.icon} text-xs"></i>
+                        <span>${tab.label}</span>
                     </button>
+                `).join('')}
+            </div>
+
+            <!-- Completion Tab Panels Container (Single Unified Card) -->
+            <div class="bg-slate-800/90 border border-slate-700/80 rounded-3xl p-5 sm:p-6 shadow-xl">
+                
+                <!-- Panel 1: Identity & Origin -->
+                <div id="panel-identity" class="${activeTab === 'identity' ? '' : 'hidden'} space-y-4">
+                    <div class="flex items-center gap-2 border-b border-slate-700/60 pb-3">
+                        <i class="fas fa-id-card text-blue-400 text-sm"></i>
+                        <h3 class="text-sm font-bold uppercase tracking-wider text-slate-300">Identity & Origin</h3>
+                    </div>
+
+                    <!-- Full Name with Random Dice Button -->
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Full Name</label>
+                        <div class="relative flex items-center">
+                            <input type="text" id="inp-name" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-3 pr-12 text-white placeholder-slate-500 focus:border-blue-500 outline-none transition text-sm" placeholder="First and Last Name">
+                            <button type="button" data-action="randomizePlayerName" class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 text-blue-400 hover:text-blue-300 border border-slate-700 flex items-center justify-center transition shadow-sm" title="Generate Random Name">
+                                <i class="fas fa-dice text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Gender Selector -->
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Gender</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button type="button" data-action="selectGender" data-args="&apos;male&apos;" id="btn-male" class="p-3 rounded-xl border border-blue-500 bg-blue-900/30 text-blue-200 font-bold flex items-center justify-center gap-2 transition shadow-sm">
+                                <i class="fas fa-mars text-blue-400"></i> Male
+                            </button>
+                            <button type="button" data-action="selectGender" data-args="&apos;female&apos;" id="btn-female" class="p-3 rounded-xl border border-slate-700 bg-slate-900 text-slate-400 font-bold flex items-center justify-center gap-2 transition hover:border-slate-600">
+                                <i class="fas fa-venus text-pink-400"></i> Female
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Birth Location -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Birth Country</label>
+                            <select id="inp-country" data-action="updateCityDropdown" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-blue-500 transition text-sm">
+                                ${COUNTRIES_DATA.map(c => `<option value="${c.name}">${c.name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Birth City</label>
+                            <select id="inp-city" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-blue-500 transition text-sm">
+                            </select>
+                        </div>
+                    </div>
                 </div>
+
+                <!-- Dynamic Appearance Panels (Face, Hair, Eyes, Style) -->
+                <div id="appearance-panels-wrapper"></div>
+
+                <!-- Panel: God Mode Stat Tuning (If Entitled) -->
+                ${hasPurchasedPack('god_mode') ? `
+                    <div id="panel-god_mode" class="${activeTab === 'god_mode' ? '' : 'hidden'} space-y-4">
+                        <div class="flex items-center justify-between border-b border-amber-500/30 pb-3">
+                            <span class="text-xs font-bold text-amber-300 flex items-center gap-1.5 uppercase tracking-wider">
+                                <i class="fas fa-bolt text-amber-400"></i> God Mode Stat Tuning
+                            </span>
+                            <button type="button" data-action="maxCreationGodStats" class="text-[10px] bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 px-2.5 py-1 rounded-lg font-bold transition shadow-sm">
+                                <i class="fas fa-sparkles mr-1"></i> Max All (100%)
+                            </button>
+                        </div>
+                        <div class="space-y-3">
+                            <div>
+                                <div class="flex justify-between text-xs text-slate-300 font-bold mb-1">
+                                    <span>Health</span>
+                                    <span id="god-create-health-val" class="text-emerald-400 font-mono">100%</span>
+                                </div>
+                                <input type="range" id="god-create-health" min="0" max="100" value="100" oninput="document.getElementById('god-create-health-val').innerText = this.value + '%'" class="w-full accent-emerald-500">
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs text-slate-300 font-bold mb-1">
+                                    <span>Happiness</span>
+                                    <span id="god-create-happiness-val" class="text-amber-400 font-mono">100%</span>
+                                </div>
+                                <input type="range" id="god-create-happiness" min="0" max="100" value="100" oninput="document.getElementById('god-create-happiness-val').innerText = this.value + '%'" class="w-full accent-amber-400">
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs text-slate-300 font-bold mb-1">
+                                    <span>Smarts</span>
+                                    <span id="god-create-smarts-val" class="text-blue-400 font-mono">100%</span>
+                                </div>
+                                <input type="range" id="god-create-smarts" min="0" max="100" value="100" oninput="document.getElementById('god-create-smarts-val').innerText = this.value + '%'" class="w-full accent-blue-500">
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs text-slate-300 font-bold mb-1">
+                                    <span>Looks</span>
+                                    <span id="god-create-looks-val" class="text-pink-400 font-mono">100%</span>
+                                </div>
+                                <input type="range" id="god-create-looks" min="0" max="100" value="100" oninput="document.getElementById('god-create-looks-val').innerText = this.value + '%'" class="w-full accent-pink-500">
+                            </div>
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+
+            <!-- Start Life CTA Button at Bottom -->
+            <div class="pt-4 pb-6">
+                <button type="button" id="btn-start-life" data-action="submitCharacter" class="w-full btn-life text-white font-extrabold py-4 rounded-2xl text-lg sm:text-xl shadow-xl hover:shadow-emerald-500/20 active:scale-98 transition flex items-center justify-center gap-2">
+                    <span>Start Life</span>
+                    <i class="fas fa-arrow-right text-base"></i>
+                </button>
             </div>
         </div>
     `;
 
     UI.renderScreen(creationHTML);
-    renderAppearancePanel();
+    updateAvatarPreview();
+    renderAppearancePanels();
+    setCharTab('identity');
     updateCityDropdown('United States');
 
-    // Attach real-time name listener for live header update
+    // Real-time name listener for live header update
     const nameInput = get('inp-name');
     if (nameInput) {
         nameInput.addEventListener('input', (e) => {
             const val = e.target.value.trim() || 'New Life';
-            const mobileDockName = get('mobile-dock-name');
-            if (mobileDockName) mobileDockName.innerText = val;
             const desktopNameBadge = get('desktop-avatar-name');
             if (desktopNameBadge) desktopNameBadge.innerText = val;
         });
@@ -607,7 +584,8 @@ export function selectGender(g) {
             btnFemale.className = "p-3 rounded-xl border border-pink-500 bg-pink-900/30 text-pink-200 font-bold flex items-center justify-center gap-2 transition shadow-sm";
         }
     }
-    renderAppearancePanel();
+    updateAvatarPreview();
+    renderAppearancePanels();
 }
 
 export async function submitCharacter() {
