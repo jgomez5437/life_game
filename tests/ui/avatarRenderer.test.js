@@ -154,6 +154,31 @@ describe('Avatar SVG Renderer', () => {
             const svg = renderAvatar(char);
             expect(svg).toContain('<svg');
             expect(svg).toContain('</svg>');
+            expect(svg).not.toContain('undefined');
+            expect(svg).not.toContain('NaN');
+        });
+    });
+
+    test('renderAvatar renders all 5 face shapes across multiple ages and styles without undefined or NaN', () => {
+        AvatarLogic.FACE_SHAPES.forEach(shape => {
+            AvatarLogic.HAIR_STYLES.forEach(style => {
+                const char = {
+                    id: `test-fs-${shape}-${style}`,
+                    age: 35,
+                    gender: 'male',
+                    appearance: {
+                        ...AvatarLogic.generateRandomAppearance('male'),
+                        faceShape: shape,
+                        hairStyle: style,
+                        facialHairStyle: 'shortBeard'
+                    }
+                };
+                const svg = renderAvatar(char);
+                expect(svg).toContain('<svg');
+                expect(svg).toContain('</svg>');
+                expect(svg).not.toContain('undefined');
+                expect(svg).not.toContain('NaN');
+            });
         });
     });
 });
