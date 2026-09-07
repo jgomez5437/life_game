@@ -139,4 +139,21 @@ describe('Avatar SVG Renderer', () => {
         // Check that fallback nose / lashes are handled without crashing
         expect(svg).toContain('skinGrad_');
     });
+
+    test('renderAvatar renders all 16 hairstyles successfully', () => {
+        AvatarLogic.HAIR_STYLES.forEach(style => {
+            const char = {
+                id: `test-hair-${style}`,
+                age: 25,
+                gender: 'female',
+                appearance: {
+                    ...AvatarLogic.generateRandomAppearance('female'),
+                    hairStyle: style
+                }
+            };
+            const svg = renderAvatar(char);
+            expect(svg).toContain('<svg');
+            expect(svg).toContain('</svg>');
+        });
+    });
 });
