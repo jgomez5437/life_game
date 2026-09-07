@@ -510,12 +510,12 @@ async function handleFinances(user) {
 
     // 3. Living Expenses
     const annualLivingExpense = GameLogic.addLivingExpenses(user.age, user.isStudent, user.city);
+    user.monthlyLivingExpense = Math.round(annualLivingExpense / 12);
     if (annualLivingExpense > 0) {
-        user.monthlyLivingExpense = annualLivingExpense;
         user.money -= annualLivingExpense;
 
         if (!user.hasSeenExpenseMsg) {
-            addLog(`Your basic living expenses in ${user.city} are ${Utils.formatMoney(Math.round(annualLivingExpense / 12))}/month.`, 'neutral');
+            addLog(`Your basic living expenses in ${user.city} are ${Utils.formatMoney(user.monthlyLivingExpense)}/month.`, 'neutral');
             user.hasSeenExpenseMsg = true;
         }
     }
