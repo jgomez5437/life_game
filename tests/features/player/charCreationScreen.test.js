@@ -5,10 +5,10 @@ import {
     submitCharacter,
     renderCharCreation,
     setCharTab,
-    toggleAvatarZoom,
-    setAvatarZoom,
     cyclePreviewAge,
     updateLocationEconBadge,
+    updateOriginSummary,
+    selectGender,
     pickTraitOption,
     randomizePlayerName,
     cycleTrait
@@ -136,7 +136,7 @@ describe('Character Creation Screen Suite', () => {
         expect(hasBirthLog).toBe(true);
     });
 
-    test('renderCharCreation mounts avatar studio stage, tabs, zoom buttons, dice button, and Start Life CTA', () => {
+    test('renderCharCreation mounts compact horizontal profile card, origin summary, tabs, dice button, and Start Life CTA without zoom controls', () => {
         const renderScreenSpy = jest.spyOn(UI, 'renderScreen').mockImplementation((html) => {
             document.body.innerHTML = html;
         });
@@ -144,41 +144,36 @@ describe('Character Creation Screen Suite', () => {
         renderCharCreation();
 
         expect(renderScreenSpy).toHaveBeenCalled();
+        expect(document.getElementById('avatar-stage-card')).not.toBeNull();
         expect(document.getElementById('avatar-preview')).not.toBeNull();
-        expect(document.getElementById('avatar-mini-preview')).toBeNull(); // No secondary mini avatar
-        expect(document.getElementById('avatar-zoom-wrapper')).not.toBeNull();
-        expect(document.getElementById('btn-zoom-1')).not.toBeNull();
-        expect(document.getElementById('btn-zoom-2')).not.toBeNull();
+        expect(document.getElementById('avatar-origin-summary')).not.toBeNull();
+        expect(document.getElementById('avatar-origin-summary').textContent).toContain('New York');
+        expect(document.getElementById('avatar-mini-preview')).toBeNull();
+        expect(document.getElementById('avatar-zoom-wrapper')).toBeNull();
+        expect(document.getElementById('btn-zoom-1')).toBeNull();
+        expect(document.getElementById('btn-zoom-2')).toBeNull();
         expect(document.querySelector('[data-action="randomizePlayerName"]')).not.toBeNull();
         expect(document.querySelector('[data-action="setCharTab"]')).not.toBeNull();
         expect(document.getElementById('btn-start-life')).not.toBeNull();
     });
 
-    test('toggleAvatarZoom and setAvatarZoom toggle zoom levels and wrapper transforms', () => {
+    test('selectGender and updateOriginSummary update live origin summary on horizontal profile card', () => {
         jest.spyOn(UI, 'renderScreen').mockImplementation((html) => {
             document.body.innerHTML = html;
         });
         renderCharCreation();
 
-        const zoomWrapper = document.getElementById('avatar-zoom-wrapper');
+        const originSummary = document.getElementById('avatar-origin-summary');
+        expect(originSummary.textContent).toContain('Male');
 
-        // Initially at 1x
-        expect(zoomWrapper.style.transform).toBe('scale(1) translateY(0)');
+        selectGender('female');
+        expect(originSummary.textContent).toContain('Female');
 
-        // Toggle to 1.75x
-        toggleAvatarZoom();
-        expect(zoomWrapper.style.transform).toBe('scale(1.75) translateY(6%)');
-
-        // Toggle back to 1x
-        toggleAvatarZoom();
-        expect(zoomWrapper.style.transform).toBe('scale(1) translateY(0)');
-
-        // Explicitly set zoom
-        setAvatarZoom(1.75);
-        expect(zoomWrapper.style.transform).toBe('scale(1.75) translateY(6%)');
+        selectGender('male');
+        expect(originSummary.textContent).toContain('Male');
     });
 
-    test('setCharTab changes active category and updates appearance panel', () => {
+    test('setCharTab changes active category and renders selectable option chips for style traits', () => {
         jest.spyOn(UI, 'renderScreen').mockImplementation((html) => {
             document.body.innerHTML = html;
         });
@@ -190,6 +185,9 @@ describe('Character Creation Screen Suite', () => {
         expect(hairPanel.classList.contains('hidden')).toBe(false);
         expect(hairPanel.innerHTML).toContain('Hairstyle');
         expect(hairPanel.innerHTML).toContain('Hair Color');
+        // Verify selectable option pills exist for hairstyle options
+        expect(hairPanel.innerHTML).toContain("pickTraitOption");
+        expect(hairPanel.innerHTML).toContain("Short Crop");
 
         // Switch to 'eyes' tab
         setCharTab('eyes');
@@ -200,7 +198,7 @@ describe('Character Creation Screen Suite', () => {
         expect(eyesPanel.innerHTML).toContain('Eye Color');
     });
 
-    test('pickTraitOption updates selected trait and renders swatch selection', () => {
+    test('pickTraitOption updates both color swatches and style option pills', () => {
         jest.spyOn(UI, 'renderScreen').mockImplementation((html) => {
             document.body.innerHTML = html;
         });
@@ -208,11 +206,13 @@ describe('Character Creation Screen Suite', () => {
 
         setCharTab('face');
         pickTraitOption('skinTone', 'tone4');
+        pickTraitOption('faceShape', 'square');
 
         const preview = document.getElementById('avatar-preview');
         expect(preview.innerHTML).toContain('<svg');
         const panel = document.getElementById('panel-face');
         expect(panel.innerHTML).toContain('Tone 4');
+        expect(panel.innerHTML).toContain('Square');
     });
 
     test('randomizePlayerName generates a valid name into inp-name and updates badges', () => {

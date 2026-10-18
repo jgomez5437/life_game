@@ -85,8 +85,6 @@ export const randomizeAllTraits = lazy('charCreation', 'randomizeAllTraits');
 export const updateCityDropdown = lazy('charCreation', 'updateCityDropdown');
 export const maxCreationGodStats = lazy('charCreation', 'maxCreationGodStats');
 export const setCharTab = lazy('charCreation', 'setCharTab');
-export const toggleAvatarZoom = lazy('charCreation', 'toggleAvatarZoom');
-export const setAvatarZoom = lazy('charCreation', 'setAvatarZoom');
 export const pickTraitOption = lazy('charCreation', 'pickTraitOption');
 export const randomizePlayerName = lazy('charCreation', 'randomizePlayerName');
 export const cyclePreviewAge = lazy('charCreation', 'cyclePreviewAge');
@@ -1403,8 +1401,6 @@ const routeHandlers = {
   updateCityDropdown,
   maxCreationGodStats,
   setCharTab,
-  toggleAvatarZoom,
-  setAvatarZoom,
   pickTraitOption,
   randomizePlayerName,
   cyclePreviewAge,

@@ -314,8 +314,6 @@ export const ACTION_TO_MODULE = {
     selectGender: 'charCreation',
     submitCharacter: 'charCreation',
     setCharTab: 'charCreation',
-    toggleAvatarZoom: 'charCreation',
-    setAvatarZoom: 'charCreation',
     pickTraitOption: 'charCreation',
     randomizePlayerName: 'charCreation',
     maxCreationGodStats: 'charCreation',

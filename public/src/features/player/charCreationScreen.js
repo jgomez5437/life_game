@@ -18,11 +18,37 @@ let draftAppearance = null;
 let previewVersion = 0;
 let previewAge = 25; // 6 (Child) | 25 (Adult) | 68 (Senior)
 let activeCategory = 'face'; // 'face' | 'hair' | 'eyes' | 'style'
-let zoomLevel = 1; // 1 = Portrait (1x), 1.75 = Face Close-up (1.75x)
 let activeTab = 'identity'; // 'identity' | 'face' | 'hair' | 'eyes' | 'style' | 'god_mode'
+
+export function updateOriginSummary() {
+    const summaryEl = get('avatar-origin-summary');
+    if (!summaryEl) return;
+
+    const selectedCountry = get('inp-country') ? get('inp-country').value : 'United States';
+    const selectedCity = get('inp-city') ? get('inp-city').value : 'New York';
+    const genderLabel = selectedGender === 'female' ? 'Female' : 'Male';
+    const genderIcon = selectedGender === 'female'
+        ? '<i class="fas fa-venus text-pink-400 text-[11px]"></i>'
+        : '<i class="fas fa-mars text-blue-400 text-[11px]"></i>';
+
+    const currInfo = (typeof Utils !== 'undefined' && typeof Utils.getCurrencyInfo === 'function')
+        ? Utils.getCurrencyInfo(selectedCity)
+        : { currency: 'USD', symbol: '$', code: 'us' };
+
+    const flagImg = currInfo.code
+        ? `<img src="https://flagcdn.com/w20/${currInfo.code}.png" width="14" alt="${Utils.escapeHtml(selectedCity)}" class="inline-block rounded-sm shadow-sm ml-1" style="vertical-align: middle;">`
+        : '';
+
+    summaryEl.innerHTML = `
+        <span class="inline-flex items-center gap-1 font-medium text-slate-300">${genderIcon}<span>${genderLabel}</span></span>
+        <span class="text-slate-600">&bull;</span>
+        <span class="truncate">${Utils.escapeHtml(selectedCity)}, ${Utils.escapeHtml(selectedCountry)}${flagImg}</span>
+    `;
+}
 
 export function updateLocationEconBadge(cityName) {
     const selectedCity = (typeof cityName === 'string' && cityName ? cityName : null) || (get('inp-city') ? get('inp-city').value : 'New York');
+    updateOriginSummary();
     const badgeEl = get('location-econ-badge');
     if (!badgeEl) return;
 
@@ -154,9 +180,9 @@ export function setCharTab(tabId) {
         const btn = get(`tab-btn-${t.id}`);
         if (btn) {
             if (t.id === activeTab) {
-                btn.className = "flex-1 min-w-[70px] py-2 px-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 bg-blue-600 text-white shadow-md shadow-blue-500/25";
+                btn.className = "flex-1 min-w-[68px] py-2 px-2.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 bg-blue-600 text-white shadow-sm";
             } else {
-                btn.className = "flex-1 min-w-[70px] py-2 px-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800/60";
+                btn.className = "flex-1 min-w-[68px] py-2 px-2.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800/70";
             }
         }
         const panel = get(`panel-${t.id}`);
@@ -168,42 +194,6 @@ export function setCharTab(tabId) {
             }
         }
     });
-}
-
-export function toggleAvatarZoom() {
-    zoomLevel = zoomLevel === 1 ? 1.75 : 1;
-    applyAvatarZoom();
-}
-
-export function setAvatarZoom(level) {
-    zoomLevel = Number(level) || 1;
-    applyAvatarZoom();
-}
-
-function applyAvatarZoom() {
-    const transformVal = zoomLevel > 1 ? `scale(${zoomLevel}) translateY(6%)` : 'scale(1) translateY(0)';
-    
-    const wrapper = get('avatar-zoom-wrapper');
-    if (wrapper) {
-        wrapper.style.transform = transformVal;
-    }
-
-    const btnZoom1 = get('btn-zoom-1');
-    const btnZoom2 = get('btn-zoom-2');
-    if (btnZoom1 && btnZoom2) {
-        if (zoomLevel === 1) {
-            btnZoom1.className = "px-3 py-1.5 text-xs font-bold rounded-xl bg-blue-600 text-white shadow-md transition flex items-center gap-1.5";
-            btnZoom2.className = "px-3 py-1.5 text-xs font-bold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition flex items-center gap-1.5";
-        } else {
-            btnZoom1.className = "px-3 py-1.5 text-xs font-bold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition flex items-center gap-1.5";
-            btnZoom2.className = "px-3 py-1.5 text-xs font-bold rounded-xl bg-blue-600 text-white shadow-md transition flex items-center gap-1.5";
-        }
-    }
-
-    const zoomBadge = get('avatar-zoom-badge');
-    if (zoomBadge) {
-        zoomBadge.innerHTML = `<i class="fas ${zoomLevel > 1 ? 'fa-search-minus' : 'fa-search-plus'} text-blue-400 mr-1"></i><span>${zoomLevel > 1 ? '1.75x Close-Up' : '1x Portrait'}</span>`;
-    }
 }
 
 function updateAvatarPreview() {
@@ -220,9 +210,8 @@ function updateAvatarPreview() {
     const ageBtn = get('avatar-age-preview-btn');
     if (ageBtn) {
         const stageLabel = previewAge < 13 ? 'Child' : (previewAge >= 60 ? 'Senior' : 'Adult');
-        ageBtn.innerHTML = `<i class="fas fa-clock text-blue-400 mr-1"></i><span>Preview: Age ${previewAge} (${stageLabel})</span>`;
+        ageBtn.innerHTML = `<i class="fas fa-clock text-blue-400 text-[10px]"></i><span>Age ${previewAge} (${stageLabel})</span>`;
     }
-    applyAvatarZoom();
 }
 
 export function cyclePreviewAge() {
@@ -321,18 +310,18 @@ function renderFieldControl(f) {
 
     if (f.type === 'color') {
         return `
-            <div class="bg-slate-900/80 border border-slate-700/60 rounded-2xl p-3 shadow-sm">
+            <div class="py-3 first:pt-0 last:pb-0">
                 <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">${label}</span>
-                    <span class="text-xs font-bold text-blue-300">${labelize(currentValue)}</span>
+                    <span class="text-xs font-semibold text-slate-300">${label}</span>
+                    <span class="text-xs font-medium text-slate-400">${labelize(currentValue)}</span>
                 </div>
-                <div class="flex flex-wrap items-center gap-2 pt-0.5">
+                <div class="flex flex-wrap items-center gap-2">
                     ${options.map(opt => {
                         const isSelected = currentValue === opt;
                         if (opt === 'none') {
                             return `
                                 <button type="button" data-action="pickTraitOption" data-args="'${f.key}', '${opt}'"
-                                    class="w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 flex items-center justify-center transition-all transform hover:scale-110 active:scale-95 text-[10px] font-bold ${isSelected ? 'border-blue-400 bg-slate-800 text-blue-400 ring-2 ring-blue-400/50 scale-110 shadow-md' : 'border-slate-700 bg-slate-900 text-slate-500 hover:border-slate-500 hover:text-slate-300'}"
+                                    class="w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 flex items-center justify-center transition-all text-[10px] font-bold ${isSelected ? 'border-blue-400 bg-slate-800 text-blue-400 ring-2 ring-blue-400/40' : 'border-slate-700 bg-slate-900 text-slate-500 hover:border-slate-500 hover:text-slate-300'}"
                                     title="None">
                                     <i class="fas fa-ban"></i>
                                 </button>
@@ -341,16 +330,16 @@ function renderFieldControl(f) {
                         if (opt === 'matchHair') {
                             return `
                                 <button type="button" data-action="pickTraitOption" data-args="'${f.key}', '${opt}'"
-                                    class="px-2.5 h-7 sm:h-8 rounded-full border-2 flex items-center justify-center transition-all transform hover:scale-105 active:scale-95 text-[10px] font-bold ${isSelected ? 'border-blue-400 bg-blue-600/30 text-blue-300 ring-2 ring-blue-400/50 scale-105 shadow-md' : 'border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-500'}"
+                                    class="px-2.5 h-7 sm:h-8 rounded-lg border flex items-center justify-center transition-all text-xs font-semibold ${isSelected ? 'border-blue-500 bg-blue-600 text-white shadow-sm' : 'border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-600'}"
                                     title="Match Hair Color">
-                                    <i class="fas fa-magic mr-1 text-[9px]"></i> Match Hair
+                                    <i class="fas fa-magic mr-1 text-[10px]"></i> Match Hair
                                 </button>
                             `;
                         }
                         const hex = (f.hexMap && f.hexMap[opt]) ? f.hexMap[opt] : (AvatarLogic.HAIR_COLOR_HEX[opt] || '#888888');
                         return `
                             <button type="button" data-action="pickTraitOption" data-args="'${f.key}', '${opt}'"
-                                class="w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 transition-all transform hover:scale-110 active:scale-95 relative ${isSelected ? 'border-white ring-2 ring-blue-400 scale-110 shadow-md shadow-blue-500/30' : 'border-slate-800 hover:border-slate-500'}"
+                                class="w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 transition-all relative ${isSelected ? 'border-white ring-2 ring-blue-400 scale-105 shadow-sm' : 'border-slate-800 hover:border-slate-500'}"
                                 style="background-color: ${hex};"
                                 title="${labelize(opt)}">
                                 ${isSelected ? '<span class="absolute inset-0 flex items-center justify-center text-white drop-shadow text-[10px]"><i class="fas fa-check"></i></span>' : ''}
@@ -362,27 +351,23 @@ function renderFieldControl(f) {
         `;
     }
 
-    // Style / Shape field with Carousel Pill
-    const currentIndex = options.indexOf(currentValue);
-    const countText = options.length > 1 && currentIndex >= 0 ? `<span class="text-[10px] text-slate-500 ml-1">(${currentIndex + 1}/${options.length})</span>` : '';
-
+    // Style / Shape field with Selectable Option Pills/Chips
     return `
-        <div class="bg-slate-900/80 border border-slate-700/60 rounded-2xl p-2.5 shadow-sm">
-            <div class="flex items-center justify-between">
-                <button type="button" data-action="cycleTrait" data-args="'${f.key}', -1" 
-                    class="w-9 h-9 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-400 hover:text-white flex items-center justify-center transition border border-slate-700/60"
-                    title="Previous ${label}">
-                    <i class="fas fa-chevron-left text-xs"></i>
-                </button>
-                <div class="flex-1 text-center px-3 min-w-0">
-                    <div class="text-[10px] uppercase font-bold tracking-wider text-slate-400">${label} ${countText}</div>
-                    <div class="text-xs sm:text-sm font-bold text-blue-300 truncate">${labelize(currentValue)}</div>
-                </div>
-                <button type="button" data-action="cycleTrait" data-args="'${f.key}', 1" 
-                    class="w-9 h-9 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-400 hover:text-white flex items-center justify-center transition border border-slate-700/60"
-                    title="Next ${label}">
-                    <i class="fas fa-chevron-right text-xs"></i>
-                </button>
+        <div class="py-3 first:pt-0 last:pb-0">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-semibold text-slate-300">${label}</span>
+                <span class="text-xs font-medium text-slate-400">${labelize(currentValue)}</span>
+            </div>
+            <div class="flex flex-wrap gap-1.5">
+                ${options.map(opt => {
+                    const isSelected = currentValue === opt;
+                    return `
+                        <button type="button" data-action="pickTraitOption" data-args="'${f.key}', '${opt}'"
+                            class="px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition ${isSelected ? 'bg-blue-600 text-white border-blue-500 shadow-sm' : 'bg-slate-900 hover:bg-slate-700/70 text-slate-300 border-slate-700 hover:border-slate-600'}">
+                            ${labelize(opt)}
+                        </button>
+                    `;
+                }).join('')}
             </div>
         </div>
     `;
@@ -396,15 +381,17 @@ function renderAppearancePanels() {
         if (!section) return '';
         const isHidden = activeTab !== catId;
         return `
-            <div id="panel-${catId}" class="${isHidden ? 'hidden' : ''} space-y-3">
-                ${section.fields.filter(f => {
-                    if (f.genderLimit && f.genderLimit !== selectedGender) return false;
-                    if (f.dependsOn && draftAppearance[f.dependsOn] === 'none') return false;
-                    return true;
-                }).map(f => renderFieldControl(f)).join('')}
+            <div id="panel-${catId}" class="${isHidden ? 'hidden' : ''}">
+                <div class="divide-y divide-slate-700/60">
+                    ${section.fields.filter(f => {
+                        if (f.genderLimit && f.genderLimit !== selectedGender) return false;
+                        if (f.dependsOn && draftAppearance[f.dependsOn] === 'none') return false;
+                        return true;
+                    }).map(f => renderFieldControl(f)).join('')}
+                </div>
 
-                <div class="pt-2 flex justify-end">
-                    <button type="button" data-action="randomizeSection" data-args="'${section.category}'" class="text-xs font-semibold text-slate-400 hover:text-blue-300 transition flex items-center gap-1.5 py-1 px-2.5 rounded-lg hover:bg-slate-800/60">
+                <div class="pt-3 mt-3 border-t border-slate-700/60 flex justify-end">
+                    <button type="button" data-action="randomizeSection" data-args="'${section.category}'" class="text-xs font-semibold text-slate-400 hover:text-blue-300 transition flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg hover:bg-slate-900/60 border border-transparent hover:border-slate-700">
                         <i class="fas fa-dice text-blue-400"></i>
                         <span>Randomize ${section.title}</span>
                     </button>
@@ -427,86 +414,53 @@ export const renderCharCreation = () => {
 
     const creationHTML = `
         <div class="fade-in max-w-xl mx-auto px-3 sm:px-4 py-2">
-            <!-- Header Banner -->
-            <div class="text-center pt-1 pb-3">
-                <div class="inline-flex items-center justify-center w-10 h-10 rounded-2xl bg-gradient-to-tr from-green-500/20 to-blue-500/20 border border-green-500/30 text-green-400 mb-1.5 shadow-inner">
-                    <i class="fas fa-baby text-xl"></i>
-                </div>
-                <h2 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">New Life</h2>
-                <p class="text-xs text-slate-400">Design your destiny and shape your identity.</p>
-            </div>
-
-            <!-- Single Showcase Avatar Stage at Top -->
-            <div id="avatar-stage-card" class="relative bg-slate-800/90 border border-slate-700/80 rounded-3xl p-4 sm:p-5 shadow-2xl overflow-hidden flex flex-col items-center mb-4">
-                <!-- Ambient Studio Glow Backdrop -->
-                <div class="absolute inset-0 bg-gradient-to-b from-blue-500/10 via-transparent to-slate-950/40 pointer-events-none"></div>
-                <div class="absolute -top-10 left-1/2 -translate-x-1/2 w-44 h-44 bg-blue-500/15 blur-3xl rounded-full pointer-events-none"></div>
-
-                <!-- Stage Header Row -->
-                <div class="relative z-10 w-full flex items-center justify-between mb-2.5 px-1 text-xs">
-                    <span id="desktop-avatar-name" class="font-bold text-white truncate max-w-[180px]">New Life</span>
-                    <button type="button" id="avatar-age-preview-btn" data-action="cyclePreviewAge" class="text-[10px] uppercase tracking-wider font-bold text-slate-300 hover:text-white bg-slate-900/90 hover:bg-slate-800 px-2.5 py-1 rounded-full border border-slate-700 hover:border-blue-500/60 transition flex items-center" title="Click to preview Child, Adult, or Senior age">
-                        <i class="fas fa-clock text-blue-400 mr-1"></i><span>Preview: Age 25 (Adult)</span>
-                    </button>
+            <!-- Compact Horizontal Character Profile Card -->
+            <div id="avatar-stage-card" class="bg-slate-800 border border-slate-700 rounded-2xl p-3.5 sm:p-4 shadow-lg flex items-center gap-3.5 sm:gap-4 mb-3.5">
+                <!-- Framed Avatar Portrait (No Zoom) -->
+                <div id="avatar-preview-container" class="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-slate-900 border border-slate-700 shrink-0 overflow-hidden flex items-center justify-center shadow-inner">
+                    <div id="avatar-preview" class="w-full h-full flex items-center justify-center"></div>
                 </div>
 
-                <!-- The Avatar Viewport (Single Unified Avatar) -->
-                <div id="avatar-preview-container" data-action="toggleAvatarZoom" class="relative w-40 h-40 sm:w-48 sm:h-48 rounded-3xl bg-slate-900/90 border-2 border-slate-700/80 shadow-2xl overflow-hidden cursor-pointer hover:border-blue-500/50 transition-all duration-300 flex items-center justify-center select-none" title="Click to Toggle Close-Up / Portrait View">
-                    <div id="avatar-zoom-wrapper" class="w-full h-full flex items-center justify-center transition-transform duration-300 ease-out origin-center">
-                        <div id="avatar-preview" class="w-full h-full flex items-center justify-center"></div>
-                    </div>
+                <!-- Right Column: Live Name, Origin Summary & Quick Controls -->
+                <div class="flex-1 min-w-0">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-blue-400 mb-0.5">New Character</div>
+                    <h2 id="desktop-avatar-name" class="text-base sm:text-lg font-extrabold text-white truncate leading-tight">New Life</h2>
+                    <div id="avatar-origin-summary" class="text-xs text-slate-400 truncate mt-0.5 flex items-center gap-1.5"></div>
 
-                    <!-- Zoom Indicator Badge on the stage -->
-                    <div id="avatar-zoom-badge" class="absolute bottom-2 right-2 bg-slate-950/85 backdrop-blur-sm border border-slate-700/80 text-slate-300 text-[10px] px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1 shadow pointer-events-none">
-                        <i class="fas fa-search-plus text-blue-400"></i>
-                        <span>1x Portrait</span>
-                    </div>
-                </div>
-
-                <!-- Zoom Controls & Quick Randomize -->
-                <div class="relative z-10 mt-3 flex items-center justify-center gap-2 w-full max-w-sm">
-                    <div class="flex items-center bg-slate-950/70 border border-slate-800 p-1 rounded-2xl shadow-inner">
-                        <button type="button" id="btn-zoom-1" data-action="setAvatarZoom" data-args="1" class="px-3 py-1.5 text-xs font-bold rounded-xl bg-blue-600 text-white shadow-md transition flex items-center gap-1.5">
-                            <i class="fas fa-portrait"></i> Portrait
+                    <div class="mt-2.5 flex flex-wrap items-center gap-2">
+                        <button type="button" id="avatar-age-preview-btn" data-action="cyclePreviewAge" class="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-[11px] font-semibold transition flex items-center gap-1.5" title="Cycle preview age (Child, Adult, Senior)">
+                            <i class="fas fa-clock text-blue-400 text-[10px]"></i><span>Age 25 (Adult)</span>
                         </button>
-                        <button type="button" id="btn-zoom-2" data-action="setAvatarZoom" data-args="1.75" class="px-3 py-1.5 text-xs font-bold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition flex items-center gap-1.5">
-                            <i class="fas fa-search-plus"></i> Close-Up
+                        <button type="button" data-action="randomizeAllTraits" class="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-700 active:scale-95 text-slate-200 hover:text-white border border-slate-700 text-[11px] font-semibold transition flex items-center gap-1.5" title="Randomize Appearance">
+                            <i class="fas fa-dice text-blue-400 text-xs"></i>
+                            <span>Randomize</span>
                         </button>
                     </div>
-                    <button type="button" data-action="randomizeAllTraits" class="bg-slate-900/90 hover:bg-slate-900 active:scale-95 text-slate-200 hover:text-white text-xs font-bold py-2 px-3 rounded-2xl border border-slate-700 hover:border-slate-600 flex items-center gap-1.5 transition shadow-sm" title="Randomize Appearance">
-                        <i class="fas fa-dice text-blue-400 text-sm"></i>
-                        <span class="hidden sm:inline">Randomize</span>
-                    </button>
                 </div>
             </div>
 
-            <!-- Completion Tabs Bar -->
-            <div class="flex items-center gap-1.5 p-1.5 bg-slate-950/80 border border-slate-800 rounded-2xl mb-4 overflow-x-auto select-none no-scrollbar">
+            <!-- Section Tabs Bar -->
+            <div class="flex items-center gap-1 p-1 bg-slate-900 border border-slate-800 rounded-xl mb-3.5 overflow-x-auto select-none no-scrollbar">
                 ${tabs.map(tab => `
                     <button type="button" id="tab-btn-${tab.id}" data-action="setCharTab" data-args="'${tab.id}'"
-                        class="flex-1 min-w-[70px] py-2 px-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${activeTab === tab.id ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'}">
+                        class="flex-1 min-w-[68px] py-2 px-2.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 ${activeTab === tab.id ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/70'}">
                         <i class="fas ${tab.icon} text-xs"></i>
                         <span>${tab.label}</span>
                     </button>
                 `).join('')}
             </div>
 
-            <!-- Completion Tab Panels Container (Single Unified Card) -->
-            <div class="bg-slate-800/90 border border-slate-700/80 rounded-3xl p-5 sm:p-6 shadow-xl">
+            <!-- Tab Panels Container -->
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 sm:p-5 shadow-lg">
                 
                 <!-- Panel 1: Identity & Origin -->
                 <div id="panel-identity" class="${activeTab === 'identity' ? '' : 'hidden'} space-y-4">
-                    <div class="flex items-center gap-2 border-b border-slate-700/60 pb-3">
-                        <i class="fas fa-id-card text-blue-400 text-sm"></i>
-                        <h3 class="text-sm font-bold uppercase tracking-wider text-slate-300">Identity & Origin</h3>
-                    </div>
-
                     <!-- Full Name with Random Dice Button -->
                     <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Full Name</label>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1.5">Full Name</label>
                         <div class="relative flex items-center">
-                            <input type="text" id="inp-name" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-3 pr-12 text-white placeholder-slate-500 focus:border-blue-500 outline-none transition text-sm" placeholder="First and Last Name">
-                            <button type="button" data-action="randomizePlayerName" class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 text-blue-400 hover:text-blue-300 border border-slate-700 flex items-center justify-center transition shadow-sm" title="Generate Random Name">
+                            <input type="text" id="inp-name" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 pr-11 text-white placeholder-slate-500 focus:border-blue-500 outline-none transition text-sm" placeholder="First and Last Name">
+                            <button type="button" data-action="randomizePlayerName" class="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 text-blue-400 hover:text-blue-300 border border-slate-700 flex items-center justify-center transition" title="Generate Random Name">
                                 <i class="fas fa-dice text-sm"></i>
                             </button>
                         </div>
@@ -514,12 +468,12 @@ export const renderCharCreation = () => {
 
                     <!-- Gender Selector -->
                     <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Gender</label>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1.5">Gender</label>
                         <div class="grid grid-cols-2 gap-2">
-                            <button type="button" data-action="selectGender" data-args="&apos;male&apos;" id="btn-male" class="p-3 rounded-xl border border-blue-500 bg-blue-900/30 text-blue-200 font-bold flex items-center justify-center gap-2 transition shadow-sm">
+                            <button type="button" data-action="selectGender" data-args="&apos;male&apos;" id="btn-male" class="py-2.5 px-3 rounded-xl border border-blue-500 bg-blue-900/30 text-blue-200 font-semibold text-sm flex items-center justify-center gap-2 transition">
                                 <i class="fas fa-mars text-blue-400"></i> Male
                             </button>
-                            <button type="button" data-action="selectGender" data-args="&apos;female&apos;" id="btn-female" class="p-3 rounded-xl border border-slate-700 bg-slate-900 text-slate-400 font-bold flex items-center justify-center gap-2 transition hover:border-slate-600">
+                            <button type="button" data-action="selectGender" data-args="&apos;female&apos;" id="btn-female" class="py-2.5 px-3 rounded-xl border border-slate-700 bg-slate-900 text-slate-400 font-semibold text-sm flex items-center justify-center gap-2 transition hover:border-slate-600">
                                 <i class="fas fa-venus text-pink-400"></i> Female
                             </button>
                         </div>
@@ -528,20 +482,20 @@ export const renderCharCreation = () => {
                     <!-- Birth Location -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Birth Country</label>
-                            <select id="inp-country" data-action="updateCityDropdown" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-blue-500 transition text-sm">
+                            <label class="block text-xs font-semibold text-slate-300 mb-1.5">Birth Country</label>
+                            <select id="inp-country" data-action="updateCityDropdown" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-white outline-none focus:border-blue-500 transition text-sm">
                                 ${COUNTRIES_DATA.map(c => `<option value="${c.name}">${c.name}</option>`).join('')}
                             </select>
                         </div>
                         <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Birth City</label>
-                            <select id="inp-city" data-action="updateLocationEconBadge" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-blue-500 transition text-sm">
+                            <label class="block text-xs font-semibold text-slate-300 mb-1.5">Birth City</label>
+                            <select id="inp-city" data-action="updateLocationEconBadge" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-white outline-none focus:border-blue-500 transition text-sm">
                             </select>
                         </div>
                     </div>
 
                     <!-- Live Economic Context Badge -->
-                    <div id="location-econ-badge" class="bg-slate-900/80 border border-slate-700/60 rounded-xl px-3.5 py-2.5 flex items-center justify-between text-xs shadow-inner"></div>
+                    <div id="location-econ-badge" class="bg-slate-900 border border-slate-700/70 rounded-xl px-3.5 py-2.5 flex items-center justify-between text-xs"></div>
                 </div>
 
                 <!-- Dynamic Appearance Panels (Face, Hair, Eyes, Style) -->
@@ -594,9 +548,9 @@ export const renderCharCreation = () => {
 
             <!-- Start Life CTA Button at Bottom -->
             <div class="pt-4 pb-6">
-                <button type="button" id="btn-start-life" data-action="submitCharacter" class="w-full btn-life text-white font-extrabold py-4 rounded-2xl text-lg sm:text-xl shadow-xl hover:shadow-emerald-500/20 active:scale-98 transition flex items-center justify-center gap-2">
+                <button type="button" id="btn-start-life" data-action="submitCharacter" class="w-full btn-life text-white font-bold py-3.5 rounded-xl text-base sm:text-lg shadow-lg active:scale-98 transition flex items-center justify-center gap-2">
                     <span>Start Life</span>
-                    <i class="fas fa-arrow-right text-base"></i>
+                    <i class="fas fa-arrow-right text-sm"></i>
                 </button>
             </div>
         </div>
@@ -637,13 +591,14 @@ export function selectGender(g) {
     const btnFemale = get('btn-female');
     if (btnMale && btnFemale) {
         if (g === 'male') {
-            btnMale.className = "p-3 rounded-xl border border-blue-500 bg-blue-900/30 text-blue-200 font-bold flex items-center justify-center gap-2 transition shadow-sm";
-            btnFemale.className = "p-3 rounded-xl border border-slate-700 bg-slate-900 text-slate-400 font-bold flex items-center justify-center gap-2 transition hover:border-slate-600";
+            btnMale.className = "py-2.5 px-3 rounded-xl border border-blue-500 bg-blue-900/30 text-blue-200 font-semibold text-sm flex items-center justify-center gap-2 transition";
+            btnFemale.className = "py-2.5 px-3 rounded-xl border border-slate-700 bg-slate-900 text-slate-400 font-semibold text-sm flex items-center justify-center gap-2 transition hover:border-slate-600";
         } else {
-            btnMale.className = "p-3 rounded-xl border border-slate-700 bg-slate-900 text-slate-400 font-bold flex items-center justify-center gap-2 transition hover:border-slate-600";
-            btnFemale.className = "p-3 rounded-xl border border-pink-500 bg-pink-900/30 text-pink-200 font-bold flex items-center justify-center gap-2 transition shadow-sm";
+            btnMale.className = "py-2.5 px-3 rounded-xl border border-slate-700 bg-slate-900 text-slate-400 font-semibold text-sm flex items-center justify-center gap-2 transition hover:border-slate-600";
+            btnFemale.className = "py-2.5 px-3 rounded-xl border border-pink-500 bg-pink-900/30 text-pink-200 font-semibold text-sm flex items-center justify-center gap-2 transition";
         }
     }
+    updateOriginSummary();
     updateAvatarPreview();
     renderAppearancePanels();
 }
