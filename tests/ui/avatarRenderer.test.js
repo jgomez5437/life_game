@@ -181,4 +181,61 @@ describe('Avatar SVG Renderer', () => {
             });
         });
     });
+
+    test('eyes clip iris and pupil inside eyeClipL_ and eyeClipR_ across all 4 eye shapes', () => {
+        AvatarLogic.EYE_SHAPES.forEach(eyeShape => {
+            const char = {
+                id: `test-eye-clip-${eyeShape}`,
+                age: 28,
+                gender: 'female',
+                appearance: {
+                    ...AvatarLogic.generateRandomAppearance('female'),
+                    eyeShape,
+                    eyelashStyle: 'full'
+                }
+            };
+            const svg = renderAvatar(char);
+            expect(svg).toContain('id="eyeClipL_');
+            expect(svg).toContain('id="eyeClipR_');
+            expect(svg).toContain('clip-path="url(#eyeClipL_');
+            expect(svg).toContain('clip-path="url(#eyeClipR_');
+        });
+    });
+
+    test('all non-bald hairstyles clip front hair textures inside hairFrontClip_ to prevent forehead bleed', () => {
+        AvatarLogic.HAIR_STYLES.filter(s => s !== 'bald').forEach(hairStyle => {
+            const char = {
+                id: `test-hair-clip-${hairStyle}`,
+                age: 30,
+                gender: 'female',
+                appearance: {
+                    ...AvatarLogic.generateRandomAppearance('female'),
+                    hairStyle
+                }
+            };
+            const svg = renderAvatar(char);
+            expect(svg).toContain('id="hairFrontClip_');
+            expect(svg).toContain('clip-path="url(#hairFrontClip_');
+        });
+    });
+
+    test('hairBack layer renders before the main head layer so long hair sits behind ears and cheeks', () => {
+        const char = {
+            id: 'test-layer-order',
+            age: 26,
+            gender: 'female',
+            appearance: {
+                ...AvatarLogic.generateRandomAppearance('female'),
+                hairStyle: 'longWavy'
+            }
+        };
+        const svg = renderAvatar(char);
+        const backIdx = svg.indexOf('id="hairBackClip_');
+        const eyeIdx = svg.indexOf('id="eyeClipL_');
+        const frontIdx = svg.indexOf('id="hairFrontClip_');
+        expect(backIdx).toBeGreaterThan(0);
+        expect(eyeIdx).toBeGreaterThan(backIdx);
+        expect(frontIdx).toBeGreaterThan(eyeIdx);
+    });
 });
+
