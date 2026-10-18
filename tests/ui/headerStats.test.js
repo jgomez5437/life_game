@@ -14,6 +14,7 @@ describe('Header Stats & UI Manager', () => {
                     </div>
                     <div id="header-bank-wrapper" class="hidden">
                         <div id="header-bank">$0</div>
+                        <div id="header-bank-sublabel" class="text-slate-400">Bank</div>
                     </div>
                     <button id="header-settings-btn" class="hidden"></button>
                 </div>
@@ -123,7 +124,7 @@ describe('Header Stats & UI Manager', () => {
     });
 
     test('UI.resetHeader restores default values and hides in-game elements', () => {
-        UI.updateHeader({ health: 30, happiness: 20, smarts: 10, looks: 10, money: 5000 });
+        UI.updateHeader({ health: 30, happiness: 20, smarts: 10, looks: 10, money: 5000, jobSalary: 60000 });
         UI.resetHeader();
 
         expect(document.getElementById('header-brand').classList.contains('hidden')).toBe(false);
@@ -136,5 +137,33 @@ describe('Header Stats & UI Manager', () => {
         expect(document.getElementById('ui-smarts').textContent).toBe('50%');
         expect(document.getElementById('ui-looks').textContent).toBe('50%');
         expect(document.getElementById('header-bank').textContent).toMatch(/\$0/);
+        expect(document.getElementById('header-bank-sublabel').textContent).toBe('Bank');
+    });
+
+    test('UI.updateHeader renders net monthly cashflow ticker in #header-bank-sublabel', () => {
+        const sublabel = document.getElementById('header-bank-sublabel');
+
+        // Positive cashflow ($60k/yr -> +$5,000/mo)
+        UI.updateHeader({ age: 25, money: 10000, city: 'New York', jobSalary: 60000, assets: [] });
+        expect(sublabel.textContent).toMatch(/\+\$5,000\/mo/);
+        expect(sublabel.classList.contains('text-emerald-400')).toBe(true);
+
+        // Negative cashflow (student loans / asset maintenance without job)
+        UI.updateHeader({
+            age: 25,
+            money: 10000,
+            city: 'New York',
+            jobSalary: 0,
+            studentLoans: 40000,
+            isStudent: false,
+            assets: []
+        });
+        expect(sublabel.textContent).toMatch(/-\$200\/mo/);
+        expect(sublabel.classList.contains('text-rose-400')).toBe(true);
+
+        // Zero net cashflow -> falls back to 'Bank'
+        UI.updateHeader({ age: 5, money: 0, city: 'New York', jobSalary: 0, assets: [] });
+        expect(sublabel.textContent).toBe('Bank');
+        expect(sublabel.classList.contains('text-slate-400')).toBe(true);
     });
 });

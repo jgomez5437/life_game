@@ -8,15 +8,19 @@
             -webkit-tap-highlight-color: transparent;
         }
 
+        button, [data-action] {
+            touch-action: manipulation;
+        }
+
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #1e293b; }
         ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
 
-        .fade-in { animation: fadeIn 0.12s ease-out; }
+        .fade-in { animation: fadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1); }
         @keyframes fadeIn {
-            from { opacity: 0.9; }
-            to { opacity: 1; }
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .btn-primary {
@@ -59,6 +63,7 @@
         .btn-life:active { transform: scale(0.98); }
         
         .btn-nav {
+            position: relative;
             background: #1e293b;
             border: 1px solid #334155;
             transition: all 0.2s;
@@ -276,7 +281,52 @@
 
         .header-stat-fill {
             height: 100%;
+            border-bottom: 2px solid currentColor;
+            opacity: 0.9;
             transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        /* Bottom Navigation Notification Badge Dot */
+        .nav-badge-dot {
+            position: absolute;
+            top: 6px;
+            right: 8px;
+            width: 7px;
+            height: 7px;
+            border-radius: 9999px;
+            background-color: #f59e0b;
+            box-shadow: 0 0 6px rgba(245, 158, 11, 0.8);
+            pointer-events: none;
+            z-index: 20;
+        }
+
+        /* Current Age Log Card & Timeline Dots */
+        .current-age-log-card {
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.75) 0%, rgba(15, 23, 42, 0.6) 100%);
+            border: 1px solid rgba(59, 130, 246, 0.35);
+            border-radius: 0.85rem;
+            padding: 0.65rem 0.75rem;
+            box-shadow: 0 4px 14px -3px rgba(15, 23, 42, 0.5);
+        }
+
+        .timeline-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 9999px;
+            flex-shrink: 0;
+            margin-top: 0.42rem;
+        }
+
+        body.light-mode .current-age-log-card {
+            background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%) !important;
+            border-color: #93c5fd !important;
+            box-shadow: 0 2px 10px -2px rgba(37, 99, 235, 0.1) !important;
+        }
+
+        body.light-mode #dashboard-snapshot-strip {
+            background-color: #ffffff !important;
+            border-color: #e2e8f0 !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
         }
 
         /* Sparkles Icon Fallback for FontAwesome Free */

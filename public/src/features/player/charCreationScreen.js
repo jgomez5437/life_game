@@ -16,9 +16,45 @@ const get = id => document.getElementById(id);
 let selectedGender = 'male';
 let draftAppearance = null;
 let previewVersion = 0;
+let previewAge = 25; // 6 (Child) | 25 (Adult) | 68 (Senior)
 let activeCategory = 'face'; // 'face' | 'hair' | 'eyes' | 'style'
 let zoomLevel = 1; // 1 = Portrait (1x), 1.75 = Face Close-up (1.75x)
 let activeTab = 'identity'; // 'identity' | 'face' | 'hair' | 'eyes' | 'style' | 'god_mode'
+
+export function updateLocationEconBadge(cityName) {
+    const selectedCity = (typeof cityName === 'string' && cityName ? cityName : null) || (get('inp-city') ? get('inp-city').value : 'New York');
+    const badgeEl = get('location-econ-badge');
+    if (!badgeEl) return;
+
+    const currInfo = (typeof Utils !== 'undefined' && typeof Utils.getCurrencyInfo === 'function')
+        ? Utils.getCurrencyInfo(selectedCity)
+        : { currency: 'USD', symbol: '$', code: 'us' };
+    const mult = (typeof GameLogic !== 'undefined' && typeof GameLogic.getCityCostMultiplier === 'function')
+        ? GameLogic.getCityCostMultiplier(selectedCity)
+        : 1.0;
+
+    const multFormatted = `${parseFloat(mult.toFixed(2))}x`;
+    const tierLabel = mult >= 1.2
+        ? 'High Salaries & Living Cost'
+        : (mult <= 0.8 ? 'Low Living Cost & Salaries' : 'Moderate Cost & Salaries');
+    const tierColor = mult >= 1.2
+        ? 'text-amber-400'
+        : (mult <= 0.8 ? 'text-emerald-400' : 'text-blue-400');
+
+    const flagImg = currInfo.code
+        ? `<img src="https://flagcdn.com/w20/${currInfo.code}.png" width="16" alt="${Utils.escapeHtml(selectedCity)}" class="inline-block rounded-sm shadow-sm mr-1.5" style="vertical-align: middle;">`
+        : '';
+
+    badgeEl.innerHTML = `
+        <div class="flex items-center gap-1.5 text-slate-300 font-semibold">
+            ${flagImg}
+            <span>${Utils.escapeHtml(currInfo.currency)} (${Utils.escapeHtml(currInfo.symbol)})</span>
+        </div>
+        <div class="text-[11px] font-bold ${tierColor}">
+            <i class="fas fa-chart-line mr-1 text-[10px]"></i>${multFormatted} • ${tierLabel}
+        </div>
+    `;
+}
 
 export function updateCityDropdown(countryName) {
     const selectedCountry = (typeof countryName === 'string' ? countryName : null) || (get('inp-country') ? get('inp-country').value : 'United States');
@@ -27,6 +63,7 @@ export function updateCityDropdown(countryName) {
     if (citySelect) {
         citySelect.innerHTML = countryObj.cities.map(c => `<option value="${c}">${c}</option>`).join('');
     }
+    updateLocationEconBadge(countryObj.cities[0]);
 }
 
 // --- COMPLETION TABS & APPEARANCE CATALOGS ---
@@ -175,12 +212,28 @@ function updateAvatarPreview() {
     if (preview) {
         preview.innerHTML = renderAvatar({
             id: 'char-creation-preview',
-            age: 25,
+            age: previewAge,
             appearance: draftAppearance,
             avatarVersion: previewVersion
         });
     }
+    const ageBtn = get('avatar-age-preview-btn');
+    if (ageBtn) {
+        const stageLabel = previewAge < 13 ? 'Child' : (previewAge >= 60 ? 'Senior' : 'Adult');
+        ageBtn.innerHTML = `<i class="fas fa-clock text-blue-400 mr-1"></i><span>Preview: Age ${previewAge} (${stageLabel})</span>`;
+    }
     applyAvatarZoom();
+}
+
+export function cyclePreviewAge() {
+    if (previewAge === 25) {
+        previewAge = 68;
+    } else if (previewAge === 68) {
+        previewAge = 6;
+    } else {
+        previewAge = 25;
+    }
+    updateAvatarPreview();
 }
 
 export function pickTraitOption(key, value) {
@@ -367,6 +420,7 @@ export const renderCharCreation = () => {
     }
     UI.resetHeader();
     draftAppearance = AvatarLogic.generateRandomAppearance('draft-' + Math.random(), selectedGender);
+    previewAge = 25;
     activeTab = 'identity';
 
     const tabs = getCompletionTabs();
@@ -391,7 +445,9 @@ export const renderCharCreation = () => {
                 <!-- Stage Header Row -->
                 <div class="relative z-10 w-full flex items-center justify-between mb-2.5 px-1 text-xs">
                     <span id="desktop-avatar-name" class="font-bold text-white truncate max-w-[180px]">New Life</span>
-                    <span class="text-[10px] uppercase tracking-wider font-bold text-slate-400 bg-slate-900/80 px-2.5 py-0.5 rounded-full border border-slate-700">Preview (Age 25)</span>
+                    <button type="button" id="avatar-age-preview-btn" data-action="cyclePreviewAge" class="text-[10px] uppercase tracking-wider font-bold text-slate-300 hover:text-white bg-slate-900/90 hover:bg-slate-800 px-2.5 py-1 rounded-full border border-slate-700 hover:border-blue-500/60 transition flex items-center" title="Click to preview Child, Adult, or Senior age">
+                        <i class="fas fa-clock text-blue-400 mr-1"></i><span>Preview: Age 25 (Adult)</span>
+                    </button>
                 </div>
 
                 <!-- The Avatar Viewport (Single Unified Avatar) -->
@@ -479,10 +535,13 @@ export const renderCharCreation = () => {
                         </div>
                         <div>
                             <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Birth City</label>
-                            <select id="inp-city" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-blue-500 transition text-sm">
+                            <select id="inp-city" data-action="updateLocationEconBadge" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-blue-500 transition text-sm">
                             </select>
                         </div>
                     </div>
+
+                    <!-- Live Economic Context Badge -->
+                    <div id="location-econ-badge" class="bg-slate-900/80 border border-slate-700/60 rounded-xl px-3.5 py-2.5 flex items-center justify-between text-xs shadow-inner"></div>
                 </div>
 
                 <!-- Dynamic Appearance Panels (Face, Hair, Eyes, Style) -->
@@ -548,6 +607,7 @@ export const renderCharCreation = () => {
     renderAppearancePanels();
     setCharTab('identity');
     updateCityDropdown('United States');
+    randomizePlayerName();
 
     // Real-time name listener for live header update
     const nameInput = get('inp-name');
