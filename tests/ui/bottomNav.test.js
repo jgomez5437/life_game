@@ -474,5 +474,30 @@ describe('Persistent Global Bottom Navigation & Active Tab States', () => {
             renderAssets();
             expect(document.getElementById('game-container').innerHTML).toContain('Back to Dashboard');
         });
+
+        test('renderLifeDashboard scrolls #life-history-scroll to the user current age (top of newest-first lifeLog) instead of Age 0', () => {
+            state.gameState.user.age = 22;
+            state.gameState.lifeLog = [
+                { age: 22, events: [{ msg: 'Promoted at work', color: 'text-green-400' }] },
+                { age: 21, events: [{ msg: 'Graduated university', color: 'text-blue-400' }] },
+                { age: 0, events: [{ msg: 'Born in New York', color: 'text-slate-400' }] }
+            ];
+
+            renderLifeDashboard(state.gameState);
+
+            const scrollEl = document.getElementById('life-history-scroll');
+            expect(scrollEl).not.toBeNull();
+            // Simulate a tall scrollable container where scrollHeight > 0
+            Object.defineProperty(scrollEl, 'scrollHeight', { value: 900, configurable: true });
+            scrollEl.scrollTop = 900;
+
+            // Re-render dashboard (as happens on ageUp) and verify scrollTop resets to 0 (Age 22)
+            renderLifeDashboard(state.gameState);
+            const updatedScrollEl = document.getElementById('life-history-scroll');
+            expect(updatedScrollEl.scrollTop).toBe(0);
+            const firstLogCard = updatedScrollEl.querySelector('[data-log-age]');
+            expect(firstLogCard.getAttribute('data-log-age')).toBe('22');
+            expect(firstLogCard.classList.contains('current-age-log-card')).toBe(true);
+        });
     });
 });
