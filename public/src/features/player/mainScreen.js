@@ -949,10 +949,10 @@ export function renderLifeDashboard(maybeGameState) {
     const logHtml = (currentState.lifeLog || []).map(l => {
         const isCurrentYear = l.age === user.age;
         const badgeClasses = isCurrentYear
-            ? `bg-blue-600 text-white border-blue-400 shadow-md shadow-blue-500/20`
+            ? `bg-gradient-to-r from-indigo-600 to-blue-600 text-white border-indigo-400/80 shadow-md shadow-indigo-500/25`
             : `bg-slate-800 text-blue-100 border-slate-600 shadow-sm`;
         return `
-        <div class="${isCompact ? 'mb-2.5' : 'mb-4'} ${isCurrentYear ? 'current-age-log-card' : ''} group">
+        <div class="${isCompact ? 'mb-2.5' : 'mb-4'} ${isCurrentYear ? 'current-age-log-card' : ''} group" data-log-age="${l.age}">
             <div class="flex items-center ${isCompact ? 'mb-1' : 'mb-2'}">
                 <div class="${badgeClasses} ${isCompact ? 'text-[9px] px-2 py-0.5' : 'text-[10px] px-3 py-1'} uppercase font-bold rounded-full border z-10 flex items-center">
                     <span>Age ${l.age}</span>
@@ -1047,9 +1047,25 @@ export function renderLifeDashboard(maybeGameState) {
     UI.renderScreen(dashboardHTML);
     UI.updateBottomNav('home');
 
+    // Scroll directly to the player's current age entry (newest-first index 0 -> scrollTop = 0)
     const scrollEl = get('life-history-scroll');
     if (scrollEl) {
-        scrollEl.scrollTop = scrollEl.scrollHeight;
+        const logs = currentState.lifeLog || [];
+        const currentIdx = logs.findIndex(l => l.age === user.age);
+        const activeCard = scrollEl.querySelector('.current-age-log-card');
+        if (currentIdx <= 0) {
+            scrollEl.scrollTop = 0;
+        } else if (currentIdx === logs.length - 1) {
+            scrollEl.scrollTop = scrollEl.scrollHeight;
+        } else if (activeCard) {
+            scrollEl.scrollTop = Math.max(0, activeCard.offsetTop - scrollEl.offsetTop - 36);
+        } else {
+            scrollEl.scrollTop = 0;
+        }
+    }
+    const gameContainer = get('game-container');
+    if (gameContainer) {
+        gameContainer.scrollTop = 0;
     }
 
     // Conservative context-aware preloading during idle gameplay

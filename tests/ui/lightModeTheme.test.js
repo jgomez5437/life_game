@@ -87,6 +87,14 @@ describe('Light Mode Theme & UI Contrast Verification', () => {
             expect(cssContent).toContain('linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important');
             expect(cssContent).toContain('body.light-mode .btn-age-up *');
         });
+
+        test('styles.css defines custom Obsidian Studio dark mode variables and Electric Indigo-Cobalt Age Up styling', () => {
+            expect(cssContent).toContain('--obsidian-canvas: #080a0f;');
+            expect(cssContent).toContain('--obsidian-surface: #111520;');
+            expect(cssContent).toContain('--obsidian-well: #0b0e16;');
+            expect(cssContent).toContain('linear-gradient(135deg, #6366f1 0%, #3b82f6 100%) !important');
+            expect(cssContent).toContain('body:not(.light-mode):not(.onyx-gold-mode) #game-container');
+        });
     });
 
     describe('Feature Screens DOM Markup', () => {
