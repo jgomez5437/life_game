@@ -1,28 +1,20 @@
 import { AvatarLogic } from '../core/avatarLogic.js';
 
-// Builds a flat, minimal, layered SVG portrait from a character's stored
-// appearance descriptor plus their current age (for hair-graying and
-// wrinkle interpolation). Rendered SVG is never stored — only the trait
-// descriptor persists (see avatarLogic.js).
+// Builds a layered SVG portrait from a character's stored appearance
+// descriptor plus their current age (for hair-graying and wrinkle
+// interpolation). Rendered SVG is never stored — only the trait descriptor
+// persists (see avatarLogic.js).
 
-const OUTLINE = '#2b2320';  // fallback for non-skin elements (wrinkles, baby features)
-const DARK_LENS = '#141414';
-
-// Derives a warm outline color from the character's skin tone instead of
-// one universal cold brown. Darker skins get deeper/warmer outlines; lighter
-// skins get softer brown. Unifies each face's palette.
-function skinOutline(skinHex) {
-    return shadeColor(skinHex, -55);
-}
+const OUTLINE = '#2b2320';
+const DARK_LENS = '#16181d';
 
 // --- COLOR HELPERS -----------------------------------------------------------
 
 // Lightens (positive percent) or darkens (negative) a hex color by shifting
-// every channel toward white/black. Used to derive hair gradient stops and
-// strand/shine details from a single base hue instead of hand-picking shades
-// per color in the trait catalog.
+// every channel toward white/black.
 function shadeColor(hex, percent) {
-    const num = parseInt(hex.replace('#', ''), 16);
+    const clean = String(hex || '#888888').replace('#', '');
+    const num = parseInt(clean, 16);
     const amt = Math.round(2.55 * percent);
     const clamp = (v) => Math.max(0, Math.min(255, v));
     const r = clamp((num >> 16) + amt);
@@ -31,1123 +23,1196 @@ function shadeColor(hex, percent) {
     return `#${(0x1000000 + r * 0x10000 + g * 0x100 + b).toString(16).slice(1)}`;
 }
 
-// SVG gradient/pattern ids must be unique document-wide — several avatars
-// (e.g. a relationship list) can be inlined into the DOM at once, so ids
-// are namespaced per-character rather than per-color.
+// Warm skin-relative outline color.
+function skinOutline(skinHex) {
+    return shadeColor(skinHex, -48);
+}
+
+// Hair-relative outline color so hair reads as cohesive volume rather than a
+// black-sticker cutout, while still staying crisp on very dark hair.
+function hairOutline(hairHex) {
+    return shadeColor(hairHex, -38);
+}
+
+// SVG gradient/clipPath ids must be unique document-wide because many avatars
+// can be inlined into the DOM at once.
 function sanitizeId(str) {
     return String(str).replace(/[^a-zA-Z0-9_-]/g, '_');
 }
 
 function strandGroup(pathsD, strokeColor, opacity, width) {
     if (!pathsD.length) return '';
-    return `<g fill="none" stroke="${strokeColor}" stroke-width="${width}" stroke-linecap="round" stroke-opacity="${opacity}">${pathsD.map(d => `<path d="${d}"/>`).join('')}</g>`;
+    return `<g fill="none" stroke="${strokeColor}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round" stroke-opacity="${opacity}">${pathsD.map(d => `<path d="${d}"/>`).join('')}</g>`;
 }
 
 // Module-scope cache: character id/name + avatarVersion -> SVG string.
-// Resets on page reload, which is fine — it's a derived-render cache, not
-// the source of truth (the descriptor on the character is).
 const _cache = new Map();
+
+// --- GEOMETRY & HEAD MODEL ---------------------------------------------------
+// Unified head model per face shape (plus child scaling) so skull contour,
+// ears, hairline, temples, eyes, brows, glasses, facial hair, and wrinkles all
+// share exact coordinates.
+
+const ADULT_HEAD_MODELS = {
+    oval: {
+        top: 18, bottom: 86, hw: 29, jawHw: 21, cy: 51,
+        hairlineY: 28.5, templeY: 42, sideDrop: 58,
+        eyeY: 50.5, eyeSpacing: 12, browY: 42.5, noseY: 61.5, mouthY: 72, blushY: 60
+    },
+    round: {
+        top: 20, bottom: 84, hw: 32, jawHw: 26, cy: 52,
+        hairlineY: 30, templeY: 43, sideDrop: 58,
+        eyeY: 50.5, eyeSpacing: 11.5, browY: 42.5, noseY: 61, mouthY: 71, blushY: 59.5
+    },
+    square: {
+        top: 19, bottom: 85, hw: 29.5, jawHw: 26.5, cy: 51,
+        hairlineY: 29, templeY: 42, sideDrop: 58,
+        eyeY: 50, eyeSpacing: 12.5, browY: 42, noseY: 61, mouthY: 72, blushY: 60
+    },
+    heart: {
+        top: 18, bottom: 86, hw: 29.5, jawHw: 15.5, cy: 50,
+        hairlineY: 28.5, templeY: 41, sideDrop: 56,
+        eyeY: 49.5, eyeSpacing: 12, browY: 41.5, noseY: 61, mouthY: 72.5, blushY: 59.5
+    },
+    long: {
+        top: 16, bottom: 88, hw: 26, jawHw: 19, cy: 52,
+        hairlineY: 27, templeY: 41, sideDrop: 60,
+        eyeY: 51, eyeSpacing: 11, browY: 43, noseY: 63, mouthY: 74, blushY: 61.5
+    }
+};
+
+function getHeadModel(faceShape, isChild = false) {
+    const base = ADULT_HEAD_MODELS[faceShape] || ADULT_HEAD_MODELS.oval;
+    if (!isChild) return { ...base, shape: faceShape || 'oval', isChild: false };
+
+    // Child proportions: slightly smaller cranium and shorter lower face so
+    // features sit a bit lower and rounder, and child hair fits the child head.
+    const hw = +(base.hw * 0.91).toFixed(1);
+    const jawHw = +(base.jawHw * 0.92).toFixed(1);
+    const top = base.top + 2;
+    const bottom = base.bottom - 3;
+    return {
+        shape: faceShape || 'oval',
+        isChild: true,
+        top,
+        bottom,
+        hw,
+        jawHw,
+        cy: base.cy + 1,
+        hairlineY: base.hairlineY + 2,
+        templeY: base.templeY + 1,
+        sideDrop: base.sideDrop - 1,
+        eyeY: base.eyeY + 0.5,
+        eyeSpacing: +(base.eyeSpacing * 0.94).toFixed(1),
+        browY: base.browY + 1,
+        noseY: base.noseY,
+        mouthY: base.mouthY - 1.5,
+        blushY: base.blushY
+    };
+}
+
+// Builds the closed SVG path for the head silhouette so both the visible head
+// and `<clipPath id="headClip_...">` use the exact same contour.
+function headPathD(m) {
+    const { shape, top, bottom, hw, jawHw, cy } = m;
+    const L = 50 - hw;
+    const R = 50 + hw;
+    const crownK = +(hw * 0.64).toFixed(1);
+    const templeTopY = +(top + (cy - top) * 0.36).toFixed(1);
+
+    switch (shape) {
+        case 'round':
+            return `M 50 ${top} C ${50 + crownK} ${top} ${R} ${templeTopY} ${R} ${cy} C ${R} ${bottom - 11} ${50 + jawHw * 0.85} ${bottom} 50 ${bottom} C ${50 - jawHw * 0.85} ${bottom} ${L} ${bottom - 11} ${L} ${cy} C ${L} ${templeTopY} ${50 - crownK} ${top} 50 ${top} Z`;
+        case 'square':
+            // Natural rounded cranium on top, strong squared jaw corners below
+            return `M 50 ${top} C ${50 + crownK} ${top} ${R} ${templeTopY} ${R} ${cy - 2} C ${R} ${cy + 13} ${R - 0.5} ${bottom - 11} ${50 + jawHw} ${bottom - 5} C ${50 + jawHw - 4} ${bottom} ${50 + 9} ${bottom} 50 ${bottom} C ${50 - 9} ${bottom} ${50 - jawHw + 4} ${bottom} ${50 - jawHw} ${bottom - 5} C ${L + 0.5} ${bottom - 11} ${L} ${cy + 13} ${L} ${cy - 2} C ${L} ${templeTopY} ${50 - crownK} ${top} 50 ${top} Z`;
+        case 'heart':
+            // Full temples/cheekbones tapering to a soft, narrow rounded chin
+            return `M 50 ${top} C ${50 + crownK + 1} ${top} ${R + 0.5} ${templeTopY} ${R} ${cy - 3} C ${R - 0.5} ${cy + 11} ${50 + jawHw + 4} ${bottom - 9} ${50 + 5.5} ${bottom - 1.8} Q 50 ${bottom + 1.2} ${50 - 5.5} ${bottom - 1.8} C ${50 - jawHw - 4} ${bottom - 9} ${L + 0.5} ${cy + 11} ${L} ${cy - 3} C ${L - 0.5} ${templeTopY} ${50 - crownK - 1} ${top} 50 ${top} Z`;
+        case 'long':
+            return `M 50 ${top} C ${50 + crownK} ${top} ${R} ${templeTopY} ${R} ${cy} C ${R} ${bottom - 14} ${50 + jawHw * 0.9} ${bottom} 50 ${bottom} C ${50 - jawHw * 0.9} ${bottom} ${L} ${bottom - 14} ${L} ${cy} C ${L} ${templeTopY} ${50 - crownK} ${top} 50 ${top} Z`;
+        case 'oval':
+        default:
+            return `M 50 ${top} C ${50 + crownK} ${top} ${R} ${templeTopY} ${R} ${cy - 1} C ${R} ${bottom - 14} ${50 + jawHw * 0.92} ${bottom} 50 ${bottom} C ${50 - jawHw * 0.92} ${bottom} ${L} ${bottom - 14} ${L} ${cy - 1} C ${L} ${templeTopY} ${50 - crownK} ${top} 50 ${top} Z`;
+    }
+}
 
 // --- LAYER 1: HEAD + EARS ---------------------------------------------------
 
-function headShape(faceShape, skinHex, skinGradUrl, outlineHex) {
+function headAndEars(m, skinHex, skinGradUrl, outlineHex, headClipId) {
     const ol = outlineHex || skinOutline(skinHex);
     const fill = skinGradUrl || skinHex;
-    let head;
-    let chinShadow = ''; // ambient-occlusion shadow under the chin
-    switch (faceShape) {
-        case 'round':
-            head = `<ellipse cx="50" cy="52" rx="33" ry="33"/>`;
-            chinShadow = `<ellipse cx="50" cy="78" rx="22" ry="6" fill="${shadeColor(skinHex, -30)}" opacity="0.12"/>`;
-            break;
-        case 'square':
-            head = `<rect x="20" y="20" width="60" height="64" rx="12"/>`;
-            chinShadow = `<ellipse cx="50" cy="80" rx="24" ry="5" fill="${shadeColor(skinHex, -30)}" opacity="0.12"/>`;
-            break;
-        case 'heart':
-            head = `<path d="M 50 16 C 68 16 80 30 78 46 C 76 62 64 70 50 88 C 36 70 24 62 22 46 C 20 30 32 16 50 16 Z"/>`;
-            chinShadow = `<ellipse cx="50" cy="82" rx="14" ry="5" fill="${shadeColor(skinHex, -30)}" opacity="0.12"/>`;
-            break;
-        case 'long':
-            head = `<ellipse cx="50" cy="54" rx="26" ry="40"/>`;
-            chinShadow = `<ellipse cx="50" cy="88" rx="16" ry="5" fill="${shadeColor(skinHex, -30)}" opacity="0.12"/>`;
-            break;
-        case 'oval':
-        default:
-            head = `<ellipse cx="50" cy="52" rx="30" ry="36"/>`;
-            chinShadow = `<ellipse cx="50" cy="82" rx="18" ry="5" fill="${shadeColor(skinHex, -30)}" opacity="0.12"/>`;
-    }
+    const earShadow = shadeColor(skinHex, -26);
+    const chinShade = shadeColor(skinHex, -28);
+    const earY = m.eyeY + 2.5;
+    const earRx = m.isChild ? 4.4 : 4.8;
+    const earRy = m.isChild ? 6.8 : 7.5;
+    const lEarCx = +(50 - m.hw + 0.5).toFixed(1);
+    const rEarCx = +(50 + m.hw - 0.5).toFixed(1);
+    const hPath = headPathD(m);
+
     return `
-        <g fill="${fill}" stroke="${ol}" stroke-width="2.2">
-            <ellipse cx="17" cy="54" rx="5" ry="8"/>
-            <ellipse cx="83" cy="54" rx="5" ry="8"/>
-            ${head}
+        <!-- Ears tucked at the exact head boundary -->
+        <g fill="${fill}" stroke="${ol}" stroke-width="1.8">
+            <ellipse cx="${lEarCx}" cy="${earY}" rx="${earRx}" ry="${earRy}"/>
+            <ellipse cx="${rEarCx}" cy="${earY}" rx="${earRx}" ry="${earRy}"/>
         </g>
-        <!-- ear inner shadows -->
-        <ellipse cx="17" cy="55" rx="2.5" ry="4" fill="${shadeColor(skinHex, -25)}" opacity="0.15"/>
-        <ellipse cx="83" cy="55" rx="2.5" ry="4" fill="${shadeColor(skinHex, -25)}" opacity="0.15"/>
-        <!-- cheekbone highlights -->
-        <ellipse cx="33" cy="49" rx="5" ry="3" fill="white" opacity="0.08"/>
-        <ellipse cx="67" cy="49" rx="5" ry="3" fill="white" opacity="0.08"/>
-        ${chinShadow}
+        <g fill="none" stroke="${earShadow}" stroke-width="1.1" stroke-linecap="round" opacity="0.42">
+            <path d="M ${(lEarCx + 0.5).toFixed(1)} ${(earY - 3.2).toFixed(1)} Q ${(lEarCx - 2.2).toFixed(1)} ${earY} ${(lEarCx + 0.5).toFixed(1)} ${(earY + 3.2).toFixed(1)}"/>
+            <path d="M ${(rEarCx - 0.5).toFixed(1)} ${(earY - 3.2).toFixed(1)} Q ${(rEarCx + 2.2).toFixed(1)} ${earY} ${(rEarCx - 0.5).toFixed(1)} ${(earY + 3.2).toFixed(1)}"/>
+        </g>
+        <!-- Main head silhouette -->
+        <path d="${hPath}" fill="${fill}" stroke="${ol}" stroke-width="2"/>
+        <!-- Subtle facial contour shading clipped to head -->
+        <g clip-path="url(#${headClipId})">
+            <ellipse cx="50" cy="${m.bottom - 2}" rx="${(m.jawHw * 0.85).toFixed(1)}" ry="5.5" fill="${chinShade}" opacity="0.11"/>
+            <ellipse cx="${(50 - m.hw * 0.56).toFixed(1)}" cy="${m.eyeY + 6}" rx="5.5" ry="3" fill="white" opacity="0.08"/>
+            <ellipse cx="${(50 + m.hw * 0.56).toFixed(1)}" cy="${m.eyeY + 6}" rx="5.5" ry="3" fill="white" opacity="0.08"/>
+        </g>
     `;
 }
 
-// Crown height (top) and half-width (hw) for each head shape above, so hair
-// can be sized/positioned to actually match the skull instead of assuming
-// one fixed width. sideDrop is how far down the temples medium/long hair
-// styles are allowed to hang before tucking back in.
-const FACE_PROFILES = {
-    oval:   { top: 16, hw: 30, sideDrop: 56, domeBaseY: 34 },
-    round:  { top: 19, hw: 33, sideDrop: 58, domeBaseY: 36 },
-    square: { top: 20, hw: 30, sideDrop: 56, domeBaseY: 33 },
-    heart:  { top: 16, hw: 29, sideDrop: 54, domeBaseY: 33 },
-    long:   { top: 14, hw: 26, sideDrop: 58, domeBaseY: 32 }
-};
+// --- LAYER 1B: BLUSH ---------------------------------------------------------
 
-function getFaceProfile(faceShape) {
-    return FACE_PROFILES[faceShape] || FACE_PROFILES.oval;
-}
-
-// Per-shape offsets for facial feature placement so each face shape feels
-// genuinely different — not just a different outline around the same face.
-// eyeY/browY/mouthY/noseY are the vertical center; eyeSpacing is half the
-// distance between eye centers (measured from center x=50).
-const FEATURE_OFFSETS = {
-    oval:   { eyeY: 52, eyeSpacing: 12, browY: 40, mouthY: 72, noseY: 63, blushY: 62 },
-    round:  { eyeY: 51, eyeSpacing: 11, browY: 39, mouthY: 70, noseY: 62, blushY: 60 },
-    square: { eyeY: 50, eyeSpacing: 13, browY: 38, mouthY: 72, noseY: 62, blushY: 62 },
-    heart:  { eyeY: 50, eyeSpacing: 12, browY: 38, mouthY: 74, noseY: 63, blushY: 64 },
-    long:   { eyeY: 53, eyeSpacing: 11, browY: 41, mouthY: 74, noseY: 65, blushY: 64 }
-};
-
-function getFeaturePos(faceShape) {
-    return FEATURE_OFFSETS[faceShape] || FEATURE_OFFSETS.oval;
-}
-
-// --- LAYER 1B: BLUSH ----------------------------------------------------------
-// Drawn directly on the skin, before eyebrows/eyes so it never sits on top
-// of those layers — just a soft flush low on each cheek.
-
-function blush(colorKey, faceShape) {
+function blush(colorKey, m, headClipId) {
     if (!colorKey || colorKey === 'none') return '';
     const hex = AvatarLogic.BLUSH_COLOR_HEX[colorKey] || AvatarLogic.BLUSH_COLOR_HEX.pink;
-    const { blushY } = getFeaturePos(faceShape);
-    const { hw } = getFaceProfile(faceShape);
-    const blushX = hw * 0.7;
-    return `<g fill="${hex}" opacity="0.35">
-        <ellipse cx="${(50 - blushX).toFixed(1)}" cy="${blushY}" rx="7" ry="4.5"/>
-        <ellipse cx="${(50 + blushX).toFixed(1)}" cy="${blushY}" rx="7" ry="4.5"/>
+    const blushX = +(m.hw * 0.64).toFixed(1);
+    return `<g clip-path="url(#${headClipId})" fill="${hex}" opacity="0.32">
+        <ellipse cx="${(50 - blushX).toFixed(1)}" cy="${m.blushY}" rx="6.8" ry="4"/>
+        <ellipse cx="${(50 + blushX).toFixed(1)}" cy="${m.blushY}" rx="6.8" ry="4"/>
     </g>`;
 }
 
 // --- LAYER 2: EYEBROWS -------------------------------------------------------
+// Brows span the full width of each eye (~14 units), with natural anatomical
+// taper from inner head (near nose bridge) over the outer arch to the tail.
 
-function eyebrows(style, colorHex, faceShape) {
-    const { browY, eyeSpacing } = getFeaturePos(faceShape);
-    // Left brow spans from inner to outer; right is mirrored.
-    const li = 50 - eyeSpacing + 1;  // inner edge (near nose)
-    const lo = 50 - eyeSpacing - 7;  // outer edge
-    const ri = 50 + eyeSpacing - 1;
-    const ro = 50 + eyeSpacing + 7;
-    const dark = shadeColor(colorHex, -20);
+function eyebrows(style, colorHex, m) {
+    const { browY, eyeSpacing } = m;
+    const lcx = 50 - eyeSpacing;
+    const rcx = 50 + eyeSpacing;
+    // Inner end (near nose) and outer tail (near temple)
+    const li = lcx + 6.2;
+    const lo = lcx - 7.2;
+    const ri = rcx - 6.2;
+    const ro = rcx + 7.2;
+    const archX_L = lcx - 2.2;
+    const archX_R = rcx + 2.2;
+    const dark = shadeColor(colorHex, -22);
 
     switch (style) {
         case 'thick': {
-            // Tapered brow: thick in the middle, tapering at both ends
-            const lPath = `M ${lo} ${browY + 1} Q ${(lo + li) / 2} ${browY - 4} ${li} ${browY + 0.5} Q ${(lo + li) / 2} ${browY + 4} ${lo} ${browY + 1} Z`;
-            const rPath = `M ${ri} ${browY + 0.5} Q ${(ri + ro) / 2} ${browY - 4} ${ro} ${browY + 1} Q ${(ri + ro) / 2} ${browY + 4} ${ri} ${browY + 0.5} Z`;
-            // Hair-texture strokes inside thick brows
-            const hairL = `<g fill="none" stroke="${dark}" stroke-width="0.5" stroke-opacity="0.4" stroke-linecap="round">
-                <path d="M ${lo + 3} ${browY} L ${lo + 5} ${browY - 1.2}"/>
-                <path d="M ${lo + 7} ${browY + 0.5} L ${lo + 9} ${browY - 1}"/>
-                <path d="M ${lo + 11} ${browY + 0.3} L ${lo + 12.5} ${browY - 0.8}"/>
+            const lPath = `M ${li} ${browY + 0.6} C ${lcx + 2} ${browY - 2.2} ${archX_L} ${browY - 3.0} ${lo} ${browY + 0.8} C ${archX_L} ${browY - 0.1} ${lcx + 2} ${browY + 1.4} ${li} ${browY + 0.6} Z`;
+            const rPath = `M ${ri} ${browY + 0.6} C ${rcx - 2} ${browY - 2.2} ${archX_R} ${browY - 3.0} ${ro} ${browY + 0.8} C ${archX_R} ${browY - 0.1} ${rcx - 2} ${browY + 1.4} ${ri} ${browY + 0.6} Z`;
+            return `<g fill="${colorHex}" stroke="${dark}" stroke-width="0.4" stroke-linejoin="round">
+                <path d="${lPath}"/>
+                <path d="${rPath}"/>
             </g>`;
-            const hairR = `<g fill="none" stroke="${dark}" stroke-width="0.5" stroke-opacity="0.4" stroke-linecap="round">
-                <path d="M ${ri + 3} ${browY - 1.2} L ${ri + 5} ${browY}"/>
-                <path d="M ${ri + 5} ${browY - 1} L ${ri + 7} ${browY + 0.5}"/>
-                <path d="M ${ri + 9} ${browY - 0.8} L ${ri + 10.5} ${browY + 0.3}"/>
-            </g>`;
-            return `<g fill="${colorHex}"><path d="${lPath}"/><path d="${rPath}"/></g>${hairL}${hairR}`;
         }
-        case 'arched':
-            return `<g fill="none" stroke="${colorHex}" stroke-width="2.8" stroke-linecap="round">
-                <path d="M ${lo} ${browY + 3} Q ${(lo + li) / 2} ${browY - 6} ${li} ${browY + 1}"/>
-                <path d="M ${ri} ${browY + 1} Q ${(ri + ro) / 2} ${browY - 6} ${ro} ${browY + 3}"/>
+        case 'arched': {
+            const lPath = `M ${li} ${browY + 1.1} C ${lcx + 1.5} ${browY - 0.8} ${archX_L + 0.5} ${browY - 3.8} ${lo} ${browY + 1.2} C ${archX_L + 0.5} ${browY - 1.5} ${lcx + 1.5} ${browY + 0.8} ${li} ${browY + 1.1} Z`;
+            const rPath = `M ${ri} ${browY + 1.1} C ${rcx - 1.5} ${browY - 0.8} ${archX_R - 0.5} ${browY - 3.8} ${ro} ${browY + 1.2} C ${archX_R - 0.5} ${browY - 1.5} ${rcx - 1.5} ${browY + 0.8} ${ri} ${browY + 1.1} Z`;
+            return `<g fill="${colorHex}" stroke="${dark}" stroke-width="0.35" stroke-linejoin="round">
+                <path d="${lPath}"/>
+                <path d="${rPath}"/>
             </g>`;
-        case 'straight':
-            return `<g fill="none" stroke="${colorHex}" stroke-width="2.2" stroke-linecap="round">
-                <path d="M ${lo} ${browY + 0.5} L ${li} ${browY + 0.5}"/>
-                <path d="M ${ri} ${browY + 0.5} L ${ro} ${browY + 0.5}"/>
+        }
+        case 'straight': {
+            const lPath = `M ${li} ${browY + 0.4} L ${lo} ${browY - 0.3} C ${lo + 2} ${browY + 1.6} ${li - 2} ${browY + 2.0} ${li} ${browY + 0.4} Z`;
+            const rPath = `M ${ri} ${browY + 0.4} L ${ro} ${browY - 0.3} C ${ro - 2} ${browY + 1.6} ${ri + 2} ${browY + 2.0} ${ri} ${browY + 0.4} Z`;
+            return `<g fill="${colorHex}" stroke="${dark}" stroke-width="0.35" stroke-linejoin="round">
+                <path d="${lPath}"/>
+                <path d="${rPath}"/>
             </g>`;
-        case 'medium': {
-            // Slightly tapered — wider center, thin tails
-            const lPath = `M ${lo} ${browY + 0.5} Q ${(lo + li) / 2} ${browY - 2.5} ${li} ${browY} Q ${(lo + li) / 2} ${browY + 2.8} ${lo} ${browY + 0.5} Z`;
-            const rPath = `M ${ri} ${browY} Q ${(ri + ro) / 2} ${browY - 2.5} ${ro} ${browY + 0.5} Q ${(ri + ro) / 2} ${browY + 2.8} ${ri} ${browY} Z`;
-            // Subtle hair texture on medium brows
-            const hairL = `<g fill="none" stroke="${dark}" stroke-width="0.4" stroke-opacity="0.35" stroke-linecap="round">
-                <path d="M ${lo + 4} ${browY + 0.3} L ${lo + 6} ${browY - 0.8}"/>
-                <path d="M ${lo + 9} ${browY + 0.2} L ${lo + 10.5} ${browY - 0.6}"/>
-            </g>`;
-            const hairR = `<g fill="none" stroke="${dark}" stroke-width="0.4" stroke-opacity="0.35" stroke-linecap="round">
-                <path d="M ${ri + 4} ${browY - 0.8} L ${ri + 6} ${browY + 0.3}"/>
-                <path d="M ${ri + 7} ${browY - 0.6} L ${ri + 8.5} ${browY + 0.2}"/>
-            </g>`;
-            return `<g fill="${colorHex}"><path d="${lPath}"/><path d="${rPath}"/></g>${hairL}${hairR}`;
         }
         case 'thin':
-        default:
-            return `<g fill="none" stroke="${colorHex}" stroke-width="1.4" stroke-linecap="round">
-                <path d="M ${lo} ${browY + 1} Q ${(lo + li) / 2} ${browY - 1.5} ${li} ${browY + 0.5}"/>
-                <path d="M ${ri} ${browY + 0.5} Q ${(ri + ro) / 2} ${browY - 1.5} ${ro} ${browY + 1}"/>
+            return `<g fill="none" stroke="${colorHex}" stroke-width="1.35" stroke-linecap="round">
+                <path d="M ${li} ${browY + 0.8} C ${lcx + 1} ${browY - 1.4} ${archX_L} ${browY - 1.8} ${lo} ${browY + 0.8}"/>
+                <path d="M ${ri} ${browY + 0.8} C ${rcx - 1} ${browY - 1.4} ${archX_R} ${browY - 1.8} ${ro} ${browY + 0.8}"/>
             </g>`;
+        case 'medium':
+        default: {
+            const lPath = `M ${li} ${browY + 0.7} C ${lcx + 2} ${browY - 1.6} ${archX_L} ${browY - 2.3} ${lo} ${browY + 0.9} C ${archX_L} ${browY - 0.2} ${lcx + 2} ${browY + 1.1} ${li} ${browY + 0.7} Z`;
+            const rPath = `M ${ri} ${browY + 0.7} C ${rcx - 2} ${browY - 1.6} ${archX_R} ${browY - 2.3} ${ro} ${browY + 0.9} C ${archX_R} ${browY - 0.2} ${rcx - 2} ${browY + 1.1} ${ri} ${browY + 0.7} Z`;
+            return `<g fill="${colorHex}" stroke="${dark}" stroke-width="0.35" stroke-linejoin="round">
+                <path d="${lPath}"/>
+                <path d="${rPath}"/>
+            </g>`;
+        }
     }
 }
 
-// --- LAYER 3: EYES ------------------------------------------------------------
+// --- LAYER 3: EYES & PUPILS --------------------------------------------------
+// Each eye is built from an exact cubic-Bezier aperture path that also serves
+// as a `<clipPath>` for the sclera, iris, pupil, and upper-lid shadow. The
+// upper lash line traces the true top edge of that aperture so it never cuts
+// through the iris or pupil.
 
-// Eyelash strokes fanning from the outer corner of each eye.
-function eyelashes(cx, cy, rx, ry, style, isLeft) {
+function getEyeGeometry(cx, cy, shape, isLeft) {
+    const dir = isLeft ? -1 : 1; // points toward outer temple
+    let rx, topLift, botDrop, innerDy, outerDy, irisR, pupilR, irisDy, creaseDy;
+
+    switch (shape) {
+        case 'round':
+            rx = 6.3;
+            topLift = 4.5;
+            botDrop = 4.2;
+            innerDy = 0.3;
+            outerDy = 0.0;
+            irisR = 3.45;
+            pupilR = 1.55;
+            irisDy = -0.15;
+            creaseDy = -5.8;
+            break;
+        case 'hooded':
+            rx = 6.7;
+            topLift = 2.35;
+            botDrop = 3.35;
+            innerDy = 0.4;
+            outerDy = 0.2;
+            irisR = 3.15;
+            pupilR = 1.4;
+            irisDy = 0.05;
+            creaseDy = -4.1;
+            break;
+        case 'monolid':
+            rx = 6.7;
+            topLift = 2.55;
+            botDrop = 2.45;
+            innerDy = 0.55;
+            outerDy = -0.55;
+            irisR = 2.9;
+            pupilR = 1.3;
+            irisDy = 0.0;
+            creaseDy = null; // monolid has no upper lid crease
+            break;
+        case 'almond':
+        default:
+            rx = 6.7;
+            topLift = 3.7;
+            botDrop = 3.3;
+            innerDy = 0.45;
+            outerDy = -0.25;
+            irisR = 3.25;
+            pupilR = 1.45;
+            irisDy = -0.15;
+            creaseDy = -5.0;
+            break;
+    }
+
+    const innerX = +(cx - dir * rx).toFixed(2);
+    const innerY = +(cy + innerDy).toFixed(2);
+    const outerX = +(cx + dir * rx).toFixed(2);
+    const outerY = +(cy + outerDy).toFixed(2);
+
+    const topCtrl1X = +(cx - dir * rx * 0.48).toFixed(2);
+    const topCtrl2X = +(cx + dir * rx * 0.52).toFixed(2);
+    const topCtrlY = +(cy - topLift * 1.28).toFixed(2);
+
+    const botCtrl1X = +(cx + dir * rx * 0.48).toFixed(2);
+    const botCtrl2X = +(cx - dir * rx * 0.48).toFixed(2);
+    const botCtrlY = +(cy + botDrop * 1.26).toFixed(2);
+
+    const upperCurveD = `M ${innerX} ${innerY} C ${topCtrl1X} ${topCtrlY} ${topCtrl2X} ${topCtrlY} ${outerX} ${outerY}`;
+    const openingPathD = `${upperCurveD} C ${botCtrl1X} ${botCtrlY} ${botCtrl2X} ${botCtrlY} ${innerX} ${innerY} Z`;
+    const lowerCurveD = `M ${innerX} ${innerY} C ${botCtrl2X} ${botCtrlY} ${botCtrl1X} ${botCtrlY} ${outerX} ${outerY}`;
+
+    return {
+        dir, rx, topLift, botDrop, innerX, innerY, outerX, outerY,
+        topCtrl1X, topCtrl2X, topCtrlY,
+        upperCurveD, lowerCurveD, openingPathD,
+        irisCx: cx, irisCy: +(cy + irisDy).toFixed(2), irisR, pupilR, creaseDy
+    };
+}
+
+// Eyelashes sweep outward and upward from the outer upper lash line, never
+// crossing inward over the iris.
+function eyelashes(geom, style) {
     if (!style || style === 'none') return '';
-    const dir = isLeft ? -1 : 1;
-    const outerX = cx + dir * rx;
-    const outerY = cy - ry * 0.3;
+    const { dir, outerX, outerY, rx, topLift, irisCx } = geom;
+    const cy = Math.round(outerY);
+    const b1x = outerX;
+    const b1y = outerY;
+    const b2x = +(irisCx + dir * rx * 0.76).toFixed(1);
+    const b2y = +(outerY - topLift * 0.52).toFixed(1);
+    const b3x = +(irisCx + dir * rx * 0.48).toFixed(1);
+    const b3y = +(outerY - topLift * 0.85).toFixed(1);
+
     switch (style) {
         case 'subtle':
-            return `<g fill="none" stroke="#1b1b1b" stroke-width="0.8" stroke-linecap="round" stroke-opacity="0.6">
-                <path d="M ${outerX} ${outerY} L ${outerX + dir * 3} ${outerY - 2.5}"/>
-                <path d="M ${outerX - dir * 1} ${outerY - 1} L ${outerX + dir * 1.5} ${outerY - 3.5}"/>
+            return `<g fill="none" stroke="#1d1816" stroke-width="1.0" stroke-linecap="round">
+                <path d="M ${b1x} ${b1y} Q ${(b1x + dir * 1.6).toFixed(1)} ${(b1y - 0.6).toFixed(1)} ${(b1x + dir * 2.8).toFixed(1)} ${(b1y - 2.0).toFixed(1)}"/>
+                <path d="M ${b2x} ${b2y} Q ${(b2x + dir * 1.2).toFixed(1)} ${(b2y - 1.0).toFixed(1)} ${(b2x + dir * 2.2).toFixed(1)} ${(b2y - 2.3).toFixed(1)}"/>
             </g>`;
         case 'full':
-            return `<g fill="none" stroke="#1b1b1b" stroke-width="0.9" stroke-linecap="round" stroke-opacity="0.65">
-                <path d="M ${outerX} ${outerY} L ${outerX + dir * 3.5} ${outerY - 2}"/>
-                <path d="M ${outerX - dir * 1.5} ${outerY - 0.5} L ${outerX + dir * 1} ${outerY - 3.5}"/>
-                <path d="M ${outerX - dir * 3} ${outerY} L ${outerX - dir * 1.5} ${outerY - 3}"/>
+            return `<g fill="none" stroke="#1d1816" stroke-width="1.15" stroke-linecap="round">
+                <path d="M ${b1x} ${b1y} Q ${(b1x + dir * 2.0).toFixed(1)} ${(b1y - 0.5).toFixed(1)} ${(b1x + dir * 3.4).toFixed(1)} ${(b1y - 2.2).toFixed(1)}"/>
+                <path d="M ${b2x} ${b2y} Q ${(b2x + dir * 1.6).toFixed(1)} ${(b2y - 1.2).toFixed(1)} ${(b2x + dir * 2.8).toFixed(1)} ${(b2y - 2.8).toFixed(1)}"/>
+                <path d="M ${b3x} ${b3y} Q ${(b3x + dir * 1.0).toFixed(1)} ${(b3y - 1.2).toFixed(1)} ${(b3x + dir * 2.0).toFixed(1)} ${(b3y - 2.6).toFixed(1)}"/>
             </g>`;
         case 'dramatic':
-            return `<g fill="none" stroke="#1b1b1b" stroke-width="1.1" stroke-linecap="round" stroke-opacity="0.7">
-                <path d="M ${outerX} ${outerY} L ${outerX + dir * 4} ${outerY - 1.5}"/>
-                <path d="M ${outerX - dir * 1} ${outerY - 0.3} L ${outerX + dir * 2} ${outerY - 3.5}"/>
-                <path d="M ${outerX - dir * 2.5} ${outerY} L ${outerX - dir * 1} ${outerY - 3.5}"/>
-                <path d="M ${outerX - dir * 4} ${outerY + 0.5} L ${outerX - dir * 3} ${outerY - 2.5}"/>
+            return `<g fill="none" stroke="#181311" stroke-width="1.3" stroke-linecap="round">
+                <path d="M ${b1x} ${b1y} Q ${(b1x + dir * 2.4).toFixed(1)} ${(b1y - 0.4).toFixed(1)} ${(b1x + dir * 4.2).toFixed(1)} ${(b1y - 2.5).toFixed(1)}"/>
+                <path d="M ${b2x} ${b2y} Q ${(b2x + dir * 1.9).toFixed(1)} ${(b2y - 1.3).toFixed(1)} ${(b2x + dir * 3.5).toFixed(1)} ${(b2y - 3.3).toFixed(1)}"/>
+                <path d="M ${b3x} ${b3y} Q ${(b3x + dir * 1.3).toFixed(1)} ${(b3y - 1.4).toFixed(1)} ${(b3x + dir * 2.5).toFixed(1)} ${(b3y - 3.1).toFixed(1)}"/>
             </g>`;
         default:
             return '';
     }
 }
 
-function oneEye(cx, cy, shape, colorHex, skinHex, outlineHex, irisGradUrl, eyelashStyle, isLeft) {
+function oneEye(cx, cy, shape, colorHex, outlineHex, irisGradUrl, eyelashStyle, isLeft, clipId) {
     const ol = outlineHex || OUTLINE;
+    const lashStroke = shadeColor(ol, -22);
     const irisFill = irisGradUrl || colorHex;
+    const limbalStroke = shadeColor(colorHex, -35);
+    const geom = getEyeGeometry(cx, cy, shape, isLeft);
+    const {
+        dir, rx, topLift, botDrop,
+        upperCurveD, lowerCurveD, openingPathD,
+        irisCx, irisCy, irisR, pupilR, creaseDy
+    } = geom;
 
-    // Helper: catch light scaled to eye size
-    function catchLight(rx, ry) {
-        const clR = Math.min(rx, ry) * 0.22;
-        return `<circle cx="${(cx - rx * 0.3).toFixed(1)}" cy="${(cy - ry * 0.35).toFixed(1)}" r="${clR.toFixed(1)}" fill="white" opacity="0.85"/>`;
+    // Eyelid crease above upper lash line (omitted for monolid)
+    let creaseSvg = '';
+    if (creaseDy !== null) {
+        const cInX = +(cx - dir * rx * 0.78).toFixed(1);
+        const cOutX = +(cx + dir * rx * 0.86).toFixed(1);
+        const cEndY = +(cy + creaseDy * 0.48).toFixed(1);
+        const cPeakY = +(cy + creaseDy * 1.15).toFixed(1);
+        const creaseOp = shape === 'hooded' ? '0.42' : '0.26';
+        const creaseW = shape === 'hooded' ? '0.95' : '0.7';
+        creaseSvg = `<path d="M ${cInX} ${cEndY} Q ${cx} ${cPeakY} ${cOutX} ${(cEndY - 0.4).toFixed(1)}" fill="none" stroke="${ol}" stroke-width="${creaseW}" stroke-linecap="round" stroke-opacity="${creaseOp}"/>`;
     }
 
-    // Helper: lower eyelid hint scaled to eye size
-    function lowerLid(rx, ry) {
-        const lidHalfW = rx * 0.75;
-        const lidDrop = ry * 0.55;
-        const lidSag = ry * 0.85;
-        return `<path d="M ${(cx - lidHalfW).toFixed(1)} ${(cy + lidDrop).toFixed(1)} Q ${cx} ${(cy + lidSag).toFixed(1)} ${(cx + lidHalfW).toFixed(1)} ${(cy + lidDrop).toFixed(1)}" fill="none" stroke="${ol}" stroke-width="0.5" stroke-opacity="0.15"/>`;
-    }
+    // Subtle lower lid hint
+    const lowerHintY = +(cy + botDrop + 1.1).toFixed(1);
+    const lowerHint = `<path d="M ${(cx - rx * 0.55).toFixed(1)} ${(cy + botDrop * 0.75).toFixed(1)} Q ${cx} ${lowerHintY} ${(cx + rx * 0.55).toFixed(1)} ${(cy + botDrop * 0.75).toFixed(1)}" fill="none" stroke="${ol}" stroke-width="0.55" stroke-linecap="round" stroke-opacity="0.18"/>`;
 
-    let eyeSvg;
-    switch (shape) {
-        case 'round': {
-            const rx = 6, ry = 6;
-            eyeSvg = `<g>
-                <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="white" stroke="${ol}" stroke-width="1"/>
-                <path d="M ${cx - rx} ${cy} Q ${cx} ${cy - ry} ${cx + rx} ${cy}" fill="none" stroke="${ol}" stroke-width="1.8" stroke-linecap="round"/>
-                <circle cx="${cx}" cy="${cy}" r="3.6" fill="${irisFill}"/>
-                <circle cx="${cx}" cy="${cy}" r="1.6" fill="#1b1b1b"/>
-                ${catchLight(rx, ry)}
-                ${lowerLid(rx, ry)}
-            </g>`;
-            return eyeSvg + eyelashes(cx, cy, 6, 6, eyelashStyle, isLeft);
-        }
-        case 'hooded': {
-            const rx = 7, ry = 3.5;
-            eyeSvg = `<g>
-                <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="white" stroke="${ol}" stroke-width="1"/>
-                <path d="M ${cx - rx} ${cy} Q ${cx} ${cy - ry} ${cx + rx} ${cy}" fill="none" stroke="${ol}" stroke-width="1.8" stroke-linecap="round"/>
-                <circle cx="${cx}" cy="${cy}" r="3.2" fill="${irisFill}"/>
-                <circle cx="${cx}" cy="${cy}" r="1.4" fill="#1b1b1b"/>
-                <path d="M ${cx - rx} ${cy - 1} Q ${cx} ${cy - 7} ${cx + rx} ${cy - 1} L ${cx + rx} ${cy - 3} Q ${cx} ${cy - 8} ${cx - rx} ${cy - 3} Z" fill="${skinHex}"/>
-                ${catchLight(rx, ry)}
-            </g>`;
-            return eyeSvg + eyelashes(cx, cy, 7, 3.5, eyelashStyle, isLeft);
-        }
-        case 'monolid': {
-            const rx = 7, ry = 2.6;
-            eyeSvg = `<g>
-                <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="white" stroke="${ol}" stroke-width="1"/>
-                <path d="M ${cx - rx} ${cy} Q ${cx} ${cy - ry} ${cx + rx} ${cy}" fill="none" stroke="${ol}" stroke-width="1.6" stroke-linecap="round"/>
-                <circle cx="${cx}" cy="${cy}" r="2.8" fill="${irisFill}"/>
-                <circle cx="${cx}" cy="${cy}" r="1.2" fill="#1b1b1b"/>
-                ${catchLight(rx, ry)}
-            </g>`;
-            return eyeSvg + eyelashes(cx, cy, 7, 2.6, eyelashStyle, isLeft);
-        }
-        case 'almond':
-        default: {
-            const rx = 7, ry = 4;
-            eyeSvg = `<g>
-                <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="white" stroke="${ol}" stroke-width="1"/>
-                <path d="M ${cx - rx} ${cy} Q ${cx} ${cy - ry} ${cx + rx} ${cy}" fill="none" stroke="${ol}" stroke-width="1.8" stroke-linecap="round"/>
-                <circle cx="${cx}" cy="${cy}" r="3.2" fill="${irisFill}"/>
-                <circle cx="${cx}" cy="${cy}" r="1.4" fill="#1b1b1b"/>
-                ${catchLight(rx, ry)}
-                ${lowerLid(rx, ry)}
-            </g>`;
-            return eyeSvg + eyelashes(cx, cy, 7, 4, eyelashStyle, isLeft);
-        }
-    }
+    // Upper-lid cast shadow inside the clipped eyeball so the eye has 3D depth
+    const shadowBandY = +(cy - topLift + 1.1).toFixed(1);
+
+    return `<g>
+        <clipPath id="${clipId}"><path d="${openingPathD}"/></clipPath>
+        <g clip-path="url(#${clipId})">
+            <path d="${openingPathD}" fill="#FAF8F6"/>
+            <circle cx="${irisCx}" cy="${irisCy}" r="${irisR}" fill="${irisFill}" stroke="${limbalStroke}" stroke-width="0.45"/>
+            <circle cx="${irisCx}" cy="${irisCy}" r="${pupilR}" fill="#151518"/>
+            <ellipse cx="${cx}" cy="${shadowBandY}" rx="${rx + 1}" ry="1.8" fill="#1a1210" opacity="0.16"/>
+            <circle cx="${(irisCx - 1.05).toFixed(2)}" cy="${(irisCy - 1.0).toFixed(2)}" r="0.82" fill="white" opacity="0.92"/>
+            <circle cx="${(irisCx + 0.85).toFixed(2)}" cy="${(irisCy + 0.85).toFixed(2)}" r="0.38" fill="white" opacity="0.65"/>
+        </g>
+        <path d="${lowerCurveD}" fill="none" stroke="${ol}" stroke-width="0.95" stroke-linecap="round" stroke-opacity="0.65"/>
+        <path d="${upperCurveD}" fill="none" stroke="${lashStroke}" stroke-width="1.75" stroke-linecap="round"/>
+        ${creaseSvg}
+        ${lowerHint}
+        ${eyelashes(geom, eyelashStyle)}
+    </g>`;
 }
 
-function eyes(shape, colorHex, skinHex, faceShape, outlineHex, irisGradUrl, eyelashStyle) {
-    const { eyeY, eyeSpacing } = getFeaturePos(faceShape);
+function eyes(shape, colorHex, m, outlineHex, irisGradUrl, eyelashStyle, sid) {
+    const { eyeY, eyeSpacing } = m;
     const lcx = 50 - eyeSpacing;
     const rcx = 50 + eyeSpacing;
-    return oneEye(lcx, eyeY, shape, colorHex, skinHex, outlineHex, irisGradUrl, eyelashStyle, true) +
-           oneEye(rcx, eyeY, shape, colorHex, skinHex, outlineHex, irisGradUrl, eyelashStyle, false);
+    return oneEye(lcx, eyeY, shape, colorHex, outlineHex, irisGradUrl, eyelashStyle, true, `eyeClipL_${sid}`) +
+           oneEye(rcx, eyeY, shape, colorHex, outlineHex, irisGradUrl, eyelashStyle, false, `eyeClipR_${sid}`);
 }
 
-// --- LAYER 4: MOUTH (plain line, or a filled lipstick shape) ------------------
+// --- LAYER 4: MOUTH ----------------------------------------------------------
 
-function mouth(lipstickColorKey, faceShape, skinHex) {
-    const { mouthY } = getFeaturePos(faceShape);
-    const ol = skinHex ? skinOutline(skinHex) : OUTLINE;
+function mouth(lipstickColorKey, m, skinHex) {
+    const { mouthY } = m;
     if (!lipstickColorKey || lipstickColorKey === 'none') {
-        // Natural lip shape using skin-shadow colors instead of an invisible line
-        const lipColor = skinHex ? shadeColor(skinHex, -15) : '#c9908a';
-        const lipDark = skinHex ? shadeColor(skinHex, -28) : '#a87070';
-        return `<path d="M ${50 - 8} ${mouthY} Q ${50 - 4} ${mouthY - 2.5} 50 ${mouthY - 1} Q ${50 + 4} ${mouthY - 2.5} ${50 + 8} ${mouthY} Q ${50 + 4} ${mouthY + 4} 50 ${mouthY + 4.5} Q ${50 - 4} ${mouthY + 4} ${50 - 8} ${mouthY} Z" fill="${lipColor}" stroke="${lipDark}" stroke-width="0.8" opacity="0.55"/>
-            <path d="M ${50 - 7} ${mouthY} Q 50 ${mouthY + 1.2} ${50 + 7} ${mouthY}" fill="none" stroke="${lipDark}" stroke-width="0.6" stroke-opacity="0.45"/>
-            <path d="M ${50 - 2} ${mouthY - 0.5} L 50 ${mouthY - 1.2} L ${50 + 2} ${mouthY - 0.5}" fill="none" stroke="${lipDark}" stroke-width="0.4" stroke-opacity="0.2"/>`;
+        const upperLip = skinHex ? shadeColor(skinHex, -18) : '#c9908a';
+        const lowerLip = skinHex ? shadeColor(skinHex, -12) : '#d49c96';
+        const lipLine = skinHex ? shadeColor(skinHex, -34) : '#9c6662';
+        return `<g>
+            <path d="M 42 ${mouthY} Q 46 ${mouthY - 2.2} 50 ${mouthY - 1.1} Q 54 ${mouthY - 2.2} 58 ${mouthY} Q 54 ${mouthY + 1.0} 50 ${mouthY + 0.8} Q 46 ${mouthY + 1.0} 42 ${mouthY} Z" fill="${upperLip}" opacity="0.72"/>
+            <path d="M 42.5 ${mouthY} Q 50 ${mouthY + 4.4} 57.5 ${mouthY} Q 50 ${mouthY + 1.0} 42.5 ${mouthY} Z" fill="${lowerLip}" opacity="0.68"/>
+            <path d="M 41.8 ${mouthY} Q 46 ${mouthY + 1.0} 50 ${mouthY + 0.7} Q 54 ${mouthY + 1.0} 58.2 ${mouthY}" fill="none" stroke="${lipLine}" stroke-width="0.9" stroke-linecap="round" stroke-opacity="0.65"/>
+            <path d="M 46.5 ${mouthY + 2.6} Q 50 ${mouthY + 3.6} 53.5 ${mouthY + 2.6}" fill="none" stroke="${lipLine}" stroke-width="0.55" stroke-linecap="round" stroke-opacity="0.28"/>
+        </g>`;
     }
     const hex = AvatarLogic.LIPSTICK_COLOR_HEX[lipstickColorKey] || AvatarLogic.LIPSTICK_COLOR_HEX.red;
-    const dark = shadeColor(hex, -25);
-    const light = shadeColor(hex, 15);
-    // Closed lip shape with gradient-like shading for volume
-    return `<path d="M ${50 - 8} ${mouthY} Q ${50 - 4} ${mouthY - 3} 50 ${mouthY - 1} Q ${50 + 4} ${mouthY - 3} ${50 + 8} ${mouthY} Q ${50 + 4} ${mouthY + 4.5} 50 ${mouthY + 5.5} Q ${50 - 4} ${mouthY + 4.5} ${50 - 8} ${mouthY} Z" fill="${hex}" stroke="${dark}" stroke-width="1"/>
-        <path d="M ${50 - 7} ${mouthY} Q 50 ${mouthY + 1.6} ${50 + 7} ${mouthY}" fill="none" stroke="${dark}" stroke-width="0.7" stroke-opacity="0.6"/>
-        <path d="M ${50 - 3} ${mouthY + 1.5} Q 50 ${mouthY + 3} ${50 + 3} ${mouthY + 1.5}" fill="${light}" opacity="0.25"/>`;
+    const dark = shadeColor(hex, -26);
+    const light = shadeColor(hex, 22);
+    return `<g>
+        <path d="M 41.8 ${mouthY} Q 46 ${mouthY - 2.8} 50 ${mouthY - 1.2} Q 54 ${mouthY - 2.8} 58.2 ${mouthY} Q 54.5 ${mouthY + 4.8} 50 ${mouthY + 5.0} Q 45.5 ${mouthY + 4.8} 41.8 ${mouthY} Z" fill="${hex}" stroke="${dark}" stroke-width="0.85" stroke-linejoin="round"/>
+        <path d="M 42.3 ${mouthY + 0.1} Q 50 ${mouthY + 1.3} 57.7 ${mouthY + 0.1}" fill="none" stroke="${dark}" stroke-width="0.8" stroke-linecap="round" stroke-opacity="0.7"/>
+        <ellipse cx="50" cy="${mouthY + 2.5}" rx="3.2" ry="0.9" fill="${light}" opacity="0.35"/>
+    </g>`;
 }
 
-// --- LAYER 4B: NOSE -----------------------------------------------------------
-// Rendered as shadow-only (no hard outline) so it reads as natural contour
-// rather than a bolted-on feature. Uses skin shadow colors at low opacity.
+// --- LAYER 4B: NOSE & PHILTRUM -----------------------------------------------
 
-function nose(noseShape, skinHex, faceShape) {
-    const { noseY } = getFeaturePos(faceShape);
-    const shadow = shadeColor(skinHex, -18);
-    const op = '0.35';
-    const tipY = noseY + 3;
-    const bridgeTop = noseY - 8;
+function nose(noseShape, skinHex, m) {
+    const { noseY } = m;
+    const shadow = shadeColor(skinHex, -26);
+    const softShade = shadeColor(skinHex, -16);
+    const tipY = noseY + 2.2;
+    const bridgeTop = noseY - 7.5;
 
     switch (noseShape) {
         case 'medium':
-            return `<g fill="none" stroke="${shadow}" stroke-linecap="round" opacity="${op}">
-                <path d="M 48 ${bridgeTop} Q 47 ${noseY} 45 ${tipY}" stroke-width="1.2"/>
-                <path d="M 52 ${bridgeTop} Q 53 ${noseY} 55 ${tipY}" stroke-width="1.2"/>
-                <path d="M 45 ${tipY} Q 50 ${tipY + 2.5} 55 ${tipY}" stroke-width="1"/>
+            return `<g fill="none" stroke="${shadow}" stroke-linecap="round" stroke-linejoin="round" opacity="0.42">
+                <path d="M 48.3 ${bridgeTop + 1} Q 47.5 ${noseY - 1} 45.5 ${tipY}" stroke-width="1.05"/>
+                <path d="M 45.2 ${tipY} Q 47.5 ${tipY + 1.8} 50 ${tipY + 1.8} Q 52.5 ${tipY + 1.8} 54.8 ${tipY}" stroke-width="1.15"/>
             </g>`;
         case 'button':
-            return `<g fill="none" stroke="${shadow}" stroke-linecap="round" opacity="${op}">
-                <path d="M 48.5 ${bridgeTop + 2} Q 48 ${noseY} 47 ${tipY}" stroke-width="1"/>
-                <path d="M 51.5 ${bridgeTop + 2} Q 52 ${noseY} 53 ${tipY}" stroke-width="1"/>
-                <ellipse cx="50" cy="${tipY}" rx="4" ry="2.5" stroke-width="1"/>
+            return `<g fill="none" stroke="${shadow}" stroke-linecap="round" opacity="0.4">
+                <ellipse cx="50" cy="${tipY - 0.3}" rx="3.4" ry="2.1" fill="${softShade}" fill-opacity="0.22" stroke="none"/>
+                <path d="M 46.2 ${tipY + 0.2} Q 50 ${tipY + 2.0} 53.8 ${tipY + 0.2}" stroke-width="1.1"/>
             </g>`;
         case 'pointed':
-            return `<g fill="none" stroke="${shadow}" stroke-linecap="round" opacity="${op}">
-                <path d="M 49 ${bridgeTop - 1} L 47 ${tipY}" stroke-width="1.3"/>
-                <path d="M 51 ${bridgeTop - 1} L 53 ${tipY}" stroke-width="1.3"/>
-                <path d="M 47 ${tipY} L 50 ${tipY + 2} L 53 ${tipY}" stroke-width="0.9"/>
+            return `<g fill="none" stroke="${shadow}" stroke-linecap="round" stroke-linejoin="round" opacity="0.45">
+                <path d="M 48.8 ${bridgeTop} L 46.5 ${tipY}" stroke-width="1.1"/>
+                <path d="M 46.2 ${tipY} L 50 ${tipY + 2.1} L 53.8 ${tipY}" stroke-width="1.15"/>
             </g>`;
         case 'wide':
-            return `<g fill="none" stroke="${shadow}" stroke-linecap="round" opacity="${op}">
-                <path d="M 48 ${bridgeTop + 1} Q 47 ${noseY} 43 ${tipY}" stroke-width="1.2"/>
-                <path d="M 52 ${bridgeTop + 1} Q 53 ${noseY} 57 ${tipY}" stroke-width="1.2"/>
-                <path d="M 43 ${tipY} Q 50 ${tipY + 3} 57 ${tipY}" stroke-width="1.1"/>
+            return `<g fill="none" stroke="${shadow}" stroke-linecap="round" stroke-linejoin="round" opacity="0.44">
+                <path d="M 48.2 ${bridgeTop + 1.5} Q 47 ${noseY} 43.8 ${tipY}" stroke-width="1.05"/>
+                <path d="M 43.5 ${tipY - 0.2} Q 45 ${tipY + 1.8} 47 ${tipY + 1.2} Q 50 ${tipY + 2.4} 53 ${tipY + 1.2} Q 55 ${tipY + 1.8} 56.5 ${tipY - 0.2}" stroke-width="1.2"/>
             </g>`;
         case 'aquiline':
-            return `<g fill="none" stroke="${shadow}" stroke-linecap="round" opacity="${op}">
-                <path d="M 48 ${bridgeTop - 2} Q 46 ${bridgeTop + 3} 47.5 ${noseY} Q 46.5 ${noseY + 2} 46 ${tipY}" stroke-width="1.3"/>
-                <path d="M 52 ${bridgeTop - 2} Q 54 ${bridgeTop + 3} 52.5 ${noseY} Q 53.5 ${noseY + 2} 54 ${tipY}" stroke-width="1.3"/>
-                <path d="M 46 ${tipY} Q 50 ${tipY + 2} 54 ${tipY}" stroke-width="1"/>
+            return `<g fill="none" stroke="${shadow}" stroke-linecap="round" stroke-linejoin="round" opacity="0.46">
+                <path d="M 48.5 ${bridgeTop - 0.5} Q 46.8 ${bridgeTop + 3.5} 47.6 ${noseY - 1} L 46.2 ${tipY}" stroke-width="1.15"/>
+                <path d="M 45.8 ${tipY} Q 50 ${tipY + 2.3} 54.2 ${tipY}" stroke-width="1.15"/>
             </g>`;
         case 'small':
         default:
-            return `<g fill="none" stroke="${shadow}" stroke-linecap="round" opacity="${op}">
-                <path d="M 49 ${bridgeTop + 3} Q 48 ${noseY + 1} 47 ${tipY}" stroke-width="1"/>
-                <path d="M 51 ${bridgeTop + 3} Q 52 ${noseY + 1} 53 ${tipY}" stroke-width="1"/>
-                <path d="M 47 ${tipY} Q 50 ${tipY + 1.5} 53 ${tipY}" stroke-width="0.8"/>
+            return `<g fill="none" stroke="${shadow}" stroke-linecap="round" opacity="0.38">
+                <path d="M 48.8 ${bridgeTop + 2.5} Q 48.2 ${noseY} 47 ${tipY}" stroke-width="0.95"/>
+                <path d="M 46.8 ${tipY} Q 50 ${tipY + 1.6} 53.2 ${tipY}" stroke-width="1.05"/>
             </g>`;
     }
 }
 
-// Philtrum: tiny V shadow between nose and upper lip
-function philtrum(skinHex, faceShape) {
-    const { noseY, mouthY } = getFeaturePos(faceShape);
-    const shadow = shadeColor(skinHex, -18);
-    const top = noseY + 5;
-    const bot = mouthY - 2;
-    return `<g fill="none" stroke="${shadow}" stroke-width="0.6" stroke-linecap="round" opacity="0.12">
-        <path d="M 49 ${top} Q 48.5 ${(top + bot) / 2} 49.5 ${bot}"/>
-        <path d="M 51 ${top} Q 51.5 ${(top + bot) / 2} 50.5 ${bot}"/>
+function philtrum(skinHex, m) {
+    const { noseY, mouthY } = m;
+    const shadow = shadeColor(skinHex, -22);
+    const top = noseY + 4.2;
+    const bot = mouthY - 2.2;
+    if (bot <= top) return '';
+    return `<g fill="none" stroke="${shadow}" stroke-width="0.65" stroke-linecap="round" opacity="0.16">
+        <path d="M 49.1 ${top} Q 48.8 ${(top + bot) / 2} 49.4 ${bot}"/>
+        <path d="M 50.9 ${top} Q 51.2 ${(top + bot) / 2} 50.6 ${bot}"/>
     </g>`;
 }
 
-// --- LAYER 5: FACIAL HAIR -----------------------------------------------------
+// --- LAYER 5: FACIAL HAIR ----------------------------------------------------
 
-function facialHair(style, colorHex, faceShape) {
-    const { mouthY } = getFeaturePos(faceShape);
+function facialHair(style, colorHex, m, headClipId) {
+    if (!style || style === 'none') return '';
+    const { mouthY, bottom, hw, jawHw } = m;
+    const ol = hairOutline(colorHex);
+    const dark = shadeColor(colorHex, -25);
+
+    const mustachePath = `M 50 ${mouthY - 2.8} C 46 ${mouthY - 4.2} 41.5 ${mouthY - 2.8} 39.5 ${mouthY - 0.3} C 42.5 ${mouthY + 0.2} 46.5 ${mouthY - 0.8} 50 ${mouthY - 1.4} C 53.5 ${mouthY - 0.8} 57.5 ${mouthY + 0.2} 60.5 ${mouthY - 0.3} C 58.5 ${mouthY - 2.8} 54 ${mouthY - 4.2} 50 ${mouthY - 2.8} Z`;
+
     switch (style) {
         case 'stubble': {
+            // Soft 5-o'clock jaw shadow + fine micro-stipple clipped to head
+            const jawZone = `M ${50 - hw} ${mouthY - 4} Q 50 ${mouthY - 1} ${50 + hw} ${mouthY - 4} L ${50 + hw} ${bottom + 4} L ${50 - hw} ${bottom + 4} Z`;
             const dots = [
-                [36, mouthY + 2], [42, mouthY + 6], [50, mouthY + 8], [58, mouthY + 6], [64, mouthY + 2],
-                [40, mouthY - 2], [60, mouthY - 2], [46, mouthY + 4], [54, mouthY + 4], [50, mouthY]
-            ];
-            const circles = dots.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="0.8"/>`).join('');
-            return `<g fill="${colorHex}" opacity="0.45">${circles}</g>`;
+                [35, mouthY + 2], [38, mouthY + 5], [42, mouthY + 8], [46, mouthY + 10], [50, mouthY + 10.5],
+                [54, mouthY + 10], [58, mouthY + 8], [62, mouthY + 5], [65, mouthY + 2],
+                [41, mouthY - 1.5], [45, mouthY - 2.2], [55, mouthY - 2.2], [59, mouthY - 1.5],
+                [44, mouthY + 5.5], [50, mouthY + 7], [56, mouthY + 5.5]
+            ].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="0.45"/>`).join('');
+            return `<g clip-path="url(#${headClipId})">
+                <path d="${jawZone}" fill="${colorHex}" opacity="0.16"/>
+                <g fill="${dark}" opacity="0.42">${dots}</g>
+            </g>`;
         }
         case 'mustache':
-            return `<path d="M 40 ${mouthY - 4} Q 50 ${mouthY - 7} 60 ${mouthY - 4} Q 50 ${mouthY - 0.5} 40 ${mouthY - 4} Z" fill="${colorHex}"/>`;
-        case 'shortBeard':
-            // Hugs the jaw/chin only — top edge sits at mouth-corner height, never above it.
-            return `<path d="M 30 ${mouthY} Q 24 ${mouthY + 14} 50 ${mouthY + 18} Q 76 ${mouthY + 14} 70 ${mouthY} Q 60 ${mouthY + 8} 50 ${mouthY + 8} Q 40 ${mouthY + 8} 30 ${mouthY} Z" fill="${colorHex}"/>`;
-        case 'fullBeard':
-            // Sideburns start below eye level and taper down through the jaw to the chin.
-            return `<path d="M 22 ${mouthY - 14} Q 16 ${mouthY + 10} 50 ${mouthY + 22} Q 84 ${mouthY + 10} 78 ${mouthY - 14} Q 68 ${mouthY + 4} 50 ${mouthY + 6} Q 32 ${mouthY + 4} 22 ${mouthY - 14} Z" fill="${colorHex}"/>`;
-        case 'goatee':
-            return `<path d="M 40 ${mouthY - 4} Q 50 ${mouthY - 7} 60 ${mouthY - 4} Q 50 ${mouthY - 0.5} 40 ${mouthY - 4} Z" fill="${colorHex}"/>` +
-                   `<ellipse cx="50" cy="${mouthY + 10}" rx="7" ry="9" fill="${colorHex}"/>`;
-        case 'none':
+            return `<path d="${mustachePath}" fill="${colorHex}" stroke="${ol}" stroke-width="0.7" stroke-linejoin="round"/>`;
+        case 'shortBeard': {
+            const sideX = jawHw + 2.5;
+            const topY = mouthY - 4;
+            const beardD = `M ${50 - sideX} ${topY} C ${50 - sideX - 0.5} ${mouthY + 6} ${50 - jawHw * 0.85} ${bottom + 0.8} 50 ${bottom + 0.8} C ${50 + jawHw * 0.85} ${bottom + 0.8} ${50 + sideX + 0.5} ${mouthY + 6} ${50 + sideX} ${topY} L ${50 + sideX - 2.2} ${topY + 2} C ${50 + sideX - 3.5} ${mouthY + 5.5} ${50 + 9} ${mouthY + 7.2} 50 ${mouthY + 7.2} C ${50 - 9} ${mouthY + 7.2} ${50 - sideX + 3.5} ${mouthY + 5.5} ${50 - sideX + 2.2} ${topY + 2} Z`;
+            return `<g fill="${colorHex}" stroke="${ol}" stroke-width="0.85" stroke-linejoin="round">
+                <path d="${beardD}"/>
+                <path d="${mustachePath}"/>
+            </g>`;
+        }
+        case 'fullBeard': {
+            const sideX = hw - 0.5;
+            const topY = mouthY - 14;
+            const lowBot = bottom + 3.5;
+            const beardD = `M ${50 - sideX} ${topY} C ${50 - sideX - 1.5} ${mouthY + 4} ${50 - jawHw - 2} ${lowBot} 50 ${lowBot} C ${50 + jawHw + 2} ${lowBot} ${50 + sideX + 1.5} ${mouthY + 4} ${50 + sideX} ${topY} L ${50 + sideX - 2.5} ${topY + 4} C ${50 + sideX - 4} ${mouthY + 1} ${50 + 11} ${mouthY + 5.5} 50 ${mouthY + 5.5} C ${50 - 11} ${mouthY + 5.5} ${50 - sideX + 4} ${mouthY + 1} ${50 - sideX + 2.5} ${topY + 4} Z`;
+            return `<g fill="${colorHex}" stroke="${ol}" stroke-width="1.0" stroke-linejoin="round">
+                <path d="${beardD}"/>
+                <path d="${mustachePath}"/>
+            </g>`;
+        }
+        case 'goatee': {
+            const chinTop = mouthY + 5.2;
+            const chinBot = bottom + 0.6;
+            const chinPatch = `M 43.5 ${chinTop} Q 50 ${chinTop + 1.4} 56.5 ${chinTop} C 57.5 ${(chinTop + chinBot) / 2} 55 ${chinBot} 50 ${chinBot} C 45 ${chinBot} 42.5 ${(chinTop + chinBot) / 2} 43.5 ${chinTop} Z`;
+            return `<g fill="${colorHex}" stroke="${ol}" stroke-width="0.75" stroke-linejoin="round">
+                <path d="${mustachePath}"/>
+                <path d="${chinPatch}"/>
+            </g>`;
+        }
         default:
             return '';
     }
 }
 
-// --- LAYER 6: WRINKLE OVERLAY (generic, opacity-driven) -----------------------
+// --- LAYER 6: WRINKLES -------------------------------------------------------
+// Warm skin-contour wrinkle lines placed below the hairline and clipped to the
+// head so they never look like harsh black forehead bars.
 
-function wrinkles(opacity, faceShape) {
+function wrinkles(opacity, m, skinHex, headClipId) {
     if (opacity <= 0) return '';
-    const { eyeY, browY, mouthY } = getFeaturePos(faceShape);
-    const foreheadY1 = browY - 14;
-    const foreheadY2 = browY - 9;
-    const crowFeetY1 = eyeY - 4;
-    const crowFeetY2 = eyeY + 3;
-    const nlFoldY = mouthY - 4;
-    const nlFoldEndY = mouthY + 6;
-    return `
-        <g fill="none" stroke="${OUTLINE}" stroke-width="1" stroke-linecap="round" stroke-opacity="${opacity.toFixed(2)}">
-            <path d="M 30 ${foreheadY1} Q 50 ${foreheadY1 - 3} 70 ${foreheadY1}"/>
-            <path d="M 32 ${foreheadY2} Q 50 ${foreheadY2 - 3} 68 ${foreheadY2}"/>
-            <path d="M 29 ${crowFeetY1} L 24 ${crowFeetY1 - 2}"/>
-            <path d="M 29 ${crowFeetY2} L 24 ${crowFeetY2 + 2}"/>
-            <path d="M 71 ${crowFeetY1} L 76 ${crowFeetY1 - 2}"/>
-            <path d="M 71 ${crowFeetY2} L 76 ${crowFeetY2 + 2}"/>
-            <path d="M 42 ${nlFoldY} Q 40 ${nlFoldY + 6} 41 ${nlFoldEndY}"/>
-            <path d="M 58 ${nlFoldY} Q 60 ${nlFoldY + 6} 59 ${nlFoldEndY}"/>
-        </g>
-    `;
-}
+    const { eyeY, eyeSpacing, browY, mouthY, hairlineY } = m;
+    const stroke = shadeColor(skinHex, -38);
+    const effOp = (opacity * 0.52).toFixed(2);
+    const fh1 = +(hairlineY + (browY - hairlineY) * 0.36).toFixed(1);
+    const fh2 = +(hairlineY + (browY - hairlineY) * 0.66).toFixed(1);
+    const lOuter = 50 - eyeSpacing - 7.5;
+    const rOuter = 50 + eyeSpacing + 7.5;
 
-// --- LAYERS 7 & 9: HAIR (back layer behind shoulders, front cap) -------------
-// Every shape below is generated from the face's own {top, hw} profile
-// rather than a fixed path, so hair actually matches the skull it's drawn
-// on instead of assuming one width for every face shape.
-//
-// Each fill is a diagonal gradient (built in buildSvg via hairPaint.url)
-// rather than a flat hex so the cap/cascade reads as rounded volume, and
-// every shape layers thin darker strand strokes + one light rim-highlight
-// on top so it reads as combed strands rather than a solid blob.
-
-function domePeak(top) {
-    return top - 12;
-}
-
-function domeCapPath(hw, top, domeBaseY) {
-    const peak = domePeak(top);
-    const innerTop = peak + 6;
-    const innerSide = peak + 14;
-    return `M ${50 - hw} ${domeBaseY} Q 50 ${peak} ${50 + hw} ${domeBaseY} Q ${50 + hw - 2} ${innerSide} 50 ${innerTop} Q ${50 - hw + 2} ${innerSide} ${50 - hw} ${domeBaseY} Z`;
-}
-
-// Y-coordinate of the dome's own outer curve at a given x — lets decorative
-// bits (spikes, a side flip) attach to the actual silhouette instead of
-// floating at a fixed height that only happened to line up for one hw.
-function domeOuterY(x, hw, top, domeBaseY) {
-    const peak = domePeak(top);
-    const t = (x - (50 - hw)) / (2 * hw);
-    return domeBaseY - 2 * (domeBaseY - peak) * t * (1 - t);
-}
-
-// Fine strand lines following the dome's own curvature, fanning out from
-// the crown — reads as combed hair instead of a flat cap.
-// 10 strands (up from 6) with slightly varied curvature to avoid the
-// "evenly-spaced ruled lines" look.
-function domeStrandPaths(hw, top, domeBaseY) {
-    return [-0.78, -0.58, -0.38, -0.2, -0.04, 0.1, 0.26, 0.44, 0.6, 0.76].map((f, i) => {
-        const x = 50 + f * hw;
-        const yTop = domeOuterY(x, hw, top, domeBaseY) + 2.5;
-        const yBot = domeBaseY - 1.5;
-        // Alternate bend direction slightly for organic feel
-        const bend = f * 3 + (i % 2 === 0 ? 0.8 : -0.6);
-        return `M ${x.toFixed(1)} ${yTop.toFixed(1)} Q ${(x + bend).toFixed(1)} ${((yTop + yBot) / 2).toFixed(1)} ${x.toFixed(1)} ${yBot.toFixed(1)}`;
-    });
-}
-
-// A single bright streak near the crown, offset toward the upper-left as if
-// lit from that side — the cheapest way to make a flat cap read as glossy.
-function domeHighlightPath(hw, top) {
-    const peak = domePeak(top);
-    const x1 = 50 - hw * 0.42, x2 = 50 - hw * 0.05;
-    const yMid = peak + (34 - peak) * 0.3;
-    return `M ${x1} ${yMid + 4} Q ${(x1 + x2) / 2} ${peak + 3} ${x2} ${yMid - 2}`;
-}
-
-function domeTexture(hw, top, hairHex, domeBaseY) {
-    const strands = strandGroup(domeStrandPaths(hw, top, domeBaseY), shadeColor(hairHex, -32), 0.4, 0.7);
-    const highlight = `<path d="${domeHighlightPath(hw, top)}" fill="none" stroke="${shadeColor(hairHex, 32)}" stroke-width="1.3" stroke-linecap="round" stroke-opacity="0.5"/>`;
-    return strands + highlight;
-}
-
-// Tighter, lower dome cap for shortCrop
-function cropDomeCapPath(hw, top, domeBaseY) {
-    const peak = top - 8;
-    const innerTop = top + 2;
-    const innerSide = top + 10;
-    return `M ${50 - hw} ${domeBaseY - 2} Q 50 ${peak} ${50 + hw} ${domeBaseY - 2} Q ${50 + hw - 2} ${innerSide} 50 ${innerTop} Q ${50 - hw + 2} ${innerSide} ${50 - hw} ${domeBaseY - 2} Z`;
-}
-
-// Slicked-back dome cap hugging closer to skull with flatter crown for ponytail/bun
-function slickedDomeCapPath(hw, top, domeBaseY) {
-    const peak = top - 8;
-    const innerTop = top + 3;
-    const innerSide = top + 11;
-    return `M ${50 - hw} ${domeBaseY} Q 50 ${peak} ${50 + hw} ${domeBaseY} Q ${50 + hw - 1} ${innerSide} 50 ${innerTop} Q ${50 - hw + 1} ${innerSide} ${50 - hw} ${domeBaseY} Z`;
-}
-
-// Tension lines radiating towards pull point (e.g. top-back for bun or side-back for ponytail)
-function slickedTexture(hw, top, hairHex, targetX, targetY) {
-    const dark = shadeColor(hairHex, -30);
-    const light = shadeColor(hairHex, 28);
-    const peak = top - 8;
-    const innerTop = top + 3;
-    const lines = [-0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75].map(f => {
-        const xStart = 50 + f * (hw - 3);
-        const yStart = innerTop + Math.abs(f) * 6;
-        return `M ${xStart.toFixed(1)} ${yStart.toFixed(1)} Q ${(xStart * 0.6 + targetX * 0.4).toFixed(1)} ${(yStart * 0.6 + targetY * 0.4).toFixed(1)} ${(xStart * 0.3 + targetX * 0.7).toFixed(1)} ${(yStart * 0.3 + targetY * 0.7).toFixed(1)}`;
-    });
-    const strands = strandGroup(lines, dark, 0.45, 0.6);
-    const highlight = `<path d="M ${50 - hw * 0.35} ${peak + 3} Q 50 ${peak + 1} ${50 + hw * 0.2} ${peak + 4}" fill="none" stroke="${light}" stroke-width="1.1" stroke-linecap="round" stroke-opacity="0.4"/>`;
-    return strands + highlight;
-}
-
-// Per-style side hair hanging past the ears. Replaces the generic
-// teardrop 'templeFlap' with shapes that vary by length and style.
-
-// Medium side hair — tucks behind ear, ends mid-cheek, slight inward curve.
-function sideHairMedium(edge, sideDrop, dir, domeBaseY) {
-    const endY = sideDrop + 6;
-    return `M ${edge} ${domeBaseY} Q ${edge + dir * 6} 40 ${edge + dir * 5} ${endY - 4} Q ${edge + dir * 3} ${endY + 2} ${edge + dir * 1} ${endY} Q ${edge - dir * 1} ${endY - 8} ${edge} ${domeBaseY} Z`;
-}
-
-// Long straight side hair — hangs flat and close, sleek lines.
-function sideHairLong(edge, sideDrop, dir, domeBaseY) {
-    const endY = sideDrop + 18;
-    return `M ${edge} ${domeBaseY} Q ${edge + dir * 6} 40 ${edge + dir * 5} ${sideDrop} C ${edge + dir * 6} ${sideDrop + 8} ${edge + dir * 4} ${endY - 4} ${edge + dir * 2} ${endY} Q ${edge} ${endY - 3} ${edge + dir * 0.5} ${endY - 8} C ${edge - dir * 1} ${sideDrop + 4} ${edge - dir * 1} 42 ${edge} ${domeBaseY} Z`;
-}
-
-// Wavy side hair — gentle S-curves, wider/more voluminous.
-function sideHairWavy(edge, sideDrop, dir, domeBaseY) {
-    const endY = sideDrop + 14;
-    return `M ${edge} ${domeBaseY} Q ${edge + dir * 7} 38 ${edge + dir * 8} ${sideDrop - 4} C ${edge + dir * 4} ${sideDrop + 3} ${edge + dir * 9} ${sideDrop + 8} ${edge + dir * 5} ${endY - 2} Q ${edge + dir * 2} ${endY + 2} ${edge + dir * 1} ${endY} Q ${edge - dir * 1} ${endY - 6} ${edge - dir * 2} ${sideDrop} C ${edge - dir * 1} 44 ${edge} 38 ${edge} ${domeBaseY} Z`;
-}
-
-function sideHairStrand(edge, sideDrop, dir, endY, domeBaseY) {
-    return `M ${edge + dir * 2} ${domeBaseY + 4} Q ${edge + dir * 5} ${(domeBaseY + endY) / 2} ${edge + dir * 2.5} ${endY - 5}`;
-}
-
-// Wispy tapered ends at the bottom of side hair
-function sideHairWisps(edge, dir, endY, hairHex) {
-    const dark = shadeColor(hairHex, -25);
-    return `<g fill="none" stroke="${dark}" stroke-width="0.5" stroke-linecap="round" stroke-opacity="0.35">
-        <path d="M ${edge + dir * 3} ${endY - 2} Q ${edge + dir * 4} ${endY + 2} ${edge + dir * 2.5} ${endY + 4}"/>
-        <path d="M ${edge + dir * 1.5} ${endY - 1} Q ${edge + dir * 2} ${endY + 3} ${edge + dir * 0.5} ${endY + 3}"/>
+    return `<g clip-path="url(#${headClipId})" fill="none" stroke="${stroke}" stroke-width="0.85" stroke-linecap="round" stroke-opacity="${effOp}">
+        <path d="M 38 ${fh1} Q 50 ${fh1 - 1.4} 62 ${fh1}"/>
+        <path d="M 40 ${fh2} Q 50 ${fh2 - 1.2} 60 ${fh2}"/>
+        <path d="M ${lOuter} ${eyeY - 1.5} L ${lOuter - 3.5} ${eyeY - 2.8}"/>
+        <path d="M ${lOuter} ${eyeY + 1.2} L ${lOuter - 3.5} ${eyeY + 2.4}"/>
+        <path d="M ${rOuter} ${eyeY - 1.5} L ${rOuter + 3.5} ${eyeY - 2.8}"/>
+        <path d="M ${rOuter} ${eyeY + 1.2} L ${rOuter + 3.5} ${eyeY + 2.4}"/>
+        <path d="M 41.5 ${mouthY - 4.5} Q 39.5 ${mouthY} 40.5 ${mouthY + 4.5}"/>
+        <path d="M 58.5 ${mouthY - 4.5} Q 60.5 ${mouthY} 59.5 ${mouthY + 4.5}"/>
     </g>`;
 }
 
-// Transition strokes from dome cap to cascade — bridges the gap above the ears
-function domeToBackTransition(edge, dir, hairHex, domeBaseY) {
-    const dark = shadeColor(hairHex, -25);
-    return `<g fill="none" stroke="${dark}" stroke-width="0.6" stroke-linecap="round" stroke-opacity="0.3">
-        <path d="M ${edge + dir * 1} ${domeBaseY} Q ${edge + dir * 3} ${domeBaseY + 8} ${edge + dir * 2} ${domeBaseY + 16}"/>
-        <path d="M ${edge} ${domeBaseY + 2} Q ${edge + dir * 2} ${domeBaseY + 10} ${edge + dir * 1} ${domeBaseY + 18}"/>
+// --- LAYERS 0 & 9: HAIR (BACK SILHOUETTE & FRONT CROWN) ----------------------
+// Every hair cap uses cubic-Bezier crown arcs that sit strictly outside the
+// head's cranium contour from temple to apex to temple, and all interior
+// strands/highlights/part lines are clipped to the hair silhouette so zero
+// lines can ever cross onto the forehead.
+
+// Standard full crown cap path with natural hairline and temple sideburns.
+function buildCrownCapD(m, opts = {}) {
+    const {
+        padX = 2.2,
+        padTop = 3.5,
+        sideDropY = m.templeY + 4,
+        templeInX = m.hw - 3.2,
+        hairlineMidY = m.hairlineY,
+        hairlineDip = 0 // positive dips down (widow's peak / fringe), negative arches up
+    } = opts;
+
+    const outHw = m.hw + padX;
+    const L = +(50 - outHw).toFixed(1);
+    const R = +(50 + outHw).toFixed(1);
+    const topY = +(m.top - padTop).toFixed(1);
+    const crownK = +(outHw * 0.66).toFixed(1);
+    const shoulderY = +(topY + (sideDropY - topY) * 0.34).toFixed(1);
+
+    const inL = +(50 - templeInX).toFixed(1);
+    const inR = +(50 + templeInX).toFixed(1);
+    const templeCornerY = +(m.hairlineY + 3.5).toFixed(1);
+    const midY = +(hairlineMidY + hairlineDip).toFixed(1);
+
+    return `M ${L} ${sideDropY} C ${L} ${shoulderY} ${50 - crownK} ${topY} 50 ${topY} C ${50 + crownK} ${topY} ${R} ${shoulderY} ${R} ${sideDropY} Q ${R - 1.5} ${sideDropY + 1.5} ${inR} ${sideDropY - 1} Q ${inR - 0.5} ${templeCornerY} ${50 + templeInX * 0.68} ${hairlineMidY} Q 50 ${midY} ${50 - templeInX * 0.68} ${hairlineMidY} Q ${inL + 0.5} ${templeCornerY} ${inL} ${sideDropY - 1} Q ${L + 1.5} ${sideDropY + 1.5} ${L} ${sideDropY} Z`;
+}
+
+// Clipped helper: renders a hair silhouette path + interior texture clipped to
+// that exact silhouette.
+function renderClippedHairGroup(silhouetteD, fill, stroke, strokeWidth, interiorSvg, clipId) {
+    return `<g>
+        <clipPath id="${clipId}"><path d="${silhouetteD}"/></clipPath>
+        <path d="${silhouetteD}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-linejoin="round"/>
+        <g clip-path="url(#${clipId})">${interiorSvg}</g>
     </g>`;
 }
 
-function buzzedCapPath(hw, top, domeBaseY) {
-    const w = hw - 2;
-    const peak = top - 3;
-    const innerTop = top + 1;
-    const innerSide = top + 6;
-    return `M ${50 - w} ${domeBaseY - 3} Q 50 ${peak} ${50 + w} ${domeBaseY - 3} Q ${50 + w - 2} ${innerSide} 50 ${innerTop} Q ${50 - w + 2} ${innerSide} ${50 - w} ${domeBaseY - 3} Z`;
-}
-
-// Scattered stipple dots instead of evenly-spaced ticks — reads as
-// cropped stubble instead of stitches on a cap.
-function buzzedStipple(hw, top, domeBaseY) {
-    const w = hw - 2;
-    const peak = top - 3;
-    const dots = [];
-    // Deterministic scatter across the cap surface
-    const positions = [
-        [-0.65, 0.7], [-0.45, 0.4], [-0.3, 0.8], [-0.15, 0.3], [-0.5, 0.55],
-        [0.0, 0.6], [0.15, 0.35], [0.3, 0.75], [0.45, 0.45], [0.65, 0.65],
-        [-0.35, 0.2], [0.1, 0.85], [0.55, 0.3], [-0.55, 0.9], [0.4, 0.15],
-        [-0.1, 0.55], [0.25, 0.55], [-0.7, 0.5], [0.7, 0.5], [-0.2, 0.65],
-        [0.5, 0.8], [-0.6, 0.3], [0.6, 0.2], [0.0, 0.15]
-    ];
-    positions.forEach(([fx, fy]) => {
-        const x = 50 + fx * w;
-        const yTop = peak + 3 + Math.abs(fx) * 5;
-        const yBot = domeBaseY - 4;
-        const y = yTop + (yBot - yTop) * fy;
-        const r = 0.5 + (fy * 0.3);
-        dots.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(1)}"/>`);
-    });
-    return dots.join('');
-}
-
-// Smooth cascade (straight hair) — slight natural curve, not perfectly flat.
-function leftCascade(edge, endY) {
-    return `M ${edge - 1} 24 C ${edge - 9} 44 ${edge - 8} 72 ${edge - 5} ${endY - 2} Q ${edge - 3} ${endY + 1} ${edge - 1} ${endY} L ${edge + 2} ${endY - 3} C ${edge} 70 ${edge} 45 ${edge + 2} 26 Z`;
-}
-function rightCascade(edge, endY) {
-    return `M ${edge + 1} 24 C ${edge + 9} 44 ${edge + 8} 72 ${edge + 5} ${endY - 2} Q ${edge + 3} ${endY + 1} ${edge + 1} ${endY} L ${edge - 2} ${endY - 3} C ${edge} 70 ${edge} 45 ${edge - 2} 26 Z`;
-}
-
-// Rippled cascade (wavy) — gentler amplitude (~30% less than before) so
-// waves read as natural undulation rather than aggressive zigzag.
-function leftCascadeWavy(edge, endY) {
-    const y1 = 24 + (endY - 24) * 0.33, y2 = 24 + (endY - 24) * 0.58, y3 = 24 + (endY - 24) * 0.82;
-    return `M ${edge - 1} 24 C ${edge - 8} ${y1 - 3} ${edge + 1} ${y1 + 3} ${edge - 7} ${y2 - 4} C ${edge - 12} ${y2 + 3} ${edge + 1} ${y3 - 2} ${edge - 4} ${endY - 1} Q ${edge - 2} ${endY + 1} ${edge - 1} ${endY} L ${edge + 2} ${endY - 3} C ${edge} 70 ${edge} 45 ${edge + 2} 26 Z`;
-}
-function rightCascadeWavy(edge, endY) {
-    const y1 = 24 + (endY - 24) * 0.33, y2 = 24 + (endY - 24) * 0.58, y3 = 24 + (endY - 24) * 0.82;
-    return `M ${edge + 1} 24 C ${edge + 8} ${y1 - 3} ${edge - 1} ${y1 + 3} ${edge + 7} ${y2 - 4} C ${edge + 12} ${y2 + 3} ${edge - 1} ${y3 - 2} ${edge + 4} ${endY - 1} Q ${edge + 2} ${endY + 1} ${edge + 1} ${endY} L ${edge - 2} ${endY - 3} C ${edge} 70 ${edge} 45 ${edge - 2} 26 Z`;
-}
-
-// Interior cascade strands — 4 per side (up from 2) with a highlight strand.
-function cascadeStrandPaths(edge, endY, dir) {
-    return [2, 4.5, 7, 9.5].map(inset => {
-        const x1 = edge + dir * (1 - inset * 0.2);
-        const cx = edge + dir * (8 - inset * 0.4);
-        const x2 = edge + dir * (4 - inset * 0.35);
-        return `M ${x1.toFixed(1)} 27 C ${cx.toFixed(1)} 46 ${cx.toFixed(1)} 73 ${x2.toFixed(1)} ${(endY - 5).toFixed(1)}`;
-    });
-}
-
-function cascadeTexture(leftEdge, rightEdge, endY, hairHex) {
-    const dark = shadeColor(hairHex, -30);
-    const light = shadeColor(hairHex, 25);
-    const paths = cascadeStrandPaths(leftEdge, endY, -1).concat(cascadeStrandPaths(rightEdge, endY, 1));
-    const strands = strandGroup(paths, dark, 0.4, 0.7);
-    // Highlight strand on each side for glossy volume
-    const highlightPaths = [
-        `M ${leftEdge - 3} 30 Q ${leftEdge - 4} ${(30 + endY) / 2} ${leftEdge - 2} ${endY - 8}`,
-        `M ${rightEdge + 3} 30 Q ${rightEdge + 4} ${(30 + endY) / 2} ${rightEdge + 2} ${endY - 8}`
-    ];
-    const highlights = strandGroup(highlightPaths, light, 0.8, 0.4);
-    // Tapered wispy ends
-    const wisps = `<g fill="none" stroke="${dark}" stroke-width="0.4" stroke-linecap="round" stroke-opacity="0.3">
-        <path d="M ${leftEdge - 4} ${endY - 1} Q ${leftEdge - 5} ${endY + 3} ${leftEdge - 3} ${endY + 4}"/>
-        <path d="M ${leftEdge - 2} ${endY} Q ${leftEdge - 1} ${endY + 2} ${leftEdge - 3} ${endY + 3}"/>
-        <path d="M ${rightEdge + 4} ${endY - 1} Q ${rightEdge + 5} ${endY + 3} ${rightEdge + 3} ${endY + 4}"/>
-        <path d="M ${rightEdge + 2} ${endY} Q ${rightEdge + 1} ${endY + 2} ${rightEdge + 3} ${endY + 3}"/>
-    </g>`;
-    return strands + highlights + wisps;
-}
-
-function hairBack(style, hairPaint, faceShape) {
-    if (!AvatarLogic.HAIR_STYLES_WITH_BACK_LAYER.includes(style)) return '';
-    const { hw, domeBaseY } = getFaceProfile(faceShape);
-    const leftEdge = 50 - hw;
-    const rightEdge = 50 + hw;
-    const { url: fill, hex } = hairPaint;
+// Smooth crown highlight band + flow arcs (used inside clipped hair caps)
+function crownSheenAndFlow(m, hex, padTop = 3.5, partX = null) {
+    const dark = shadeColor(hex, -28);
     const light = shadeColor(hex, 30);
-    const dark = shadeColor(hex, -30);
+    const topY = m.top - padTop;
+    const hlY = topY + 4.5;
+    const hw = m.hw;
+
+    const sheen = `<path d="M ${50 - hw * 0.55} ${hlY + 3.5} Q ${50 - hw * 0.15} ${hlY - 1.5} ${50 + hw * 0.38} ${hlY + 1.5}" fill="none" stroke="${light}" stroke-width="2.2" stroke-linecap="round" stroke-opacity="0.32"/>`;
+
+    const flows = [
+        `M ${50 - hw * 0.15} ${topY + 1.5} Q ${50 - hw * 0.55} ${topY + 5} ${50 - hw * 0.88} ${m.hairlineY + 5}`,
+        `M ${50 + hw * 0.05} ${topY + 1.5} Q ${50 + hw * 0.52} ${topY + 5} ${50 + hw * 0.88} ${m.hairlineY + 5}`,
+        `M ${50 - hw * 0.05} ${topY + 2} Q ${50 - hw * 0.32} ${topY + 6} ${50 - hw * 0.55} ${m.hairlineY + 2}`,
+        `M ${50 + hw * 0.12} ${topY + 2} Q ${50 + hw * 0.38} ${topY + 6} ${50 + hw * 0.6} ${m.hairlineY + 2}`
+    ];
+    const partLine = partX !== null
+        ? `<path d="M ${partX} ${topY + 1} Q ${partX + 0.8} ${topY + 5} ${partX} ${m.hairlineY + 2}" fill="none" stroke="${dark}" stroke-width="1.0" stroke-linecap="round" stroke-opacity="0.55"/>`
+        : '';
+
+    return sheen + strandGroup(flows, dark, 0.38, 0.85) + partLine;
+}
+
+// Back-of-head hair layer rendered BEFORE headAndEars so long hair, ponytails,
+// buns, braids, and bobs sit naturally behind the head and ears.
+function hairBack(style, hairPaint, m, sid) {
+    const { url: fill, hex } = hairPaint;
+    const ol = hairOutline(hex);
+    const dark = shadeColor(hex, -28);
+    const light = shadeColor(hex, 28);
+    const { top, bottom, hw } = m;
+    const clipId = `hairBackClip_${sid}`;
 
     switch (style) {
+        case 'mediumStraight': {
+            const outW = hw + 4.2;
+            const topY = top - 3.2;
+            const crownK = +(outW * 0.66).toFixed(1);
+            const endY = bottom - 5;
+            const silD = `M 50 ${topY} C ${50 + crownK} ${topY} ${50 + outW} ${top + 10} ${50 + outW} ${top + 28} C ${50 + outW} ${endY - 12} ${50 + outW - 1} ${endY - 3} ${50 + hw - 3} ${endY} L ${50 - hw + 3} ${endY} C ${50 - outW + 1} ${endY - 3} ${50 - outW} ${endY - 12} ${50 - outW} ${top + 28} C ${50 - outW} ${top + 10} ${50 - crownK} ${topY} 50 ${topY} Z`;
+            const strands = strandGroup([
+                `M ${50 - hw - 1.5} ${top + 22} Q ${50 - hw - 2.8} ${(top + endY) / 2} ${50 - hw + 0.5} ${endY - 2}`,
+                `M ${50 + hw + 1.5} ${top + 22} Q ${50 + hw + 2.8} ${(top + endY) / 2} ${50 + hw - 0.5} ${endY - 2}`
+            ], dark, 0.4, 0.85);
+            return renderClippedHairGroup(silD, fill, ol, 1.5, strands, clipId);
+        }
+
+        case 'shoulderWave': {
+            const outW = hw + 5.5;
+            const topY = top - 3.2;
+            const crownK = +(outW * 0.66).toFixed(1);
+            const endY = Math.min(93, bottom + 5);
+            const y1 = top + 26, y2 = top + 46;
+            const silD = `M 50 ${topY} C ${50 + crownK} ${topY} ${50 + outW - 1} ${top + 10} ${50 + outW - 1} ${y1 - 4} C ${50 + outW + 2} ${y1 + 4} ${50 + outW - 2.5} ${y1 + 12} ${50 + outW + 0.5} ${y2} C ${50 + outW + 3} ${endY - 8} ${50 + hw + 2} ${endY} ${50 + hw - 5} ${endY} L ${50 - hw + 5} ${endY} C ${50 - hw - 2} ${endY} ${50 - outW - 3} ${endY - 8} ${50 - outW - 0.5} ${y2} C ${50 - outW + 2.5} ${y1 + 12} ${50 - outW - 2} ${y1 + 4} ${50 - outW + 1} ${y1 - 4} C ${50 - outW + 1} ${top + 10} ${50 - crownK} ${topY} 50 ${topY} Z`;
+            const waves = strandGroup([
+                `M ${50 - hw - 2} ${top + 22} C ${50 - outW} ${y1 + 2} ${50 - hw - 1} ${y2 - 4} ${50 - hw - 3} ${endY - 3}`,
+                `M ${50 - hw} ${top + 26} C ${50 - hw - 3.5} ${y1 + 6} ${50 - hw + 1} ${y2} ${50 - hw} ${endY - 2}`,
+                `M ${50 + hw + 2} ${top + 22} C ${50 + outW} ${y1 + 2} ${50 + hw + 1} ${y2 - 4} ${50 + hw + 3} ${endY - 3}`,
+                `M ${50 + hw} ${top + 26} C ${50 + hw + 3.5} ${y1 + 6} ${50 + hw - 1} ${y2} ${50 + hw} ${endY - 2}`
+            ], dark, 0.4, 0.85);
+            return renderClippedHairGroup(silD, fill, ol, 1.5, waves, clipId);
+        }
+
+        case 'longStraight': {
+            const outW = hw + 5.0;
+            const topY = top - 3.2;
+            const crownK = +(outW * 0.66).toFixed(1);
+            const endY = 96;
+            const silD = `M 50 ${topY} C ${50 + crownK} ${topY} ${50 + outW} ${top + 10} ${50 + outW} ${top + 28} C ${50 + outW} 68 ${50 + outW - 0.5} 82 ${50 + outW - 2} ${endY} Q ${50 + hw - 2} ${endY + 1} ${50 + hw - 8} ${endY - 1} L ${50 - hw + 8} ${endY - 1} Q ${50 - hw + 2} ${endY + 1} ${50 - outW + 2} ${endY} C ${50 - outW + 0.5} 82 ${50 - outW} 68 ${50 - outW} ${top + 28} C ${50 - outW} ${top + 10} ${50 - crownK} ${topY} 50 ${topY} Z`;
+            const strands = strandGroup([
+                `M ${50 - hw - 2.5} ${top + 24} C ${50 - hw - 3.8} 55 ${50 - hw - 3.2} 76 ${50 - hw - 2} ${endY - 2}`,
+                `M ${50 - hw - 0.5} ${top + 26} C ${50 - hw - 1.5} 58 ${50 - hw - 1.5} 78 ${50 - hw} ${endY - 2}`,
+                `M ${50 + hw + 2.5} ${top + 24} C ${50 + hw + 3.8} 55 ${50 + hw + 3.2} 76 ${50 + hw + 2} ${endY - 2}`,
+                `M ${50 + hw + 0.5} ${top + 26} C ${50 + hw + 1.5} 58 ${50 + hw + 1.5} 78 ${50 + hw} ${endY - 2}`
+            ], dark, 0.42, 0.85);
+            const sheen = strandGroup([
+                `M ${50 - hw - 3} 44 L ${50 - hw - 2.5} 78`,
+                `M ${50 + hw + 3} 44 L ${50 + hw + 2.5} 78`
+            ], light, 0.28, 1.3);
+            return renderClippedHairGroup(silD, fill, ol, 1.5, strands + sheen, clipId);
+        }
+
+        case 'longWavy': {
+            const outW = hw + 5.8;
+            const topY = top - 3.2;
+            const crownK = +(outW * 0.66).toFixed(1);
+            const endY = 96;
+            const y1 = 40, y2 = 60, y3 = 78;
+            const silD = `M 50 ${topY} C ${50 + crownK} ${topY} ${50 + outW - 1} ${top + 10} ${50 + outW - 1} ${y1 - 8} C ${50 + outW + 2} ${y1 - 2} ${50 + outW - 2.5} ${y1 + 8} ${50 + outW + 0.5} ${y2} C ${50 + outW + 3} ${y2 + 10} ${50 + outW - 2} ${y3} ${50 + outW - 1} ${endY - 1} Q ${50 + hw} ${endY + 1} ${50 + hw - 7} ${endY - 1} L ${50 - hw + 7} ${endY - 1} Q ${50 - hw} ${endY + 1} ${50 - outW + 1} ${endY - 1} C ${50 - outW + 2} ${y3} ${50 - outW - 3} ${y2 + 10} ${50 - outW - 0.5} ${y2} C ${50 - outW + 2.5} ${y1 + 8} ${50 - outW - 2} ${y1 - 2} ${50 - outW + 1} ${y1 - 8} C ${50 - outW + 1} ${top + 10} ${50 - crownK} ${topY} 50 ${topY} Z`;
+            const waves = strandGroup([
+                `M ${50 - hw - 2} 34 C ${50 - outW} ${y1} ${50 - hw - 1} ${y2 - 4} ${50 - outW + 1} ${y3 - 4} Q ${50 - hw - 2} 88 ${50 - hw - 2} ${endY - 2}`,
+                `M ${50 - hw} 38 C ${50 - hw - 3} ${y1 + 4} ${50 - hw + 1} ${y2} ${50 - hw - 2} ${y3} Q ${50 - hw} 88 ${50 - hw} ${endY - 2}`,
+                `M ${50 + hw + 2} 34 C ${50 + outW} ${y1} ${50 + hw + 1} ${y2 - 4} ${50 + outW - 1} ${y3 - 4} Q ${50 + hw + 2} 88 ${50 + hw + 2} ${endY - 2}`,
+                `M ${50 + hw} 38 C ${50 + hw + 3} ${y1 + 4} ${50 + hw - 1} ${y2} ${50 + hw + 2} ${y3} Q ${50 + hw} 88 ${50 + hw} ${endY - 2}`
+            ], dark, 0.42, 0.85);
+            return renderClippedHairGroup(silD, fill, ol, 1.5, waves, clipId);
+        }
+
         case 'ponytail': {
-            const tailCx = rightEdge + 3;
-            const tieY = 30;
-            const rot = 10;
-            // Gathered hair mass behind the ear leading to the tie
-            const gathered = `<path d="M ${rightEdge - 2} 22 Q ${rightEdge + 8} 24 ${tailCx} ${tieY} Q ${rightEdge + 1} ${tieY + 2} ${rightEdge - 4} ${tieY + 4} Q ${rightEdge - 2} 28 ${rightEdge - 2} 22 Z" fill="${fill}" stroke="${dark}" stroke-width="0.8" stroke-opacity="0.3"/>`;
-            // Rounded hair tie band with fabric fold shadow
-            const tie = `<ellipse cx="${tailCx}" cy="${tieY}" rx="4" ry="2.5" fill="${shadeColor(hex, -40)}" stroke="${OUTLINE}" stroke-width="1"/>
-                <path d="M ${tailCx - 2} ${tieY - 1} Q ${tailCx} ${tieY + 1} ${tailCx + 2} ${tieY - 1}" fill="none" stroke="${shadeColor(hex, -55)}" stroke-width="0.6" stroke-opacity="0.4"/>`;
-            // Tapered tail — wide at tie, narrowing to tip with natural gravity curve
-            const tail = `<path d="M ${tailCx - 5} ${tieY + 2} Q ${tailCx - 6} ${tieY + 20} ${tailCx - 3} ${tieY + 40} Q ${tailCx} ${tieY + 48} ${tailCx + 1} ${tieY + 45} Q ${tailCx + 3} ${tieY + 38} ${tailCx + 4} ${tieY + 20} Q ${tailCx + 5} ${tieY + 4} ${tailCx + 5} ${tieY + 2} Z" fill="${fill}" stroke="${OUTLINE}" stroke-width="1.2" transform="rotate(${rot} ${tailCx} ${tieY})"/>`;
-            // Strand lines along the tail
-            const strands = [-3, -1, 1, 3].map(offset => {
-                const sx = tailCx + offset * 0.8;
-                return `<path d="M ${sx} ${tieY + 3} Q ${sx + offset * 0.3} ${tieY + 22} ${sx - offset * 0.2} ${tieY + 38}" transform="rotate(${rot} ${tailCx} ${tieY})"/>`;
-            }).join('');
-            // Tip flare — hair tips splay outward
-            const tipFlare = `<g fill="none" stroke="${dark}" stroke-width="0.5" stroke-linecap="round" stroke-opacity="0.35" transform="rotate(${rot} ${tailCx} ${tieY})">
-                <path d="M ${tailCx - 2} ${tieY + 42} Q ${tailCx - 4} ${tieY + 47} ${tailCx - 5} ${tieY + 50}"/>
-                <path d="M ${tailCx} ${tieY + 44} Q ${tailCx} ${tieY + 49} ${tailCx - 1} ${tieY + 51}"/>
-                <path d="M ${tailCx + 1} ${tieY + 43} Q ${tailCx + 3} ${tieY + 48} ${tailCx + 2} ${tieY + 50}"/>
-            </g>`;
-            return `${gathered}${tail}
-                <g fill="none" stroke="${dark}" stroke-width="0.6" stroke-linecap="round" stroke-opacity="0.4">${strands}</g>
-                <path d="M ${tailCx - 3} ${tieY + 6} Q ${tailCx - 2} ${tieY + 18} ${tailCx - 2} ${tieY + 30}" fill="none" stroke="${light}" stroke-width="0.9" stroke-linecap="round" stroke-opacity="0.45" transform="rotate(${rot} ${tailCx} ${tieY})"/>
-                ${tie}${tipFlare}`;
+            const tieX = +(50 + hw * 0.78).toFixed(1);
+            const tieY = +(top + 8).toFixed(1);
+            const tailD = `M ${tieX - 2} ${tieY - 2} C ${tieX + 10} ${tieY - 4} ${tieX + 16} ${tieY + 12} ${tieX + 13} ${tieY + 30} C ${tieX + 11} ${tieY + 42} ${tieX + 14} ${tieY + 50} ${tieX + 9} ${tieY + 56} C ${tieX + 4} ${tieY + 52} ${tieX + 3} ${tieY + 40} ${tieX + 3} ${tieY + 26} C ${tieX + 3} ${tieY + 14} ${tieX - 1} ${tieY + 6} ${tieX - 3} ${tieY + 2} Z`;
+            const tailStrands = strandGroup([
+                `M ${tieX + 2} ${tieY + 1} C ${tieX + 11} ${tieY + 10} ${tieX + 9} ${tieY + 30} ${tieX + 9} ${tieY + 50}`,
+                `M ${tieX + 4} ${tieY + 3} C ${tieX + 13} ${tieY + 14} ${tieX + 11} ${tieY + 32} ${tieX + 10} ${tieY + 46}`
+            ], dark, 0.42, 0.85);
+            const tailSheen = `<path d="M ${tieX + 5} ${tieY + 4} C ${tieX + 12} ${tieY + 12} ${tieX + 11} ${tieY + 24} ${tieX + 9} ${tieY + 34}" fill="none" stroke="${light}" stroke-width="1.4" stroke-linecap="round" stroke-opacity="0.35"/>`;
+            const band = `<ellipse cx="${tieX + 1}" cy="${tieY + 1}" rx="3.8" ry="2.2" transform="rotate(-28 ${tieX + 1} ${tieY + 1})" fill="${shadeColor(hex, -42)}" stroke="${ol}" stroke-width="0.9"/>`;
+            return renderClippedHairGroup(tailD, fill, ol, 1.5, tailStrands + tailSheen, clipId) + band;
         }
+
         case 'bun': {
-            // Asymmetric oblong instead of perfect circle
-            const bunCx = 50, bunCy = 14;
-            const bunPath = `M ${bunCx - 8} ${bunCy + 1} Q ${bunCx - 9} ${bunCy - 5} ${bunCx - 3} ${bunCy - 7} Q ${bunCx + 2} ${bunCy - 9} ${bunCx + 7} ${bunCy - 5} Q ${bunCx + 10} ${bunCy} ${bunCx + 7} ${bunCy + 5} Q ${bunCx + 3} ${bunCy + 8} ${bunCx - 4} ${bunCy + 7} Q ${bunCx - 9} ${bunCy + 5} ${bunCx - 8} ${bunCy + 1} Z`;
-            // Concentric spiral strokes for twisted texture
-            const spirals = `<g fill="none" stroke="${dark}" stroke-width="0.7" stroke-opacity="0.4">
-                <path d="M ${bunCx - 4} ${bunCy - 3} Q ${bunCx} ${bunCy - 6} ${bunCx + 4} ${bunCy - 2} Q ${bunCx + 6} ${bunCy + 2} ${bunCx + 2} ${bunCy + 4}"/>
-                <path d="M ${bunCx - 2} ${bunCy} Q ${bunCx + 1} ${bunCy - 3} ${bunCx + 3} ${bunCy} Q ${bunCx + 2} ${bunCy + 3} ${bunCx - 1} ${bunCy + 2}"/>
-                <path d="M ${bunCx} ${bunCy - 1} Q ${bunCx + 1} ${bunCy} ${bunCx} ${bunCy + 1}"/>
-            </g>`;
-            // Small visible tie at base
-            const tie = `<ellipse cx="${bunCx}" cy="${bunCy + 7}" rx="3" ry="1.5" fill="${shadeColor(hex, -40)}" stroke="${OUTLINE}" stroke-width="0.8"/>`;
-            // Escaped wisps hanging from the bun
-            const wisps = `<g fill="none" stroke="${dark}" stroke-width="0.5" stroke-linecap="round" stroke-opacity="0.3">
-                <path d="M ${bunCx - 5} ${bunCy + 5} Q ${bunCx - 7} ${bunCy + 10} ${bunCx - 6} ${bunCy + 15}"/>
-                <path d="M ${bunCx + 4} ${bunCy + 6} Q ${bunCx + 6} ${bunCy + 12} ${bunCx + 5} ${bunCy + 16}"/>
-            </g>`;
-            return `<path d="${bunPath}" fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5"/>
-                ${spirals}
-                <path d="M ${bunCx - 5} ${bunCy - 4} Q ${bunCx - 3} ${bunCy - 7} ${bunCx} ${bunCy - 7}" fill="none" stroke="${light}" stroke-width="0.9" stroke-linecap="round" stroke-opacity="0.5"/>
-                ${tie}${wisps}`;
+            const bunCy = +(top - 5.5).toFixed(1);
+            const bunD = `M 39.5 ${bunCy + 1.5} C 39 ${bunCy - 5.5} 44 ${bunCy - 8.5} 50 ${bunCy - 8.5} C 56 ${bunCy - 8.5} 61 ${bunCy - 5.5} 60.5 ${bunCy + 1.5} C 60 ${bunCy + 6} 55.5 ${bunCy + 8} 50 ${bunCy + 8} C 44.5 ${bunCy + 8} 40 ${bunCy + 6} 39.5 ${bunCy + 1.5} Z`;
+            const coils = `<g fill="none" stroke="${dark}" stroke-width="0.85" stroke-linecap="round" stroke-opacity="0.42">
+                <path d="M 43.5 ${bunCy - 2} Q 50 ${bunCy - 6} 56.5 ${bunCy - 1.5} Q 57.5 ${bunCy + 3} 51 ${bunCy + 4.5}"/>
+                <path d="M 46 ${bunCy + 0.5} Q 50 ${bunCy - 2.5} 54 ${bunCy + 0.5} Q 52.5 ${bunCy + 3.2} 48 ${bunCy + 2.5}"/>
+            </g>
+            <path d="M 44 ${bunCy - 4} Q 50 ${bunCy - 6.8} 55 ${bunCy - 4}" fill="none" stroke="${light}" stroke-width="1.4" stroke-linecap="round" stroke-opacity="0.38"/>`;
+            const band = `<path d="M 42 ${bunCy + 5.5} Q 50 ${bunCy + 3.5} 58 ${bunCy + 5.5}" fill="none" stroke="${shadeColor(hex, -44)}" stroke-width="2.0" stroke-linecap="round"/>`;
+            return renderClippedHairGroup(bunD, fill, ol, 1.5, coils, clipId) + band;
         }
+
         case 'braids': {
-            // Two braided ropes hanging down each side
-            const braidWidth = 4;
-            function braid(startX, startY, endY, dir) {
-                const segments = [];
-                const segH = 7;
-                const numSegs = Math.floor((endY - startY) / segH);
-                // Alternating-side chevron pattern for weave texture
-                for (let i = 0; i < numSegs; i++) {
-                    const y = startY + i * segH;
-                    const xOff = (i % 2 === 0 ? 1 : -1) * 1.5;
-                    segments.push(`<path d="M ${startX - braidWidth * 0.5 + xOff} ${y} Q ${startX + xOff * 0.5} ${y + segH * 0.5} ${startX + braidWidth * 0.5 + xOff} ${y + segH}" fill="none" stroke="${dark}" stroke-width="0.7" stroke-opacity="0.4"/>`);
-                    segments.push(`<path d="M ${startX + braidWidth * 0.5 + xOff} ${y} Q ${startX + xOff * 0.5} ${y + segH * 0.5} ${startX - braidWidth * 0.5 + xOff} ${y + segH}" fill="none" stroke="${dark}" stroke-width="0.7" stroke-opacity="0.4"/>`);
+            // Sculpted twin plaits with scalloped segment lobes behind each ear
+            function singleBraid(baseX, dir, subId) {
+                const startY = top + 16;
+                const segCount = 6;
+                const segH = 8.5;
+                let leftSide = `M ${baseX - 3.6} ${startY}`;
+                let rightSide = '';
+                const rightPts = [];
+                const chevrons = [];
+
+                for (let i = 0; i < segCount; i++) {
+                    const y0 = startY + i * segH;
+                    const yMid = y0 + segH * 0.5;
+                    const y1 = y0 + segH;
+                    const taper = 1 - i * 0.075;
+                    const w = +(4.6 * taper).toFixed(1);
+                    const pinch = +(2.5 * taper).toFixed(1);
+                    leftSide += ` Q ${(baseX - w).toFixed(1)} ${yMid.toFixed(1)} ${(baseX - pinch).toFixed(1)} ${y1.toFixed(1)}`;
+                    rightPts.unshift({ yMid, y0, w, pinch });
+                    chevrons.push(`<path d="M ${(baseX - w * 0.7).toFixed(1)} ${(y0 + 1.5).toFixed(1)} Q ${baseX.toFixed(1)} ${(yMid + 1.2).toFixed(1)} ${(baseX + w * 0.7).toFixed(1)} ${(y0 + 1.5).toFixed(1)}"/>`);
                 }
-                // Braid silhouette
-                const silhouette = `<path d="M ${startX - braidWidth} ${startY} Q ${startX - braidWidth - 1} ${(startY + endY) / 2} ${startX - braidWidth + 1} ${endY} L ${startX + braidWidth - 1} ${endY} Q ${startX + braidWidth + 1} ${(startY + endY) / 2} ${startX + braidWidth} ${startY} Z" fill="${fill}" stroke="${OUTLINE}" stroke-width="1.2"/>`;
-                // Small tie at bottom
-                const tie = `<ellipse cx="${startX}" cy="${endY}" rx="3" ry="1.5" fill="${shadeColor(hex, -40)}" stroke="${OUTLINE}" stroke-width="0.8"/>`;
-                return silhouette + segments.join('') + tie;
+
+                const endY = startY + segCount * segH;
+                const tassel = ` Q ${(baseX - 3.4).toFixed(1)} ${(endY + 5).toFixed(1)} ${baseX.toFixed(1)} ${(endY + 7.5).toFixed(1)} Q ${(baseX + 3.4).toFixed(1)} ${(endY + 5).toFixed(1)} ${(baseX + 1.6).toFixed(1)} ${endY.toFixed(1)}`;
+
+                rightPts.forEach(({ yMid, y0, w, pinch }) => {
+                    rightSide += ` Q ${(baseX + w).toFixed(1)} ${yMid.toFixed(1)} ${(baseX + pinch).toFixed(1)} ${y0.toFixed(1)}`;
+                });
+
+                const braidD = `${leftSide}${tassel}${rightSide} Z`;
+                const inner = `<g fill="none" stroke="${dark}" stroke-width="0.85" stroke-linecap="round" stroke-opacity="0.45">${chevrons.join('')}</g>`;
+                const tie = `<ellipse cx="${baseX.toFixed(1)}" cy="${endY.toFixed(1)}" rx="2.8" ry="1.4" fill="${shadeColor(hex, -42)}" stroke="${ol}" stroke-width="0.8"/>`;
+                return renderClippedHairGroup(braidD, fill, ol, 1.4, inner, `${clipId}_${subId}`) + tie;
             }
-            return braid(leftEdge - 2, domeBaseY - 6, 85, -1) + braid(rightEdge + 2, domeBaseY - 6, 85, 1);
+            return singleBraid(50 - hw - 1.0, -1, 'L') + singleBraid(50 + hw + 1.0, 1, 'R');
         }
-        case 'longWavy':
-            return `<g fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5">
-                <path d="${leftCascadeWavy(leftEdge, 95)}"/>
-                <path d="${rightCascadeWavy(rightEdge, 95)}"/>
-            </g>${cascadeTexture(leftEdge, rightEdge, 95, hex)}`;
-        case 'longStraight':
-            return `<g fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5">
-                <path d="${leftCascade(leftEdge, 95)}"/>
-                <path d="${rightCascade(rightEdge, 95)}"/>
-            </g>${cascadeTexture(leftEdge, rightEdge, 95, hex)}`;
-        case 'shoulderWave':
+
+        case 'curly': {
+            // Subtle back cushion of curls behind temples/ears so curls frame the head
+            const r = hw + 5.5;
+            const backCurls = `M ${50 - r} ${top + 20} C ${50 - r - 4} ${top + 28} ${50 - r - 3} ${top + 42} ${50 - hw + 2} ${top + 46} L ${50 + hw - 2} ${top + 46} C ${50 + r + 3} ${top + 42} ${50 + r + 4} ${top + 28} ${50 + r} ${top + 20} Z`;
+            return `<path d="${backCurls}" fill="${fill}" stroke="${ol}" stroke-width="1.4"/>`;
+        }
+
+        case 'afro': {
+            // Full rounded cloud halo behind the head and ears
+            const rx = hw + 13;
+            const cy = top + 20;
+            const afroBackD = `M 50 ${top - 13} C ${50 + rx * 0.72} ${top - 13} ${50 + rx} ${cy - 14} ${50 + rx} ${cy + 3} C ${50 + rx} ${cy + 16} ${50 + hw + 5} ${cy + 23} ${50 + hw - 2} ${cy + 20} L ${50 - hw + 2} ${cy + 20} C ${50 - hw - 5} ${cy + 23} ${50 - rx} ${cy + 16} ${50 - rx} ${cy + 3} C ${50 - rx} ${cy - 14} ${50 - rx * 0.72} ${top - 13} 50 ${top - 13} Z`;
+            return `<path d="${afroBackD}" fill="${fill}" stroke="${ol}" stroke-width="1.6"/>`;
+        }
+
         default:
-            return `<g fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5">
-                <path d="${leftCascadeWavy(leftEdge, 85)}"/>
-                <path d="${rightCascadeWavy(rightEdge, 85)}"/>
-            </g>${cascadeTexture(leftEdge, rightEdge, 85, hex)}`;
+            return '';
     }
 }
 
-function hairFront(style, hairPaint, faceShape) {
-    const { top, hw, sideDrop, domeBaseY } = getFaceProfile(faceShape);
-    const dy = top - 16; // shifts decorative top details to match a taller/shorter crown
+// Front hair layer rendered on top of the head/forehead. Every texture stroke
+// is inside a `<clipPath>` matching that hairstyle's front silhouette so no
+// line can ever stray onto bare forehead skin.
+function hairFront(style, hairPaint, m, sid, headClipId) {
     const { url: fill, hex } = hairPaint;
+    const ol = hairOutline(hex);
+    const dark = shadeColor(hex, -28);
     const light = shadeColor(hex, 30);
-    const dark = shadeColor(hex, -32);
-    const lEdge = 50 - hw;
-    const rEdge = 50 + hw;
+    const { top, hw, hairlineY, templeY, sideDrop } = m;
+    const clipId = `hairFrontClip_${sid}`;
 
     switch (style) {
         case 'bald':
             return '';
 
-        case 'buzzed':
-            return `<path d="${buzzedCapPath(hw, top, domeBaseY)}" fill="${fill}" stroke="${OUTLINE}" stroke-width="1.1"/>
-                <g fill="${dark}" opacity="0.55">${buzzedStipple(hw, top, domeBaseY)}</g>`;
+        case 'buzzed': {
+            // Close-cropped scalp silhouette with crisp hairline
+            const capD = buildCrownCapD(m, {
+                padX: 1.3,
+                padTop: 1.8,
+                sideDropY: templeY + 2.5,
+                templeInX: hw - 2.4,
+                hairlineMidY: hairlineY - 0.5,
+                hairlineDip: 0.8
+            });
+            const sheen = `<path d="M ${50 - hw * 0.45} ${top + 3.0} Q 50 ${top} ${50 + hw * 0.45} ${top + 3.0}" fill="none" stroke="${light}" stroke-width="2.0" stroke-linecap="round" stroke-opacity="0.25"/>`;
+            return renderClippedHairGroup(capD, fill, ol, 1.3, sheen, clipId);
+        }
 
-        case 'shortCrop':
-            return `<path d="${cropDomeCapPath(hw, top, domeBaseY)}" fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5"/>
-                ${domeTexture(hw, top, hex, domeBaseY)}`;
+        case 'shortCrop': {
+            // Full textured crop with a softly notched fringe along the forehead
+            const outHw = hw + 2.0;
+            const L = 50 - outHw, R = 50 + outHw;
+            const topY = top - 3.5;
+            const crownK = +(outHw * 0.66).toFixed(1);
+            const dropY = templeY + 4;
+            const inL = 50 - (hw - 3.0), inR = 50 + (hw - 3.0);
+            const fy = hairlineY + 1.2;
+
+            const cropD = `M ${L} ${dropY} C ${L} ${topY + 9} ${50 - crownK} ${topY} 50 ${topY} C ${50 + crownK} ${topY} ${R} ${topY + 9} ${R} ${dropY} Q ${R - 1.5} ${dropY + 1} ${inR} ${dropY - 1.5} Q ${inR - 0.5} ${fy + 2} ${50 + hw * 0.48} ${fy + 0.5} L ${50 + hw * 0.38} ${fy - 1.2} Q ${50 + hw * 0.12} ${fy + 1.2} ${50 - hw * 0.08} ${fy + 0.8} L ${50 - hw * 0.16} ${fy - 1.0} Q ${50 - hw * 0.42} ${fy + 1.0} ${inL} ${dropY - 1.5} Q ${L + 1.5} ${dropY + 1} ${L} ${dropY} Z`;
+            const interior = crownSheenAndFlow(m, hex, 3.5);
+            return renderClippedHairGroup(cropD, fill, ol, 1.5, interior, clipId);
+        }
 
         case 'shortSidePart': {
-            const partX = 50 - hw * 0.4;
-            const partY = domeOuterY(partX, hw, top, domeBaseY) + 1;
-            // Swept wave from left part line over across the right side
-            const sweepPath = `M ${partX} ${partY} C ${partX + 4} ${partY - 8} ${50 + hw * 0.2} ${partY - 10} ${50 + hw * 0.65} ${partY - 2} C ${50 + hw * 0.85} ${partY + 4} ${50 + hw * 0.6} ${partY + 8} ${50 + hw * 0.4} ${partY + 4} C ${50 + hw * 0.1} ${partY + 2} ${partX + 8} ${partY + 3} ${partX} ${partY} Z`;
-            return `<g fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5">
-                <path d="${domeCapPath(hw, top, domeBaseY)}"/>
-                <path d="${sweepPath}"/>
-            </g>
-            ${domeTexture(hw, top, hex, domeBaseY)}
-            <path d="M ${partX} ${partY} L ${partX - 0.5} ${partY - 5}" fill="none" stroke="${dark}" stroke-width="0.8" stroke-opacity="0.6"/>
-            <path d="M ${partX + 5} ${partY - 4} Q ${50} ${partY - 6} ${50 + hw * 0.45} ${partY}" fill="none" stroke="${dark}" stroke-width="0.7" stroke-opacity="0.5"/>
-            <path d="M ${partX + 8} ${partY - 6} Q ${50 + hw * 0.1} ${partY - 8} ${50 + hw * 0.4} ${partY - 3}" fill="none" stroke="${light}" stroke-width="0.9" stroke-linecap="round" stroke-opacity="0.55"/>`;
+            // Single cohesive side-parted silhouette with full upper-right shoulder coverage
+            const outHw = hw + 2.6;
+            const L = 50 - outHw, R = 50 + outHw;
+            const topY = top - 4.0;
+            const crownK = +(outHw * 0.74).toFixed(1);
+            const partX = +(50 - hw * 0.42).toFixed(1);
+            const dropY = templeY + 4.5;
+            const inL = 50 - (hw - 3.0), inR = 50 + (hw - 3.0);
+            const fy = hairlineY + 1.5;
+
+            const sidePartD = `M ${L} ${dropY} C ${L} ${topY + 8} ${partX - 8} ${topY + 1.5} ${partX} ${topY + 2.2} C ${partX + 5} ${topY - 1.4} ${50 - 3} ${topY - 1.0} 50 ${topY - 1.0} C ${50 + crownK} ${topY - 1.0} ${R} ${topY + 7.5} ${R} ${dropY} Q ${R - 1.5} ${dropY + 1} ${inR} ${dropY - 1} C ${inR - 1.5} ${fy + 3.5} ${50 + hw * 0.25} ${fy + 3.2} ${partX + 1.5} ${fy - 2.2} L ${partX} ${fy - 3.8} Q ${partX - 4} ${fy - 0.5} ${inL} ${dropY - 1} Q ${L + 1.5} ${dropY + 1} ${L} ${dropY} Z`;
+
+            const sweeps = strandGroup([
+                `M ${partX + 1} ${topY + 3} C ${50} ${topY + 1} ${50 + hw * 0.45} ${topY + 4} ${inR - 1} ${fy + 3}`,
+                `M ${partX + 1.5} ${fy - 2} C ${50 - 2} ${fy - 1} ${50 + hw * 0.3} ${fy + 1.5} ${inR - 3} ${fy + 2.5}`,
+                `M ${partX - 1} ${topY + 4} Q ${50 - hw * 0.68} ${topY + 8} ${L + 1.5} ${dropY - 2}`
+            ], dark, 0.42, 0.85);
+            const sheen = `<path d="M ${partX + 5} ${topY + 3.5} Q ${50 + hw * 0.15} ${topY + 1.5} ${50 + hw * 0.52} ${topY + 5.5}" fill="none" stroke="${light}" stroke-width="2.2" stroke-linecap="round" stroke-opacity="0.34"/>`;
+            const partStroke = `<path d="M ${partX} ${topY + 2.2} L ${partX + 1.2} ${fy - 2.2}" fill="none" stroke="${dark}" stroke-width="1.1" stroke-linecap="round" stroke-opacity="0.6"/>`;
+
+            return renderClippedHairGroup(sidePartD, fill, ol, 1.5, sweeps + sheen + partStroke, clipId);
         }
 
         case 'pixieSpiky': {
-            const tuftSpecs = [
-                { f: -0.75, h: 7, lean: -3, w: 5 },
-                { f: -0.5,  h: 9, lean: -2, w: 6 },
-                { f: -0.22, h: 12, lean: -1, w: 6 },
-                { f: 0.05,  h: 13, lean: 1, w: 6.5 },
-                { f: 0.32,  h: 11, lean: 2.5, w: 6 },
-                { f: 0.58,  h: 9, lean: 3, w: 5.5 },
-                { f: 0.78,  h: 7, lean: 3.5, w: 4.5 }
-            ];
-            const tufts = tuftSpecs.map(t => {
-                const baseX = 50 + t.f * hw;
-                const baseY = domeOuterY(baseX, hw, top, domeBaseY);
-                const tipX = baseX + t.lean;
-                const tipY = baseY - t.h;
-                return `<path d="M ${(baseX - t.w * 0.5).toFixed(1)} ${(baseY + 2).toFixed(1)} Q ${(baseX - t.w * 0.2 + t.lean * 0.3).toFixed(1)} ${((baseY + tipY) * 0.5).toFixed(1)} ${tipX.toFixed(1)} ${tipY.toFixed(1)} Q ${(baseX + t.w * 0.2 + t.lean * 0.7).toFixed(1)} ${((baseY + tipY) * 0.5).toFixed(1)} ${(baseX + t.w * 0.5).toFixed(1)} ${(baseY + 2).toFixed(1)} Z"/>`;
-            }).join('');
-            const tuftHighlights = tuftSpecs.map(t => {
-                const baseX = 50 + t.f * hw;
-                const baseY = domeOuterY(baseX, hw, top, domeBaseY);
-                const tipX = baseX + t.lean;
-                const tipY = baseY - t.h;
-                return `<path d="M ${(baseX - 1).toFixed(1)} ${(baseY).toFixed(1)} Q ${(baseX + t.lean * 0.4).toFixed(1)} ${((baseY + tipY) * 0.5).toFixed(1)} ${(tipX - 0.3).toFixed(1)} ${(tipY + 1.5).toFixed(1)}"/>`;
-            }).join('');
-            return `<g fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5">
-                <path d="${domeCapPath(hw, top, domeBaseY)}"/>
-                ${tufts}
-            </g>
-            ${domeTexture(hw, top, hex, domeBaseY)}
-            <g fill="none" stroke="${light}" stroke-width="0.8" stroke-linecap="round" stroke-opacity="0.55">${tuftHighlights}</g>`;
+            // Unified tousled/textured spiky crown with soft sculpted locks
+            const outHw = hw + 2.2;
+            const L = 50 - outHw, R = 50 + outHw;
+            const topY = top - 3.0;
+            const dropY = templeY + 3.5;
+            const inL = 50 - (hw - 3.0), inR = 50 + (hw - 3.0);
+            const fy = hairlineY + 0.5;
+
+            const spikyD = `M ${L} ${dropY} C ${L - 1} ${topY + 13} ${50 - hw * 0.88} ${topY + 6} ${50 - hw * 0.72} ${topY + 1} L ${50 - hw * 0.58} ${topY + 4} C ${50 - hw * 0.48} ${topY - 1} ${50 - hw * 0.35} ${topY - 3.5} ${50 - hw * 0.22} ${topY - 5} L ${50 - hw * 0.1} ${topY - 0.5} C ${50 - hw * 0.02} ${topY - 4.5} ${50 + hw * 0.12} ${topY - 6} ${50 + hw * 0.24} ${topY - 6.5} L ${50 + hw * 0.32} ${topY - 1} C ${50 + hw * 0.45} ${topY - 3.5} ${50 + hw * 0.58} ${topY - 4} ${50 + hw * 0.7} ${topY - 3} L ${50 + hw * 0.72} ${topY + 2.5} C ${50 + hw * 0.88} ${topY + 1.5} ${R + 1} ${topY + 8} ${R} ${dropY} Q ${R - 1.5} ${dropY + 1} ${inR} ${dropY - 1.5} Q ${50 + hw * 0.55} ${fy + 1.5} ${50 + hw * 0.25} ${fy + 1.8} L ${50 + hw * 0.15} ${fy - 0.8} Q ${50 - hw * 0.1} ${fy + 1.8} ${50 - hw * 0.32} ${fy + 1.2} L ${50 - hw * 0.4} ${fy - 0.8} Q ${50 - hw * 0.65} ${fy + 1.5} ${inL} ${dropY - 1.5} Q ${L + 1.5} ${dropY + 1} ${L} ${dropY} Z`;
+
+            const tuftLines = strandGroup([
+                `M ${50 - hw * 0.42} ${fy - 1} Q ${50 - hw * 0.32} ${topY + 2} ${50 - hw * 0.22} ${topY - 4}`,
+                `M ${50 - hw * 0.05} ${fy} Q ${50 + hw * 0.08} ${topY + 1} ${50 + hw * 0.22} ${topY - 5.5}`,
+                `M ${50 + hw * 0.3} ${fy} Q ${50 + hw * 0.48} ${topY + 2} ${50 + hw * 0.66} ${topY - 2.5}`
+            ], dark, 0.42, 0.85);
+            const sheen = `<path d="M ${50 - hw * 0.35} ${topY + 4} Q 50 ${topY + 1} ${50 + hw * 0.4} ${topY + 4}" fill="none" stroke="${light}" stroke-width="2.0" stroke-linecap="round" stroke-opacity="0.3"/>`;
+
+            return renderClippedHairGroup(spikyD, fill, ol, 1.5, tuftLines + sheen, clipId);
         }
 
         case 'curly': {
-            // Curled lobes framing crown and temples
-            const curlLobes = [
-                { f: -0.9, y: 32, rx: 7, ry: 7.5 },
-                { f: -0.65, y: 22, rx: 8, ry: 8 },
-                { f: -0.32, y: 13, rx: 9, ry: 8.5 },
-                { f: 0.05, y: 9, rx: 9.5, ry: 9 },
-                { f: 0.42, y: 14, rx: 9, ry: 8.5 },
-                { f: 0.72, y: 23, rx: 8, ry: 8 },
-                { f: 0.92, y: 33, rx: 7, ry: 7.5 },
-                { f: -0.5, y: 35, rx: 6, ry: 6.5 },
-                { f: 0.55, y: 35, rx: 6, ry: 6.5 }
+            // Solid curly crown base + scalloped curl clouds so zero bald scalp peeks through
+            const outHw = hw + 5.0;
+            const topY = top - 6.5;
+            const fy = hairlineY + 1.0;
+            const dropY = templeY + 6;
+            const inL = 50 - (hw - 3.5), inR = 50 + (hw - 3.5);
+
+            const curlyD = `M ${50 - outHw} ${dropY} C ${50 - outHw - 3} ${dropY - 6} ${50 - outHw - 2} ${topY + 14} ${50 - outHw + 3} ${topY + 10} C ${50 - outHw + 1} ${topY + 3} ${50 - hw * 0.55} ${topY - 1} ${50 - hw * 0.28} ${topY + 1} C ${50 - hw * 0.12} ${topY - 3} ${50 + hw * 0.12} ${topY - 3} ${50 + hw * 0.28} ${topY + 1} C ${50 + hw * 0.55} ${topY - 1} ${50 + outHw - 1} ${topY + 3} ${50 + outHw - 3} ${topY + 10} C ${50 + outHw + 2} ${topY + 14} ${50 + outHw + 3} ${dropY - 6} ${50 + outHw} ${dropY} C ${50 + outHw - 2} ${dropY + 3} ${inR + 1} ${dropY + 2} ${inR} ${dropY - 2} C ${inR + 1} ${fy + 5} ${50 + hw * 0.55} ${fy + 4} ${50 + hw * 0.32} ${fy + 1} C ${50 + hw * 0.15} ${fy + 3.5} ${50 - hw * 0.15} ${fy + 3.5} ${50 - hw * 0.32} ${fy + 1} C ${50 - hw * 0.55} ${fy + 4} ${inL - 1} ${fy + 5} ${inL} ${dropY - 2} C ${inL - 1} ${dropY + 2} ${50 - outHw + 2} ${dropY + 3} ${50 - outHw} ${dropY} Z`;
+
+            const curlCenters = [
+                [-0.68, topY + 14, 4.2], [-0.42, topY + 7, 4.6], [-0.14, topY + 5, 4.8],
+                [0.16, topY + 5, 4.8], [0.44, topY + 7, 4.6], [0.68, topY + 14, 4.2],
+                [-0.3, fy - 1, 3.6], [0.02, fy - 1.5, 3.8], [0.32, fy - 1, 3.6]
             ];
-            const lobesSvg = curlLobes.map(c => {
-                const cx = 50 + c.f * hw, cy = c.y + dy;
-                return `<path d="M ${(cx - c.rx).toFixed(1)} ${cy.toFixed(1)} C ${(cx - c.rx).toFixed(1)} ${(cy - c.ry * 1.2).toFixed(1)} ${(cx + c.rx).toFixed(1)} ${(cy - c.ry * 1.2).toFixed(1)} ${(cx + c.rx).toFixed(1)} ${cy.toFixed(1)} C ${(cx + c.rx).toFixed(1)} ${(cy + c.ry * 1.1).toFixed(1)} ${(cx - c.rx).toFixed(1)} ${(cy + c.ry * 1.1).toFixed(1)} ${(cx - c.rx).toFixed(1)} ${cy.toFixed(1)} Z"/>`;
+            const coils = curlCenters.map(([f, cy, r]) => {
+                const cx = +(50 + f * hw).toFixed(1);
+                return `<path d="M ${(cx - r * 0.65).toFixed(1)} ${cy.toFixed(1)} C ${(cx - r * 0.65).toFixed(1)} ${(cy - r * 0.85).toFixed(1)} ${(cx + r * 0.65).toFixed(1)} ${(cy - r * 0.85).toFixed(1)} ${(cx + r * 0.65).toFixed(1)} ${cy.toFixed(1)} C ${(cx + r * 0.65).toFixed(1)} ${(cy + r * 0.7).toFixed(1)} ${(cx - r * 0.35).toFixed(1)} ${(cy + r * 0.7).toFixed(1)} ${(cx - r * 0.2).toFixed(1)} ${(cy + 0.5).toFixed(1)}"/>`;
             }).join('');
-            const coils = curlLobes.map(c => {
-                const cx = 50 + c.f * hw, cy = c.y + dy;
-                return `<path d="M ${(cx - c.rx * 0.5).toFixed(1)} ${cy.toFixed(1)} Q ${cx.toFixed(1)} ${(cy - c.ry * 0.7).toFixed(1)} ${(cx + c.rx * 0.4).toFixed(1)} ${cy.toFixed(1)} Q ${cx.toFixed(1)} ${(cy + c.ry * 0.6).toFixed(1)} ${(cx - c.rx * 0.2).toFixed(1)} ${(cy + 1).toFixed(1)}"/>`;
-            }).join('');
-            const curlHighlights = curlLobes.slice(1, 6).map(c => {
-                const cx = 50 + c.f * hw, cy = c.y + dy;
-                return `<path d="M ${(cx - c.rx * 0.4).toFixed(1)} ${(cy - c.ry * 0.4).toFixed(1)} Q ${cx.toFixed(1)} ${(cy - c.ry * 0.8).toFixed(1)} ${(cx + c.rx * 0.3).toFixed(1)} ${(cy - c.ry * 0.3).toFixed(1)}"/>`;
-            }).join('');
-            return `<g fill="${fill}" stroke="${OUTLINE}" stroke-width="1.4">${lobesSvg}</g>
-                <g fill="none" stroke="${dark}" stroke-width="0.7" stroke-linecap="round" stroke-opacity="0.5">${coils}</g>
-                <g fill="none" stroke="${light}" stroke-width="0.9" stroke-linecap="round" stroke-opacity="0.5">${curlHighlights}</g>`;
+            const highlights = `<path d="M ${50 - hw * 0.45} ${topY + 5} Q 50 ${topY + 2} ${50 + hw * 0.45} ${topY + 5}" fill="none" stroke="${light}" stroke-width="2.0" stroke-linecap="round" stroke-opacity="0.32"/>`;
+            const interior = `<g fill="none" stroke="${dark}" stroke-width="0.9" stroke-linecap="round" stroke-opacity="0.45">${coils}</g>${highlights}`;
+
+            return renderClippedHairGroup(curlyD, fill, ol, 1.5, interior, clipId);
         }
 
-        case 'ponytail': {
-            const tailAnchorX = 50 + hw + 3;
-            return `<path d="${slickedDomeCapPath(hw, top, domeBaseY)}" fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5"/>
-                ${slickedTexture(hw, top, hex, tailAnchorX, 30)}`;
+        case 'ponytail':
+        case 'bun': {
+            // Sleek pulled-back crown cap with clipped tension/sweep lines
+            const capD = buildCrownCapD(m, {
+                padX: 1.8,
+                padTop: 2.8,
+                sideDropY: templeY + 3,
+                templeInX: hw - 2.6,
+                hairlineMidY: hairlineY,
+                hairlineDip: 0.6
+            });
+            const pullX = style === 'ponytail' ? 50 + hw * 0.65 : 50;
+            const pullY = style === 'ponytail' ? top + 4 : top - 4;
+            const sweepPaths = [-0.72, -0.45, -0.18, 0.12, 0.42, 0.7].map(f => {
+                const sx = +(50 + f * (hw - 2)).toFixed(1);
+                const sy = +(hairlineY + Math.abs(f) * 5).toFixed(1);
+                const mx = +((sx + pullX) * 0.5).toFixed(1);
+                const my = +((sy + pullY) * 0.5 - 3).toFixed(1);
+                return `M ${sx} ${sy} Q ${mx} ${my} ${pullX.toFixed(1)} ${pullY.toFixed(1)}`;
+            });
+            const sheen = `<path d="M ${50 - hw * 0.48} ${top + 3.5} Q 50 ${top} ${50 + hw * 0.42} ${top + 3.5}" fill="none" stroke="${light}" stroke-width="2.2" stroke-linecap="round" stroke-opacity="0.32"/>`;
+            return renderClippedHairGroup(capD, fill, ol, 1.5, sheen + strandGroup(sweepPaths, dark, 0.38, 0.8), clipId);
         }
-
-        case 'bun':
-            return `<path d="${slickedDomeCapPath(hw, top, domeBaseY)}" fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5"/>
-                ${slickedTexture(hw, top, hex, 50, 14)}`;
 
         case 'mediumStraight':
-            return `<g fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5">
-                <path d="${domeCapPath(hw, top, domeBaseY)}"/>
-                <path d="${sideHairMedium(lEdge, sideDrop, -1, domeBaseY)}"/>
-                <path d="${sideHairMedium(rEdge, sideDrop, 1, domeBaseY)}"/>
-            </g>
-            ${domeTexture(hw, top, hex, domeBaseY)}
-            <g fill="none" stroke="${dark}" stroke-width="0.5" stroke-opacity="0.5">
-                <path d="${sideHairStrand(lEdge, sideDrop, -1, sideDrop + 6, domeBaseY)}"/>
-                <path d="${sideHairStrand(rEdge, sideDrop, 1, sideDrop + 6, domeBaseY)}"/>
-            </g>
-            ${sideHairWisps(lEdge, -1, sideDrop + 6, hex)}
-            ${sideHairWisps(rEdge, 1, sideDrop + 6, hex)}`;
-
         case 'shoulderWave':
-            return `<g fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5">
-                <path d="${domeCapPath(hw, top, domeBaseY)}"/>
-                <path d="${sideHairWavy(lEdge, sideDrop, -1, domeBaseY)}"/>
-                <path d="${sideHairWavy(rEdge, sideDrop, 1, domeBaseY)}"/>
-            </g>
-            ${domeTexture(hw, top, hex, domeBaseY)}
-            <path d="M 46 ${top - 6} Q 47 ${top + 3} 46 ${top + 6}" fill="none" stroke="${dark}" stroke-width="0.8" stroke-opacity="0.6"/>
-            <g fill="none" stroke="${dark}" stroke-width="0.5" stroke-opacity="0.5">
-                <path d="${sideHairStrand(lEdge, sideDrop, -1, sideDrop + 14, domeBaseY)}"/>
-                <path d="${sideHairStrand(rEdge, sideDrop, 1, sideDrop + 14, domeBaseY)}"/>
-            </g>
-            ${sideHairWisps(lEdge, -1, sideDrop + 14, hex)}
-            ${sideHairWisps(rEdge, 1, sideDrop + 14, hex)}
-            ${domeToBackTransition(lEdge, -1, hex, domeBaseY)}
-            ${domeToBackTransition(rEdge, 1, hex, domeBaseY)}`;
-
         case 'longStraight':
-            return `<g fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5">
-                <path d="${domeCapPath(hw, top, domeBaseY)}"/>
-                <path d="${sideHairLong(lEdge, sideDrop, -1, domeBaseY)}"/>
-                <path d="${sideHairLong(rEdge, sideDrop, 1, domeBaseY)}"/>
-            </g>
-            ${domeTexture(hw, top, hex, domeBaseY)}
-            <path d="M 50 ${top - 8} L 50 ${top + 5}" fill="none" stroke="${dark}" stroke-width="0.8" stroke-opacity="0.65"/>
-            <g fill="none" stroke="${dark}" stroke-width="0.5" stroke-opacity="0.5">
-                <path d="${sideHairStrand(lEdge, sideDrop, -1, sideDrop + 18, domeBaseY)}"/>
-                <path d="${sideHairStrand(rEdge, sideDrop, 1, sideDrop + 18, domeBaseY)}"/>
-            </g>
-            ${sideHairWisps(lEdge, -1, sideDrop + 18, hex)}
-            ${sideHairWisps(rEdge, 1, sideDrop + 18, hex)}
-            ${domeToBackTransition(lEdge, -1, hex, domeBaseY)}
-            ${domeToBackTransition(rEdge, 1, hex, domeBaseY)}`;
+        case 'longWavy': {
+            // Two-segment outer dome + temple curtains so the crown is rounded and
+            // completely covers the upper cranium and merges with hairBack.
+            const isCenterPart = style === 'longStraight';
+            const outHw = hw + 3.2;
+            const L = 50 - outHw, R = 50 + outHw;
+            const topY = top - 3.8;
+            const crownK = +(outHw * 0.66).toFixed(1);
+            const partX = isCenterPart ? 50 : +(50 - hw * 0.22).toFixed(1);
+            const partDipY = hairlineY - 1.5;
+            const curtainEndY = style === 'mediumStraight' ? sideDrop + 9 : sideDrop + 6;
+            const inL = 50 - (hw - 2.4), inR = 50 + (hw - 2.4);
 
-        case 'longWavy':
-            return `<g fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5">
-                <path d="${domeCapPath(hw, top, domeBaseY)}"/>
-                <path d="${sideHairWavy(lEdge, sideDrop, -1, domeBaseY)}"/>
-                <path d="${sideHairWavy(rEdge, sideDrop, 1, domeBaseY)}"/>
-            </g>
-            ${domeTexture(hw, top, hex, domeBaseY)}
-            <path d="M 47 ${top - 6} Q 48 ${top + 3} 47 ${top + 6}" fill="none" stroke="${dark}" stroke-width="0.8" stroke-opacity="0.6"/>
-            <g fill="none" stroke="${dark}" stroke-width="0.5" stroke-opacity="0.5">
-                <path d="${sideHairStrand(lEdge, sideDrop, -1, sideDrop + 14, domeBaseY)}"/>
-                <path d="${sideHairStrand(rEdge, sideDrop, 1, sideDrop + 14, domeBaseY)}"/>
-            </g>
-            ${sideHairWisps(lEdge, -1, sideDrop + 14, hex)}
-            ${sideHairWisps(rEdge, 1, sideDrop + 14, hex)}
-            ${domeToBackTransition(lEdge, -1, hex, domeBaseY)}
-            ${domeToBackTransition(rEdge, 1, hex, domeBaseY)}`;
+            const frontD = `M ${L + 1.5} ${curtainEndY} C ${L - 0.5} ${sideDrop} ${L} ${templeY + 4} ${L} ${templeY} C ${L} ${topY + 9} ${50 - crownK} ${topY} 50 ${topY} C ${50 + crownK} ${topY} ${R} ${topY + 9} ${R} ${templeY} C ${R} ${templeY + 4} ${R + 0.5} ${sideDrop} ${R - 1.5} ${curtainEndY} Q ${inR + 0.5} ${curtainEndY - 3} ${inR} ${sideDrop - 6} C ${inR - 0.5} ${hairlineY + 4} ${partX + 7} ${hairlineY + 1.5} ${partX} ${partDipY} C ${partX - 7} ${hairlineY + 1.5} ${inL + 0.5} ${hairlineY + 4} ${inL} ${sideDrop - 6} Q ${inL - 0.5} ${curtainEndY - 3} ${L + 1.5} ${curtainEndY} Z`;
+
+            const flows = [
+                `M ${partX} ${topY + 2} C ${partX - 10} ${topY + 6} ${L + 2} ${templeY - 4} ${L + 2} ${curtainEndY - 3}`,
+                `M ${partX} ${topY + 2} C ${partX + 12} ${topY + 6} ${R - 2} ${templeY - 4} ${R - 2} ${curtainEndY - 3}`,
+                `M ${partX - 2} ${partDipY - 2} Q ${50 - hw * 0.65} ${hairlineY + 2} ${inL - 0.5} ${sideDrop - 8}`,
+                `M ${partX + 2} ${partDipY - 2} Q ${50 + hw * 0.65} ${hairlineY + 2} ${inR + 0.5} ${sideDrop - 8}`
+            ];
+            const partLine = `<path d="M ${partX} ${topY + 0.5} L ${partX} ${partDipY}" fill="none" stroke="${dark}" stroke-width="1.1" stroke-linecap="round" stroke-opacity="0.6"/>`;
+            const sheen = `<path d="M ${50 - hw * 0.52} ${topY + 6.5} Q ${partX} ${topY + 2.5} ${50 + hw * 0.52} ${topY + 6.5}" fill="none" stroke="${light}" stroke-width="2.2" stroke-linecap="round" stroke-opacity="0.32"/>`;
+
+            return renderClippedHairGroup(frontD, fill, ol, 1.5, sheen + strandGroup(flows, dark, 0.38, 0.85) + partLine, clipId);
+        }
 
         case 'afro': {
-            const afroRadius = hw + 14;
-            const afroPath = `M ${50 - afroRadius} 42 C ${50 - afroRadius} 15 ${50 - afroRadius * 0.7} 4 50 4 C ${50 + afroRadius * 0.7} 4 ${50 + afroRadius} 15 ${50 + afroRadius} 42 C ${50 + afroRadius} 52 ${50 + hw + 2} 55 ${50 + hw - 1} 44 C ${50 + hw - 2} 32 50 30 ${50 - hw + 1} 44 C ${50 - hw - 2} 55 ${50 - afroRadius} 52 ${50 - afroRadius} 42 Z`;
-            const afroRings = [
-                `M ${50 - hw * 0.8} 20 Q 50 14 ${50 + hw * 0.8} 20`,
-                `M ${50 - hw * 0.6} 28 Q 50 24 ${50 + hw * 0.6} 28`,
-                `M ${50 - afroRadius * 0.7} 32 Q ${50 - afroRadius * 0.8} 22 ${50 - hw * 0.5} 16`,
-                `M ${50 + afroRadius * 0.7} 32 Q ${50 + afroRadius * 0.8} 22 ${50 + hw * 0.5} 16`
+            // Rounded, organic front hairline + coil texture clipped inside
+            const rx = hw + 13;
+            const topY = top - 13;
+            const cy = top + 20;
+            const inL = 50 - (hw - 2.0), inR = 50 + (hw - 2.0);
+            const dropY = templeY + 6;
+            const fy = hairlineY - 0.5;
+
+            const afroFrontD = `M ${50 - rx} ${cy + 2} C ${50 - rx} ${cy - 14} ${50 - rx * 0.72} ${topY} 50 ${topY} C ${50 + rx * 0.72} ${topY} ${50 + rx} ${cy - 14} ${50 + rx} ${cy + 2} C ${50 + rx - 1} ${dropY + 6} ${inR + 4} ${dropY + 5} ${inR} ${dropY - 1} C ${inR} ${fy + 4} ${50 + hw * 0.55} ${fy} 50 ${fy} C ${50 - hw * 0.55} ${fy} ${inL} ${fy + 4} ${inL} ${dropY - 1} C ${inL - 4} ${dropY + 5} ${50 - rx + 1} ${dropY + 6} ${50 - rx} ${cy + 2} Z`;
+
+            const coils = [
+                `M ${50 - rx * 0.65} ${topY + 12} Q ${50 - rx * 0.35} ${topY + 7} ${50 - rx * 0.15} ${topY + 11}`,
+                `M ${50 + rx * 0.15} ${topY + 11} Q ${50 + rx * 0.35} ${topY + 7} ${50 + rx * 0.65} ${topY + 12}`,
+                `M ${50 - rx * 0.78} ${topY + 22} Q ${50 - rx * 0.5} ${topY + 17} ${50 - rx * 0.25} ${topY + 21}`,
+                `M ${50 + rx * 0.25} ${topY + 21} Q ${50 + rx * 0.5} ${topY + 17} ${50 + rx * 0.78} ${topY + 22}`,
+                `M ${50 - hw * 0.35} ${topY + 16} Q 50 ${topY + 12} ${50 + hw * 0.35} ${topY + 16}`
             ];
-            const ringSvg = strandGroup(afroRings, dark, 0.7, 0.45);
-            const afroHighlight = `<path d="M 40 10 Q 50 7 60 10" fill="none" stroke="${light}" stroke-width="1.3" stroke-linecap="round" stroke-opacity="0.45"/>`;
-            return `<path d="${afroPath}" fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5"/>
-                ${ringSvg}
-                ${afroHighlight}`;
+            const sheen = `<path d="M ${50 - rx * 0.45} ${topY + 5.5} Q 50 ${topY + 2} ${50 + rx * 0.45} ${topY + 5.5}" fill="none" stroke="${light}" stroke-width="2.6" stroke-linecap="round" stroke-opacity="0.34"/>`;
+
+            return renderClippedHairGroup(afroFrontD, fill, ol, 1.6, sheen + strandGroup(coils, dark, 0.42, 0.9), clipId);
         }
 
         case 'mohawk': {
-            const crestTop = top - 18;
-            const crestPath = `M 43 32 Q 44 20 44 ${crestTop + 6} L 47 ${crestTop} L 50 ${crestTop + 3} L 53 ${crestTop - 2} L 56 ${crestTop + 5} Q 56 20 57 32 Q 50 30 43 32 Z`;
-            const crestSpikes = `<g fill="none" stroke="${dark}" stroke-width="0.7" stroke-opacity="0.5">
-                <path d="M 46 28 L 47 ${crestTop + 3}"/>
-                <path d="M 50 26 L 50 ${crestTop + 5}"/>
-                <path d="M 54 28 L 53 ${crestTop + 1}"/>
-            </g>`;
-            const crestHighlight = `<path d="M 48 ${crestTop + 2} L 52 ${crestTop}" fill="none" stroke="${light}" stroke-width="1" stroke-linecap="round" stroke-opacity="0.6"/>`;
-            return `<path d="${buzzedCapPath(hw, top, domeBaseY)}" fill="${fill}" stroke="${OUTLINE}" stroke-width="1"/>
-                <g fill="${dark}" opacity="0.4">${buzzedStipple(hw, top, domeBaseY)}</g>
-                <path d="${crestPath}" fill="${fill}" stroke="${OUTLINE}" stroke-width="1.4"/>
-                ${crestSpikes}
-                ${crestHighlight}`;
+            // Closely faded sides covering the cranium + bold sculpted center crest
+            const shavedCapD = buildCrownCapD(m, {
+                padX: 1.1,
+                padTop: 1.4,
+                sideDropY: templeY + 1.5,
+                templeInX: hw - 2.2,
+                hairlineMidY: hairlineY,
+                hairlineDip: 0
+            });
+            const cw = +(hw * 0.25).toFixed(1);
+            const crestTop = top - 12;
+            const crestBot = hairlineY - 1.0;
+            const crestD = `M ${(50 - cw).toFixed(1)} ${crestBot} C ${(50 - cw - 1.5).toFixed(1)} ${top + 2} ${(50 - cw - 1).toFixed(1)} ${crestTop + 6} ${(50 - cw * 0.6).toFixed(1)} ${crestTop + 1.5} L ${(50 - cw * 0.2).toFixed(1)} ${crestTop + 3.5} L 50 ${crestTop - 1} L ${(50 + cw * 0.25).toFixed(1)} ${crestTop + 3} L ${(50 + cw * 0.65).toFixed(1)} ${crestTop + 1} C ${(50 + cw + 1).toFixed(1)} ${crestTop + 6} ${(50 + cw + 1.5).toFixed(1)} ${top + 2} ${(50 + cw).toFixed(1)} ${crestBot} Q 50 ${crestBot + 2.2} ${(50 - cw).toFixed(1)} ${crestBot} Z`;
+
+            const crestStrands = strandGroup([
+                `M ${(50 - cw * 0.45).toFixed(1)} ${crestBot - 1} Q ${(50 - cw * 0.5).toFixed(1)} ${(crestTop + crestBot) / 2} ${(50 - cw * 0.4).toFixed(1)} ${crestTop + 3}`,
+                `M 50 ${crestBot} L 50 ${crestTop + 1}`,
+                `M ${(50 + cw * 0.45).toFixed(1)} ${crestBot - 1} Q ${(50 + cw * 0.5).toFixed(1)} ${(crestTop + crestBot) / 2} ${(50 + cw * 0.4).toFixed(1)} ${crestTop + 3}`
+            ], dark, 0.45, 0.85);
+            const crestSheen = `<path d="M ${(50 - cw * 0.5).toFixed(1)} ${crestTop + 6} Q 50 ${crestTop + 3.5} ${(50 + cw * 0.5).toFixed(1)} ${crestTop + 6}" fill="none" stroke="${light}" stroke-width="1.6" stroke-linecap="round" stroke-opacity="0.38"/>`;
+
+            return `<path d="${shavedCapD}" fill="${fill}" fill-opacity="0.45" stroke="${ol}" stroke-width="1.1"/>` +
+                   renderClippedHairGroup(crestD, fill, ol, 1.5, crestStrands + crestSheen, clipId);
         }
 
         case 'braids': {
-            const cornrows = [-0.65, -0.4, -0.15, 0.15, 0.4, 0.65].map(f => {
-                const x = 50 + f * (hw - 4);
-                const yStart = domeBaseY - 2;
-                const yEnd = top + 2;
-                return `<path d="M ${x.toFixed(1)} ${yStart} Q ${(x * 0.8 + 50 * 0.2).toFixed(1)} ${((yStart + yEnd) * 0.5).toFixed(1)} ${(50 + f * 6).toFixed(1)} ${yEnd}"/>`;
+            // Cornrow scalp cap with rows strictly clipped inside the cap
+            const capD = buildCrownCapD(m, {
+                padX: 1.8,
+                padTop: 2.6,
+                sideDropY: templeY + 3,
+                templeInX: hw - 2.6,
+                hairlineMidY: hairlineY,
+                hairlineDip: 0.4
             });
-            return `<path d="${slickedDomeCapPath(hw, top, domeBaseY)}" fill="${fill}" stroke="${OUTLINE}" stroke-width="1.4"/>
-                <g fill="none" stroke="${dark}" stroke-width="0.8" stroke-linecap="round" stroke-opacity="0.55">${cornrows.join('')}</g>
-                <path d="M ${50 - hw * 0.4} ${top + 4} Q 50 ${top + 1} ${50 + hw * 0.4} ${top + 4}" fill="none" stroke="${light}" stroke-width="0.9" stroke-opacity="0.4"/>`;
+            const rowFracs = [-0.65, -0.38, -0.13, 0.13, 0.38, 0.65];
+            const rows = rowFracs.map(f => {
+                const xBot = +(50 + f * (hw - 3)).toFixed(1);
+                const xTop = +(50 + f * (hw * 0.42)).toFixed(1);
+                return `M ${xBot} ${hairlineY + 6} Q ${((xBot + xTop) * 0.5).toFixed(1)} ${top + 4} ${xTop} ${top - 2}`;
+            });
+            const sheen = `<path d="M ${50 - hw * 0.45} ${top + 3.5} Q 50 ${top + 0.5} ${50 + hw * 0.45} ${top + 3.5}" fill="none" stroke="${light}" stroke-width="2.0" stroke-linecap="round" stroke-opacity="0.28"/>`;
+            return renderClippedHairGroup(capD, fill, ol, 1.5, sheen + strandGroup(rows, dark, 0.52, 1.0), clipId);
         }
 
         case 'undercut': {
-            const partX = 50 - hw * 0.35;
-            const sweepTop = top - 11;
-            const sweepPath = `M ${partX} 32 C ${partX} ${sweepTop + 2} 50 ${sweepTop} ${50 + hw * 0.7} ${sweepTop + 4} C ${50 + hw + 2} ${sweepTop + 14} ${50 + hw + 1} 48 ${50 + hw * 0.65} 52 C ${50 + hw * 0.3} 50 50 36 ${partX} 32 Z`;
-            return `<path d="${buzzedCapPath(hw, top, domeBaseY)}" fill="${fill}" stroke="${OUTLINE}" stroke-width="1"/>
-                <g fill="${dark}" opacity="0.4">${buzzedStipple(hw, top, domeBaseY)}</g>
-                <path d="${sweepPath}" fill="${fill}" stroke="${OUTLINE}" stroke-width="1.4"/>
-                <g fill="none" stroke="${dark}" stroke-width="0.7" stroke-opacity="0.45">
-                    <path d="M ${partX + 4} 26 Q 52 ${sweepTop + 3} ${50 + hw * 0.6} 44"/>
-                    <path d="M ${partX + 8} 24 Q 55 ${sweepTop + 5} ${50 + hw * 0.7} 48"/>
-                </g>
-                <path d="M 48 ${sweepTop + 1} Q ${50 + hw * 0.3} ${sweepTop + 2} ${50 + hw * 0.55} ${sweepTop + 6}" fill="none" stroke="${light}" stroke-width="1.1" stroke-linecap="round" stroke-opacity="0.55"/>`;
+            // Closely faded side cap + swept pompadour top volume
+            const shavedCapD = buildCrownCapD(m, {
+                padX: 1.1,
+                padTop: 1.4,
+                sideDropY: templeY + 2,
+                templeInX: hw - 2.2,
+                hairlineMidY: hairlineY,
+                hairlineDip: 0
+            });
+            const partX = +(50 - hw * 0.48).toFixed(1);
+            const sweepR = +(50 + hw * 0.74).toFixed(1);
+            const topY = top - 7.5;
+            const botY = hairlineY + 1.5;
+
+            const topSweepD = `M ${partX} ${botY - 1} C ${partX - 3} ${topY + 4} ${50 - 6} ${topY} ${50 + 5} ${topY} C ${50 + hw * 0.68} ${topY} ${sweepR + 4} ${topY + 8} ${sweepR} ${botY + 1.5} C ${sweepR - 3} ${botY + 4.5} ${50 + 4} ${botY + 1.5} ${partX} ${botY - 1} Z`;
+
+            const sweepLines = strandGroup([
+                `M ${partX + 2} ${botY - 2} C ${50 - 2} ${topY + 4} ${50 + 10} ${topY + 4} ${sweepR - 2} ${botY}`,
+                `M ${partX + 5} ${botY - 0.5} C ${50 + 2} ${topY + 8} ${50 + 12} ${topY + 8} ${sweepR - 4} ${botY + 2}`
+            ], dark, 0.45, 0.9);
+            const sheen = `<path d="M ${partX + 5} ${topY + 4.5} Q ${50 + 5} ${topY + 2} ${sweepR - 4} ${topY + 7}" fill="none" stroke="${light}" stroke-width="2.2" stroke-linecap="round" stroke-opacity="0.36"/>`;
+
+            return `<path d="${shavedCapD}" fill="${fill}" fill-opacity="0.48" stroke="${ol}" stroke-width="1.1"/>` +
+                   renderClippedHairGroup(topSweepD, fill, ol, 1.5, sweepLines + sheen, clipId);
         }
 
-        default:
-            return `<g fill="${fill}" stroke="${OUTLINE}" stroke-width="1.5">
-                <path d="${domeCapPath(hw, top, domeBaseY)}"/>
-                <path d="${sideHairMedium(lEdge, sideDrop, -1, domeBaseY)}"/>
-                <path d="${sideHairMedium(rEdge, sideDrop, 1, domeBaseY)}"/>
-            </g>
-            ${domeTexture(hw, top, hex, domeBaseY)}`;
+        default: {
+            // Fallback (e.g. legacy 'shortStraight')
+            const capD = buildCrownCapD(m, { padX: 2.2, padTop: 3.5 });
+            return renderClippedHairGroup(capD, fill, ol, 1.5, crownSheenAndFlow(m, hex, 3.5), clipId);
+        }
     }
 }
 
-// --- LAYER 8: GLASSES ----------------------------------------------------------
+// --- LAYER 8: GLASSES --------------------------------------------------------
+// Positioned dynamically from the head model's eye coordinates and head width.
 
-function bridgeAndTemples(colorHex) {
-    return `<g stroke="${colorHex}" stroke-width="2" fill="none">
-        <path d="M 47 52 L 53 52"/>
-        <path d="M 29 52 L 20 53"/>
-        <path d="M 71 52 L 80 53"/>
+function glasses(style, colorHex, m) {
+    if (!style || style === 'none') return '';
+    const { eyeY, eyeSpacing, hw } = m;
+    const lcx = 50 - eyeSpacing;
+    const rcx = 50 + eyeSpacing;
+    const cy = eyeY + 0.3;
+    const lensR = 8.4;
+    const lEdge = 50 - hw;
+    const rEdge = 50 + hw;
+
+    const bridgeAndArms = (innerL, innerR, outerL, outerR, armY) => `<g stroke="${colorHex}" stroke-width="2.0" stroke-linecap="round" fill="none">
+        <path d="M ${innerL.toFixed(1)} ${(cy - 0.8).toFixed(1)} Q 50 ${(cy - 2.2).toFixed(1)} ${innerR.toFixed(1)} ${(cy - 0.8).toFixed(1)}"/>
+        <path d="M ${outerL.toFixed(1)} ${armY.toFixed(1)} L ${(lEdge + 0.5).toFixed(1)} ${(cy - 1).toFixed(1)}"/>
+        <path d="M ${outerR.toFixed(1)} ${armY.toFixed(1)} L ${(rEdge - 0.5).toFixed(1)} ${(cy - 1).toFixed(1)}"/>
     </g>`;
-}
 
-function glasses(style, colorHex) {
     switch (style) {
         case 'round':
-            return `<g fill="none" stroke="${colorHex}" stroke-width="2.5">
-                <circle cx="38" cy="52" r="9"/>
-                <circle cx="62" cy="52" r="9"/>
-            </g>${bridgeAndTemples(colorHex)}`;
-        case 'square':
-            return `<g fill="none" stroke="${colorHex}" stroke-width="2.5">
-                <rect x="29" y="44" width="18" height="15" rx="3"/>
-                <rect x="53" y="44" width="18" height="15" rx="3"/>
-            </g>${bridgeAndTemples(colorHex)}`;
-        case 'catEye':
-            return `<g fill="none" stroke="${colorHex}" stroke-width="2.5">
-                <path d="M 29 48 Q 29 44 38 44 Q 47 44 47 52 Q 47 58 38 58 Q 30 58 29 52 Z"/>
-                <path d="M 71 48 Q 71 44 62 44 Q 53 44 53 52 Q 53 58 62 58 Q 70 58 71 52 Z"/>
-                <path d="M 45 44 L 50 37 L 47 46 Z"/>
-                <path d="M 55 44 L 50 37 L 53 46 Z"/>
-            </g>${bridgeAndTemples(colorHex)}`;
+            return `<g fill="none" stroke="${colorHex}" stroke-width="2.2">
+                <circle cx="${lcx}" cy="${cy}" r="${lensR}"/>
+                <circle cx="${rcx}" cy="${cy}" r="${lensR}"/>
+            </g>${bridgeAndArms(lcx + lensR, rcx - lensR, lcx - lensR, rcx + lensR, cy - 0.5)}`;
+
+        case 'square': {
+            const w = 17.2, h = 13.4;
+            const lx = +(lcx - w / 2).toFixed(1);
+            const rx = +(rcx - w / 2).toFixed(1);
+            const ty = +(cy - h / 2).toFixed(1);
+            return `<g fill="none" stroke="${colorHex}" stroke-width="2.2">
+                <rect x="${lx}" y="${ty}" width="${w}" height="${h}" rx="2.8"/>
+                <rect x="${rx}" y="${ty}" width="${w}" height="${h}" rx="2.8"/>
+            </g>${bridgeAndArms(lcx + w / 2, rcx - w / 2, lx, rx + w, cy - 1.5)}`;
+        }
+
+        case 'catEye': {
+            // Classic upswept outer corners (wings at temples, clean bridge in center)
+            const inL = lcx + 8.0, outL = lcx - 9.5;
+            const inR = rcx - 8.0, outR = rcx + 9.5;
+            const topY = cy - 5.8, wingY = cy - 8.2, botY = cy + 6.4;
+            const lFrame = `M ${inL} ${cy - 1} C ${inL} ${topY} ${lcx - 2} ${topY} ${outL} ${wingY} C ${outL + 0.5} ${cy + 2} ${lcx - 5} ${botY} ${lcx} ${botY} C ${lcx + 5} ${botY} ${inL} ${cy + 3} ${inL} ${cy - 1} Z`;
+            const rFrame = `M ${inR} ${cy - 1} C ${inR} ${topY} ${rcx + 2} ${topY} ${outR} ${wingY} C ${outR - 0.5} ${cy + 2} ${rcx + 5} ${botY} ${rcx} ${botY} C ${rcx - 5} ${botY} ${inR} ${cy + 3} ${inR} ${cy - 1} Z`;
+            return `<g fill="none" stroke="${colorHex}" stroke-width="2.3" stroke-linejoin="round">
+                <path d="${lFrame}"/>
+                <path d="${rFrame}"/>
+            </g>${bridgeAndArms(inL, inR, outL + 0.8, outR - 0.8, cy - 4.5)}`;
+        }
+
         case 'sunglasses':
-            return `<g stroke="${colorHex}" stroke-width="2.5">
-                <circle cx="38" cy="52" r="9" fill="${DARK_LENS}"/>
-                <circle cx="62" cy="52" r="9" fill="${DARK_LENS}"/>
-            </g>${bridgeAndTemples(colorHex)}`;
-        case 'none':
+            return `<g stroke="${colorHex}" stroke-width="2.3">
+                <circle cx="${lcx}" cy="${cy}" r="${lensR}" fill="${DARK_LENS}"/>
+                <circle cx="${rcx}" cy="${cy}" r="${lensR}" fill="${DARK_LENS}"/>
+            </g>
+            <g fill="none" stroke="white" stroke-width="1.4" stroke-linecap="round" stroke-opacity="0.28">
+                <path d="M ${(lcx - 4.5).toFixed(1)} ${(cy - 3.5).toFixed(1)} L ${(lcx - 1).toFixed(1)} ${(cy - 5.5).toFixed(1)}"/>
+                <path d="M ${(rcx - 4.5).toFixed(1)} ${(cy - 3.5).toFixed(1)} L ${(rcx - 1).toFixed(1)} ${(cy - 5.5).toFixed(1)}"/>
+            </g>
+            ${bridgeAndArms(lcx + lensR, rcx - lensR, lcx - lensR, rcx + lensR, cy - 0.5)}`;
+
         default:
             return '';
     }
 }
 
-// --- LAYER 8.5: BABY & CHILD STAGE RENDERERS ----------------------------------
+// --- BABY STAGE RENDERERS ----------------------------------------------------
 
-function babyHeadShape(skinHex) {
+function babyHeadShape(skinHex, skinGradUrl, outlineHex) {
+    const ol = outlineHex || skinOutline(skinHex);
+    const fill = skinGradUrl || skinHex;
     return `
-        <g fill="${skinHex}" stroke="${OUTLINE}" stroke-width="2">
-            <ellipse cx="18" cy="54" rx="4.5" ry="6.5"/>
-            <ellipse cx="82" cy="54" rx="4.5" ry="6.5"/>
-            <ellipse cx="50" cy="54" rx="32" ry="34"/>
-            <circle cx="30" cy="62" r="8" fill="${skinHex}" opacity="0.3"/>
-            <circle cx="70" cy="62" r="8" fill="${skinHex}" opacity="0.3"/>
+        <g fill="${fill}" stroke="${ol}" stroke-width="2">
+            <ellipse cx="17.5" cy="55" rx="4.5" ry="6.2"/>
+            <ellipse cx="82.5" cy="55" rx="4.5" ry="6.2"/>
+            <ellipse cx="50" cy="54" rx="32" ry="33"/>
         </g>
+        <ellipse cx="34" cy="49" rx="4.5" ry="2.5" fill="white" opacity="0.09"/>
+        <ellipse cx="66" cy="49" rx="4.5" ry="2.5" fill="white" opacity="0.09"/>
     `;
 }
 
 function babyBlush() {
-    return `<g fill="#FF99AA" opacity="0.45">
-        <ellipse cx="30" cy="62" rx="7" ry="5"/>
-        <ellipse cx="70" cy="62" rx="7" ry="5"/>
+    return `<g fill="#FF94A8" opacity="0.38">
+        <ellipse cx="30" cy="61" rx="6.8" ry="4.5"/>
+        <ellipse cx="70" cy="61" rx="6.8" ry="4.5"/>
     </g>`;
 }
 
-function babyEyes(eyeHex) {
+function babyEyes(eyeHex, irisGradUrl, outlineHex) {
+    const ol = outlineHex || OUTLINE;
+    const irisFill = irisGradUrl || eyeHex;
+    const limbal = shadeColor(eyeHex, -32);
     return `
         <g>
-            <circle cx="36" cy="50" r="7.5" fill="white" stroke="${OUTLINE}" stroke-width="1.3"/>
-            <circle cx="36" cy="50" r="4.8" fill="${eyeHex}"/>
-            <circle cx="36" cy="50" r="2.2" fill="#1b1b1b"/>
-            <circle cx="34.2" cy="48.2" r="1.4" fill="white"/>
+            <circle cx="36.5" cy="50.5" r="6.8" fill="#FAF8F6" stroke="${ol}" stroke-width="1.35"/>
+            <circle cx="36.5" cy="50.5" r="4.4" fill="${irisFill}" stroke="${limbal}" stroke-width="0.4"/>
+            <circle cx="36.5" cy="50.5" r="2.0" fill="#151518"/>
+            <circle cx="35.0" cy="49.0" r="1.25" fill="white" opacity="0.92"/>
+            <circle cx="37.8" cy="51.8" r="0.5" fill="white" opacity="0.65"/>
         </g>
         <g>
-            <circle cx="64" cy="50" r="7.5" fill="white" stroke="${OUTLINE}" stroke-width="1.3"/>
-            <circle cx="64" cy="50" r="4.8" fill="${eyeHex}"/>
-            <circle cx="64" cy="50" r="2.2" fill="#1b1b1b"/>
-            <circle cx="62.2" cy="48.2" r="1.4" fill="white"/>
+            <circle cx="63.5" cy="50.5" r="6.8" fill="#FAF8F6" stroke="${ol}" stroke-width="1.35"/>
+            <circle cx="63.5" cy="50.5" r="4.4" fill="${irisFill}" stroke="${limbal}" stroke-width="0.4"/>
+            <circle cx="63.5" cy="50.5" r="2.0" fill="#151518"/>
+            <circle cx="62.0" cy="49.0" r="1.25" fill="white" opacity="0.92"/>
+            <circle cx="64.8" cy="51.8" r="0.5" fill="white" opacity="0.65"/>
         </g>
-        <path d="M 29 41 Q 36 38 42 41" fill="none" stroke="${OUTLINE}" stroke-width="1.2" opacity="0.5"/>
-        <path d="M 58 41 Q 64 38 71 41" fill="none" stroke="${OUTLINE}" stroke-width="1.2" opacity="0.5"/>
+        <path d="M 30.5 40.5 Q 36.5 38 42.5 40.5" fill="none" stroke="${ol}" stroke-width="1.2" stroke-linecap="round" opacity="0.5"/>
+        <path d="M 57.5 40.5 Q 63.5 38 69.5 40.5" fill="none" stroke="${ol}" stroke-width="1.2" stroke-linecap="round" opacity="0.5"/>
     `;
 }
 
-function babyMouth() {
+function babyMouth(skinHex) {
+    const ol = skinOutline(skinHex);
     return `
-        <ellipse cx="50" cy="58" rx="1.8" ry="1.2" fill="${OUTLINE}" opacity="0.5"/>
-        <path d="M 43 67 Q 50 74 57 67" fill="#E8735A" stroke="${OUTLINE}" stroke-width="1.5"/>
+        <path d="M 48.2 58.5 Q 50 60 51.8 58.5" fill="none" stroke="${ol}" stroke-width="1.1" stroke-linecap="round" opacity="0.55"/>
+        <path d="M 43.5 66.5 Q 50 73 56.5 66.5 Z" fill="#E8735A" stroke="${ol}" stroke-width="1.3" stroke-linejoin="round"/>
     `;
 }
 
 function babyHair(hairPaint) {
     const { url: fill, hex } = hairPaint;
-    const dark = shadeColor(hex, -25);
+    const ol = hairOutline(hex);
+    const light = shadeColor(hex, 28);
     return `
-        <g fill="${fill}" stroke="${OUTLINE}" stroke-width="1.4">
-            <path d="M 45 22 Q 42 12 50 10 Q 58 12 55 22 Q 50 18 45 22 Z"/>
-            <path d="M 48 21 Q 42 24 38 27 Q 45 26 50 22 Z"/>
-        </g>
-        <path d="M 47 13 Q 50 11 54 13" fill="none" stroke="${dark}" stroke-width="0.8" stroke-opacity="0.6"/>
+        <path d="M 43 22 C 41 14 48 9 53 12 C 56 14 55 19 52 21 C 55 21 58 23 56 25 C 52 25 47 23 43 22 Z" fill="${fill}" stroke="${ol}" stroke-width="1.3" stroke-linejoin="round"/>
+        <path d="M 46 15 Q 50 12 52.5 14.5" fill="none" stroke="${light}" stroke-width="1.0" stroke-linecap="round" stroke-opacity="0.45"/>
     `;
 }
 
-function childHeadShape(faceShape, skinHex) {
-    const ol = skinOutline(skinHex);
-    let head;
-    switch (faceShape) {
-        case 'round':
-            head = `<ellipse cx="50" cy="53" rx="31" ry="32"/>`;
-            break;
-        case 'square':
-            head = `<rect x="21" y="21" width="58" height="62" rx="14"/>`;
-            break;
-        case 'heart':
-            head = `<path d="M 50 18 C 66 18 78 31 76 46 C 74 61 63 69 50 85 C 37 69 26 61 24 46 C 22 31 34 18 50 18 Z"/>`;
-            break;
-        case 'long':
-            head = `<ellipse cx="50" cy="54" rx="25" ry="37"/>`;
-            break;
-        case 'oval':
-        default:
-            head = `<ellipse cx="50" cy="53" rx="28" ry="33"/>`;
-    }
-    return `
-        <g fill="${skinHex}" stroke="${ol}" stroke-width="2">
-            <ellipse cx="18" cy="53" rx="4.8" ry="7.5"/>
-            <ellipse cx="82" cy="53" rx="4.8" ry="7.5"/>
-            ${head}
-        </g>
-        <ellipse cx="18" cy="54" rx="2.2" ry="3.5" fill="${shadeColor(skinHex, -25)}" opacity="0.15"/>
-        <ellipse cx="82" cy="54" rx="2.2" ry="3.5" fill="${shadeColor(skinHex, -25)}" opacity="0.15"/>
-        <ellipse cx="34" cy="48" rx="4" ry="2.5" fill="white" opacity="0.08"/>
-        <ellipse cx="66" cy="48" rx="4" ry="2.5" fill="white" opacity="0.08"/>
-    `;
-}
-
-// --- ASSEMBLY -------------------------------------------------------------------
+// --- ASSEMBLY ----------------------------------------------------------------
 
 function resolveHairFeatureColor(appearance, age) {
     return AvatarLogic.getAgedHairColor(appearance.hairColorBase, age, appearance.grayStartAge);
@@ -1169,34 +1234,37 @@ function buildSvg(appearance, age, idSeed) {
     const eyelashStyle = appearance.eyelashStyle || 'none';
     const fs = appearance.faceShape || 'oval';
 
-    // --- Gradient defs (namespaced per-character to avoid SVG ID collisions) ---
+    // --- Gradient & ClipPath defs (namespaced per-character) ---
     const sid = sanitizeId(idSeed);
     const hairGradId = `hairGrad_${sid}`;
     const skinGradId = `skinGrad_${sid}`;
     const irisGradId = `irisGrad_${sid}`;
+    const headClipId = `headClip_${sid}`;
+
+    const isChild = stage === 'child';
+    const m = getHeadModel(fs, isChild);
 
     const hairDefs = `<linearGradient id="${hairGradId}" x1="15%" y1="0%" x2="85%" y2="100%">
-        <stop offset="0%" stop-color="${shadeColor(hairHex, 26)}"/>
-        <stop offset="48%" stop-color="${hairHex}"/>
+        <stop offset="0%" stop-color="${shadeColor(hairHex, 24)}"/>
+        <stop offset="50%" stop-color="${hairHex}"/>
         <stop offset="100%" stop-color="${shadeColor(hairHex, -22)}"/>
     </linearGradient>`;
 
-    // Radial skin gradient: lighter center (forehead/nose bridge highlight)
-    // fading to slightly darker edges for 3D roundness.
-    const skinDefs = `<radialGradient id="${skinGradId}" cx="45%" cy="38%" r="55%">
-        <stop offset="0%" stop-color="${shadeColor(skinHex, 12)}"/>
+    const skinDefs = `<radialGradient id="${skinGradId}" cx="46%" cy="38%" r="56%">
+        <stop offset="0%" stop-color="${shadeColor(skinHex, 10)}"/>
         <stop offset="70%" stop-color="${skinHex}"/>
-        <stop offset="100%" stop-color="${shadeColor(skinHex, -8)}"/>
+        <stop offset="100%" stop-color="${shadeColor(skinHex, -9)}"/>
     </radialGradient>`;
 
-    // Iris radial gradient: darker rim → lighter center for depth
-    const irisDefs = `<radialGradient id="${irisGradId}" cx="40%" cy="38%" r="55%">
-        <stop offset="0%" stop-color="${shadeColor(eyeHex, 20)}"/>
+    const irisDefs = `<radialGradient id="${irisGradId}" cx="42%" cy="38%" r="55%">
+        <stop offset="0%" stop-color="${shadeColor(eyeHex, 22)}"/>
         <stop offset="65%" stop-color="${eyeHex}"/>
-        <stop offset="100%" stop-color="${shadeColor(eyeHex, -25)}"/>
+        <stop offset="100%" stop-color="${shadeColor(eyeHex, -26)}"/>
     </radialGradient>`;
 
-    const allDefs = `<defs>${hairDefs}${skinDefs}${irisDefs}</defs>`;
+    const headClipDef = `<clipPath id="${headClipId}"><path d="${headPathD(m)}"/></clipPath>`;
+
+    const allDefs = `<defs>${hairDefs}${skinDefs}${irisDefs}${headClipDef}</defs>`;
     const hairPaint = { url: `url(#${hairGradId})`, hex: hairHex };
     const skinGradUrl = `url(#${skinGradId})`;
     const irisGradUrl = `url(#${irisGradId})`;
@@ -1206,42 +1274,42 @@ function buildSvg(appearance, age, idSeed) {
     if (stage === 'baby') {
         layers = [
             allDefs,
-            babyHeadShape(skinHex),
+            babyHeadShape(skinHex, skinGradUrl, outlineHex),
             babyBlush(),
-            babyEyes(eyeHex),
-            babyMouth(),
+            babyEyes(eyeHex, irisGradUrl, outlineHex),
+            babyMouth(skinHex),
             babyHair(hairPaint)
         ].join('');
     } else if (stage === 'child') {
         layers = [
             allDefs,
-            childHeadShape(fs, skinHex),
-            eyebrows(appearance.eyebrowStyle, hairHex, fs),
-            eyes(appearance.eyeShape, eyeHex, skinHex, fs, outlineHex, irisGradUrl, eyelashStyle),
-            nose(noseShape, skinHex, fs),
-            philtrum(skinHex, fs),
-            mouth('none', fs, skinHex),
-            hairBack(appearance.hairStyle, hairPaint, fs),
-            glasses(appearance.glassesStyle, glassesHex),
-            hairFront(appearance.hairStyle, hairPaint, fs)
+            hairBack(appearance.hairStyle, hairPaint, m, sid),
+            headAndEars(m, skinHex, skinGradUrl, outlineHex, headClipId),
+            eyebrows(appearance.eyebrowStyle, hairHex, m),
+            eyes(appearance.eyeShape, eyeHex, m, outlineHex, irisGradUrl, eyelashStyle, sid),
+            nose(noseShape, skinHex, m),
+            philtrum(skinHex, m),
+            mouth('none', m, skinHex),
+            hairFront(appearance.hairStyle, hairPaint, m, sid, headClipId),
+            glasses(appearance.glassesStyle, glassesHex, m)
         ].join('');
     } else {
         const facialHairHex = resolveFacialHairColor(appearance, age);
         const wrinkleOpacity = AvatarLogic.getWrinkleOpacity(age);
         layers = [
             allDefs,
-            headShape(fs, skinHex, skinGradUrl, outlineHex),
-            blush(appearance.blushColor, fs),
-            eyebrows(appearance.eyebrowStyle, hairHex, fs),
-            eyes(appearance.eyeShape, eyeHex, skinHex, fs, outlineHex, irisGradUrl, eyelashStyle),
-            nose(noseShape, skinHex, fs),
-            philtrum(skinHex, fs),
-            mouth(appearance.lipstickColor, fs, skinHex),
-            facialHair(appearance.facialHairStyle, facialHairHex, fs),
-            wrinkles(wrinkleOpacity, fs),
-            hairBack(appearance.hairStyle, hairPaint, fs),
-            glasses(appearance.glassesStyle, glassesHex),
-            hairFront(appearance.hairStyle, hairPaint, fs)
+            hairBack(appearance.hairStyle, hairPaint, m, sid),
+            headAndEars(m, skinHex, skinGradUrl, outlineHex, headClipId),
+            blush(appearance.blushColor, m, headClipId),
+            eyebrows(appearance.eyebrowStyle, hairHex, m),
+            eyes(appearance.eyeShape, eyeHex, m, outlineHex, irisGradUrl, eyelashStyle, sid),
+            nose(noseShape, skinHex, m),
+            philtrum(skinHex, m),
+            mouth(appearance.lipstickColor, m, skinHex),
+            facialHair(appearance.facialHairStyle, facialHairHex, m, headClipId),
+            wrinkles(wrinkleOpacity, m, skinHex, headClipId),
+            hairFront(appearance.hairStyle, hairPaint, m, sid, headClipId),
+            glasses(appearance.glassesStyle, glassesHex, m)
         ].join('');
     }
 
@@ -1251,8 +1319,7 @@ function buildSvg(appearance, age, idSeed) {
 /**
  * Returns SVG markup for a character's current portrait, either freshly
  * built or pulled from cache. Backfills a random appearance in place if the
- * character somehow has none yet (e.g. a save from before this feature
- * existed) so old saves render something stable rather than crashing.
+ * character somehow has none yet so old saves render something stable.
  * @param {object} character - anything with `.age` and (ideally) `.id`/`.name`
  * @returns {string} SVG markup
  */
