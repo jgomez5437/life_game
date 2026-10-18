@@ -23,6 +23,7 @@ const _elements = {
     get headerBrand() { return document.getElementById('header-brand'); },
     get userInfo() { return document.getElementById('header-user-info'); },
     get bankWrapper() { return document.getElementById('header-bank-wrapper'); },
+    get bankSublabel() { return document.getElementById('header-bank-sublabel'); },
     get storeBtn() { return document.getElementById('header-store-btn'); },
     get settingsBtn() { return document.getElementById('header-settings-btn'); },
     get gameContainer() { return document.getElementById('game-container'); },
@@ -449,7 +450,7 @@ export const UI = {
             }
         }
 
-        // 7. BANK UPDATE
+        // 7. BANK UPDATE & NET MONTHLY CASHFLOW SUBLABEL
         const moneyVal = stats.money !== undefined ? stats.money : 0;
         if (stats.money !== undefined && _elements.bank) {
             const formattedMoney = Utils.formatMoney(stats.money);
@@ -461,6 +462,38 @@ export const UI = {
                 _elements.bank.classList.add('text-red-400');
             } else {
                 _elements.bank.classList.add('text-green-400');
+            }
+        }
+
+        if (_elements.bankSublabel) {
+            const jobMonthly = Math.round((stats.jobSalary || 0) / 12);
+            const pensionMonthly = (stats.isRetired && stats.retirementPension > 0) ? Math.round(stats.retirementPension / 12) : 0;
+            const rentalMonthly = Array.isArray(stats.assets)
+                ? stats.assets.filter(a => a.category === 'property' && a.isRented && a.monthlyRent > 0).reduce((s, p) => s + (p.monthlyRent || 0), 0)
+                : 0;
+            const monthlyIncome = stats.monthlyIncome !== undefined ? stats.monthlyIncome : (jobMonthly + pensionMonthly + rentalMonthly);
+            const loanMonthly = (!stats.isStudent && !stats.universityEnrolled && !stats.gradSchoolEnrolled && (stats.studentLoans || 0) > 0) ? 200 : 0;
+            const assetMonthly = Array.isArray(stats.assets)
+                ? stats.assets.reduce((s, a) => s + (a.monthlyCost || 0), 0)
+                : 0;
+            const livingMonthly = stats.monthlyLivingExpense ? Math.round(stats.monthlyLivingExpense / 12) : 0;
+            const monthlyOutflow = stats.monthlyOutflow !== undefined
+                ? stats.monthlyOutflow
+                : (livingMonthly + loanMonthly + assetMonthly);
+            const netMonthly = monthlyIncome - monthlyOutflow;
+
+            if (netMonthly !== 0) {
+                const sign = netMonthly > 0 ? '+' : '';
+                const text = `${sign}${Utils.formatCompactMoney(netMonthly, stats.city)}/mo`;
+                _elements.bankSublabel.innerText = text;
+                _elements.bankSublabel.textContent = text;
+                _elements.bankSublabel.className = netMonthly > 0
+                    ? 'text-[10px] text-emerald-400 font-bold tracking-tight'
+                    : 'text-[10px] text-rose-400 font-bold tracking-tight';
+            } else {
+                _elements.bankSublabel.innerText = 'Bank';
+                _elements.bankSublabel.textContent = 'Bank';
+                _elements.bankSublabel.className = 'text-[10px] text-slate-400 uppercase tracking-wider font-semibold';
             }
         }
 
@@ -569,6 +602,11 @@ export const UI = {
             _elements.bank.classList.remove('text-red-400');
             _elements.bank.classList.add('text-green-400');
         }
+        if (_elements.bankSublabel) {
+            _elements.bankSublabel.innerText = 'Bank';
+            _elements.bankSublabel.textContent = 'Bank';
+            _elements.bankSublabel.className = 'text-[10px] text-slate-400 uppercase tracking-wider font-semibold';
+        }
         const avatarContainer = document.getElementById('avatar-container');
         if (avatarContainer) {
             avatarContainer.innerHTML = '<i class="fas fa-user text-slate-400 text-base"></i>';
@@ -642,13 +680,43 @@ export const UI = {
             }
         }
 
+        const assetsBtn = _elements.navBtnAssets || document.getElementById('nav-btn-assets');
+        const workBtn = _elements.navBtnWork || document.getElementById('nav-btn-work');
+        const socialBtn = _elements.navBtnSocial || document.getElementById('nav-btn-social');
+        const moreBtn = _elements.navBtnMore || document.getElementById('nav-btn-more');
+
+        // Contextual Notification Badge Dots
+        const user = state?.gameState?.user;
+        const setBadge = (btn, show) => {
+            if (!btn) return;
+            const existing = btn.querySelector('.nav-badge-dot');
+            if (show && !existing) {
+                const dot = document.createElement('span');
+                dot.className = 'nav-badge-dot';
+                btn.appendChild(dot);
+            } else if (!show && existing) {
+                existing.remove();
+            }
+        };
+
+        const needsWorkAttention = !!(user && activeTab !== 'work' && (
+            (user.age >= 18 && user.age < 65 && !user.isStudent && !user.universityEnrolled && !user.gradSchoolEnrolled && !user.jobTitle && !user.hasBusiness && !user.isRetired) ||
+            (user.careerTrack === 'mafia_syndicate' && (user.mafiaCrimesThisYear || 0) < 3)
+        ));
+        const needsAssetsAttention = !!(user && activeTab !== 'assets' && Array.isArray(user.assets) && user.assets.some(a =>
+            ((a.category === 'property' || a.type === 'Property') && (a.pendingOffer || a.hasBuyerOffer)) || ((a.condition ?? 100) < 25)
+        ));
+
+        setBadge(workBtn, needsWorkAttention);
+        setBadge(assetsBtn, needsAssetsAttention);
+
         // Tab mapping for active styles
         const tabs = [
-            { key: 'assets', btn: _elements.navBtnAssets || document.getElementById('nav-btn-assets'), tabClass: 'nav-tab-assets' },
-            { key: 'work', btn: _elements.navBtnWork || document.getElementById('nav-btn-work'), tabClass: 'nav-tab-work' },
+            { key: 'assets', btn: assetsBtn, tabClass: 'nav-tab-assets' },
+            { key: 'work', btn: workBtn, tabClass: 'nav-tab-work' },
             { key: 'home', btn: centerBtn, tabClass: 'nav-tab-home' },
-            { key: 'social', btn: _elements.navBtnSocial || document.getElementById('nav-btn-social'), tabClass: 'nav-tab-social' },
-            { key: 'more', btn: _elements.navBtnMore || document.getElementById('nav-btn-more'), tabClass: 'nav-tab-more' }
+            { key: 'social', btn: socialBtn, tabClass: 'nav-tab-social' },
+            { key: 'more', btn: moreBtn, tabClass: 'nav-tab-more' }
         ];
 
         tabs.forEach(t => {
@@ -687,6 +755,8 @@ export const UI = {
             btn.classList.remove('nav-tab-active', 'nav-tab-assets', 'nav-tab-work', 'nav-tab-home', 'nav-tab-social', 'nav-tab-more');
             const icon = btn.querySelector('i');
             if (icon) icon.classList.remove('nav-icon-bounce');
+            const dot = btn.querySelector('.nav-badge-dot');
+            if (dot) dot.remove();
         });
     },
 

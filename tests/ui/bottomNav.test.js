@@ -411,4 +411,68 @@ describe('Persistent Global Bottom Navigation & Active Tab States', () => {
             expect(document.getElementById('game-container').innerHTML).toContain('You Died');
         });
     });
+
+    describe('UI Polish: Snapshot Strip, Contextual Nav Badges & Conditional Back Buttons', () => {
+        test('renderLifeDashboard renders #dashboard-snapshot-strip, .current-age-log-card, and .timeline-dot', () => {
+            renderLifeDashboard(state.gameState);
+
+            const snapshotStrip = document.getElementById('dashboard-snapshot-strip');
+            expect(snapshotStrip).not.toBeNull();
+            expect(snapshotStrip.textContent).toContain('Software Engineer');
+
+            const currentAgeCard = document.querySelector('.current-age-log-card');
+            expect(currentAgeCard).not.toBeNull();
+            expect(currentAgeCard.textContent).toMatch(/Age 22\s*• Now/);
+
+            const timelineDot = document.querySelector('.timeline-dot');
+            expect(timelineDot).not.toBeNull();
+        });
+
+        test('UI.updateBottomNav renders contextual .nav-badge-dot on Work and Assets tabs when attention needed', () => {
+            // Unemployed adult -> Work badge dot
+            state.gameState.user.jobTitle = null;
+            state.gameState.user.age = 24;
+            state.gameState.user.isStudent = false;
+            state.gameState.user.hasBusiness = false;
+
+            // Property with buyer offer -> Assets badge dot
+            state.gameState.user.assets = [
+                { name: 'Condo', type: 'Property', condition: 80, hasBuyerOffer: true }
+            ];
+
+            UI.updateBottomNav('home');
+
+            const workBtn = document.getElementById('nav-btn-work');
+            const assetsBtn = document.getElementById('nav-btn-assets');
+            expect(workBtn.querySelector('.nav-badge-dot')).not.toBeNull();
+            expect(assetsBtn.querySelector('.nav-badge-dot')).not.toBeNull();
+
+            // Clear conditions -> dots removed
+            state.gameState.user.jobTitle = 'Accountant';
+            state.gameState.user.assets = [{ name: 'Condo', type: 'Property', condition: 90, hasBuyerOffer: false }];
+            UI.updateBottomNav('home');
+            expect(workBtn.querySelector('.nav-badge-dot')).toBeNull();
+            expect(assetsBtn.querySelector('.nav-badge-dot')).toBeNull();
+        });
+
+        test('Root tab screens omit redundant Back to Dashboard button when bottom nav is enabled, and show it when disabled', () => {
+            localStorage.setItem('life_game_bottom_nav', 'true');
+            renderAssets();
+            expect(document.getElementById('game-container').innerHTML).not.toContain('Back to Dashboard');
+
+            renderActivities();
+            expect(document.getElementById('game-container').innerHTML).not.toContain('Back to Dashboard');
+
+            renderRelationships();
+            expect(document.getElementById('game-container').innerHTML).not.toContain('Back to Dashboard');
+
+            renderMoreDashboard();
+            expect(document.getElementById('game-container').innerHTML).not.toContain('Back to Dashboard');
+
+            // When disabled -> Back to Dashboard is shown
+            localStorage.setItem('life_game_bottom_nav', 'false');
+            renderAssets();
+            expect(document.getElementById('game-container').innerHTML).toContain('Back to Dashboard');
+        });
+    });
 });

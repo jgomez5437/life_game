@@ -125,6 +125,10 @@ export const renderRelationships = () => {
             badgeStyle = "bg-slate-700 text-slate-300 border-slate-500 shadow-sm shadow-slate-900/20";
         }
 
+        const seenBadge = person.interactedThisYear
+            ? `<span class="seen-badge text-[9px] font-extrabold px-1.5 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-700/50 flex items-center gap-0.5" title="Interacted this year"><i class="fas fa-check text-[8px]"></i> Seen</span>`
+            : '';
+
         return `
             <div data-action="renderPersonInteraction" data-args="&apos;${person.id}&apos;, &apos;renderRelationships&apos;" class="bg-slate-800 p-3 rounded-xl border border-slate-700 mb-3 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition flex items-center justify-between group">
                 <div class="flex items-center gap-4">
@@ -133,12 +137,13 @@ export const renderRelationships = () => {
                     </div>
 
                     <div>
-                        <div class="flex items-center gap-2 mb-0.5">
+                        <div class="flex items-center gap-2 mb-0.5 flex-wrap">
                             <h4 class="font-bold text-white text-sm tracking-wide">${Utils.escapeHtml(person.name)}</h4>
                             
                             <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider ${badgeStyle}">
                                 ${Utils.escapeHtml(person.type)}
                             </span>
+                            ${seenBadge}
                         </div>
                         <div class="text-xs text-slate-400 font-medium">Age: ${person.age}${person.occupation ? ' • ' + Utils.escapeHtml(person.occupation) : ''}</div>
                     </div>
@@ -198,14 +203,17 @@ export const renderRelationships = () => {
     const meetPeopleAttr = meetPeopleDisabled ? 'disabled' : '';
 
     UI.updateBottomNav('social');
+    const backBtnHtml = !UI.isBottomNavEnabled() ? `
+        <div class="mb-4">
+            <button data-action="renderLifeDashboard" class="text-slate-400 hover:text-white text-xs flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition border border-slate-700/50">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </button>
+        </div>
+    ` : '';
     const container = document.getElementById('game-container');
     container.innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
-            <div class="mb-4">
-                <button data-action="renderLifeDashboard" class="text-slate-400 hover:text-white text-xs flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition border border-slate-700/50">
-                    <i class="fas fa-arrow-left"></i> Back to Dashboard
-                </button>
-            </div>
+            ${backBtnHtml}
 
             <div class="mb-6 px-1 flex justify-between items-center flex-wrap gap-2">
                 <h2 class="text-2xl font-bold text-white">Relationships</h2>

@@ -888,36 +888,108 @@ export function renderLifeDashboard(maybeGameState) {
         return;
     }
     //Update the Header Bar using the UI Manager
-    //    We assume 'game' holds the key stats needed for the header.
+    if (typeof GameLogic.calculateUserMonthlyIncome === 'function') {
+        user.monthlyIncome = GameLogic.calculateUserMonthlyIncome(user);
+    }
+    if (typeof GameLogic.calculateUserMonthlyOutflow === 'function') {
+        user.monthlyOutflow = GameLogic.calculateUserMonthlyOutflow(user);
+    }
     UI.updateHeader(user);
     const avatarElem = get('avatar-container');
     if ((user.name || user.username) && avatarElem) avatarElem.innerHTML = renderAvatar(user);
     const isCompact = localStorage.getItem('life_game_compact') === 'true';
 
-// Generate the Life Log HTML 
-    const logHtml = currentState.lifeLog.map(l => `
-        <div class="${isCompact ? 'mb-2.5' : 'mb-5'} group">
+    // Current Life Snapshot Strip Data
+    const statusLabel = typeof GameLogic.checkLifeStatus === 'function' ? GameLogic.checkLifeStatus(user) : (user.lifeStatus || 'Citizen');
+    const statusIcon = (user.isStudent || user.universityEnrolled || user.gradSchoolEnrolled)
+        ? 'fa-graduation-cap text-blue-400'
+        : ((user.jobTitle || user.hasBusiness) ? 'fa-briefcase text-emerald-400' : (user.age < 5 ? 'fa-baby text-pink-400' : 'fa-user-clock text-amber-400'));
+
+    const netMonthly = (user.monthlyIncome || 0) - (user.monthlyOutflow || 0);
+    const cashflowText = netMonthly === 0
+        ? `${Utils.formatMoney(0, user.city)}/mo`
+        : `${netMonthly > 0 ? '+' : ''}${Utils.formatCompactMoney(netMonthly, user.city)}/mo`;
+    const cashflowColor = netMonthly > 0 ? 'text-emerald-400' : (netMonthly < 0 ? 'text-rose-400' : 'text-slate-400');
+
+    const rels = Array.isArray(user.relationships) ? user.relationships : [];
+    const spouse = rels.find(r => r.category === 'spouse' || r.type === 'Husband' || r.type === 'Wife');
+    const partner = rels.find(r => r.category === 'partner');
+    const socialLabel = spouse
+        ? spouse.name.split(' ')[0]
+        : (partner ? partner.name.split(' ')[0] : `${rels.length} ${rels.length === 1 ? 'Tie' : 'Ties'}`);
+    const socialIcon = spouse ? 'fa-ring text-amber-400' : (partner ? 'fa-heart text-pink-400' : 'fa-users text-pink-400');
+
+    const snapshotStripHtml = `
+        <div id="dashboard-snapshot-strip" class="bg-slate-800/80 border border-slate-700/70 rounded-xl p-2 mb-2.5 grid grid-cols-3 gap-1.5 shrink-0 shadow-sm">
+            <button type="button" data-action="renderActivities" class="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-900/60 hover:bg-slate-700/70 border border-slate-700/50 transition text-left min-w-0" title="View Occupation & Education">
+                <i class="fas ${statusIcon} text-xs shrink-0"></i>
+                <div class="min-w-0 flex-1">
+                    <div class="text-[9px] uppercase tracking-wider text-slate-400 font-bold leading-none">Role</div>
+                    <div class="text-[11px] font-bold text-slate-200 truncate mt-0.5">${Utils.escapeHtml(statusLabel)}</div>
+                </div>
+            </button>
+            <button type="button" data-action="renderAssets" class="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-900/60 hover:bg-slate-700/70 border border-slate-700/50 transition text-left min-w-0" title="View Assets & Cashflow">
+                <i class="fas fa-chart-line ${cashflowColor} text-xs shrink-0"></i>
+                <div class="min-w-0 flex-1">
+                    <div class="text-[9px] uppercase tracking-wider text-slate-400 font-bold leading-none">Cashflow</div>
+                    <div class="text-[11px] font-bold ${cashflowColor} truncate mt-0.5 font-mono">${Utils.escapeHtml(cashflowText)}</div>
+                </div>
+            </button>
+            <button type="button" data-action="renderRelationships" class="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-900/60 hover:bg-slate-700/70 border border-slate-700/50 transition text-left min-w-0" title="View Relationships">
+                <i class="fas ${socialIcon} text-xs shrink-0"></i>
+                <div class="min-w-0 flex-1">
+                    <div class="text-[9px] uppercase tracking-wider text-slate-400 font-bold leading-none">Circle</div>
+                    <div class="text-[11px] font-bold text-slate-200 truncate mt-0.5">${Utils.escapeHtml(socialLabel)}</div>
+                </div>
+            </button>
+        </div>
+    `;
+
+    // Generate the Life Log HTML 
+    const logHtml = (currentState.lifeLog || []).map(l => {
+        const isCurrentYear = l.age === user.age;
+        const badgeClasses = isCurrentYear
+            ? `bg-blue-600 text-white border-blue-400 shadow-md shadow-blue-500/20`
+            : `bg-slate-800 text-blue-100 border-slate-600 shadow-sm`;
+        return `
+        <div class="${isCompact ? 'mb-2.5' : 'mb-4'} ${isCurrentYear ? 'current-age-log-card' : ''} group">
             <div class="flex items-center ${isCompact ? 'mb-1' : 'mb-2'}">
-                <div class="bg-slate-800 text-blue-100 ${isCompact ? 'text-[9px] px-2 py-0.5' : 'text-[10px] px-3 py-1'} uppercase font-bold rounded-full border border-slate-600 shadow-sm z-10">
-                    Age ${l.age}
+                <div class="${badgeClasses} ${isCompact ? 'text-[9px] px-2 py-0.5' : 'text-[10px] px-3 py-1'} uppercase font-bold rounded-full border z-10 flex items-center">
+                    <span>Age ${l.age}</span>
+                    ${isCurrentYear ? '<span class="ml-1.5 text-[8px] tracking-widest opacity-90">• Now</span>' : ''}
                 </div>
                 <div class="h-px bg-gradient-to-r from-slate-700 to-transparent flex-grow ml-2"></div>
             </div>
 
-            <div class="${isCompact ? 'pl-3 border-l border-slate-700/50 ml-3 space-y-0.5 pb-0' : 'pl-4 border-l border-slate-700/50 ml-4 space-y-2 pb-1'}">
-                ${l.events.map(e => `
-                    <div class="${e.color} ${isCompact ? 'text-xs py-0 leading-snug' : 'text-sm py-0.5'} transition-transform duration-200 hover:translate-x-1">
-                        ${Utils.escapeHtml(e.msg)}
+            <div class="${isCompact ? 'pl-2.5 border-l border-slate-700/50 ml-2.5 space-y-0.5 pb-0' : 'pl-3.5 border-l border-slate-700/50 ml-3.5 space-y-1.5 pb-0.5'}">
+                ${(l.events || []).map(e => {
+                    const colorStr = e.color || '';
+                    const isGood = colorStr.includes('green') || colorStr.includes('emerald');
+                    const isBad = colorStr.includes('red') || colorStr.includes('rose');
+                    const isMajor = colorStr.includes('yellow') || colorStr.includes('amber');
+                    const dotClass = isMajor
+                        ? 'bg-amber-400 ring-2 ring-amber-400/30'
+                        : isGood
+                            ? 'bg-emerald-400'
+                            : isBad
+                                ? 'bg-rose-400'
+                                : 'bg-slate-500';
+                    return `
+                    <div class="flex items-start gap-2 ${e.color} ${isCompact ? 'text-xs py-0 leading-snug' : 'text-sm py-0.5'} transition-transform duration-200 hover:translate-x-1">
+                        <span class="timeline-dot ${dotClass}"></span>
+                        <span class="flex-1">${Utils.escapeHtml(e.msg)}</span>
                     </div>
-                `).join('')}
+                    `;
+                }).join('')}
             </div>
         </div>
-    `).join('');
+        `;
+    }).join('');
 
     //Define Action Variables
     const isVip = hasPurchasedPack('vip_supporter');
     const vipBannerHtml = isVip ? `
-        <div data-action="renderVipLoungeModal" class="bg-slate-800/80 hover:bg-slate-800 p-2.5 rounded-xl border border-amber-500/30 mb-3 flex items-center justify-between cursor-pointer transition shadow-sm shrink-0">
+        <div data-action="renderVipLoungeModal" class="bg-slate-800/80 hover:bg-slate-800 p-2.5 rounded-xl border border-amber-500/30 mb-2.5 flex items-center justify-between cursor-pointer transition shadow-sm shrink-0">
             <div class="flex items-center gap-2">
                 <span class="bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-black text-[10px] uppercase px-2 py-0.5 rounded-full border border-amber-300 shadow-sm flex items-center gap-1">
                     <i class="fas fa-crown text-[9px]"></i> VIP
@@ -960,7 +1032,8 @@ export function renderLifeDashboard(maybeGameState) {
     const dashboardHTML = `
         <div class="flex flex-col h-full max-w-lg mx-auto">
             ${vipBannerHtml}
-            <div class="flex-1 overflow-y-auto ${!isBottomNav ? 'mb-2' : ''} bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
+            ${snapshotStripHtml}
+            <div id="life-history-scroll" class="flex-1 overflow-y-auto ${!isBottomNav ? 'mb-2' : ''} bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
                 <h3 class="font-bold text-slate-300 mb-4 sticky top-0 bg-transparent backdrop-blur-md py-1 border-b border-slate-700/50">Life History</h3>
                 <div class="space-y-2">
                     ${logHtml.length > 0 ? logHtml : '<div class="text-slate-600 text-sm italic">Life has just begun...</div>'}
@@ -974,8 +1047,14 @@ export function renderLifeDashboard(maybeGameState) {
     UI.renderScreen(dashboardHTML);
     UI.updateBottomNav('home');
 
+    const scrollEl = get('life-history-scroll');
+    if (scrollEl) {
+        scrollEl.scrollTop = scrollEl.scrollHeight;
+    }
+
     // Conservative context-aware preloading during idle gameplay
     if (state.gameState) {
         preloadForContext(state.gameState);
     }
 }
+

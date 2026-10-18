@@ -89,6 +89,8 @@ export const toggleAvatarZoom = lazy('charCreation', 'toggleAvatarZoom');
 export const setAvatarZoom = lazy('charCreation', 'setAvatarZoom');
 export const pickTraitOption = lazy('charCreation', 'pickTraitOption');
 export const randomizePlayerName = lazy('charCreation', 'randomizePlayerName');
+export const cyclePreviewAge = lazy('charCreation', 'cyclePreviewAge');
+export const updateLocationEconBadge = lazy('charCreation', 'updateLocationEconBadge');
 
 // Main Screen
 export const ageUp = lazy('mainScreen', 'ageUp');
@@ -1405,6 +1407,8 @@ const routeHandlers = {
   setAvatarZoom,
   pickTraitOption,
   randomizePlayerName,
+  cyclePreviewAge,
+  updateLocationEconBadge,
   applyForJob,
   applyForCareerTrack,
   joinSpecialCareer,

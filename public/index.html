@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Start a Life - Free Online Life Simulator Game</title>
     <meta name="description" content="Play Start a Life online for free. Create your character, build relationships, manage careers, and navigate life choices in this addictive browser life simulator game.">
     <meta name="keywords" content="free online game, browser game, strategy game, life simulator, life sim, Start a Life">
@@ -72,6 +72,7 @@
                         <h1 id="header-name" class="font-bold text-xs sm:text-sm leading-tight text-white group-hover:text-blue-300 transition truncate">Player</h1>
                         <div class="text-[11px] sm:text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
                             <span>Age: <span id="header-age" class="text-white font-bold">0</span></span>
+                            <i class="fas fa-chevron-right text-[9px] text-slate-500 group-hover:text-blue-400 transition ml-0.5"></i>
                         </div>
                     </div>
                 </div>
@@ -80,7 +81,7 @@
                 <div class="flex items-center gap-2 sm:gap-2.5 shrink-0">
                     <div id="header-bank-wrapper" class="text-right relative">
                         <div id="header-bank" class="font-bold text-green-400 text-sm sm:text-base leading-tight">$0</div>
-                        <div class="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Bank</div>
+                        <div id="header-bank-sublabel" class="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Bank</div>
                     </div>
                     <button id="header-settings-btn" data-action="openSettingsModal" class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-slate-700/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-600/70 flex items-center justify-center transition-colors shadow-sm ml-1" title="Settings">
                         <i class="fas fa-cog text-sm sm:text-base"></i>
@@ -93,7 +94,7 @@
                 <!-- Health -->
                 <div id="health-container" class="header-stat-pill relative bg-slate-900/60 hover:bg-slate-900/90 border border-slate-700/60 hover:border-emerald-500/40 rounded-lg py-1 px-1.5 sm:px-2 flex items-center justify-center gap-1.5 transition text-green-400">
                     <div class="header-stat-fill-track">
-                        <div id="health-bar-fill" class="header-stat-fill bg-emerald-500/10" style="width: 100%;"></div>
+                        <div id="health-bar-fill" class="header-stat-fill bg-emerald-500/25" style="width: 100%;"></div>
                     </div>
                     <i class="fas fa-heart text-[10px] sm:text-xs shrink-0 relative z-10"></i>
                     <span id="ui-health" class="text-[11px] sm:text-xs font-bold font-mono relative z-10">100%</span>
@@ -101,7 +102,7 @@
                 <!-- Happiness -->
                 <div id="happiness-container" class="header-stat-pill relative bg-slate-900/60 hover:bg-slate-900/90 border border-slate-700/60 hover:border-amber-500/40 rounded-lg py-1 px-1.5 sm:px-2 flex items-center justify-center gap-1.5 transition text-amber-400">
                     <div class="header-stat-fill-track">
-                        <div id="happiness-bar-fill" class="header-stat-fill bg-amber-500/10" style="width: 100%;"></div>
+                        <div id="happiness-bar-fill" class="header-stat-fill bg-amber-500/25" style="width: 100%;"></div>
                     </div>
                     <i class="fas fa-smile text-[10px] sm:text-xs shrink-0 relative z-10"></i>
                     <span id="ui-happiness" class="text-[11px] sm:text-xs font-bold font-mono relative z-10">100%</span>
@@ -109,7 +110,7 @@
                 <!-- Smarts -->
                 <div id="smarts-container" class="header-stat-pill relative bg-slate-900/60 hover:bg-slate-900/90 border border-slate-700/60 hover:border-blue-500/40 rounded-lg py-1 px-1.5 sm:px-2 flex items-center justify-center gap-1.5 transition text-blue-400">
                     <div class="header-stat-fill-track">
-                        <div id="smarts-bar-fill" class="header-stat-fill bg-blue-500/10" style="width: 50%;"></div>
+                        <div id="smarts-bar-fill" class="header-stat-fill bg-blue-500/25" style="width: 50%;"></div>
                     </div>
                     <i class="fas fa-brain text-[10px] sm:text-xs shrink-0 relative z-10"></i>
                     <span id="ui-smarts" class="text-[11px] sm:text-xs font-bold font-mono relative z-10">50%</span>
@@ -117,7 +118,7 @@
                 <!-- Looks -->
                 <div id="looks-container" class="header-stat-pill relative bg-slate-900/60 hover:bg-slate-900/90 border border-slate-700/60 hover:border-pink-500/40 rounded-lg py-1 px-1.5 sm:px-2 flex items-center justify-center gap-1.5 transition text-pink-400">
                     <div class="header-stat-fill-track">
-                        <div id="looks-bar-fill" class="header-stat-fill bg-pink-500/10" style="width: 50%;"></div>
+                        <div id="looks-bar-fill" class="header-stat-fill bg-pink-500/25" style="width: 50%;"></div>
                     </div>
                     <i class="fas fa-sparkles text-[10px] sm:text-xs shrink-0 relative z-10"></i>
                     <span id="ui-looks" class="text-[11px] sm:text-xs font-bold font-mono relative z-10">50%</span>
@@ -143,13 +144,13 @@
     <nav id="bottom-nav" class="bg-slate-800 border-t border-slate-700 px-3 py-2 shadow-lg z-10 shrink-0 hidden select-none" aria-label="Main Navigation">
         <div id="bottom-nav-container" class="w-full max-w-lg mx-auto grid grid-cols-5 gap-1.5 sm:gap-2 h-16 sm:h-18">
             <!-- 1. Assets Tab -->
-            <button id="nav-btn-assets" data-action="renderAssets" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700 transition" title="Assets">
+            <button id="nav-btn-assets" data-action="renderAssets" class="btn-nav relative text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700 transition" title="Assets">
                 <i class="fas fa-coins mb-1 text-lg sm:text-xl text-yellow-400"></i>
                 <span class="text-[9px] sm:text-[10px] uppercase tracking-wider font-bold">Assets</span>
             </button>
 
             <!-- 2. Work Tab -->
-            <button id="nav-btn-work" data-action="renderActivities" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700 transition" title="Work & Education">
+            <button id="nav-btn-work" data-action="renderActivities" class="btn-nav relative text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700 transition" title="Work & Education">
                 <i class="fas fa-user-graduate mb-1 text-lg sm:text-xl text-blue-400"></i>
                 <span class="text-[9px] sm:text-[10px] uppercase tracking-wider font-bold">Work</span>
             </button>
@@ -161,13 +162,13 @@
             </button>
 
             <!-- 4. Social Tab -->
-            <button id="nav-btn-social" data-action="renderRelationships" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700 transition" title="Relationships & Social">
+            <button id="nav-btn-social" data-action="renderRelationships" class="btn-nav relative text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700 transition" title="Relationships & Social">
                 <i class="fas fa-users mb-1 text-lg sm:text-xl text-pink-400"></i>
                 <span class="text-[9px] sm:text-[10px] uppercase tracking-wider font-bold">Social</span>
             </button>
 
             <!-- 5. More Tab -->
-            <button id="nav-btn-more" data-action="renderMoreDashboard" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700 transition" title="More Options & Activities">
+            <button id="nav-btn-more" data-action="renderMoreDashboard" class="btn-nav relative text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700 transition" title="More Options & Activities">
                 <i class="fas fa-ellipsis-h mb-1 text-lg sm:text-xl text-slate-400"></i>
                 <span class="text-[9px] sm:text-[10px] uppercase tracking-wider font-bold">More</span>
             </button>
@@ -175,8 +176,8 @@
     </nav>
 
     <!-- Modal Overlay -->
-    <div id="modal-overlay" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-50 backdrop-blur-sm p-4">
-        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl flex flex-col max-h-[85vh] overflow-hidden my-auto">
+    <div id="modal-overlay" class="fixed inset-0 bg-black/80 hidden items-end sm:items-center justify-center z-50 backdrop-blur-sm p-2 sm:p-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-t-3xl sm:rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl flex flex-col max-h-[88vh] sm:max-h-[85vh] overflow-hidden sm:my-auto">
             <!-- Modal Header (Title + Inline Exit Button) -->
             <div id="modal-header" class="flex items-center justify-between gap-3 mb-3 shrink-0">
                 <h2 id="modal-title" class="text-xl font-bold text-white truncate">Alert</h2>

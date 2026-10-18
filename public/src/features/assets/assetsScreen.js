@@ -158,13 +158,16 @@ export function renderAssets() {
     const jewelryHtml = getJewelryListHtml(assets);
 
     UI.updateBottomNav('assets');
+    const backBtnHtml = !UI.isBottomNavEnabled() ? `
+        <div class="mb-4">
+            <button data-action="renderLifeDashboard" class="text-slate-400 hover:text-white text-xs flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition border border-slate-700/50">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </button>
+        </div>
+    ` : '';
     get('game-container').innerHTML = `
         <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
-            <div class="mb-4">
-                <button data-action="renderLifeDashboard" class="text-slate-400 hover:text-white text-xs flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition border border-slate-700/50">
-                    <i class="fas fa-arrow-left"></i> Back to Dashboard
-                </button>
-            </div>
+            ${backBtnHtml}
             
             <h2 class="text-2xl font-bold mb-4 px-1">My Assets</h2>
             
@@ -186,61 +189,55 @@ export function renderAssets() {
             <div class="flex-1 overflow-y-auto pb-4">
                 
                 <div class="grid grid-cols-1 gap-3 mb-6">
-                    <div data-action="renderShoppingHub" class="bg-slate-800 p-4 rounded-xl border border-slate-700 cursor-pointer hover:bg-slate-750 hover:border-yellow-500/50 transition">
-                        <div class="flex items-center gap-3 mb-2">
-                             <div class="w-8 h-8 rounded-full bg-yellow-600/30 flex items-center justify-center text-yellow-500">
+                    <div data-action="renderShoppingHub" class="bg-slate-800 p-4 rounded-xl border border-slate-700 cursor-pointer hover:bg-slate-750 hover:border-yellow-500/50 transition flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-yellow-600/30 flex items-center justify-center text-yellow-500 shrink-0">
                                 <i class="fas fa-shopping-cart"></i>
                             </div>
-                            <h3 class="font-bold text-white">Go Shopping</h3>
+                            <div>
+                                <div class="text-[10px] uppercase font-extrabold tracking-wider text-yellow-500">Go Shopping</div>
+                                <h3 class="font-bold text-white text-sm">Buy Items & Real Estate</h3>
+                            </div>
                         </div>
-                        <div class="bg-slate-900 p-3 rounded border border-slate-700 flex justify-between items-center">
-                             <div class="text-sm text-white font-bold">Buy Items & Real Estate</div>
-                             <i class="fas fa-chevron-right text-slate-600"></i>
-                        </div>
+                        <i class="fas fa-chevron-right text-slate-500 text-xs"></i>
                     </div>
 
                     ${(() => {
                         const isLocked = user.age < 14;
                         return `
-                            <div data-action="renderInvestmentsScreen" class="bg-slate-800 p-4 rounded-xl border border-slate-700 cursor-pointer hover:bg-slate-750 ${isLocked ? 'hover:border-amber-500/50 opacity-80' : 'hover:border-emerald-500/50'} transition">
-                                <div class="flex items-center justify-between mb-2">
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-8 h-8 rounded-full ${isLocked ? 'bg-amber-900/40 text-amber-400' : 'bg-emerald-600/30 text-emerald-400'} flex items-center justify-center">
-                                            <i class="fas ${isLocked ? 'fa-lock' : 'fa-chart-line'}"></i>
-                                        </div>
-                                        <h3 class="font-bold text-white">Investments</h3>
+                            <div data-action="renderInvestmentsScreen" class="bg-slate-800 p-4 rounded-xl border border-slate-700 cursor-pointer hover:bg-slate-750 ${isLocked ? 'hover:border-amber-500/50 opacity-80' : 'hover:border-emerald-500/50'} transition flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-xl ${isLocked ? 'bg-amber-900/40 text-amber-400' : 'bg-emerald-600/30 text-emerald-400'} flex items-center justify-center shrink-0">
+                                        <i class="fas ${isLocked ? 'fa-lock' : 'fa-chart-line'}"></i>
                                     </div>
-                                    ${isLocked ? `<span class="bg-amber-950/80 text-amber-300 border border-amber-700/60 text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1"><i class="fas fa-lock text-[9px]"></i> Unlocks at Age 14</span>` : ''}
+                                    <div>
+                                        <div class="text-[10px] uppercase font-extrabold tracking-wider ${isLocked ? 'text-amber-400' : 'text-emerald-400'}">Investments</div>
+                                        <h3 class="font-bold ${isLocked ? 'text-slate-300' : 'text-white'} text-sm">${isLocked ? 'Locked until age 14' : 'Manage Savings & Stock Market'}</h3>
+                                    </div>
                                 </div>
-                                <div class="bg-slate-900 p-3 rounded border border-slate-700 flex justify-between items-center">
-                                    <div class="text-sm ${isLocked ? 'text-slate-400' : 'text-white'} font-bold">
-                                        ${isLocked ? 'Locked until age 14' : 'Manage Savings & Stock Market'}
-                                    </div>
-                                    <i class="fas ${isLocked ? 'fa-lock text-amber-400' : 'fa-chevron-right text-slate-600'}"></i>
+                                <div class="flex items-center gap-2">
+                                    ${isLocked ? `<span class="bg-amber-950/80 text-amber-300 border border-amber-700/60 text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1"><i class="fas fa-lock text-[9px]"></i> Unlocks at Age 14</span>` : `<i class="fas fa-chevron-right text-slate-500 text-xs"></i>`}
                                 </div>
                             </div>
                         `;
                     })()}
 
                     ${user.isRetired && user.retirementPension > 0 ? `
-                        <div class="bg-slate-800 p-4 rounded-xl border border-amber-500/40 shadow-sm shadow-amber-950/30">
-                            <div class="flex items-center justify-between mb-2">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 rounded-full bg-amber-900/40 text-amber-400 flex items-center justify-center">
-                                        <i class="fas fa-cocktail"></i>
-                                    </div>
-                                    <h3 class="font-bold text-white">Retirement Pension</h3>
+                        <div class="bg-slate-800 p-4 rounded-xl border border-amber-500/40 shadow-sm shadow-amber-950/30 flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-amber-900/40 text-amber-400 flex items-center justify-center shrink-0">
+                                    <i class="fas fa-cocktail"></i>
                                 </div>
-                                <span class="bg-amber-950/80 text-amber-300 border border-amber-700/60 text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full">
+                                <div>
+                                    <div class="text-[10px] uppercase font-extrabold tracking-wider text-amber-400">Retirement Pension • Guaranteed Annual Payout</div>
+                                    <h3 class="font-bold text-white text-sm">${Utils.formatMoney(user.retirementPension)}/yr</h3>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span class="bg-amber-950/80 text-amber-300 border border-amber-700/60 text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full block mb-1">
                                     +${Utils.formatMoney(Math.floor(user.retirementPension / 12))}/mo
                                 </span>
-                            </div>
-                            <div class="bg-slate-900 p-3 rounded border border-slate-700 flex justify-between items-center">
-                                <div>
-                                    <div class="text-sm text-white font-bold">${Utils.formatMoney(user.retirementPension)}/yr</div>
-                                    <div class="text-xs text-amber-400/90 font-medium">Guaranteed Annual Payout</div>
-                                </div>
-                                <span class="text-xs text-green-400 font-bold flex items-center gap-1"><i class="fas fa-check-circle"></i> Active</span>
+                                <span class="text-[10px] text-green-400 font-bold flex items-center justify-end gap-1"><i class="fas fa-check-circle"></i> Active</span>
                             </div>
                         </div>
                     ` : ''}

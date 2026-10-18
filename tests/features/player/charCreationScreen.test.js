@@ -7,6 +7,8 @@ import {
     setCharTab,
     toggleAvatarZoom,
     setAvatarZoom,
+    cyclePreviewAge,
+    updateLocationEconBadge,
     pickTraitOption,
     randomizePlayerName,
     cycleTrait
@@ -251,5 +253,51 @@ describe('Character Creation Screen Suite', () => {
         setCharTab('identity');
         expect(document.getElementById('panel-identity').classList.contains('hidden')).toBe(false);
         expect(document.getElementById('inp-name').value).toBe('Sir Lancelot');
+    });
+
+    test('renderCharCreation pre-fills a default randomized name and renders location economy badge', () => {
+        jest.spyOn(UI, 'renderScreen').mockImplementation((html) => {
+            document.body.innerHTML = html;
+        });
+        renderCharCreation();
+
+        const nameInput = document.getElementById('inp-name');
+        expect(nameInput.value.trim().length).toBeGreaterThan(0);
+
+        const econBadge = document.getElementById('location-econ-badge');
+        expect(econBadge).not.toBeNull();
+        expect(econBadge.textContent).toContain('x');
+    });
+
+    test('cyclePreviewAge cycles preview age badge through 25 -> 68 -> 6 -> 25', () => {
+        jest.spyOn(UI, 'renderScreen').mockImplementation((html) => {
+            document.body.innerHTML = html;
+        });
+        renderCharCreation();
+
+        const ageBtn = document.getElementById('avatar-age-preview-btn');
+        expect(ageBtn).not.toBeNull();
+        expect(ageBtn.textContent).toContain('Age 25');
+
+        cyclePreviewAge();
+        expect(ageBtn.textContent).toContain('Age 68');
+
+        cyclePreviewAge();
+        expect(ageBtn.textContent).toContain('Age 6');
+
+        cyclePreviewAge();
+        expect(ageBtn.textContent).toContain('Age 25');
+    });
+
+    test('updateLocationEconBadge updates economy multiplier badge for selected city', () => {
+        jest.spyOn(UI, 'renderScreen').mockImplementation((html) => {
+            document.body.innerHTML = html;
+        });
+        renderCharCreation();
+
+        updateLocationEconBadge('New York');
+        const econBadge = document.getElementById('location-econ-badge');
+        expect(econBadge.innerHTML).toContain('1.25x');
+        expect(econBadge.innerHTML).toContain('High Salaries');
     });
 });

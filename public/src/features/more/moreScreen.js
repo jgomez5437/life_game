@@ -84,13 +84,16 @@ export function renderMoreDashboard() {
     const ticketsLeft = 10 - ticketsBought;
 
     UI.updateBottomNav('more');
+    const backBtnHtml = !UI.isBottomNavEnabled() ? `
+        <div class="mb-3 flex items-center justify-between">
+            <button data-action="renderLifeDashboard" class="text-slate-400 hover:text-white text-xs flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </button>
+        </div>
+    ` : '';
     get('game-container').innerHTML = `
-        <div class="flex flex-col h-full max-w-lg mx-auto">
-            <div class="mb-3 flex items-center justify-between">
-                <button data-action="renderLifeDashboard" class="text-slate-400 hover:text-white text-xs flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition">
-                    <i class="fas fa-arrow-left"></i> Back to Dashboard
-                </button>
-            </div>
+        <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
+            ${backBtnHtml}
             
             <div class="mb-3 px-1 text-left">
                 <h2 class="text-xl font-extrabold text-white">More Options</h2>
