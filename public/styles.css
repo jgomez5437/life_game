@@ -393,13 +393,15 @@ body.light-mode #header-name {
     color: #0f172a !important;
 }
 
-body.light-mode #header-settings-btn {
+body.light-mode #header-settings-btn,
+body.light-mode #header-theme-toggle {
     background-color: #f8fafc !important;
     border-color: #cbd5e1 !important;
     color: #475569 !important;
 }
 
-body.light-mode #header-settings-btn:hover {
+body.light-mode #header-settings-btn:hover,
+body.light-mode #header-theme-toggle:hover {
     background-color: #e2e8f0 !important;
     color: #0f172a !important;
 }

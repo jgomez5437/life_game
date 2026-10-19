@@ -6,6 +6,7 @@ import { renderEducation, renderClassmates } from '../../public/src/features/edu
 import { renderCareerManager } from '../../public/src/features/career/jobCareerManagerScreen.js';
 import { openMeetPeopleModal, renderLuxeMatchModal } from '../../public/src/features/relationships/relationshipScreen.js';
 import { renderInvestmentsScreen } from '../../public/src/features/assets/investmentsScreen.js';
+import { renderLoginScreen } from '../../public/src/auth/loginScreen.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -95,9 +96,22 @@ describe('Light Mode Theme & UI Contrast Verification', () => {
             expect(cssContent).toContain('linear-gradient(135deg, #6366f1 0%, #3b82f6 100%) !important');
             expect(cssContent).toContain('body:not(.light-mode):not(.onyx-gold-mode) #game-container');
         });
+
+        test('styles.css contains light mode styling for #header-theme-toggle', () => {
+            expect(cssContent).toContain('body.light-mode #header-theme-toggle');
+        });
     });
 
     describe('Feature Screens DOM Markup', () => {
+        test('renderLoginScreen renders Light/Dark Mode toggle button reflecting active light mode', () => {
+            renderLoginScreen();
+            const container = document.getElementById('game-container');
+            expect(container.innerHTML).toContain('id="login-theme-toggle"');
+            expect(container.innerHTML).toContain('data-action="toggleSettingTheme"');
+            expect(container.innerHTML).toContain('Theme: Light Mode');
+            expect(container.innerHTML).toContain('Switch to Dark');
+        });
+
         test('manageEducationScreen renders Classmates and Work Harder with readable light subtext classes', () => {
             renderEducation();
             const container = document.getElementById('game-container');
