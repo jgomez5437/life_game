@@ -60,7 +60,7 @@ describe('Settings Screen & Sign Out Functionality', () => {
         state.auth0Client = null;
     });
 
-    test('openSettingsModal displays Guest Local Mode, Login button, Achievements card, version 1.5.3, and no bottom close button', () => {
+    test('openSettingsModal displays Guest Local Mode, Login button, Achievements card, version 1.6.0, and no bottom close button', () => {
         state.userAuthId = null;
         state.userEmail = null;
         
@@ -75,7 +75,7 @@ describe('Settings Screen & Sign Out Functionality', () => {
         expect(content.innerHTML).toContain('data-action="openAchievementsModal"');
         expect(content.innerHTML).toContain('Bottom Navigation Bar');
         expect(content.innerHTML).toContain('data-action="toggleSettingBottomNav"');
-        expect(content.innerHTML).toContain('Version 1.5.3');
+        expect(content.innerHTML).toContain('Version 1.6.0');
         expect(content.innerHTML).not.toContain('data-action="hideModal"');
         expect(content.innerHTML).not.toContain('data-action="promptSignOut"');
     });

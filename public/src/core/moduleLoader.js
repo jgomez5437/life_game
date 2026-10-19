@@ -308,6 +308,7 @@ export const ACTION_TO_MODULE = {
 
     // Main Screen & Character Creation
     openPlayerOverviewModal: 'playerOverview',
+    openCashflowModal: 'playerOverview',
     renderCharCreation: 'charCreation',
     cycleTrait: 'charCreation',
     randomizeSection: 'charCreation',

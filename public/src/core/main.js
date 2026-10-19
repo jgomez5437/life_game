@@ -100,6 +100,7 @@ export const showFullEulogy = lazy('mainScreen', 'showFullEulogy');
 
 // Player Overview
 export const openPlayerOverviewModal = lazy('playerOverview', 'openPlayerOverviewModal');
+export const openCashflowModal = lazy('playerOverview', 'openCashflowModal');
 
 // Assets
 export const renderAssets = lazy('assets', 'renderAssets');
@@ -1673,6 +1674,7 @@ const routeHandlers = {
   toggleSettingBottomNav,
   toggleSettingTheme,
   openPlayerOverviewModal,
+  openCashflowModal,
   renderStoreScreen,
   filterStoreCategory,
   previewPackDetails,
