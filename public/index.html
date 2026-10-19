@@ -44,10 +44,16 @@
     <link rel="stylesheet" href="styles.bundle.css">
     <link rel="stylesheet" href="styles.css">
     <script>
-        if (localStorage.getItem('life_game_theme') === 'light') {
-            document.documentElement.classList.add('light-mode');
-            document.addEventListener('DOMContentLoaded', () => document.body.classList.add('light-mode'));
-        }
+        (function() {
+            const savedTheme = localStorage.getItem('life_game_theme');
+            if (savedTheme === 'light') {
+                document.documentElement.classList.add('light-mode');
+                document.addEventListener('DOMContentLoaded', () => document.body.classList.add('light-mode'));
+            } else if (savedTheme === 'onyx-gold') {
+                document.documentElement.classList.add('onyx-gold-mode');
+                document.addEventListener('DOMContentLoaded', () => document.body.classList.add('onyx-gold-mode'));
+            }
+        })();
     </script>
 </head>
 <body class="h-[100dvh] flex flex-col overflow-hidden">
@@ -56,9 +62,12 @@
     <header class="bg-slate-800 border-b border-slate-700 px-3 py-2 sm:py-2.5 shadow-lg z-10 flex justify-center items-center shrink-0 min-h-[4rem]">
         <div class="w-full max-w-lg mx-auto flex flex-col gap-1.5 px-1">
             <!-- Header Brand / Logo for Login Screen -->
-            <div id="header-brand" class="flex items-center justify-center gap-2 font-bold text-white text-lg tracking-wide select-none mx-auto py-1">
+            <div id="header-brand" class="w-full relative flex items-center justify-center gap-2 font-bold text-white text-lg tracking-wide select-none mx-auto py-1">
                 <i class="fas fa-globe-americas text-blue-400"></i>
                 <span>Start a Life</span>
+                <button id="header-theme-toggle" data-action="toggleSettingTheme" class="absolute right-0 w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-slate-700/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-600/70 flex items-center justify-center transition-colors shadow-sm" title="Toggle Light/Dark Mode" aria-label="Toggle Light or Dark Mode">
+                    <i id="header-theme-icon" class="fas fa-moon text-blue-400 text-sm"></i>
+                </button>
             </div>
 
             <!-- In-Game Player Info Row 1: Top Bar (Identity & Finances) -->

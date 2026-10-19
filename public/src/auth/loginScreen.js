@@ -4,6 +4,8 @@ import { UI } from '../ui/ui.js';
 export const renderLoginScreen = () => {
     UI.resetHeader();
     const container = document.getElementById('game-container');
+    const isLight = (typeof localStorage !== 'undefined' && localStorage.getItem('life_game_theme') === 'light') ||
+                    (typeof document !== 'undefined' && document.body && document.body.classList.contains('light-mode'));
     
     const html = `
     <div class="h-full flex flex-col items-center justify-center fade-in text-center p-6">
@@ -39,6 +41,16 @@ export const renderLoginScreen = () => {
                     <span>How to Play</span>
                 </a>
             </div>
+
+            <button id="login-theme-toggle" data-action="toggleSettingTheme" aria-label="Toggle Light or Dark Mode" title="Switch between Light and Dark Mode" class="w-full bg-slate-800/80 hover:bg-slate-700 text-slate-200 font-semibold py-3 px-4 rounded-xl border border-slate-700/80 transition-all flex items-center justify-between text-xs md:text-sm">
+                <span class="flex items-center gap-2">
+                    <i id="login-theme-icon" class="fas ${isLight ? 'fa-sun text-amber-400' : 'fa-moon text-blue-400'} text-sm"></i>
+                    <span id="login-theme-label">Theme: ${isLight ? 'Light Mode' : 'Dark Mode'}</span>
+                </span>
+                <span id="login-theme-action-badge" class="text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-700/80 text-slate-300 border border-slate-600/60">
+                    Switch to ${isLight ? 'Dark' : 'Light'}
+                </span>
+            </button>
         </div>
         
         <div class="text-center text-xs text-slate-500 mt-6">

@@ -186,10 +186,33 @@ export function openSettingsModal() {
 export function applyTheme(theme) {
     const activeTheme = theme || localStorage.getItem('life_game_theme') || 'dark';
     document.body.classList.remove('light-mode', 'onyx-gold-mode');
+    if (document.documentElement) {
+        document.documentElement.classList.remove('light-mode', 'onyx-gold-mode');
+    }
     if (activeTheme === 'light') {
         document.body.classList.add('light-mode');
+        if (document.documentElement) document.documentElement.classList.add('light-mode');
     } else if (activeTheme === 'onyx-gold') {
         document.body.classList.add('onyx-gold-mode');
+        if (document.documentElement) document.documentElement.classList.add('onyx-gold-mode');
+    }
+
+    const isLight = activeTheme === 'light';
+    const loginIcon = document.getElementById('login-theme-icon');
+    if (loginIcon) {
+        loginIcon.className = `fas ${isLight ? 'fa-sun text-amber-400' : 'fa-moon text-blue-400'} text-sm`;
+    }
+    const loginLabel = document.getElementById('login-theme-label');
+    if (loginLabel) {
+        loginLabel.textContent = `Theme: ${isLight ? 'Light Mode' : 'Dark Mode'}`;
+    }
+    const loginBadge = document.getElementById('login-theme-action-badge');
+    if (loginBadge) {
+        loginBadge.textContent = `Switch to ${isLight ? 'Dark' : 'Light'}`;
+    }
+    const headerIcon = document.getElementById('header-theme-icon');
+    if (headerIcon) {
+        headerIcon.className = `fas ${isLight ? 'fa-sun text-amber-400' : 'fa-moon text-blue-400'} text-sm`;
     }
 }
 
