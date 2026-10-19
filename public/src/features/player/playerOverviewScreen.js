@@ -184,8 +184,8 @@ export function openPlayerOverviewModal() {
                 </div>
             </div>
 
-            <!-- Financial Summary Grid -->
-            <div class="grid grid-cols-3 gap-2.5">
+            <!-- Financial Summary Grid (Clickable -> Opens Cashflow & Net Worth Modal) -->
+            <div data-action="openCashflowModal" class="grid grid-cols-3 gap-2.5 cursor-pointer group" title="Click for Cashflow & Net Worth Breakdown">
                 <div class="bg-slate-800 p-3 rounded-xl border border-slate-700">
                     <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1">
                         <i class="fas fa-wallet text-amber-400"></i> Net Worth
@@ -315,6 +315,187 @@ export function openPlayerOverviewModal() {
 
     UI.showCustomModal({
         title: "Player Life Overview",
+        content: modalHtml,
+        showCloseBtn: true
+    });
+}
+
+export function openCashflowModal() {
+    if (!state.gameState || !state.gameState.user) return;
+    const user = state.gameState.user;
+    const breakdown = GameLogic.calculateFinancialBreakdown(user);
+    const { cashflow, netWorth } = breakdown;
+
+    const netMonthlySign = cashflow.netMonthly > 0 ? '+' : '';
+    const netMonthlyClass = cashflow.netMonthly > 0
+        ? 'text-emerald-400'
+        : cashflow.netMonthly < 0
+            ? 'text-rose-400'
+            : 'text-slate-300';
+
+    const netWorthClass = netWorth.netWorth >= 0 ? 'text-emerald-400' : 'text-rose-400';
+
+    const renderLedgerRow = (item, isExpense = false) => {
+        const amount = item.monthly || 0;
+        const annualAmount = item.annual || 0;
+        const isZero = amount === 0 && annualAmount === 0;
+        const sign = isZero ? '' : (isExpense ? '-' : '+');
+        const valueColor = isZero
+            ? 'text-slate-500'
+            : (isExpense ? 'text-rose-400' : 'text-emerald-400');
+
+        return `
+            <div class="flex items-center justify-between py-2 border-b border-slate-700/50 last:border-b-0">
+                <div class="flex items-center gap-2.5 min-w-0 pr-2">
+                    <div class="w-7 h-7 rounded-lg bg-slate-900 border border-slate-700/70 flex items-center justify-center shrink-0 ${item.color || 'text-slate-400'}">
+                        <i class="fas ${item.icon || 'fa-coins'} text-xs"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <div class="text-xs font-bold text-white truncate">${Utils.escapeHtml(item.label)}</div>
+                        <div class="text-[10px] text-slate-400 truncate">${Utils.escapeHtml(item.sublabel || '')}</div>
+                    </div>
+                </div>
+                <div class="text-right shrink-0">
+                    <div class="text-xs font-bold font-mono ${valueColor}">${sign}${Utils.formatMoney(amount)}<span class="text-[9px] text-slate-400 font-normal">/mo</span></div>
+                    <div class="text-[10px] text-slate-400 font-mono">${sign}${Utils.formatMoney(annualAmount)}<span class="text-[9px] text-slate-500">/yr</span></div>
+                </div>
+            </div>
+        `;
+    };
+
+    const renderBalanceRow = (item, isLiability = false) => {
+        const val = item.value || 0;
+        const sign = isLiability && val > 0 ? '-' : '';
+        const valueColor = val === 0
+            ? 'text-slate-500'
+            : (isLiability ? 'text-rose-400' : 'text-emerald-400');
+
+        return `
+            <div class="flex items-center justify-between py-2 border-b border-slate-700/50 last:border-b-0">
+                <div class="flex items-center gap-2.5 min-w-0 pr-2">
+                    <div class="w-7 h-7 rounded-lg bg-slate-900 border border-slate-700/70 flex items-center justify-center shrink-0 ${item.color || 'text-slate-400'}">
+                        <i class="fas ${item.icon || 'fa-coins'} text-xs"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <div class="text-xs font-bold text-white truncate">${Utils.escapeHtml(item.label)}</div>
+                        <div class="text-[10px] text-slate-400 truncate">${Utils.escapeHtml(item.sublabel || '')}</div>
+                    </div>
+                </div>
+                <div class="text-right shrink-0">
+                    <div class="text-xs font-bold font-mono ${valueColor}">${sign}${Utils.formatMoney(val)}</div>
+                </div>
+            </div>
+        `;
+    };
+
+    const totalFlowMagnitude = Math.max(1, cashflow.monthlyIncome + cashflow.monthlyOutflow);
+    const incomeBarPct = Math.round((cashflow.monthlyIncome / totalFlowMagnitude) * 100);
+    const outflowBarPct = 100 - incomeBarPct;
+
+    const modalHtml = `
+        <div id="cashflow-breakdown-modal" class="space-y-4 text-left">
+            <!-- Top KPI Summary Cards -->
+            <div class="grid grid-cols-2 gap-2.5">
+                <div class="bg-slate-900 p-3.5 rounded-xl border border-slate-700">
+                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fas fa-scale-balanced text-amber-400"></i> Net Worth
+                    </div>
+                    <div id="cashflow-modal-net-worth" class="text-lg font-extrabold font-mono mt-1 ${netWorthClass}">
+                        ${Utils.formatMoney(netWorth.netWorth)}
+                    </div>
+                    <div class="text-[10px] text-slate-400 mt-0.5">
+                        Bank: <span class="${netWorth.cash >= 0 ? 'text-emerald-400' : 'text-rose-400'} font-semibold">${Utils.formatMoney(netWorth.cash)}</span>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 p-3.5 rounded-xl border border-slate-700">
+                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fas fa-arrows-rotate text-blue-400"></i> Net Cashflow
+                    </div>
+                    <div id="cashflow-modal-net-monthly" class="text-lg font-extrabold font-mono mt-1 ${netMonthlyClass}">
+                        ${netMonthlySign}${Utils.formatMoney(cashflow.netMonthly)}<span class="text-xs font-normal text-slate-400">/mo</span>
+                    </div>
+                    <div class="text-[10px] text-slate-400 mt-0.5 font-mono">
+                        ${netMonthlySign}${Utils.formatMoney(cashflow.netAnnual)}/yr
+                    </div>
+                </div>
+            </div>
+
+            <!-- Income vs Outflow Visual Ratio Bar -->
+            <div class="bg-slate-800 p-3 rounded-xl border border-slate-700">
+                <div class="flex justify-between text-[11px] font-bold mb-1.5">
+                    <span class="text-emerald-400"><i class="fas fa-arrow-trend-up mr-1"></i>Inflow: +${Utils.formatMoney(cashflow.monthlyIncome)}/mo</span>
+                    <span class="text-rose-400">Outflow: -${Utils.formatMoney(cashflow.monthlyOutflow)}/mo<i class="fas fa-arrow-trend-down ml-1"></i></span>
+                </div>
+                <div class="w-full h-2.5 bg-slate-900 rounded-full overflow-hidden flex">
+                    <div class="h-full bg-emerald-500 transition-all duration-300" style="width: ${incomeBarPct}%"></div>
+                    <div class="h-full bg-rose-500 transition-all duration-300" style="width: ${outflowBarPct}%"></div>
+                </div>
+            </div>
+
+            <!-- Section 1: Monthly Income Ledger -->
+            <div class="bg-slate-800 p-3.5 rounded-xl border border-slate-700">
+                <div class="flex items-center justify-between mb-2 pb-1.5 border-b border-slate-700">
+                    <span class="text-[11px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fas fa-circle-plus"></i> Monthly Income Ledger
+                    </span>
+                    <span class="text-xs font-bold font-mono text-emerald-400">+${Utils.formatMoney(cashflow.monthlyIncome)}/mo</span>
+                </div>
+                <div id="cashflow-income-list" class="divide-y divide-slate-700/40">
+                    ${cashflow.incomeItems.map(item => renderLedgerRow(item, false)).join('')}
+                </div>
+            </div>
+
+            <!-- Section 2: Monthly Expenses & Outflows Ledger -->
+            <div class="bg-slate-800 p-3.5 rounded-xl border border-slate-700">
+                <div class="flex items-center justify-between mb-2 pb-1.5 border-b border-slate-700">
+                    <span class="text-[11px] font-bold text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fas fa-circle-minus"></i> Monthly Expenses &amp; Outflows
+                    </span>
+                    <span class="text-xs font-bold font-mono text-rose-400">-${Utils.formatMoney(cashflow.monthlyOutflow)}/mo</span>
+                </div>
+                <div id="cashflow-expense-list" class="divide-y divide-slate-700/40">
+                    ${cashflow.expenseItems.map(item => renderLedgerRow(item, true)).join('')}
+                </div>
+            </div>
+
+            <!-- Section 3: Net Worth Balance Sheet (Assets vs Liabilities) -->
+            <div class="bg-slate-800 p-3.5 rounded-xl border border-slate-700 space-y-3">
+                <div class="flex items-center justify-between pb-1.5 border-b border-slate-700">
+                    <span class="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fas fa-vault"></i> Net Worth Breakdown
+                    </span>
+                    <span class="text-xs font-bold font-mono ${netWorthClass}">${Utils.formatMoney(netWorth.netWorth)}</span>
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                        <span>Assets</span>
+                        <span class="text-emerald-400 font-mono">${Utils.formatMoney(netWorth.totalAssets)}</span>
+                    </div>
+                    <div id="networth-assets-list">
+                        ${netWorth.assetItems.map(item => renderBalanceRow(item, false)).join('')}
+                    </div>
+                </div>
+
+                <div class="pt-2 border-t border-slate-700/70">
+                    <div class="flex justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                        <span>Liabilities &amp; Debt</span>
+                        <span class="text-rose-400 font-mono">-${Utils.formatMoney(netWorth.totalLiabilities)}</span>
+                    </div>
+                    <div id="networth-liabilities-list">
+                        ${netWorth.liabilityItems.length > 0
+                            ? netWorth.liabilityItems.map(item => renderBalanceRow(item, true)).join('')
+                            : `<div class="text-xs text-slate-400 italic py-1.5 text-center">Debt-free! No active loans or liabilities ($0).</div>`
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    UI.showCustomModal({
+        title: "Cashflow & Net Worth",
         content: modalHtml,
         showCloseBtn: true
     });
