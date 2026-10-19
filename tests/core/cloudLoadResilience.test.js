@@ -211,7 +211,7 @@ describe('Cloud Load Resilience & Failure Safety Test Suite', () => {
 
         await initGame();
 
-        expect(document.body.innerHTML).toContain('Design your destiny');
+        expect(document.body.innerHTML).toContain('New Character');
         expect(document.body.innerHTML).toContain('Start Life');
     });
 

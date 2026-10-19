@@ -288,6 +288,7 @@ export const applyGodModeStats = lazy('store', 'applyGodModeStats');
 export const openGodModeHubModal = lazy('store', 'openGodModeHubModal');
 
 export const renderGodModeAvatarModal = lazy('godModeAvatar', 'renderGodModeAvatarModal');
+export const updateGodModeAvatarTrait = lazy('godModeAvatar', 'updateGodModeAvatarTrait');
 export const cycleGodModeTrait = lazy('godModeAvatar', 'cycleGodModeTrait');
 export const randomizeGodModeAvatarTraits = lazy('godModeAvatar', 'randomizeGodModeAvatarTraits');
 export const saveGodModeAvatar = lazy('godModeAvatar', 'saveGodModeAvatar');
@@ -350,17 +351,24 @@ let _hasPendingSave = false;
 //updates game info
 export async function updateGameInfo(dbUser, options = {}) {
     const forceCloud = options.forceCloud || false;
+    const verifiedPacks = Array.isArray(options.verifiedPacks) ? options.verifiedPacks.filter(Boolean) : [];
     console.log("Updating game state from DB...");
     let rawData = dbUser.game_data || {};
     if (typeof rawData === 'string') {
         try { rawData = JSON.parse(rawData); } catch (e) {}
     }
 
-    // Authoritative entitlement hydration from server
+    // Authoritative entitlement hydration from server (merging any pack verified during current checkout session)
     const serverPurchases = rawData.user?.purchases || rawData.purchases;
     if (Array.isArray(serverPurchases)) {
-        setVerifiedPurchases(serverPurchases);
-        resolveAdState(serverPurchases);
+        const mergedPurchases = verifiedPacks.length > 0
+            ? Array.from(new Set([...serverPurchases, ...verifiedPacks]))
+            : serverPurchases;
+        setVerifiedPurchases(mergedPurchases);
+        resolveAdState(mergedPurchases);
+    } else if (verifiedPacks.length > 0) {
+        setVerifiedPurchases(verifiedPacks);
+        resolveAdState(verifiedPacks);
     } else {
         resolveAdState([]);
     }
@@ -614,7 +622,10 @@ async function syncPurchasesFromCloud(expectedPackId = null, showNotification = 
 
             if (response.ok) {
                 const data = await response.json();
-                const verifiedPurchases = Array.isArray(data.purchases) ? data.purchases : [];
+                const serverPurchases = Array.isArray(data.purchases) ? data.purchases : [];
+                const verifiedPurchases = (expectedPackId && !serverPurchases.includes(expectedPackId))
+                    ? [...serverPurchases, expectedPackId]
+                    : serverPurchases;
                 const before = (state.verifiedPurchases || []).length;
                 setVerifiedPurchases(verifiedPurchases);
                 try {
@@ -623,8 +634,8 @@ async function syncPurchasesFromCloud(expectedPackId = null, showNotification = 
                 resolveAdState(verifiedPurchases);
                 const newCount = verifiedPurchases.length - before;
 
-                // If we're waiting for a specific pack and it's now present, or we're not waiting for anything
-                if (!expectedPackId || verifiedPurchases.includes(expectedPackId)) {
+                // If we're waiting for a specific pack and it's now present on the server, or we're not waiting for anything
+                if (!expectedPackId || serverPurchases.includes(expectedPackId)) {
                     if (newCount > 0 && showNotification) {
                         UI.showModal("Purchase Activated!", `${newCount} new pack(s) have been unlocked and synced to your account.`);
                     }
@@ -1014,12 +1025,56 @@ export async function initGame() {
                             localP.push(verifiedPackId);
                             try { localStorage.setItem('life_game_purchases', JSON.stringify(localP)); } catch (e) {}
                         }
+                        const currentVerified = Array.isArray(state.verifiedPurchases) ? [...state.verifiedPurchases] : [];
+                        if (!currentVerified.includes(verifiedPackId)) {
+                            currentVerified.push(verifiedPackId);
+                        }
+                        setVerifiedPurchases(currentVerified);
+                        resolveAdState(currentVerified);
                     }
                 }
             } catch (vErr) {
                 console.error("Stripe session verification failed:", vErr);
             }
         }
+
+        const hasCheckoutReturn = Boolean(verifiedPackId || purchaseSuccess === 'true' || purchaseCancelled === 'true');
+
+        const finalizePostCheckoutFlow = async () => {
+            if (verifiedPackId) {
+                const currentVerified = Array.isArray(state.verifiedPurchases) ? [...state.verifiedPurchases] : [];
+                if (!currentVerified.includes(verifiedPackId)) {
+                    currentVerified.push(verifiedPackId);
+                }
+                setVerifiedPurchases(currentVerified);
+                try {
+                    localStorage.setItem('life_game_purchases', JSON.stringify(currentVerified));
+                } catch (e) {}
+                resolveAdState(currentVerified);
+
+                if (state.gameState?.user) {
+                    if (!Array.isArray(state.gameState.user.purchases)) state.gameState.user.purchases = [];
+                    if (!state.gameState.user.purchases.includes(verifiedPackId)) {
+                        state.gameState.user.purchases.push(verifiedPackId);
+                    }
+                    await saveGame(true);
+                    if (state.gameState.user.lifeStatus !== "Deceased" && typeof renderLifeDashboard === "function") {
+                        await renderLifeDashboard(state.gameState);
+                    }
+                }
+                console.log(`Verified Stripe checkout completed for pack: ${verifiedPackId}`);
+                await showPurchaseSuccessModal(verifiedPackId);
+                await syncPurchasesFromCloud(verifiedPackId, false);
+            } else if (purchaseSuccess === 'true') {
+                UI.showModal("Purchase Unverified", "We could not verify your payment session with Stripe. If you completed a purchase, please use 'Restore Purchases' in the Store or contact support.");
+                await syncPurchasesFromCloud(null, false);
+            } else if (purchaseCancelled === 'true') {
+                UI.showModal("Checkout Cancelled", "Your payment session was cancelled. No charges were made.");
+            } else if (state.gameState?.user) {
+                // Normal login — silently sync purchases in background (no retry, no notification)
+                syncPurchasesFromCloud(null, false);
+            }
+        };
 
         // Fetch cloud save state with explicit error categorization
         const cloudResult = await fetchCloudSave(user);
@@ -1072,7 +1127,12 @@ export async function initGame() {
                     } catch (e) {}
                     await saveGame(true);
                     renderLifeDashboard(state.gameState);
-                    UI.showModal("Character Saved!", `Your guest character (${guestName}) has been saved to your account.`);
+                    if (hasCheckoutReturn) {
+                        await finalizePostCheckoutFlow();
+                    } else {
+                        UI.showModal("Character Saved!", `Your guest character (${guestName}) has been saved to your account.`);
+                        syncPurchasesFromCloud(null, false);
+                    }
                 },
                 "Keep Cloud Character",
                 async () => {
@@ -1087,8 +1147,13 @@ export async function initGame() {
                     } catch (e) {}
                     UI.hideModal();
                     // 2. Load cloud save with forceCloud = true so discarded local guest slots never override cloud save
-                    await updateGameInfo(dbUser, { forceCloud: true });
-                    UI.showModal("Cloud Save Loaded", `Welcome back! Loaded your account character (${cloudName}).`);
+                    await updateGameInfo(dbUser, { forceCloud: true, verifiedPacks: verifiedPackId ? [verifiedPackId] : [] });
+                    if (hasCheckoutReturn) {
+                        await finalizePostCheckoutFlow();
+                    } else {
+                        UI.showModal("Cloud Save Loaded", `Welcome back! Loaded your account character (${cloudName}).`);
+                        syncPurchasesFromCloud(null, false);
+                    }
                 }
             );
             return;
@@ -1114,14 +1179,17 @@ export async function initGame() {
 
             if (typeof renderLifeDashboard === "function") {
                 await renderLifeDashboard(state.gameState);
-                UI.showModal("Character Saved!", `Welcome ${Utils.escapeHtml(user.nickname || 'Player')}! Your character has been saved to your account.`);
+                if (!hasCheckoutReturn) {
+                    UI.showModal("Character Saved!", `Welcome ${Utils.escapeHtml(user.nickname || 'Player')}! Your character has been saved to your account.`);
+                }
             }
+            await finalizePostCheckoutFlow();
             return;
         }
 
         // SCENARIO 3: Cloud Save cleanly loaded -> Load Cloud Save into UI
         if (cloudResult.status === 'success' && dbUser) {
-            await updateGameInfo(dbUser);
+            await updateGameInfo(dbUser, { verifiedPacks: verifiedPackId ? [verifiedPackId] : [] });
         } else if (cloudResult.status === 'no_save') {
             // SCENARIO 4: Legitimate clean account with no cloud save -> Check local slot recovery or route to Character Creation
             let localRecovered = null;
@@ -1241,26 +1309,7 @@ export async function initGame() {
         }
 
         // Apply verified purchased pack to active user state immediately if verified
-        if (verifiedPackId) {
-            if (state.gameState?.user) {
-                if (!Array.isArray(state.gameState.user.purchases)) state.gameState.user.purchases = [];
-                if (!state.gameState.user.purchases.includes(verifiedPackId)) {
-                    state.gameState.user.purchases.push(verifiedPackId);
-                    await saveGame(true);
-                }
-            }
-            console.log(`Verified Stripe checkout completed for pack: ${verifiedPackId}`);
-            showPurchaseSuccessModal(verifiedPackId);
-            await syncPurchasesFromCloud(verifiedPackId, false);
-        } else if (purchaseSuccess === 'true') {
-            UI.showModal("Purchase Unverified", "We could not verify your payment session with Stripe. If you completed a purchase, please use 'Restore Purchases' in the Store or contact support.");
-            await syncPurchasesFromCloud(null, false);
-        } else if (purchaseCancelled === 'true') {
-            UI.showModal("Checkout Cancelled", "Your payment session was cancelled. No charges were made.");
-        } else if (state.gameState?.user) {
-            // Normal login — silently sync purchases in background (no retry, no notification)
-            syncPurchasesFromCloud(null, false);
-        }
+        await finalizePostCheckoutFlow();
 
     } else {
         // Guest Mode - Resolve ads for guest and check Multi-Save Slots Store first
@@ -1633,6 +1682,7 @@ const routeHandlers = {
   maxGodModeStats,
   applyGodModeStats,
   renderGodModeAvatarModal,
+  updateGodModeAvatarTrait,
   cycleGodModeTrait,
   randomizeGodModeAvatarTraits,
   saveGodModeAvatar,
@@ -1696,9 +1746,30 @@ const FUNERAL_ACTION_WHITELIST = new Set([
     'closeAllModals'
 ]);
 
+function parseActionArgs(argsStr) {
+    if (argsStr === undefined || argsStr === null || argsStr.trim() === '') {
+        return [];
+    }
+    return argsStr.split(',').map(s => {
+        let t = s.trim();
+        if (t.startsWith("'") && t.endsWith("'")) t = t.slice(1, -1);
+        else if (t.startsWith('"') && t.endsWith('"')) t = t.slice(1, -1);
+
+        if (t === 'true') return true;
+        if (t === 'false') return false;
+        if (t === 'null') return null;
+        if (t === 'undefined') return undefined;
+
+        return isNaN(t) || t === '' ? t : Number(t);
+    });
+}
+
 document.addEventListener('click', (e) => {
     const actionElement = e.target.closest('[data-action]');
     if (actionElement) {
+        if (actionElement.tagName === 'SELECT') {
+            return;
+        }
         if (actionElement.disabled || actionElement.hasAttribute('disabled') || actionElement.getAttribute('aria-disabled') === 'true' || actionElement.classList.contains('disabled')) {
             return;
         }
@@ -1751,23 +1822,7 @@ document.addEventListener('click', (e) => {
             }
         }
 
-        const argsStr = actionElement.dataset.args;
-        let args = [];
-        if (argsStr !== undefined && argsStr !== null && argsStr.trim() !== '') {
-            args = argsStr.split(',').map(s => {
-                let t = s.trim();
-                // strip quotes
-                if (t.startsWith("'") && t.endsWith("'")) t = t.slice(1, -1);
-                else if (t.startsWith('"') && t.endsWith('"')) t = t.slice(1, -1);
-                
-                if (t === 'true') return true;
-                if (t === 'false') return false;
-                if (t === 'null') return null;
-                if (t === 'undefined') return undefined;
-                
-                return isNaN(t) || t === '' ? t : Number(t);
-            });
-        }
+        const args = parseActionArgs(actionElement.dataset.args);
         if (routeHandlers[action]) {
             try {
                 const result = routeHandlers[action](...args);
@@ -1795,9 +1850,11 @@ document.addEventListener('change', (e) => {
         }
 
         const action = actionElement.dataset.action;
+        const args = parseActionArgs(actionElement.dataset.args);
         if (routeHandlers[action]) {
             try {
-                const result = routeHandlers[action](e.target.value);
+                const callArgs = args.length > 0 ? [...args, e.target.value] : [e.target.value];
+                const result = routeHandlers[action](...callArgs);
                 if (result && typeof result.catch === 'function') {
                     result.catch(err => console.error(`[Router] Error executing action "${action}":`, err));
                 }

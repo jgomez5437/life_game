@@ -156,14 +156,19 @@ function renderGodModeAvatarModalContent() {
     });
 }
 
-export function updateGodModeAvatarTrait(key) {
+export function updateGodModeAvatarTrait(key, value) {
     if (!hasPurchasedPack('god_mode')) return;
+    if (!editorDraftAppearance) return;
     const el = get(`godmode_select_${key}`);
-    if (!el || !editorDraftAppearance) return;
+    const resolvedVal = value !== undefined ? value : el?.value;
+    if (!el && value === undefined) return;
+    if (resolvedVal === undefined) return;
 
-    editorDraftAppearance[key] = el.value;
+    editorDraftAppearance[key] = resolvedVal;
     renderGodModeAvatarModalContent();
 }
+
+export const cycleGodModeTrait = updateGodModeAvatarTrait;
 
 export function randomizeGodModeAvatarTraits() {
     if (!hasPurchasedPack('god_mode')) return;

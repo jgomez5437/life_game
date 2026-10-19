@@ -270,4 +270,110 @@ describe('Purchase Entitlement Verification & URL Parameter Security', () => {
         expect(state.verifiedPurchases).toBeNull();
         expect(hasPurchasedPack('god_mode')).toBe(false);
     });
+
+    test('Verified checkout return preserves entitlement even when /api/load and first /api/getPurchases have not yet received webhook', async () => {
+        window.history.pushState({}, '', '/?purchase_success=true&pack_id=god_mode&session_id=cs_verified_before_webhook');
+        const customModalSpy = jest.spyOn(UI, 'showCustomModal');
+
+        global.fetch = jest.fn((url) => {
+            if (typeof url === 'string' && url.startsWith('/api/verify-checkout-session')) {
+                return Promise.resolve({
+                    ok: true,
+                    status: 200,
+                    json: async () => ({ verified: true, packId: 'god_mode' })
+                });
+            }
+            if (typeof url === 'string' && url.startsWith('/api/load')) {
+                // Simulate /api/load returning before webhook wrote god_mode to game_data
+                return Promise.resolve({
+                    ok: true,
+                    status: 200,
+                    json: async () => ({
+                        game_data: {
+                            user: { username: 'SecTester', age: 20, purchases: [] },
+                            stats: { age: 20 }
+                        }
+                    })
+                });
+            }
+            if (typeof url === 'string' && url.startsWith('/api/getPurchases')) {
+                return Promise.resolve({
+                    ok: true,
+                    status: 200,
+                    json: async () => ({ purchases: ['god_mode'] })
+                });
+            }
+            if (typeof url === 'string' && url.startsWith('/api/save')) {
+                return Promise.resolve({ ok: true, status: 200, json: async () => ({ success: true }) });
+            }
+            return Promise.resolve({ ok: true, status: 200, json: async () => ({}) });
+        });
+
+        await initGame();
+
+        expect(hasPurchasedPack('god_mode')).toBe(true);
+        expect(state.verifiedPurchases).toContain('god_mode');
+        expect(state.gameState?.user?.purchases).toContain('god_mode');
+        expect(customModalSpy).toHaveBeenCalledWith(
+            expect.objectContaining({
+                content: expect.stringContaining('Payment Confirmed')
+            })
+        );
+    });
+
+    test('Verified checkout return during Scenario 2 (guest save migration with no cloud save) still unlocks pack and shows Purchase Success modal', async () => {
+        window.history.pushState({}, '', '/?purchase_success=true&pack_id=vip_supporter&session_id=cs_verified_guest_migration');
+        const customModalSpy = jest.spyOn(UI, 'showCustomModal');
+
+        // Active guest character in localStorage
+        localStorage.setItem('startALife_saveData', JSON.stringify({
+            user: {
+                username: 'MigratedGuest',
+                age: 22,
+                lifeStatus: 'Alive',
+                purchases: []
+            },
+            lifeLog: [],
+            snapshots: []
+        }));
+
+        global.fetch = jest.fn((url) => {
+            if (typeof url === 'string' && url.startsWith('/api/verify-checkout-session')) {
+                return Promise.resolve({
+                    ok: true,
+                    status: 200,
+                    json: async () => ({ verified: true, packId: 'vip_supporter' })
+                });
+            }
+            if (typeof url === 'string' && url.startsWith('/api/load')) {
+                return Promise.resolve({
+                    ok: true,
+                    status: 200,
+                    json: async () => ({ game_data: {} }) // no_save
+                });
+            }
+            if (typeof url === 'string' && url.startsWith('/api/getPurchases')) {
+                return Promise.resolve({
+                    ok: true,
+                    status: 200,
+                    json: async () => ({ purchases: ['vip_supporter'] })
+                });
+            }
+            if (typeof url === 'string' && url.startsWith('/api/save')) {
+                return Promise.resolve({ ok: true, status: 200, json: async () => ({ success: true }) });
+            }
+            return Promise.resolve({ ok: true, status: 200, json: async () => ({}) });
+        });
+
+        await initGame();
+
+        expect(hasPurchasedPack('vip_supporter')).toBe(true);
+        expect(state.verifiedPurchases).toContain('vip_supporter');
+        expect(state.gameState?.user?.purchases).toContain('vip_supporter');
+        expect(customModalSpy).toHaveBeenCalledWith(
+            expect.objectContaining({
+                content: expect.stringContaining('Payment Confirmed')
+            })
+        );
+    });
 });
