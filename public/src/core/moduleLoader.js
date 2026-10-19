@@ -283,6 +283,7 @@ export const ACTION_TO_MODULE = {
     applyGodModeStats: 'store',
     openGodModeHubModal: 'store',
     renderGodModeAvatarModal: 'godModeAvatar',
+    updateGodModeAvatarTrait: 'godModeAvatar',
     cycleGodModeTrait: 'godModeAvatar',
     randomizeGodModeAvatarTraits: 'godModeAvatar',
     saveGodModeAvatar: 'godModeAvatar',

@@ -141,4 +141,36 @@ describe('God Mode Entitlement Checks & Avatar Editing', () => {
         expect(state.gameState.user.relationships[0].appearance.hairColorBase).toBe('blonde');
     });
 
+    test('renderGodModeAvatarModal and updateGodModeAvatarTrait update draft traits via select dropdowns and save to user', async () => {
+        const { renderGodModeAvatarModal } = await import('../../../public/src/features/store/godModeAvatarEditor.js');
+        const { ACTION_TO_MODULE } = await import('../../../public/src/core/moduleLoader.js');
+        await import('../../../public/src/core/main.js');
+
+        expect(ACTION_TO_MODULE['updateGodModeAvatarTrait']).toBe('godModeAvatar');
+
+        setVerifiedPurchases(['god_mode']);
+        renderGodModeAvatarModal('self');
+
+        const hairColorSelect = document.getElementById('godmode_select_hairColorBase');
+        expect(hairColorSelect).not.toBeNull();
+        expect(hairColorSelect.getAttribute('data-action')).toBe('updateGodModeAvatarTrait');
+
+        // Clicking the select should NOT re-render or mutate trait before change fires
+        const initialValue = hairColorSelect.value;
+        hairColorSelect.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        expect(document.getElementById('godmode_select_hairColorBase').value).toBe(initialValue);
+
+        // Selecting a new option and firing change event updates draft appearance
+        const targetOption = Array.from(hairColorSelect.options).find(o => o.value !== initialValue)?.value || hairColorSelect.options[0].value;
+        hairColorSelect.value = targetOption;
+        hairColorSelect.dispatchEvent(new Event('change', { bubbles: true }));
+
+        // Wait for lazy proxy resolution if triggered via router, or verify direct call
+        await new Promise(r => setTimeout(r, 20));
+        expect(document.getElementById('godmode_select_hairColorBase').value).toBe(targetOption);
+
+        saveGodModeAvatar();
+        expect(state.gameState.user.appearance.hairColorBase).toBe(targetOption);
+    });
+
 });
