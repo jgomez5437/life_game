@@ -949,7 +949,7 @@ export function renderLifeDashboard(maybeGameState) {
     const logHtml = (currentState.lifeLog || []).map(l => {
         const isCurrentYear = l.age === user.age;
         const badgeClasses = isCurrentYear
-            ? `bg-gradient-to-r from-indigo-600 to-blue-600 text-white border-indigo-400/80 shadow-md shadow-indigo-500/25`
+            ? `active-age-badge bg-gradient-to-r from-indigo-600 to-blue-600 text-white border-indigo-400/80 shadow-md shadow-indigo-500/25`
             : `bg-slate-800 text-blue-100 border-slate-600 shadow-sm`;
         return `
         <div class="${isCompact ? 'mb-2.5' : 'mb-4'} ${isCurrentYear ? 'current-age-log-card' : ''} group" data-log-age="${l.age}">
