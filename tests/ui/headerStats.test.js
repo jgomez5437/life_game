@@ -140,15 +140,16 @@ describe('Header Stats & UI Manager', () => {
         expect(document.getElementById('header-bank-sublabel').textContent).toBe('Bank');
     });
 
-    test('UI.updateHeader renders net monthly cashflow ticker in #header-bank-sublabel', () => {
+    test('UI.updateHeader retains static Bank sublabel and does not display cashflow', () => {
         const sublabel = document.getElementById('header-bank-sublabel');
 
-        // Positive cashflow ($60k/yr -> +$5,000/mo)
+        // Positive cashflow scenario: sublabel stays 'Bank'
         UI.updateHeader({ age: 25, money: 10000, city: 'New York', jobSalary: 60000, assets: [] });
-        expect(sublabel.textContent).toMatch(/\+\$5,000\/mo/);
-        expect(sublabel.classList.contains('text-emerald-400')).toBe(true);
+        expect(sublabel.textContent).toBe('Bank');
+        expect(sublabel.classList.contains('text-slate-400')).toBe(true);
+        expect(sublabel.classList.contains('text-emerald-400')).toBe(false);
 
-        // Negative cashflow (student loans / asset maintenance without job)
+        // Negative cashflow scenario: sublabel stays 'Bank'
         UI.updateHeader({
             age: 25,
             money: 10000,
@@ -158,10 +159,11 @@ describe('Header Stats & UI Manager', () => {
             isStudent: false,
             assets: []
         });
-        expect(sublabel.textContent).toMatch(/-\$200\/mo/);
-        expect(sublabel.classList.contains('text-rose-400')).toBe(true);
+        expect(sublabel.textContent).toBe('Bank');
+        expect(sublabel.classList.contains('text-slate-400')).toBe(true);
+        expect(sublabel.classList.contains('text-rose-400')).toBe(false);
 
-        // Zero net cashflow -> falls back to 'Bank'
+        // Zero net cashflow scenario: sublabel stays 'Bank'
         UI.updateHeader({ age: 5, money: 0, city: 'New York', jobSalary: 0, assets: [] });
         expect(sublabel.textContent).toBe('Bank');
         expect(sublabel.classList.contains('text-slate-400')).toBe(true);

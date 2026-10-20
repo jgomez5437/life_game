@@ -450,7 +450,7 @@ export const UI = {
             }
         }
 
-        // 7. BANK UPDATE & NET MONTHLY CASHFLOW SUBLABEL
+        // 7. BANK UPDATE
         const moneyVal = stats.money !== undefined ? stats.money : 0;
         if (stats.money !== undefined && _elements.bank) {
             const formattedMoney = Utils.formatMoney(stats.money);
@@ -466,35 +466,9 @@ export const UI = {
         }
 
         if (_elements.bankSublabel) {
-            const jobMonthly = Math.round((stats.jobSalary || 0) / 12);
-            const pensionMonthly = (stats.isRetired && stats.retirementPension > 0) ? Math.round(stats.retirementPension / 12) : 0;
-            const rentalMonthly = Array.isArray(stats.assets)
-                ? stats.assets.filter(a => a.category === 'property' && a.isRented && a.monthlyRent > 0).reduce((s, p) => s + (p.monthlyRent || 0), 0)
-                : 0;
-            const monthlyIncome = stats.monthlyIncome !== undefined ? stats.monthlyIncome : (jobMonthly + pensionMonthly + rentalMonthly);
-            const loanMonthly = (!stats.isStudent && !stats.universityEnrolled && !stats.gradSchoolEnrolled && (stats.studentLoans || 0) > 0) ? 200 : 0;
-            const assetMonthly = Array.isArray(stats.assets)
-                ? stats.assets.reduce((s, a) => s + (a.monthlyCost || 0), 0)
-                : 0;
-            const livingMonthly = stats.monthlyLivingExpense ? Math.round(stats.monthlyLivingExpense / 12) : 0;
-            const monthlyOutflow = stats.monthlyOutflow !== undefined
-                ? stats.monthlyOutflow
-                : (livingMonthly + loanMonthly + assetMonthly);
-            const netMonthly = monthlyIncome - monthlyOutflow;
-
-            if (netMonthly !== 0) {
-                const sign = netMonthly > 0 ? '+' : '';
-                const text = `${sign}${Utils.formatCompactMoney(netMonthly, stats.city)}/mo`;
-                _elements.bankSublabel.innerText = text;
-                _elements.bankSublabel.textContent = text;
-                _elements.bankSublabel.className = netMonthly > 0
-                    ? 'text-[10px] text-emerald-400 font-bold tracking-tight'
-                    : 'text-[10px] text-rose-400 font-bold tracking-tight';
-            } else {
-                _elements.bankSublabel.innerText = 'Bank';
-                _elements.bankSublabel.textContent = 'Bank';
-                _elements.bankSublabel.className = 'text-[10px] text-slate-400 uppercase tracking-wider font-semibold';
-            }
+            _elements.bankSublabel.innerText = 'Bank';
+            _elements.bankSublabel.textContent = 'Bank';
+            _elements.bankSublabel.className = 'text-[10px] text-slate-400 uppercase tracking-wider font-semibold';
         }
 
         // 8. STAT DELTA BADGES (Transient Indicators)
