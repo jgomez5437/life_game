@@ -543,13 +543,6 @@ export const UI = {
         if (_elements.storeBtn) _elements.storeBtn.classList.add('hidden');
         if (_elements.settingsBtn) _elements.settingsBtn.classList.add('hidden');
 
-        const headerThemeIcon = document.getElementById('header-theme-icon');
-        if (headerThemeIcon) {
-            const isLight = (typeof localStorage !== 'undefined' && localStorage.getItem('life_game_theme') === 'light') ||
-                            (typeof document !== 'undefined' && document.body && document.body.classList.contains('light-mode'));
-            headerThemeIcon.className = `fas ${isLight ? 'fa-sun text-amber-400' : 'fa-moon text-blue-400'} text-sm`;
-        }
-
         if (_elements.name) {
             _elements.name.innerHTML = '—';
             _elements.name.textContent = '—';
