@@ -25,11 +25,7 @@ describe('Settings Screen & Sign Out Functionality', () => {
         document.body.innerHTML = `
             <div id="game-container"></div>
             <div id="avatar-container"></div>
-            <div id="header-brand">
-                <button id="header-theme-toggle" data-action="toggleSettingTheme">
-                    <i id="header-theme-icon" class="fas fa-moon text-blue-400 text-sm"></i>
-                </button>
-            </div>
+            <div id="header-brand"></div>
             <div id="header-user-info" class="hidden">
                 <span id="header-name">Player</span>
                 <span id="header-age">18</span>
@@ -222,7 +218,6 @@ describe('Settings Screen & Sign Out Functionality', () => {
         const loginLabel = document.getElementById('login-theme-label');
         const loginBadge = document.getElementById('login-theme-action-badge');
         const loginIcon = document.getElementById('login-theme-icon');
-        const headerIcon = document.getElementById('header-theme-icon');
 
         expect(loginBtn).not.toBeNull();
         expect(loginBtn.getAttribute('data-action')).toBe('toggleSettingTheme');
@@ -237,7 +232,6 @@ describe('Settings Screen & Sign Out Functionality', () => {
         expect(loginLabel.textContent).toBe('Theme: Light Mode');
         expect(loginBadge.textContent.trim()).toBe('Switch to Dark');
         expect(loginIcon.className).toContain('fa-sun');
-        expect(headerIcon.className).toContain('fa-sun');
 
         toggleSettingTheme();
         expect(localStorage.getItem('life_game_theme')).toBe('dark');
@@ -246,6 +240,5 @@ describe('Settings Screen & Sign Out Functionality', () => {
         expect(loginLabel.textContent).toBe('Theme: Dark Mode');
         expect(loginBadge.textContent.trim()).toBe('Switch to Light');
         expect(loginIcon.className).toContain('fa-moon');
-        expect(headerIcon.className).toContain('fa-moon');
     });
 });

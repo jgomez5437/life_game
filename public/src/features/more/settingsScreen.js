@@ -210,10 +210,6 @@ export function applyTheme(theme) {
     if (loginBadge) {
         loginBadge.textContent = `Switch to ${isLight ? 'Dark' : 'Light'}`;
     }
-    const headerIcon = document.getElementById('header-theme-icon');
-    if (headerIcon) {
-        headerIcon.className = `fas ${isLight ? 'fa-sun text-amber-400' : 'fa-moon text-blue-400'} text-sm`;
-    }
 }
 
 export function toggleSettingTheme() {

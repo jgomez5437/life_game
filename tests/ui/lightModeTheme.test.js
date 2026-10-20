@@ -96,10 +96,6 @@ describe('Light Mode Theme & UI Contrast Verification', () => {
             expect(cssContent).toContain('linear-gradient(135deg, #6366f1 0%, #3b82f6 100%) !important');
             expect(cssContent).toContain('body:not(.light-mode):not(.onyx-gold-mode) #game-container');
         });
-
-        test('styles.css contains light mode styling for #header-theme-toggle', () => {
-            expect(cssContent).toContain('body.light-mode #header-theme-toggle');
-        });
     });
 
     describe('Feature Screens DOM Markup', () => {
