@@ -204,7 +204,7 @@ export function renderTimeMachineModal() {
                             Present
                         </button>
                     ` : `
-                        <button data-action="executeTimeRewind" data-args="${s.age}" class="px-3 py-1.5 rounded-lg text-xs font-extrabold ${isOwned ? 'bg-cyan-500 hover:bg-cyan-400 text-slate-950 shadow-md shadow-cyan-500/20' : 'bg-slate-800 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-950'} transition flex items-center gap-1">
+                        <button data-action="executeTimeRewind" data-args="${s.age}" class="px-3 py-1.5 rounded-lg text-xs font-extrabold ${isOwned ? 'bg-cyan-600 hover:bg-cyan-500 text-white shadow-md shadow-cyan-500/20' : 'bg-slate-800 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-950'} transition flex items-center gap-1">
                             <i class="fas ${isOwned ? 'fa-undo' : 'fa-lock'} text-[10px]"></i> ${isOwned ? 'Rewind' : 'Preview'}
                         </button>
                     `}

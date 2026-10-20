@@ -29,7 +29,7 @@ function renderSlimOptionRow({ icon, iconBg, iconColor, title, subtitle, badgeTe
                     <i class="fas fa-lock text-[9px]"></i> ${lockText || 'Locked'}
                 </span>
             ` : `
-                <button data-action="${action}" class="${buttonStyle || 'bg-slate-700 hover:bg-slate-600 text-white'} font-bold text-xs px-2.5 py-1 rounded-lg transition shrink-0">
+                <button data-action="${action}" class="more-option-btn text-white ${buttonStyle || 'bg-slate-700 hover:bg-slate-600'} font-bold text-xs px-2.5 py-1 rounded-lg transition shrink-0">
                     ${buttonText}
                 </button>
             `}
@@ -116,7 +116,7 @@ export function renderMoreDashboard() {
                         subtitle: 'God Mode, Expansion Packs & Perks',
                         action: 'renderStoreScreen',
                         buttonText: 'Open Store',
-                        buttonStyle: 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40'
+                        buttonStyle: 'bg-amber-600 hover:bg-amber-500 text-white shadow'
                     })}
                 </div>
 
@@ -293,7 +293,7 @@ export function renderMoreDashboard() {
                             subtitle: 'Edit Character Stats, Appearance & Social Circle',
                             action: 'openGodModeHubModal',
                             buttonText: 'God Mode',
-                            buttonStyle: 'bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-extrabold shadow'
+                            buttonStyle: 'bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-white font-extrabold shadow'
                         })}
 
                         ${renderSlimOptionRow({
@@ -305,7 +305,7 @@ export function renderMoreDashboard() {
                             subtitle: 'Rewind up to 5 Years & Undo Death',
                             action: 'openTimeMachineModal',
                             buttonText: 'Time Machine',
-                            buttonStyle: 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-extrabold shadow'
+                            buttonStyle: 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-extrabold shadow'
                         })}
                     </div>
                 </div>

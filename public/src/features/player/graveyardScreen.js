@@ -99,7 +99,7 @@ export function renderGraveyardModal() {
     const modalHtml = `
         <div class="space-y-4">
             <!-- Lineage Header -->
-            <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-4 rounded-xl border border-slate-700 flex items-center justify-between">
+            <div class="graveyard-lineage-header bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-4 rounded-xl border border-slate-700 flex items-center justify-between">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center text-lg">
                         <i class="fas fa-monument"></i>
