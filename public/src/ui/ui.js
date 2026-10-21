@@ -49,6 +49,87 @@ const _elements = {
 const _modalStack = [];
 let _currentModalConfig = null;
 
+// ─── Desktop Three-Column Layout Controller ──────────────────────────────────
+// On ≥1024px viewports the persistent side columns (#desktop-left-panel and
+// #desktop-right-panel) flank #game-container. Rendering lives in the lazily
+// loaded features/player/desktopPanels.js so mobile users never download it.
+export const DESKTOP_MEDIA_QUERY = '(min-width: 1024px)';
+const DESKTOP_BODY_CLASS = 'desktop-panels-active';
+let _desktopPanelsEnabled = false;
+let _desktopActiveTab = 'home';
+let _desktopPanelsModule = null;
+let _desktopPanelsLoading = null;
+let _desktopRefreshScheduled = false;
+let _desktopMediaListenerBound = false;
+
+function _isDesktopViewport() {
+    try {
+        return typeof window !== 'undefined'
+            && typeof window.matchMedia === 'function'
+            && !!window.matchMedia(DESKTOP_MEDIA_QUERY).matches;
+    } catch (e) {
+        return false;
+    }
+}
+
+function _loadDesktopPanelsModule() {
+    if (_desktopPanelsModule) return Promise.resolve(_desktopPanelsModule);
+    if (!_desktopPanelsLoading) {
+        _desktopPanelsLoading = import('../features/player/desktopPanels.js')
+            .then(m => { _desktopPanelsModule = m; return m; })
+            .catch(err => {
+                console.error('[UI] Failed to load desktop panels:', err);
+                _desktopPanelsLoading = null;
+                return null;
+            });
+    }
+    return _desktopPanelsLoading;
+}
+
+function _bindDesktopMediaListener() {
+    if (_desktopMediaListenerBound) return;
+    try {
+        if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+        const mql = window.matchMedia(DESKTOP_MEDIA_QUERY);
+        if (!mql) return;
+        const onChange = () => {
+            if (!_desktopPanelsEnabled) return;
+            if (_isDesktopViewport()) {
+                UI.refreshDesktopPanels();
+            } else if (_desktopPanelsModule) {
+                _desktopPanelsModule.clearDesktopPanels();
+            }
+        };
+        if (typeof mql.addEventListener === 'function') mql.addEventListener('change', onChange);
+        else if (typeof mql.addListener === 'function') mql.addListener(onChange);
+        _desktopMediaListenerBound = true;
+    } catch (e) {
+        // Non-fatal: panels simply won't auto-refresh on resize.
+    }
+}
+
+function _hideBottomNavBar() {
+    const bottomNav = _elements.bottomNav || document.getElementById('bottom-nav');
+    if (bottomNav) {
+        bottomNav.classList.add('hidden');
+    }
+    const tabs = [
+        _elements.navBtnAssets || document.getElementById('nav-btn-assets'),
+        _elements.navBtnWork || document.getElementById('nav-btn-work'),
+        _elements.navBtnCenter || document.getElementById('nav-btn-center'),
+        _elements.navBtnSocial || document.getElementById('nav-btn-social'),
+        _elements.navBtnMore || document.getElementById('nav-btn-more')
+    ];
+    tabs.forEach(btn => {
+        if (!btn) return;
+        btn.classList.remove('nav-tab-active', 'nav-tab-assets', 'nav-tab-work', 'nav-tab-home', 'nav-tab-social', 'nav-tab-more');
+        const icon = btn.querySelector('i');
+        if (icon) icon.classList.remove('nav-icon-bounce');
+        const dot = btn.querySelector('.nav-badge-dot');
+        if (dot) dot.remove();
+    });
+}
+
 function _pushCurrentModal() {
     // Only push if a modal is currently visible
     if (_elements.modalOverlay && !_elements.modalOverlay.classList.contains('hidden') && _currentModalConfig) {
@@ -502,6 +583,11 @@ export const UI = {
         if (avatarContainer) {
             avatarContainer.innerHTML = renderAvatar(stats);
         }
+
+        // 10. DESKTOP SIDE COLUMNS (coalesced refresh)
+        if (_desktopPanelsEnabled) {
+            UI.scheduleDesktopPanelsRefresh();
+        }
     },
 
     /**
@@ -614,9 +700,6 @@ export const UI = {
      * @param {'home'|'assets'|'work'|'social'|'more'} activeTab
      */
     updateBottomNav: (activeTab = 'home') => {
-        const bottomNav = _elements.bottomNav || document.getElementById('bottom-nav');
-        if (!bottomNav) return;
-
         // Guard 1: Never show bottom navigation if character is dead
         if (state?.gameState?.user?.lifeStatus === 'Deceased') {
             UI.hideBottomNav();
@@ -630,9 +713,15 @@ export const UI = {
             return;
         }
 
-        // Guard 3: User preference check
+        // Desktop side columns follow the same guards but ignore the bottom-nav preference
+        UI.updateDesktopPanels(activeTab);
+
+        const bottomNav = _elements.bottomNav || document.getElementById('bottom-nav');
+        if (!bottomNav) return;
+
+        // Guard 3: User preference check (hides only the mobile bar, desktop panels stay)
         if (!UI.isBottomNavEnabled()) {
-            UI.hideBottomNav();
+            _hideBottomNavBar();
             return;
         }
 
@@ -710,27 +799,96 @@ export const UI = {
     },
 
     /**
-     * Hides the bottom navigation bar (used for login, character creation, death screen, and prison).
+     * Hides the bottom navigation bar and deactivates desktop side columns
+     * (used for login, character creation, death screen, funerals, and prison).
      */
     hideBottomNav: () => {
-        const bottomNav = _elements.bottomNav || document.getElementById('bottom-nav');
-        if (bottomNav) {
-            bottomNav.classList.add('hidden');
+        _hideBottomNavBar();
+        UI.setDesktopPanelsActive(false);
+    },
+
+    /**
+     * Toggles the desktop three-column shell class on <body> and clears the side
+     * panels when deactivated.
+     * @param {boolean} active
+     */
+    setDesktopPanelsActive: (active) => {
+        _desktopPanelsEnabled = !!active;
+        if (typeof document !== 'undefined' && document.body) {
+            document.body.classList.toggle(DESKTOP_BODY_CLASS, _desktopPanelsEnabled);
         }
-        const tabs = [
-            _elements.navBtnAssets || document.getElementById('nav-btn-assets'),
-            _elements.navBtnWork || document.getElementById('nav-btn-work'),
-            _elements.navBtnCenter || document.getElementById('nav-btn-center'),
-            _elements.navBtnSocial || document.getElementById('nav-btn-social'),
-            _elements.navBtnMore || document.getElementById('nav-btn-more')
-        ];
-        tabs.forEach(btn => {
-            if (!btn) return;
-            btn.classList.remove('nav-tab-active', 'nav-tab-assets', 'nav-tab-work', 'nav-tab-home', 'nav-tab-social', 'nav-tab-more');
-            const icon = btn.querySelector('i');
-            if (icon) icon.classList.remove('nav-icon-bounce');
-            const dot = btn.querySelector('.nav-badge-dot');
-            if (dot) dot.remove();
+        if (!_desktopPanelsEnabled && _desktopPanelsModule) {
+            _desktopPanelsModule.clearDesktopPanels();
+        }
+    },
+
+    /**
+     * Activates and renders the desktop side columns for the given active tab.
+     * Shares the death/funeral/teacher-replacement guards with updateBottomNav,
+     * and also hides panels while in prison. Ignores the bottom-nav preference.
+     * Only mounts DOM when viewport matches (min-width: 1024px).
+     * @param {'home'|'assets'|'work'|'social'|'more'} [activeTab='home']
+     * @returns {Promise<void>}
+     */
+    updateDesktopPanels: (activeTab = 'home') => {
+        const user = state?.gameState?.user;
+        if (!user ||
+            user.lifeStatus === 'Deceased' ||
+            user.inPrison ||
+            (state?.gameState?.pendingFunerals && state.gameState.pendingFunerals.length > 0) ||
+            (state?.gameState?.pendingTeacherReplacements && state.gameState.pendingTeacherReplacements.length > 0)) {
+            UI.setDesktopPanelsActive(false);
+            return Promise.resolve();
+        }
+
+        _desktopActiveTab = activeTab || 'home';
+        _bindDesktopMediaListener();
+        UI.setDesktopPanelsActive(true);
+
+        if (!_isDesktopViewport()) {
+            if (_desktopPanelsModule) _desktopPanelsModule.clearDesktopPanels();
+            return Promise.resolve();
+        }
+
+        if (_desktopPanelsModule) {
+            _desktopPanelsModule.renderDesktopPanels(user, _desktopActiveTab);
+            return Promise.resolve();
+        }
+
+        return _loadDesktopPanelsModule().then(m => {
+            if (m && _desktopPanelsEnabled && _isDesktopViewport() && state?.gameState?.user) {
+                m.renderDesktopPanels(state.gameState.user, _desktopActiveTab);
+            }
+        });
+    },
+
+    /**
+     * Re-renders the desktop panels using the last active tab.
+     * @returns {Promise<void>}
+     */
+    refreshDesktopPanels: () => {
+        if (!_desktopPanelsEnabled) return Promise.resolve();
+        return UI.updateDesktopPanels(_desktopActiveTab);
+    },
+
+    /**
+     * Coalesces desktop panel refreshes triggered by UI.updateHeader(user).
+     * When the panel module is already loaded, updates synchronously on the next
+     * microtask / animation frame so rapid stat changes only render once.
+     */
+    scheduleDesktopPanelsRefresh: () => {
+        if (!_desktopPanelsEnabled || !_isDesktopViewport()) return;
+        if (_desktopPanelsModule && state?.gameState?.user) {
+            _desktopPanelsModule.renderDesktopPanels(state.gameState.user, _desktopActiveTab);
+            return;
+        }
+        if (_desktopRefreshScheduled) return;
+        _desktopRefreshScheduled = true;
+        Promise.resolve().then(() => {
+            _desktopRefreshScheduled = false;
+            if (_desktopPanelsEnabled && _isDesktopViewport()) {
+                UI.refreshDesktopPanels();
+            }
         });
     },
 

@@ -1571,5 +1571,147 @@ body:not(.light-mode):not(.onyx-gold-mode) #modal-overlay > div {
     box-shadow: 0 24px 60px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.07) !important;
 }
 
+/* ==========================================================================
+   DESKTOP THREE-COLUMN LAYOUT (>= 1024px)
+   ========================================================================== */
+
+.desktop-panel {
+    display: none;
+}
+
+@media (min-width: 1024px) {
+    body.desktop-panels-active .desktop-panel {
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+        overflow-x: hidden;
+        background-color: var(--obsidian-surface, #111520);
+        border-color: var(--obsidian-border, #22293a);
+        flex-shrink: 0;
+        z-index: 5;
+    }
+
+    body.desktop-panels-active .desktop-panel-left {
+        width: 320px;
+        max-width: 320px;
+        border-right-width: 1px;
+        border-right-style: solid;
+    }
+
+    body.desktop-panels-active .desktop-panel-right {
+        width: 360px;
+        max-width: 360px;
+        border-left-width: 1px;
+        border-left-style: solid;
+    }
+
+    /* Expand header inner container so header stats ribbon comfortably spans across view */
+    body.desktop-panels-active #header-inner {
+        max-width: 88rem;
+    }
+
+    /* Center column (#game-container) expands beyond the 32rem (max-w-lg) phone column */
+    body.desktop-panels-active #game-container > .max-w-lg {
+        max-width: 52rem;
+    }
+
+    /* Hide mobile bottom navigation bar and mobile inline fallback nav on desktop */
+    body.desktop-panels-active #bottom-nav,
+    body.desktop-panels-active .mobile-inline-nav,
+    body.desktop-panels-active #dashboard-snapshot-strip {
+        display: none !important;
+    }
+}
+
+@media (min-width: 1536px) {
+    body.desktop-panels-active .desktop-panel-left {
+        width: 360px;
+        max-width: 360px;
+    }
+
+    body.desktop-panels-active .desktop-panel-right {
+        width: 400px;
+        max-width: 400px;
+    }
+
+    body.desktop-panels-active #header-inner {
+        max-width: 100rem;
+    }
+
+    body.desktop-panels-active #game-container > .max-w-lg {
+        max-width: 60rem;
+    }
+}
+
+/* Light Mode Overrides for Desktop Panels */
+body.light-mode.desktop-panels-active .desktop-panel {
+    background-color: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+    color: #1e293b;
+}
+
+body.light-mode.desktop-panels-active .desktop-panel .bg-slate-800,
+body.light-mode.desktop-panels-active .desktop-panel .bg-slate-800\/80 {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+}
+
+body.light-mode.desktop-panels-active .desktop-panel .bg-slate-900,
+body.light-mode.desktop-panels-active .desktop-panel .bg-slate-900\/60 {
+    background-color: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
+}
+
+body.light-mode.desktop-panels-active .desktop-panel .text-white {
+    color: #0f172a !important;
+}
+
+body.light-mode.desktop-panels-active .desktop-panel .text-slate-200 {
+    color: #1e293b !important;
+}
+
+body.light-mode.desktop-panels-active .desktop-panel .text-slate-300 {
+    color: #334155 !important;
+}
+
+body.light-mode.desktop-panels-active .desktop-panel .text-slate-400 {
+    color: #64748b !important;
+}
+
+body.light-mode.desktop-panels-active .desktop-panel .text-slate-500 {
+    color: #94a3b8 !important;
+}
+
+body.light-mode.desktop-panels-active .desktop-panel .btn-nav {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #1e293b !important;
+}
+
+body.light-mode.desktop-panels-active .desktop-panel .btn-nav:hover {
+    background: #f1f5f9 !important;
+    border-color: #94a3b8 !important;
+}
+
+/* Onyx Gold Mode Overrides for Desktop Panels */
+body.onyx-gold-mode.desktop-panels-active .desktop-panel {
+    background: linear-gradient(180deg, #11131e 0%, #090a10 100%) !important;
+    border-color: rgba(251, 191, 36, 0.35) !important;
+}
+
+body.onyx-gold-mode.desktop-panels-active .desktop-panel .bg-slate-800,
+body.onyx-gold-mode.desktop-panels-active .desktop-panel .bg-slate-800\/80 {
+    background: linear-gradient(145deg, #181b2a 0%, #0e101a 100%) !important;
+    border-color: rgba(251, 191, 36, 0.3) !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+
+body.onyx-gold-mode.desktop-panels-active .desktop-panel .bg-slate-900,
+body.onyx-gold-mode.desktop-panels-active .desktop-panel .bg-slate-900\/60 {
+    background: #090b12 !important;
+    border-color: rgba(251, 191, 36, 0.2) !important;
+}
+
 
 

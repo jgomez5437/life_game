@@ -4,6 +4,7 @@ import { Utils } from '../../ui/utils.js';
 import { UI } from '../../ui/ui.js';
 import { PART_TIME_JOBS } from '../../core/constants.js';
 import { GameLogic } from '../../core/gameLogic.js';
+import { isPartTimeJobLocked } from '../../core/recommendations.js';
 
 const get = id => document.getElementById(id);
 
@@ -19,9 +20,8 @@ export function renderJobMarket() {
         const scaledHourly = Math.round(job.hourly * mult);
         const scaledSalary = Math.round(job.salary * mult);
         const isCurrent = user.jobTitle === job.title;
-        const meetsUniversityReq = !job.reqUniversity || user.universityEnrolled || user.universityGraduated;
         const meetsAgeReq = !job.minAge || user.age >= job.minAge;
-        const locked = !isCurrent && (!meetsUniversityReq || !meetsAgeReq);
+        const locked = !isCurrent && isPartTimeJobLocked(job, user);
 
         let btn;
         if (isCurrent) {
