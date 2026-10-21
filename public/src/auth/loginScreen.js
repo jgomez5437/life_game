@@ -54,7 +54,7 @@ export const renderLoginScreen = () => {
         </div>
         
         <div class="text-center text-xs text-slate-500 mt-6">
-            &copy; 2026 Start a Life &bull; v1.7.0
+            &copy; 2026 Start a Life &bull; v1.7.1
         </div>
     </div>
     `;

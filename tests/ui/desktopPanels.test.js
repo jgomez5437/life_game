@@ -199,6 +199,9 @@ describe('Desktop Three-Column Panels & UI Lifecycle', () => {
             const html = renderActionPanel(state.gameState.user, 'home');
             expect(html).toContain('Next Steps');
             expect(html).toContain('desktop-rec-card');
+            expect(html).toContain('desktop-rec-btn');
+            expect(html).toContain('!text-white');
+            expect(html).toContain('bg-blue-600');
         });
     });
 
