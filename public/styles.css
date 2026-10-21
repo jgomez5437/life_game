@@ -1663,7 +1663,7 @@ body.light-mode.desktop-panels-active .desktop-panel .bg-slate-900\/60 {
     border-color: #cbd5e1 !important;
 }
 
-body.light-mode.desktop-panels-active .desktop-panel .text-white {
+body.light-mode.desktop-panels-active .desktop-panel .text-white:not(.desktop-rec-btn):not(.desktop-rec-btn *):not(.btn-primary):not(.btn-primary *):not(.btn-age-up):not(.btn-age-up *) {
     color: #0f172a !important;
 }
 
@@ -1692,6 +1692,24 @@ body.light-mode.desktop-panels-active .desktop-panel .btn-nav {
 body.light-mode.desktop-panels-active .desktop-panel .btn-nav:hover {
     background: #f1f5f9 !important;
     border-color: #94a3b8 !important;
+}
+
+/* --------------------------------------------------------------------------
+   Desktop Next Steps Action Buttons - ALWAYS Crisp White Text
+   -------------------------------------------------------------------------- */
+.desktop-rec-btn,
+.desktop-rec-btn *,
+body.light-mode.desktop-panels-active .desktop-panel .desktop-rec-btn,
+body.light-mode.desktop-panels-active .desktop-panel .desktop-rec-btn *,
+body.onyx-gold-mode.desktop-panels-active .desktop-panel .desktop-rec-btn,
+body.onyx-gold-mode.desktop-panels-active .desktop-panel .desktop-rec-btn * {
+    color: #ffffff !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+body.light-mode.desktop-panels-active .desktop-panel .desktop-rec-btn:hover {
+    background-color: #1d4ed8 !important;
+    color: #ffffff !important;
 }
 
 /* Onyx Gold Mode Overrides for Desktop Panels */

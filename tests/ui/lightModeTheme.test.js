@@ -109,6 +109,12 @@ describe('Light Mode Theme & UI Contrast Verification', () => {
             expect(cssContent).toContain('body.light-mode [class*="from-amber-600"]');
             expect(cssContent).toContain('body.light-mode [class*="from-cyan-"]');
         });
+
+        test('styles.css guarantees white text for desktop-rec-btn and excludes it from light mode panel text-white override', () => {
+            expect(cssContent).toContain('.desktop-rec-btn');
+            expect(cssContent).toContain('body.light-mode.desktop-panels-active .desktop-panel .desktop-rec-btn');
+            expect(cssContent).toContain('body.light-mode.desktop-panels-active .desktop-panel .text-white:not(.desktop-rec-btn)');
+        });
     });
 
     describe('Feature Screens DOM Markup', () => {

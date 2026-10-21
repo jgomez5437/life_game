@@ -221,7 +221,7 @@ function recommendationCard(rec) {
             <div class="h-full ${tone.bar} rounded-full" style="width:${clamp(rec.progress)}%"></div>
         </div>` : '';
     const btn = rec.action ? `
-        <button type="button" ${actionAttrs(rec.action, rec.args)} class="desktop-rec-btn shrink-0 text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition">${esc(rec.actionLabel || 'Go')}</button>` : '';
+        <button type="button" ${actionAttrs(rec.action, rec.args)} class="desktop-rec-btn shrink-0 text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 !text-white text-white transition">${esc(rec.actionLabel || 'Go')}</button>` : '';
     return `
         <div class="desktop-rec-card bg-slate-800/80 border ${tone.border} rounded-xl p-2.5" data-rec-id="${esc(rec.id)}" data-rec-kind="${esc(rec.kind)}">
             <div class="flex items-center gap-2.5">
