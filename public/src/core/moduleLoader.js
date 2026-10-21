@@ -42,7 +42,8 @@ export const MODULE_REGISTRY = {
     lifeEvents: () => import('../features/life/lifeEventModal.js'),
     casino: () => import('../features/more/casinoScreen.js'),
     crime: () => import('../features/more/crimeScreen.js'),
-    prison: () => import('../features/more/prisonScreen.js')
+    prison: () => import('../features/more/prisonScreen.js'),
+    desktopPanels: () => import('../features/player/desktopPanels.js')
 };
 
 // Map data-action and data-preload names to module keys for intent preloading

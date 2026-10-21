@@ -63,7 +63,7 @@ describe('Central Module Loader & Background Preloader Engine', () => {
                 'partTimeJobs', 'occupation', 'assets', 'goShopping', 'saveSlotManager', 'timeMachine',
                 'businessDashboard', 'createBusiness', 'investments', 'romance', 'funeral',
                 'store', 'godModeAvatar', 'vipLounge', 'more', 'settings', 'graveyard',
-                'casino', 'crime', 'prison'
+                'casino', 'crime', 'prison', 'desktopPanels'
             ];
 
             expectedKeys.forEach(key => {

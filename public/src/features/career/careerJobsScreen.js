@@ -6,6 +6,7 @@ import { UI } from '../../ui/ui.js';
 import { saveGame } from '../../core/main.js';
 import { CAREER_TRACKS, PART_TIME_JOBS, SPECIAL_CAREER_TRACKS } from '../../core/constants.js';
 import { GameLogic } from '../../core/gameLogic.js';
+import { isTrackLocked, getTrackWarnings } from '../../core/recommendations.js';
 
 const get = id => document.getElementById(id);
 
@@ -142,35 +143,9 @@ let _pendingInterview = null;
 // Shape: { type: 'career'|'parttime', trackKey, title, salary, seenQuestions: [], correctAnswer }
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
-
-const HIGH_TRUST_TRACKS = ['law_enforcement', 'banking', 'medicine', 'law', 'education_track', 'corp_finance'];
-
-function hasFelonyRecord(user) {
-    if (!Array.isArray(user.criminalRecord)) return false;
-    return user.criminalRecord.some(r => r.severity === 'felony' && r.verdict === 'guilty');
-}
-
-function getTrackWarnings(track, user) {
-    const warnings = [];
-    if (hasFelonyRecord(user) && HIGH_TRUST_TRACKS.includes(track.key))
-        warnings.push('Background Check Failed (Felony Record)');
-    if (track.reqGrad && user.gradSchoolDegree !== track.reqGrad)
-        warnings.push(`Requires ${track.reqGrad}`);
-    if (track.reqDegree && !user.universityGraduated)
-        warnings.push('University Degree Required');
-    if (track.reqMajors && user.universityGraduated && !track.reqMajors.includes(user.major))
-        warnings.push(`Major: ${track.reqMajors.join(' or ')}`);
-    return warnings;
-}
-
-function isTrackLocked(track, user) {
-    if (hasFelonyRecord(user) && HIGH_TRUST_TRACKS.includes(track.key)) return true;
-    if (track.reqGrad && user.gradSchoolDegree !== track.reqGrad) return true;
-    if (track.reqDegree && !user.universityGraduated) return true;
-    if (track.reqMajors && user.universityGraduated && !track.reqMajors.includes(user.major)) return true;
-    if (track.reqMajors && !user.universityGraduated) return true;
-    return false;
-}
+// Career eligibility rules (HIGH_TRUST_TRACKS, hasFelonyRecord, isTrackLocked,
+// getTrackWarnings) live in core/recommendations.js so the desktop "Next Steps"
+// panel and this Career Market always agree.
 
 function _pickQuestion(category) {
     const pool = INTERVIEW_QUESTIONS

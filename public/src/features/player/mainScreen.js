@@ -1005,7 +1005,7 @@ export function renderLifeDashboard(maybeGameState) {
     //Define the Final HTML String
     const isBottomNav = UI.isBottomNavEnabled ? UI.isBottomNavEnabled() : localStorage.getItem('life_game_bottom_nav') !== 'false';
     const inlineNavHtml = !isBottomNav ? `
-        <div class="grid grid-cols-5 gap-1.5 sm:gap-2 pt-2 h-16 sm:h-18 shrink-0">
+        <div class="mobile-inline-nav grid grid-cols-5 gap-1.5 sm:gap-2 pt-2 h-16 sm:h-18 shrink-0">
             <button data-action="renderAssets" class="btn-nav text-slate-200 font-bold rounded-xl shadow-lg flex flex-col items-center justify-center hover:bg-slate-700 transition" title="Assets">
                 <i class="fas fa-coins mb-1 text-lg sm:text-xl text-yellow-400"></i>
                 <span class="text-[9px] sm:text-[10px] uppercase tracking-wider font-bold">Assets</span>
