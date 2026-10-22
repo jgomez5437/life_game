@@ -1,11 +1,13 @@
 import { state } from '../../core/state.js';
 import { renderActivities, getSchoolName } from '../career/occupationScreen.js';
-import { renderLifeDashboard, addLog, refreshClassmates } from '../player/mainScreen.js';
+import { addLog, refreshClassmates } from '../player/mainScreen.js';
 import { renderAvatar } from '../../ui/avatarRenderer.js';
 import { hasInstantDiplomaPerk, renderInstantDiplomaHub } from './instantDiploma.js';
 import { isDeadNPC } from '../relationships/relationshipScreen.js';
 import { Utils } from '../../ui/utils.js';
 import { UI } from '../../ui/ui.js';
+import { GameLogic } from '../../core/gameLogic.js';
+import { saveGame } from '../../core/main.js';
 
 const get = id => document.getElementById(id);
 
@@ -138,7 +140,8 @@ export function workHarder() {
     GameLogic.adjustStat(user, 'smarts', smartsGain);
     addLog(`Studied hard! Improved grades (+20%) and gained +${smartsGain} Smarts.`, 'good');
     UI.updateHeader(user);
-    renderLifeDashboard(state.gameState);
+    if (typeof saveGame === 'function') saveGame();
+    renderEducation();
 }
 export function skipSchool() {
     const user = state.gameState.user;
@@ -149,7 +152,8 @@ export function skipSchool() {
     GameLogic.adjustStat(user, 'smarts', -2);
     addLog("Skipped school to hang out (+5 Happiness, -2 Smarts). Grades suffered.", 'bad');
     UI.updateHeader(user);
-    renderLifeDashboard(state.gameState); 
+    if (typeof saveGame === 'function') saveGame();
+    renderEducation(); 
 }
 
 export function renderClassmates() {
