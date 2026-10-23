@@ -48,10 +48,18 @@
             const savedTheme = localStorage.getItem('life_game_theme');
             if (savedTheme === 'light') {
                 document.documentElement.classList.add('light-mode');
-                document.addEventListener('DOMContentLoaded', () => document.body.classList.add('light-mode'));
+                if (document.body) {
+                    document.body.classList.add('light-mode');
+                } else {
+                    document.addEventListener('DOMContentLoaded', () => document.body && document.body.classList.add('light-mode'));
+                }
             } else if (savedTheme === 'onyx-gold') {
                 document.documentElement.classList.add('onyx-gold-mode');
-                document.addEventListener('DOMContentLoaded', () => document.body.classList.add('onyx-gold-mode'));
+                if (document.body) {
+                    document.body.classList.add('onyx-gold-mode');
+                } else {
+                    document.addEventListener('DOMContentLoaded', () => document.body && document.body.classList.add('onyx-gold-mode'));
+                }
             }
         })();
     </script>

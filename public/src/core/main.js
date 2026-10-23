@@ -594,6 +594,15 @@ export const onload = async () => {
 
     attachIntentPreloaders();
 
+    // Ensure active theme is synchronized into the DOM and UI
+    try {
+        if (typeof applyTheme === 'function') {
+            applyTheme().catch(err => console.warn("Theme initialization warning:", err));
+        }
+    } catch (themeErr) {
+        console.warn("Theme initialization warning:", themeErr);
+    }
+
     // Continue to game initialization regardless of Auth0 errors
     await initGame();
 

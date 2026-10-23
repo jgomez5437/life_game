@@ -364,9 +364,22 @@
    LIGHT MODE THEME SYSTEM (OPTIMIZED UI & CONTRAST)
    ========================================================================== */
 
-body.light-mode {
-    background-color: #f8fafc; /* Slate 50 */
-    color: #0f172a; /* Slate 900 */
+body.light-mode,
+body.light-mode.bg-slate-900 {
+    background-color: #f8fafc !important; /* Slate 50 */
+    color: #0f172a !important; /* Slate 900 */
+}
+
+/* Static Pages Header Theme Toggle */
+body.light-mode #static-theme-toggle {
+    background-color: #f8fafc !important;
+    border-color: #cbd5e1 !important;
+    color: #475569 !important;
+}
+
+body.light-mode #static-theme-toggle:hover {
+    background-color: #e2e8f0 !important;
+    color: #0f172a !important;
 }
 
 /* Custom Scrollbar in Light Mode */
