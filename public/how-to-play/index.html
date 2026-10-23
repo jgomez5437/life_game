@@ -48,6 +48,26 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../styles.bundle.css">
     <link rel="stylesheet" href="../styles.css">
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('life_game_theme');
+            if (savedTheme === 'light') {
+                document.documentElement.classList.add('light-mode');
+                if (document.body) {
+                    document.body.classList.add('light-mode');
+                } else {
+                    document.addEventListener('DOMContentLoaded', () => document.body && document.body.classList.add('light-mode'));
+                }
+            } else if (savedTheme === 'onyx-gold') {
+                document.documentElement.classList.add('onyx-gold-mode');
+                if (document.body) {
+                    document.body.classList.add('onyx-gold-mode');
+                } else {
+                    document.addEventListener('DOMContentLoaded', () => document.body && document.body.classList.add('onyx-gold-mode'));
+                }
+            }
+        })();
+    </script>
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -58,18 +78,21 @@
     }
     </script>
 </head>
-<body class="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans">
+<body class="min-h-screen flex flex-col font-sans">
 
     <!-- Header Navigation -->
     <header class="bg-slate-800/90 border-b border-slate-700 p-4 sticky top-0 z-50 backdrop-blur-md">
         <div class="max-w-4xl mx-auto flex justify-between items-center">
-            <a href="https://startalife.app" class="flex items-center gap-2 font-bold text-white text-xl tracking-wide hover:opacity-90 transition">
+            <a href="/" class="flex items-center gap-2 font-bold text-white text-xl tracking-wide hover:opacity-90 transition">
                 <i class="fas fa-globe-americas text-blue-400"></i>
                 <span>Start a Life</span>
             </a>
-            <div class="flex items-center gap-3">
-                <a href="https://startalife.app/about" class="text-slate-300 hover:text-white text-sm font-semibold transition px-2 py-1">About</a>
-                <a href="https://startalife.app" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-4 py-2 rounded-lg text-sm shadow transition inline-flex items-center gap-1.5">
+            <div class="flex items-center gap-2.5 sm:gap-3">
+                <a href="/about" class="text-slate-300 hover:text-white text-sm font-semibold transition px-2 py-1">About</a>
+                <button id="static-theme-toggle" type="button" aria-label="Toggle Light or Dark Mode" title="Toggle Theme" class="w-9 h-9 rounded-xl bg-slate-700/80 hover:bg-slate-700 text-slate-200 border border-slate-600/70 flex items-center justify-center transition shadow-sm text-sm">
+                    <i id="static-theme-icon" class="fas fa-moon text-blue-400"></i>
+                </button>
+                <a href="/" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-4 py-2 rounded-lg text-sm shadow transition inline-flex items-center gap-1.5">
                     <svg class="inline-block fill-currentColor align-middle" viewBox="0 0 24 24" width="1em" height="1em"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
                     <span>Play Now</span>
                 </a>
@@ -317,7 +340,7 @@
                 Jump right into the game—no downloads or registration required to start playing immediately in Guest Mode.
             </p>
             <div class="pt-2">
-                <a href="https://startalife.app" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-8 py-3.5 rounded-xl shadow-lg hover:shadow-blue-500/25 transition inline-flex items-center gap-2 text-base">
+                <a href="/" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-8 py-3.5 rounded-xl shadow-lg hover:shadow-blue-500/25 transition inline-flex items-center gap-2 text-base">
                     <svg class="inline-block fill-currentColor align-middle" viewBox="0 0 24 24" width="1.2em" height="1.2em"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
                     <span>Start Playing Now</span>
                 </a>
@@ -330,13 +353,51 @@
     <footer class="bg-slate-950 border-t border-slate-800 py-8 px-4 mt-12 text-center text-slate-300 text-sm">
         <div class="max-w-4xl mx-auto space-y-3">
             <div class="flex justify-center gap-6 text-sm font-semibold">
-                <a href="https://startalife.app" class="hover:text-white transition">Play Game</a>
-                <a href="https://startalife.app/about" class="hover:text-white transition">About</a>
-                <a href="https://startalife.app/how-to-play" class="hover:text-white transition text-blue-400">How to Play</a>
+                <a href="/" class="hover:text-white transition">Play Game</a>
+                <a href="/about" class="hover:text-white transition">About</a>
+                <a href="/how-to-play" class="hover:text-white transition text-blue-400">How to Play</a>
             </div>
             <p class="text-slate-300 text-xs">Start a Life &copy; 2026. Built with Vanilla JS, Tailwind CSS & Vercel Serverless.</p>
         </div>
     </footer>
 
+    <script>
+        (function() {
+            function syncThemeToggleUI() {
+                var icon = document.getElementById('static-theme-icon');
+                if (!icon) return;
+                var isLight = localStorage.getItem('life_game_theme') === 'light' || document.documentElement.classList.contains('light-mode');
+                icon.className = isLight ? 'fas fa-sun text-amber-500' : 'fas fa-moon text-blue-400';
+            }
+
+            function toggleTheme() {
+                var current = localStorage.getItem('life_game_theme') || 'dark';
+                var next = current === 'light' ? 'dark' : 'light';
+                localStorage.setItem('life_game_theme', next);
+                if (next === 'light') {
+                    document.documentElement.classList.add('light-mode');
+                    document.documentElement.classList.remove('onyx-gold-mode');
+                    if (document.body) {
+                        document.body.classList.add('light-mode');
+                        document.body.classList.remove('onyx-gold-mode');
+                    }
+                } else {
+                    document.documentElement.classList.remove('light-mode', 'onyx-gold-mode');
+                    if (document.body) {
+                        document.body.classList.remove('light-mode', 'onyx-gold-mode');
+                    }
+                }
+                syncThemeToggleUI();
+            }
+
+            document.addEventListener('DOMContentLoaded', function() {
+                syncThemeToggleUI();
+                var btn = document.getElementById('static-theme-toggle');
+                if (btn) {
+                    btn.addEventListener('click', toggleTheme);
+                }
+            });
+        })();
+    </script>
 </body>
 </html>
