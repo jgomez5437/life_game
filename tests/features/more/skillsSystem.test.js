@@ -3,7 +3,7 @@ import { state } from '../../../public/src/core/state.js';
 import { CAREER_TRACKS, SKILL_TRACKS } from '../../../public/src/core/constants.js';
 import { isTrackLocked, getTrackWarnings, getEligibleCareers } from '../../../public/src/core/recommendations.js';
 import { migrateState } from '../../../public/src/core/saveSlotManager.js';
-import { openSkillsModal, practiceSkill, enrollSkillCourse } from '../../../public/src/features/more/moreScreen.js';
+import { openSkillsModal, toggleSkillExpand, practiceSkill, enrollSkillCourse } from '../../../public/src/features/more/moreScreen.js';
 
 describe('Skills & Courses System and Game Integrations', () => {
     beforeEach(() => {
@@ -154,15 +154,31 @@ describe('Skills & Courses System and Game Integrations', () => {
         expect(migrated.user.skills.martial_arts.tiersCompleted).toContain(1);
     });
 
-    test('openSkillsModal renders interactive skill cards and updates on practiceSkill and enrollSkillCourse', () => {
+    test('openSkillsModal renders surface-level options and expands on toggleSkillExpand', () => {
         openSkillsModal();
-        const modalText = document.getElementById('modal-content').textContent;
-        expect(modalText).toContain('Computer Programming & Software');
-        expect(modalText).toContain('Public Speaking & Leadership');
-        expect(modalText).toContain('Practice (+10 XP)');
+        const modalContent = document.getElementById('modal-content');
+        expect(modalContent.textContent).toContain('Computer Programming & Software');
+        expect(modalContent.textContent).toContain('Public Speaking & Leadership');
+        // By default, surface level rows are collapsed so courses and practice are hidden
+        expect(modalContent.textContent).not.toContain('Tier 1 Workshop');
+        expect(modalContent.textContent).not.toContain('Practice (+10 XP)');
 
+        // Expanding coding shows courses, practice button, and impact summary
+        toggleSkillExpand('coding');
+        expect(modalContent.textContent).toContain('Practice (+10 XP)');
+        expect(modalContent.textContent).toContain('Tier 1 Workshop');
+        expect(modalContent.textContent).toContain('Intro to Python & Web Dev');
+
+        // Toggling coding again collapses it
+        toggleSkillExpand('coding');
+        expect(modalContent.textContent).not.toContain('Tier 1 Workshop');
+        expect(modalContent.textContent).not.toContain('Practice (+10 XP)');
+
+        // Practicing a skill automatically expands that skill
         practiceSkill('leadership');
         expect(state.gameState.user.skills.leadership.xp).toBe(10);
+        expect(modalContent.textContent).toContain('Public Speaking & Leadership');
+        expect(modalContent.textContent).toContain('Practice (+10 XP)');
 
         enrollSkillCourse('leadership', 1);
         expect(state.gameState.user.skills.leadership.xp).toBe(35);
