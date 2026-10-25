@@ -189,10 +189,15 @@ function _showInterviewModal(question, jobLabel) {
 function _hireCareer(trackKey) {
     const user = state.gameState.user;
     const track = CAREER_TRACKS.find(t => t.key === trackKey);
-    const entry = track.levels[0];
-    const scaledSalary = GameLogic.calculateScaledSalary(entry.salary, user.city);
+    const bonuses = GameLogic.getCareerSkillBonuses
+        ? GameLogic.getCareerSkillBonuses(user, trackKey)
+        : { startingLevel: 0, salaryMultiplier: 1.0, fastTracked: false, matchedSkill: null };
+    const startLevel = Math.min(bonuses.startingLevel || 0, track.levels.length - 1);
+    const entry = track.levels[startLevel];
+    const baseScaled = GameLogic.calculateScaledSalary(entry.salary, user.city);
+    const scaledSalary = Math.floor(baseScaled * (bonuses.salaryMultiplier || 1.0));
     user.careerTrack          = trackKey;
-    user.careerLevel          = 0;
+    user.careerLevel          = startLevel;
     user.yearsInRole          = 0;
     user.yearsInCareer        = 0;
     user.consecutivePoorYears = 0;
@@ -202,7 +207,10 @@ function _hireCareer(trackKey) {
     user.careerActionTaken    = false;
     user.hasSeenJobSalary     = true;
     GameLogic.adjustStat(user, 'happiness', 15);
-    addLog(`Hired as ${entry.title} in ${track.label}! Starting salary: ${Utils.formatMoney(scaledSalary)}/yr. (+15 Happiness)`, 'good');
+    const skillNote = bonuses.fastTracked
+        ? ` Fast-tracked to Level 2 with +20% skill bonus!`
+        : (bonuses.salaryMultiplier > 1.0 ? ` Includes +${Math.round((bonuses.salaryMultiplier - 1) * 100)}% skill salary bonus!` : '');
+    addLog(`Hired as ${entry.title} in ${track.label}! Starting salary: ${Utils.formatMoney(scaledSalary)}/yr.${skillNote} (+15 Happiness)`, 'good');
     UI.updateHeader(user);
 }
 
@@ -246,11 +254,31 @@ export function renderCareerMarket() {
             const isCurrent = user.careerTrack === track.key;
             const locked = !isCurrent && isTrackLocked(track, user);
             const warnings = getTrackWarnings(track, user);
-            const entry = track.levels[0];
-            const scaledSalary = GameLogic.calculateScaledSalary(entry.salary, user.city);
+            const bonuses = GameLogic.getCareerSkillBonuses
+                ? GameLogic.getCareerSkillBonuses(user, track.key)
+                : { startingLevel: 0, salaryMultiplier: 1.0, fastTracked: false, unlockedByCert: null };
+            const startLevel = Math.min(bonuses.startingLevel || 0, track.levels.length - 1);
+            const entry = track.levels[startLevel];
+            const baseScaled = GameLogic.calculateScaledSalary(entry.salary, user.city);
+            const scaledSalary = Math.floor(baseScaled * (bonuses.salaryMultiplier || 1.0));
+
+            const unlockSkills = (locked && !track.reqGrad && GameLogic.getCareerUnlockingSkills)
+                ? GameLogic.getCareerUnlockingSkills(track.key)
+                : [];
+            const certHint = unlockSkills.length
+                ? ` <span class="text-indigo-400">(or ${unlockSkills[0].certificateTitle} in More &rarr; Skills)</span>`
+                : '';
 
             const warningHtml = warnings.length
-                ? `<div class="text-[10px] text-red-400 mt-1"><i class="fas fa-lock mr-1"></i>${warnings.join(', ')}</div>`
+                ? `<div class="text-[10px] text-red-400 mt-1"><i class="fas fa-lock mr-1"></i>${warnings.join(', ')}${certHint}</div>`
+                : '';
+
+            const certUnlockBadge = (!locked && bonuses.unlockedByCert && (!user.universityGraduated || (track.reqMajors && !track.reqMajors.includes(user.major))))
+                ? `<div class="text-[10px] text-indigo-300 font-semibold mt-0.5"><i class="fas fa-certificate mr-1"></i>Unlocked via ${bonuses.unlockedByCert.certificateTitle}</div>`
+                : '';
+
+            const skillBonusBadge = (!locked && (bonuses.fastTracked || bonuses.salaryMultiplier > 1.0))
+                ? `<div class="text-[10px] text-emerald-400 font-semibold mt-0.5"><i class="fas fa-bolt mr-1"></i>+${Math.round((bonuses.salaryMultiplier - 1) * 100)}% Skill Pay${bonuses.fastTracked ? ` · Starts at Level 2 (${entry.title})` : ''}</div>`
                 : '';
 
             let btn;
@@ -273,6 +301,8 @@ export function renderCareerMarket() {
                                 <h3 class="font-bold text-white">${track.label}</h3>
                                 <div class="text-xs text-green-400">Starting: ${Utils.formatMoney(scaledSalary)}/yr</div>
                                 <div class="text-[10px] text-slate-500">${track.levels.length} levels · ${entry.title}</div>
+                                ${certUnlockBadge}
+                                ${skillBonusBadge}
                                 ${warningHtml}
                             </div>
                         </div>
@@ -315,10 +345,14 @@ export function applyForCareerTrack(trackKey) {
 
     if (track.reqGrad && user.gradSchoolDegree !== track.reqGrad)
         return UI.showModal('Qualifications Missing', `This career requires ${track.reqGrad}.`);
-    if (track.reqDegree && !user.universityGraduated)
-        return UI.showModal('Qualifications Missing', 'This career requires a University Degree.');
-    if (track.reqMajors && !track.reqMajors.includes(user.major))
-        return UI.showModal('Wrong Major', `${track.label} requires a degree in ${track.reqMajors.join(' or ')}.`);
+
+    const hasSkillCert = GameLogic.hasCareerSkillCertification ? GameLogic.hasCareerSkillCertification(user, trackKey) : null;
+    if (!hasSkillCert) {
+        if (track.reqDegree && !user.universityGraduated)
+            return UI.showModal('Qualifications Missing', 'This career requires a University Degree (or a matching Master Certification from Skills & Courses).');
+        if (track.reqMajors && !track.reqMajors.includes(user.major))
+            return UI.showModal('Wrong Major', `${track.label} requires a degree in ${track.reqMajors.join(' or ')} (or a matching Master Certification from Skills & Courses).`);
+    }
 
     _pendingInterview = { type: 'career', trackKey, title: null, salary: null, seenQuestions: [], correctAnswer: null };
     startCareerInterview(trackKey);

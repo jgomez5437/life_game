@@ -26,19 +26,25 @@ export function getTrackWarnings(track, user) {
         warnings.push('Background Check Failed (Felony Record)');
     if (track.reqGrad && user.gradSchoolDegree !== track.reqGrad)
         warnings.push(`Requires ${track.reqGrad}`);
-    if (track.reqDegree && !user.universityGraduated)
-        warnings.push('University Degree Required');
-    if (track.reqMajors && user.universityGraduated && !track.reqMajors.includes(user.major))
-        warnings.push(`Major: ${track.reqMajors.join(' or ')}`);
+    const hasSkillCert = GameLogic.hasCareerSkillCertification ? GameLogic.hasCareerSkillCertification(user, track.key) : null;
+    if (!hasSkillCert) {
+        if (track.reqDegree && !user.universityGraduated)
+            warnings.push('University Degree Required');
+        if (track.reqMajors && user.universityGraduated && !track.reqMajors.includes(user.major))
+            warnings.push(`Major: ${track.reqMajors.join(' or ')}`);
+    }
     return warnings;
 }
 
 export function isTrackLocked(track, user) {
     if (hasFelonyRecord(user) && HIGH_TRUST_TRACKS.includes(track.key)) return true;
     if (track.reqGrad && user.gradSchoolDegree !== track.reqGrad) return true;
-    if (track.reqDegree && !user.universityGraduated) return true;
-    if (track.reqMajors && user.universityGraduated && !track.reqMajors.includes(user.major)) return true;
-    if (track.reqMajors && !user.universityGraduated) return true;
+    const hasSkillCert = GameLogic.hasCareerSkillCertification ? GameLogic.hasCareerSkillCertification(user, track.key) : null;
+    if (!hasSkillCert) {
+        if (track.reqDegree && !user.universityGraduated) return true;
+        if (track.reqMajors && user.universityGraduated && !track.reqMajors.includes(user.major)) return true;
+        if (track.reqMajors && !user.universityGraduated) return true;
+    }
     return false;
 }
 
@@ -67,13 +73,20 @@ export function getEligibleCareers(user, { limit = 3, minSalary = 0 } = {}) {
     if (!user || (user.age || 0) < 18) return [];
     return CAREER_TRACKS
         .filter(t => t.key !== user.careerTrack && !isTrackLocked(t, user))
-        .map(t => ({
-            key: t.key,
-            label: t.label,
-            icon: t.icon,
-            title: t.levels[0].title,
-            salary: GameLogic.calculateScaledSalary(t.levels[0].salary, user.city)
-        }))
+        .map(t => {
+            const bonuses = GameLogic.getCareerSkillBonuses ? GameLogic.getCareerSkillBonuses(user, t.key) : { startingLevel: 0, salaryMultiplier: 1.0 };
+            const entryIdx = Math.min(bonuses.startingLevel || 0, t.levels.length - 1);
+            const entry = t.levels[entryIdx];
+            const baseScaled = GameLogic.calculateScaledSalary(entry.salary, user.city);
+            const salary = Math.floor(baseScaled * (bonuses.salaryMultiplier || 1.0));
+            return {
+                key: t.key,
+                label: t.label,
+                icon: t.icon,
+                title: entry.title,
+                salary
+            };
+        })
         .filter(c => c.salary > minSalary)
         .sort((a, b) => b.salary - a.salary)
         .slice(0, limit);

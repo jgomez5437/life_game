@@ -336,3 +336,121 @@ export const SUPPLIERS = [
     { id: 'standard', name: 'Standard', costMod: 1.0, quality: 60, risk: 0.05 },
     { id: 'premium', name: 'Premium', costMod: 1.4, quality: 95, risk: 0.01 }
 ];
+
+export const SKILL_TRACKS = [
+    {
+        key: 'coding',
+        name: 'Computer Programming & Software',
+        shortName: 'Coding & Tech',
+        icon: 'fa-laptop-code',
+        color: 'indigo',
+        minAge: 12,
+        certificateTitle: 'Certified Software Architect',
+        practiceStats: { smarts: 2, happiness: 1 },
+        unlocksCareers: ['software_eng'],
+        fastTrackCareers: [],
+        boostsCareers: ['software_eng', 'banking', 'corp_finance'],
+        impactSummary: 'Unlocks Software & IT career without a CS degree; boosts tech & finance pay.',
+        courses: [
+            { tier: 1, title: 'Intro to Python & Web Dev', cost: 400, xpGain: 25, minXp: 0, minAge: 12, stats: { smarts: 3 } },
+            { tier: 2, title: 'Full-Stack Engineering Bootcamp', cost: 2500, xpGain: 35, minXp: 25, minAge: 16, stats: { smarts: 5 } },
+            { tier: 3, title: 'Software Architect Certification', cost: 6000, xpGain: 40, minXp: 60, minAge: 18, stats: { smarts: 8 }, grantsCert: true }
+        ]
+    },
+    {
+        key: 'leadership',
+        name: 'Public Speaking & Leadership',
+        shortName: 'Leadership & Speaking',
+        icon: 'fa-bullhorn',
+        color: 'amber',
+        minAge: 12,
+        certificateTitle: 'Certified Executive Leader',
+        practiceStats: { smarts: 1, looks: 1, happiness: 1 },
+        unlocksCareers: ['marketing_track', 'banking', 'journalism', 'education_track'],
+        fastTrackCareers: ['retail', 'real_estate'],
+        boostsCareers: ['all'],
+        impactSummary: 'Unlocks Business/Media/Teaching careers; fast-tracks Sales & Real Estate; boosts promotions in ALL jobs.',
+        courses: [
+            { tier: 1, title: 'Persuasion & Public Speaking Seminar', cost: 350, xpGain: 25, minXp: 0, minAge: 12, stats: { smarts: 2, looks: 2 } },
+            { tier: 2, title: 'Executive Management & Negotiation', cost: 2000, xpGain: 35, minXp: 25, minAge: 16, stats: { smarts: 4, looks: 3 } },
+            { tier: 3, title: 'Executive Leadership Certification', cost: 5500, xpGain: 40, minXp: 60, minAge: 18, stats: { smarts: 6, looks: 5 }, grantsCert: true }
+        ]
+    },
+    {
+        key: 'martial_arts',
+        name: 'Martial Arts & Physical Defense',
+        shortName: 'Martial Arts & Defense',
+        icon: 'fa-hand-rock',
+        color: 'red',
+        minAge: 12,
+        certificateTitle: 'Black Belt & Tactical Defense Master',
+        practiceStats: { health: 2, looks: 1 },
+        unlocksCareers: [],
+        fastTrackCareers: ['law_enforcement', 'fire_service', 'military'],
+        boostsCareers: ['law_enforcement', 'fire_service', 'military', 'mafia_syndicate'],
+        impactSummary: 'Fast-tracks Police, Fire & Military careers; boosts Crime success (+15%), Police flee (+20%) & Prison fights.',
+        courses: [
+            { tier: 1, title: 'Self-Defense & Boxing Fundamentals', cost: 300, xpGain: 25, minXp: 0, minAge: 12, stats: { health: 4, looks: 2 } },
+            { tier: 2, title: 'MMA & Tactical Combat Intensive', cost: 1800, xpGain: 35, minXp: 25, minAge: 15, stats: { health: 7, looks: 4 } },
+            { tier: 3, title: 'Black Belt & Tactical Master Certification', cost: 4500, xpGain: 40, minXp: 60, minAge: 18, stats: { health: 10, looks: 6 }, grantsCert: true }
+        ]
+    },
+    {
+        key: 'culinary',
+        name: 'Culinary Arts & Gastronomy',
+        shortName: 'Culinary Arts',
+        icon: 'fa-utensils',
+        color: 'emerald',
+        minAge: 12,
+        certificateTitle: 'Master Chef & Hospitality Diploma',
+        practiceStats: { happiness: 2, health: 1 },
+        unlocksCareers: [],
+        fastTrackCareers: ['food_service'],
+        boostsCareers: ['food_service'],
+        impactSummary: 'Fast-tracks Culinary & Hospitality career to Cook (+20% pay) and boosts Health & Happiness.',
+        courses: [
+            { tier: 1, title: 'Artisanal Cooking & Knife Skills', cost: 250, xpGain: 25, minXp: 0, minAge: 12, stats: { happiness: 4, health: 2 } },
+            { tier: 2, title: 'Gastronomy & Pastry Intensive', cost: 1500, xpGain: 35, minXp: 25, minAge: 15, stats: { happiness: 6, health: 4 } },
+            { tier: 3, title: 'Master Chef Diploma Certification', cost: 4500, xpGain: 40, minXp: 60, minAge: 18, stats: { happiness: 10, health: 6 }, grantsCert: true }
+        ]
+    },
+    {
+        key: 'design',
+        name: 'Creative Design & Digital Media',
+        shortName: 'Creative & Design',
+        icon: 'fa-palette',
+        color: 'purple',
+        minAge: 12,
+        certificateTitle: 'Certified Creative Director',
+        practiceStats: { smarts: 1, happiness: 2 },
+        unlocksCareers: ['graphic_design', 'marketing_track', 'journalism'],
+        fastTrackCareers: [],
+        boostsCareers: ['graphic_design', 'marketing_track', 'journalism'],
+        impactSummary: 'Unlocks Design, Marketing & Media careers without a degree; boosts creative career performance.',
+        courses: [
+            { tier: 1, title: 'UI/UX & Graphic Design Workshop', cost: 350, xpGain: 25, minXp: 0, minAge: 12, stats: { smarts: 3, happiness: 3 } },
+            { tier: 2, title: 'Brand Studio & Motion Bootcamp', cost: 2000, xpGain: 35, minXp: 25, minAge: 16, stats: { smarts: 5, happiness: 5 } },
+            { tier: 3, title: 'Creative Director Portfolio Certification', cost: 5000, xpGain: 40, minXp: 60, minAge: 18, stats: { smarts: 7, happiness: 8 }, grantsCert: true }
+        ]
+    },
+    {
+        key: 'trades_tech',
+        name: 'Skilled Trades & Mechanics',
+        shortName: 'Trades & Mechanics',
+        icon: 'fa-tools',
+        color: 'cyan',
+        minAge: 14,
+        certificateTitle: 'Master Tradesman & Contractor License',
+        practiceStats: { smarts: 2, health: 1 },
+        unlocksCareers: [],
+        fastTrackCareers: ['trades', 'logistics'],
+        boostsCareers: ['trades', 'logistics'],
+        impactSummary: 'Fast-tracks Skilled Trades & Logistics careers to Level 2 (+20% pay) and boosts promotion odds.',
+        courses: [
+            { tier: 1, title: 'Electrical, Plumbing & Carpentry Basics', cost: 300, xpGain: 25, minXp: 0, minAge: 14, stats: { smarts: 3, health: 2 } },
+            { tier: 2, title: 'HVAC, Welding & Heavy Systems Bootcamp', cost: 1800, xpGain: 35, minXp: 25, minAge: 16, stats: { smarts: 5, health: 4 } },
+            { tier: 3, title: 'Master Contractor License Exam', cost: 4500, xpGain: 40, minXp: 60, minAge: 18, stats: { smarts: 7, health: 5 }, grantsCert: true }
+        ]
+    }
+];
+
