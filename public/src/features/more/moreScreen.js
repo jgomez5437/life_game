@@ -52,7 +52,6 @@ export function openSkillsModal(feedbackMsg = null, feedbackType = 'good') {
 
     GameLogic.ensureUserSkills(user);
     const practiceLeft = Math.max(0, 2 - (user.skillActionsThisYear || 0));
-    const certCount = SKILL_TRACKS.filter(s => user.skills?.[s.key]?.certified).length;
 
     const feedbackBanner = (typeof feedbackMsg === 'string' && feedbackMsg.trim())
         ? `<div class="p-2.5 rounded-xl border text-xs font-semibold flex items-center gap-2 ${
@@ -195,22 +194,6 @@ export function openSkillsModal(feedbackMsg = null, feedbackType = 'good') {
     UI.showModal("Skill Workshops & Courses", `
         <div class="space-y-3 text-left max-h-[70vh] overflow-y-auto pr-1">
             ${feedbackBanner}
-            <!-- Summary Bar -->
-            <div class="bg-slate-800/90 p-2.5 rounded-xl border border-slate-700/80 grid grid-cols-3 gap-2 text-center shadow-sm">
-                <div class="bg-slate-900/80 p-1.5 rounded-lg border border-slate-700/60">
-                    <div class="text-[9px] uppercase font-bold text-slate-400">Cash</div>
-                    <div class="text-xs font-extrabold text-emerald-400 truncate">${Utils.formatMoney(user.money || 0)}</div>
-                </div>
-                <div class="bg-slate-900/80 p-1.5 rounded-lg border border-slate-700/60">
-                    <div class="text-[9px] uppercase font-bold text-slate-400">Practice Left</div>
-                    <div class="text-xs font-extrabold text-indigo-400">${practiceLeft} / 2 yr</div>
-                </div>
-                <div class="bg-slate-900/80 p-1.5 rounded-lg border border-slate-700/60">
-                    <div class="text-[9px] uppercase font-bold text-slate-400">Certificates</div>
-                    <div class="text-xs font-extrabold text-amber-400">${certCount} / ${SKILL_TRACKS.length}</div>
-                </div>
-            </div>
-
             <p class="text-[11px] text-slate-400 leading-relaxed px-0.5">
                 Tap any skill to view workshops, bootcamps, and practice options.
             </p>
@@ -287,7 +270,6 @@ export function renderMoreDashboard() {
     const ticketsBought = user.lotteryTicketsBoughtThisYear || 0;
     const ticketsLeft = 10 - ticketsBought;
     const certCount = SKILL_TRACKS.filter(s => user.skills?.[s.key]?.certified).length;
-    const practiceLeft = Math.max(0, 2 - (user.skillActionsThisYear || 0));
 
     UI.updateBottomNav('more');
     const backBtnHtml = !UI.isBottomNavEnabled() ? `
@@ -384,7 +366,7 @@ export function renderMoreDashboard() {
                             icon: 'fa-book-open',
                             iconBg: 'bg-indigo-950/60',
                             iconColor: 'text-indigo-400',
-                            badgeText: certCount > 0 ? `${certCount} Certified` : `${practiceLeft}/2 Practice`,
+                            badgeText: certCount > 0 ? `${certCount} Certified` : '',
                             badgeColor: 'border-indigo-800/60 text-indigo-300 bg-indigo-950/40',
                             title: 'Skill Workshops & Courses',
                             subtitle: 'Coding, Leadership, Defense, Culinary, Design & Trades',
