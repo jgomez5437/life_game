@@ -195,6 +195,19 @@ export function migrateState(rawState) {
     const gradSchoolYear = toNum(u.gradSchoolYear || u.grad_school_year, 0, 0, 10);
     const gradSchoolDegree = u.gradSchoolDegree || u.grad_school_degree ? toStr(u.gradSchoolDegree || u.grad_school_degree, null) : null;
     const parentsTried = toBool(u.parentsTried || u.parents_tried, false);
+    const skillActionsThisYear = toNum(u.skillActionsThisYear, 0, 0, 10);
+    let skills = {};
+    if (u.skills && typeof u.skills === 'object' && !Array.isArray(u.skills)) {
+        for (const [k, v] of Object.entries(u.skills)) {
+            if (v && typeof v === 'object') {
+                skills[k] = {
+                    xp: toNum(v.xp, 0, 0, 100),
+                    tiersCompleted: Array.isArray(v.tiersCompleted) ? v.tiersCompleted.filter(t => typeof t === 'number') : [],
+                    certified: toBool(v.certified, false)
+                };
+            }
+        }
+    }
 
     // 3. Career & Finance
     const jobTitle = toStr(u.jobTitle || u.job_title, '');
@@ -376,6 +389,8 @@ export function migrateState(rawState) {
         gradSchoolType,
         gradSchoolYear,
         gradSchoolDegree,
+        ...(u.skills !== undefined ? { skills } : {}),
+        ...(u.skillActionsThisYear !== undefined ? { skillActionsThisYear } : {}),
 
         jobTitle,
         jobSalary,

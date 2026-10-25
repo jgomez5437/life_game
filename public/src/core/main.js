@@ -234,6 +234,8 @@ export const confirmMoveCountry = lazy('more', 'confirmMoveCountry');
 export const askPartnerToMove = lazy('more', 'askPartnerToMove');
 export const confirmMoveAlone = lazy('more', 'confirmMoveAlone');
 export const openSkillsModal = lazy('more', 'openSkillsModal');
+export const practiceSkill = lazy('more', 'practiceSkill');
+export const enrollSkillCourse = lazy('more', 'enrollSkillCourse');
 
 // Crime
 export const renderCrimeDashboard = lazy('crime', 'renderCrimeDashboard');
@@ -1641,6 +1643,8 @@ const routeHandlers = {
   openDietSelectionModal,
   selectDiet,
   openSkillsModal,
+  practiceSkill,
+  enrollSkillCourse,
   openLotteryModal,
   buyLotteryTicket,
   openMoveCountryModal,

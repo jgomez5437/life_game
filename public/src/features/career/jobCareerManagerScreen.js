@@ -164,11 +164,17 @@ export function workHarderJob() {
     if (user.careerActionTaken) return;
     
     const userSmarts = user.smarts ?? user.stats?.smarts ?? 50;
-    const boost = userSmarts >= 75 ? 20 : userSmarts >= 50 ? 15 : 10;
+    const baseBoost = userSmarts >= 75 ? 20 : userSmarts >= 50 ? 15 : 10;
+    const skillBonuses = (user.careerTrack && GameLogic.getCareerSkillBonuses)
+        ? GameLogic.getCareerSkillBonuses(user, user.careerTrack)
+        : { workHarderBonus: 0 };
+    const skillExtra = skillBonuses.workHarderBonus || 0;
+    const boost = baseBoost + skillExtra;
     user.jobPerformance = Math.min(100, user.jobPerformance + boost);
     user.careerActionTaken = true;
     GameLogic.adjustStat(user, 'happiness', -2);
-    addLog(`Worked hard at your job (+${boost}% performance, -2 Happiness). Boss is impressed.`, 'good');
+    const skillText = skillExtra > 0 ? ` [includes +${skillExtra}% from Skills]` : '';
+    addLog(`Worked hard at your job (+${boost}% performance${skillText}, -2 Happiness). Boss is impressed.`, 'good');
     UI.updateHeader(user);
     renderCareerManager();
 }

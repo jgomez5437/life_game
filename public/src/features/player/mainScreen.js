@@ -25,6 +25,9 @@ function checkActionTaken(user) {
     if (user && user.careerActionTaken) {
         user.careerActionTaken = false;
     }
+    if (user && user.skillActionsThisYear) {
+        user.skillActionsThisYear = 0;
+    }
 }
 
 export async function ageUp() {
@@ -461,9 +464,14 @@ async function handleFinances(user) {
                         user.consecutivePoorYears = 0;
                         let promoted = false;
 
+                        const skillBonuses = GameLogic.getCareerSkillBonuses
+                            ? GameLogic.getCareerSkillBonuses(user, user.careerTrack)
+                            : { promoBonus: 0, raiseRate: 0.05 };
+
                         // Promotion check
                         if (nextLevel && level.minYears !== null && user.yearsInRole >= level.minYears && user.jobPerformance >= 75) {
-                            const promoChance = user.jobPerformance >= 95 ? 0.80 : user.jobPerformance >= 85 ? 0.50 : 0.25;
+                            const basePromoChance = user.jobPerformance >= 95 ? 0.80 : user.jobPerformance >= 85 ? 0.50 : 0.25;
+                            const promoChance = Math.min(0.95, basePromoChance + (skillBonuses.promoBonus || 0));
                             if (Math.random() < promoChance) {
                                 user.careerLevel++;
                                 const nextSalary = GameLogic.calculateScaledSalary(nextLevel.salary, user.city);
@@ -479,7 +487,8 @@ async function handleFinances(user) {
 
                         // Performance raise if not promoted
                         if (!promoted && user.jobPerformance >= 80) {
-                            const perfBonus = Math.floor(user.jobSalary * 0.05);
+                            const raiseRate = skillBonuses.raiseRate || 0.05;
+                            const perfBonus = Math.floor(user.jobSalary * raiseRate);
                             user.jobSalary += perfBonus;
                             GameLogic.adjustStat(user, 'happiness', 8);
                             addLog(`Outstanding performance! Your salary increased to ${Utils.formatMoney(user.jobSalary)}/yr. (+8 Happiness)`, 'good');

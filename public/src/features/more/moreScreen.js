@@ -6,6 +6,8 @@ import { saveGame } from '../../core/main.js';
 import { UI } from '../../ui/ui.js';
 import { Utils, COUNTRIES_DATA } from '../../ui/utils.js';
 import { unlockAchievement } from '../../core/achievementManager.js';
+import { SKILL_TRACKS } from '../../core/constants.js';
+import { saveToSlot } from '../../core/saveSlotManager.js';
 
 const get = id => document.getElementById(id);
 
@@ -37,23 +39,184 @@ function renderSlimOptionRow({ icon, iconBg, iconColor, title, subtitle, badgeTe
     `;
 }
 
-export function openSkillsModal() {
-    UI.showModal("Skill Workshops & Education", `
-        <div class="text-center space-y-3 py-2">
-            <div class="text-4xl text-indigo-400">📚</div>
-            <h3 class="text-lg font-bold text-white">Skills & Workshops</h3>
-            <p class="text-xs text-slate-300">
-                Enroll in specialized skill programs to boost your Smarts and open high-paying career paths.
-            </p>
-            <div class="bg-slate-900 p-3 rounded-xl border border-slate-800 text-left text-xs space-y-1.5">
-                <div class="text-slate-300 font-semibold">• Computer Programming & Software</div>
-                <div class="text-slate-300 font-semibold">• Public Speaking & Leadership</div>
-                <div class="text-slate-300 font-semibold">• Martial Arts & Physical Defense</div>
-                <div class="text-slate-300 font-semibold">• Culinary Arts & Gastronomy</div>
+export function openSkillsModal(feedbackMsg = null, feedbackType = 'good') {
+    const user = state.gameState?.user;
+    if (!user) return;
+
+    GameLogic.ensureUserSkills(user);
+    const practiceLeft = Math.max(0, 2 - (user.skillActionsThisYear || 0));
+    const certCount = SKILL_TRACKS.filter(s => user.skills?.[s.key]?.certified).length;
+
+    const feedbackBanner = (typeof feedbackMsg === 'string' && feedbackMsg.trim())
+        ? `<div class="p-2.5 rounded-xl border text-xs font-semibold flex items-center gap-2 ${
+            feedbackType === 'bad'
+                ? 'bg-red-950/50 border-red-700/60 text-red-300'
+                : 'bg-emerald-950/50 border-emerald-700/60 text-emerald-300'
+        }">
+            <i class="fas ${feedbackType === 'bad' ? 'fa-exclamation-circle' : 'fa-check-circle'}"></i>
+            <span>${Utils.escapeHtml(feedbackMsg)}</span>
+        </div>`
+        : '';
+
+    const skillCardsHtml = SKILL_TRACKS.map(skill => {
+        const st = GameLogic.getSkillState(user, skill.key);
+        const xp = st.xp || 0;
+        const isCertified = Boolean(st.certified);
+        const ageLocked = (user.age || 0) < (skill.minAge || 12);
+        const canPractice = !ageLocked && practiceLeft > 0 && xp < 100;
+
+        const practiceStatLabels = Object.entries(skill.practiceStats || {})
+            .map(([k, v]) => `+${v} ${k.charAt(0).toUpperCase() + k.slice(1)}`)
+            .join(', ');
+
+        const coursesHtml = skill.courses.map(course => {
+            const done = st.tiersCompleted.includes(course.tier);
+            const courseAgeLocked = (user.age || 0) < (course.minAge || 12);
+            const xpLocked = xp < (course.minXp || 0);
+            const cantAfford = (user.money || 0) < course.cost;
+
+            const statBonusStr = Object.entries(course.stats || {})
+                .map(([k, v]) => `+${v} ${k.charAt(0).toUpperCase() + k.slice(1)}`)
+                .join(' · ');
+
+            const tierLabel = course.tier === 1 ? 'Tier 1 Workshop' : course.tier === 2 ? 'Tier 2 Bootcamp' : 'Tier 3 Master Cert';
+
+            let actionBtn = '';
+            if (done) {
+                actionBtn = `<span class="text-[10px] font-bold text-emerald-400 bg-emerald-950/50 border border-emerald-700/50 px-2 py-1 rounded-lg shrink-0"><i class="fas fa-check mr-1"></i>Done</span>`;
+            } else if (courseAgeLocked) {
+                actionBtn = `<span class="text-[10px] font-bold text-slate-400 bg-slate-800 border border-slate-700 px-2 py-1 rounded-lg shrink-0"><i class="fas fa-lock mr-1"></i>Age ${course.minAge}+</span>`;
+            } else if (xpLocked) {
+                actionBtn = `<span class="text-[10px] font-bold text-amber-300 bg-amber-950/40 border border-amber-800/50 px-2 py-1 rounded-lg shrink-0"><i class="fas fa-lock mr-1"></i>Req ${course.minXp} XP</span>`;
+            } else {
+                actionBtn = `<button data-action="enrollSkillCourse" data-args="&apos;${skill.key}&apos;, ${course.tier}" class="text-[11px] font-bold px-2.5 py-1 rounded-lg transition shrink-0 ${
+                    cantAfford
+                        ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700'
+                        : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow'
+                }">${Utils.formatMoney(course.cost)}</button>`;
+            }
+
+            return `
+                <div class="bg-slate-950/70 border ${done ? 'border-emerald-800/50' : 'border-slate-800'} rounded-lg p-2 flex items-center justify-between gap-2">
+                    <div class="min-w-0 flex-1 text-left">
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-slate-800 text-indigo-300 border border-slate-700">${tierLabel}</span>
+                            ${course.grantsCert ? `<span class="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-amber-950/60 text-amber-300 border border-amber-700/50"><i class="fas fa-certificate mr-0.5"></i>Certificate</span>` : ''}
+                        </div>
+                        <div class="text-xs font-bold text-white truncate mt-0.5">${course.title}</div>
+                        <div class="text-[10px] text-slate-400">+${course.xpGain} XP · ${statBonusStr}</div>
+                    </div>
+                    ${actionBtn}
+                </div>
+            `;
+        }).join('');
+
+        return `
+            <div class="bg-slate-900/90 border ${isCertified ? 'border-indigo-500/60' : 'border-slate-800'} rounded-xl p-3 space-y-2.5 text-left">
+                <div class="flex items-start justify-between gap-2">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <div class="w-9 h-9 rounded-lg bg-indigo-950/70 text-indigo-400 border border-indigo-800/60 flex items-center justify-center text-base shrink-0">
+                            <i class="fas ${skill.icon}"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <div class="font-bold text-white text-xs flex items-center gap-1.5 flex-wrap">
+                                <span>${skill.name}</span>
+                                ${isCertified ? `<span class="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-indigo-600/30 text-indigo-200 border border-indigo-400/50"><i class="fas fa-certificate mr-1"></i>Certified</span>` : ''}
+                            </div>
+                            <div class="text-[10px] text-slate-400 leading-snug mt-0.5">${skill.impactSummary}</div>
+                        </div>
+                    </div>
+                    ${ageLocked ? `
+                        <span class="text-[10px] font-bold text-red-400 bg-red-950/40 border border-red-800/40 px-2 py-1 rounded-lg shrink-0">Age ${skill.minAge}+</span>
+                    ` : `
+                        <button data-action="practiceSkill" data-args="&apos;${skill.key}&apos;" ${!canPractice ? 'disabled' : ''} class="text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition shrink-0 ${
+                            canPractice
+                                ? 'bg-emerald-700 hover:bg-emerald-600 text-white'
+                                : 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed'
+                        }">
+                            <i class="fas fa-bolt mr-1"></i>${xp >= 100 ? 'Max XP' : 'Practice (+10 XP)'}
+                        </button>
+                    `}
+                </div>
+
+                <!-- Mastery Bar -->
+                <div>
+                    <div class="flex justify-between text-[10px] font-bold mb-1">
+                        <span class="text-slate-400">Skill Mastery (${practiceStatLabels} on practice)</span>
+                        <span class="${xp >= 80 ? 'text-emerald-400' : xp >= 50 ? 'text-indigo-300' : 'text-slate-300'}">${xp} / 100 XP</span>
+                    </div>
+                    <div class="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                        <div class="h-full bg-gradient-to-r from-indigo-600 to-emerald-500 transition-all duration-300" style="width: ${xp}%"></div>
+                    </div>
+                </div>
+
+                <!-- 3 Course Tiers -->
+                <div class="space-y-1.5 pt-1">
+                    ${coursesHtml}
+                </div>
             </div>
-            <p class="text-[11px] text-indigo-400 italic font-semibold">Skill workshop enrollment will be active in the upcoming expansion!</p>
+        `;
+    }).join('');
+
+    UI.showModal("Skill Workshops & Courses", `
+        <div class="space-y-3 text-left max-h-[70vh] overflow-y-auto pr-1">
+            ${feedbackBanner}
+            <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-800 grid grid-cols-3 gap-2 text-center">
+                <div class="bg-slate-950/60 p-1.5 rounded-lg border border-slate-800/80">
+                    <div class="text-[9px] uppercase font-bold text-slate-400">Cash</div>
+                    <div class="text-xs font-extrabold text-emerald-400 truncate">${Utils.formatMoney(user.money || 0)}</div>
+                </div>
+                <div class="bg-slate-950/60 p-1.5 rounded-lg border border-slate-800/80">
+                    <div class="text-[9px] uppercase font-bold text-slate-400">Practice Left</div>
+                    <div class="text-xs font-extrabold text-indigo-300">${practiceLeft} / 2 yr</div>
+                </div>
+                <div class="bg-slate-950/60 p-1.5 rounded-lg border border-slate-800/80">
+                    <div class="text-[9px] uppercase font-bold text-slate-400">Certificates</div>
+                    <div class="text-xs font-extrabold text-amber-300">${certCount} / ${SKILL_TRACKS.length}</div>
+                </div>
+            </div>
+            <p class="text-[11px] text-slate-400 leading-relaxed px-0.5">
+                Practice for free (up to 2x/year) or enroll in Workshops, Bootcamps &amp; Master Certifications to unlock high-paying careers without a degree, start at higher job levels, and boost promotions or combat ability.
+            </p>
+            <div class="space-y-3">
+                ${skillCardsHtml}
+            </div>
         </div>
     `);
+}
+
+export function practiceSkill(skillKey) {
+    const user = state.gameState?.user;
+    if (!user) return;
+
+    const res = GameLogic.executePracticeSkill(user, skillKey);
+    if (!res.success) {
+        openSkillsModal(res.message, 'bad');
+        return;
+    }
+
+    addLog(res.message, 'good');
+    UI.updateHeader(user);
+    saveToSlot();
+    if (typeof saveGame === 'function') saveGame();
+    openSkillsModal(res.message, 'good');
+}
+
+export function enrollSkillCourse(skillKey, tierNum) {
+    const user = state.gameState?.user;
+    if (!user) return;
+
+    const res = GameLogic.executeEnrollSkillCourse(user, skillKey, tierNum);
+    if (!res.success) {
+        openSkillsModal(res.message, 'bad');
+        return;
+    }
+
+    addLog(res.message, res.certified ? 'major' : 'good');
+    UI.updateHeader(user);
+    saveToSlot();
+    if (typeof saveGame === 'function') saveGame();
+    openSkillsModal(res.message, 'good');
 }
 
 export function renderMoreDashboard() {
@@ -76,12 +239,15 @@ export function renderMoreDashboard() {
     }
     const gymLocked = (user.age || 0) < 12;
     const dietLocked = (user.age || 0) <= 12;
+    const skillsLocked = (user.age || 0) < 12;
     const lotteryLocked = (user.age || 0) < 18;
     const casinoLocked = (user.age || 0) < 18;
     const travelLocked = (user.age || 0) < 16;
     const currentDiet = GameLogic.getDietPlan(user.diet || (user.hasBetterDiet ? 'balanced' : 'junk'));
     const ticketsBought = user.lotteryTicketsBoughtThisYear || 0;
     const ticketsLeft = 10 - ticketsBought;
+    const certCount = SKILL_TRACKS.filter(s => user.skills?.[s.key]?.certified).length;
+    const practiceLeft = Math.max(0, 2 - (user.skillActionsThisYear || 0));
 
     UI.updateBottomNav('more');
     const backBtnHtml = !UI.isBottomNavEnabled() ? `
@@ -178,12 +344,15 @@ export function renderMoreDashboard() {
                             icon: 'fa-book-open',
                             iconBg: 'bg-indigo-950/60',
                             iconColor: 'text-indigo-400',
+                            badgeText: certCount > 0 ? `${certCount} Certified` : `${practiceLeft}/2 Practice`,
                             badgeColor: 'border-indigo-800/60 text-indigo-300 bg-indigo-950/40',
                             title: 'Skill Workshops & Courses',
-                            subtitle: 'Coding, Fitness, Cooking & Speaking',
+                            subtitle: 'Coding, Leadership, Defense, Culinary, Design & Trades',
                             action: 'openSkillsModal',
                             buttonText: 'Explore',
-                            buttonStyle: 'bg-indigo-700 hover:bg-indigo-600 text-white'
+                            buttonStyle: 'bg-indigo-700 hover:bg-indigo-600 text-white',
+                            isLocked: skillsLocked,
+                            lockText: 'Age 12+'
                         })}
                     </div>
                 </div>

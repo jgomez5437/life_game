@@ -3,7 +3,7 @@ import { UI } from '../ui/ui.js';
 import { Utils } from '../ui/utils.js';
 import { AvatarLogic } from './avatarLogic.js';
 import { HQ_TIERS, BUSINESS_INDUSTRIES, VC_INVESTOR_TYPES } from '../features/business/businessTypes.js';
-import { GRAD_SCHOOL_DEGREE_TITLES } from './constants.js';
+import { GRAD_SCHOOL_DEGREE_TITLES, SKILL_TRACKS } from './constants.js';
 import { unlockAchievement } from './achievementManager.js';
 
 function sanitizeName(rawInput) {
@@ -337,7 +337,255 @@ function getEducationMilestones(user) {
         });
     });
 
+    // 5. Skill Certifications
+    if (user.skills && typeof user.skills === 'object') {
+        SKILL_TRACKS.forEach(skill => {
+            const st = user.skills[skill.key];
+            if (st && st.certified) {
+                addMilestone({
+                    id: `cert_${skill.key}`,
+                    title: skill.certificateTitle,
+                    skillKey: skill.key,
+                    category: 'certification',
+                    icon: 'fa-certificate',
+                    color: skill.color || 'indigo'
+                });
+            }
+        });
+    }
+
     return milestones;
+}
+
+function ensureUserSkills(user) {
+    if (!user) return {};
+    if (!user.skills || typeof user.skills !== 'object' || Array.isArray(user.skills)) {
+        user.skills = {};
+    }
+    SKILL_TRACKS.forEach(skill => {
+        const existing = user.skills[skill.key];
+        if (!existing || typeof existing !== 'object') {
+            user.skills[skill.key] = { xp: 0, tiersCompleted: [], certified: false };
+        } else {
+            existing.xp = Math.max(0, Math.min(100, Number(existing.xp) || 0));
+            existing.tiersCompleted = Array.isArray(existing.tiersCompleted)
+                ? existing.tiersCompleted.filter(t => typeof t === 'number')
+                : [];
+            existing.certified = Boolean(existing.certified || existing.tiersCompleted.includes(3));
+        }
+    });
+    if (typeof user.skillActionsThisYear !== 'number' || Number.isNaN(user.skillActionsThisYear)) {
+        user.skillActionsThisYear = 0;
+    }
+    return user.skills;
+}
+
+function getSkillState(user, skillKey) {
+    if (!user) return { xp: 0, tiersCompleted: [], certified: false };
+    const skills = ensureUserSkills(user);
+    return skills[skillKey] || { xp: 0, tiersCompleted: [], certified: false };
+}
+
+function getSkillXp(user, skillKey) {
+    if (!user || !user.skills || !user.skills[skillKey]) return 0;
+    return Math.max(0, Math.min(100, Number(user.skills[skillKey].xp) || 0));
+}
+
+function hasCareerSkillCertification(user, trackKey) {
+    if (!user || !trackKey || !user.skills) return null;
+    for (const skill of SKILL_TRACKS) {
+        if (Array.isArray(skill.unlocksCareers) && skill.unlocksCareers.includes(trackKey)) {
+            const st = user.skills[skill.key];
+            if (st && (st.certified || (Array.isArray(st.tiersCompleted) && st.tiersCompleted.includes(3)))) {
+                return skill;
+            }
+        }
+    }
+    return null;
+}
+
+function getCareerUnlockingSkills(trackKey) {
+    if (!trackKey) return [];
+    return SKILL_TRACKS.filter(s => Array.isArray(s.unlocksCareers) && s.unlocksCareers.includes(trackKey));
+}
+
+function getCareerSkillBonuses(user, trackKey) {
+    const result = {
+        salaryMultiplier: 1.0,
+        startingLevel: 0,
+        workHarderBonus: 0,
+        promoBonus: 0,
+        raiseRate: 0.05,
+        matchedSkill: null,
+        fastTracked: false,
+        unlockedByCert: null
+    };
+    if (!user || !trackKey) return result;
+
+    const unlockedByCert = hasCareerSkillCertification(user, trackKey);
+    if (unlockedByCert) {
+        result.unlockedByCert = unlockedByCert;
+    }
+
+    let bestXp = 0;
+    let bestSkill = null;
+    let isCertifiedInTrack = false;
+    let isFastTracked = false;
+
+    for (const skill of SKILL_TRACKS) {
+        const st = user.skills?.[skill.key];
+        const xp = st ? (Number(st.xp) || 0) : 0;
+        const certified = Boolean(st && (st.certified || (Array.isArray(st.tiersCompleted) && st.tiersCompleted.includes(3))));
+
+        const isDirectMatch =
+            (Array.isArray(skill.unlocksCareers) && skill.unlocksCareers.includes(trackKey)) ||
+            (Array.isArray(skill.fastTrackCareers) && skill.fastTrackCareers.includes(trackKey)) ||
+            (Array.isArray(skill.boostsCareers) && skill.boostsCareers.includes(trackKey));
+
+        if (isDirectMatch) {
+            if (xp > bestXp || (certified && !isCertifiedInTrack)) {
+                bestXp = Math.max(bestXp, xp);
+                bestSkill = skill;
+            }
+            if (certified) {
+                isCertifiedInTrack = true;
+                if (Array.isArray(skill.fastTrackCareers) && skill.fastTrackCareers.includes(trackKey)) {
+                    isFastTracked = true;
+                    bestSkill = skill;
+                }
+            }
+        }
+    }
+
+    const leadershipXp = getSkillXp(user, 'leadership');
+    const leadershipCert = Boolean(user.skills?.leadership?.certified);
+
+    result.matchedSkill = bestSkill || (leadershipXp >= 50 ? SKILL_TRACKS.find(s => s.key === 'leadership') : null);
+
+    if (isFastTracked) {
+        result.startingLevel = 1;
+        result.fastTracked = true;
+        result.salaryMultiplier = 1.20;
+    } else if (isCertifiedInTrack || bestXp >= 80) {
+        result.salaryMultiplier = 1.20;
+    } else if (bestXp >= 50 || leadershipCert) {
+        result.salaryMultiplier = 1.10;
+    }
+
+    // Work harder bonus (+0 to +8) and promotion probability bonus (+0 to +0.15)
+    const effectiveSkillXp = Math.max(bestXp, Math.round(leadershipXp * 0.75));
+    if (isCertifiedInTrack || effectiveSkillXp >= 80) {
+        result.workHarderBonus = 8;
+        result.promoBonus = 0.15;
+        result.raiseRate = 0.08;
+    } else if (effectiveSkillXp >= 50) {
+        result.workHarderBonus = 5;
+        result.promoBonus = 0.10;
+        result.raiseRate = 0.07;
+    } else if (effectiveSkillXp >= 25) {
+        result.workHarderBonus = 3;
+        result.promoBonus = 0.05;
+        result.raiseRate = 0.06;
+    }
+
+    return result;
+}
+
+function executePracticeSkill(user, skillKey) {
+    if (!user) return { success: false, message: 'No active player.' };
+    const skill = SKILL_TRACKS.find(s => s.key === skillKey);
+    if (!skill) return { success: false, message: 'Invalid skill selected.' };
+
+    if ((user.age || 0) < (skill.minAge || 12)) {
+        return { success: false, message: `You must be at least age ${skill.minAge || 12} to practice ${skill.shortName}.` };
+    }
+
+    ensureUserSkills(user);
+    if ((user.skillActionsThisYear || 0) >= 2) {
+        return { success: false, message: 'You have already used both of your self-practice sessions this year. Age up or enroll in a workshop!' };
+    }
+
+    const st = user.skills[skillKey];
+    if (st.xp >= 100) {
+        return { success: false, message: `You have already reached 100% mastery in ${skill.shortName}!` };
+    }
+
+    const xpGain = 10;
+    st.xp = Math.min(100, st.xp + xpGain);
+    user.skillActionsThisYear = (user.skillActionsThisYear || 0) + 1;
+
+    const statDeltas = [];
+    if (skill.practiceStats) {
+        for (const [statName, delta] of Object.entries(skill.practiceStats)) {
+            adjustStat(user, statName, delta);
+            statDeltas.push(`+${delta} ${statName.charAt(0).toUpperCase() + statName.slice(1)}`);
+        }
+    }
+
+    return {
+        success: true,
+        xpGain,
+        newXp: st.xp,
+        statDeltas,
+        skill,
+        message: `Practiced ${skill.shortName} (+${xpGain} Mastery XP${statDeltas.length ? ', ' + statDeltas.join(', ') : ''}).`
+    };
+}
+
+function executeEnrollSkillCourse(user, skillKey, tierNum) {
+    if (!user) return { success: false, message: 'No active player.' };
+    const skill = SKILL_TRACKS.find(s => s.key === skillKey);
+    if (!skill) return { success: false, message: 'Invalid skill selected.' };
+
+    const tier = Number(tierNum);
+    const course = skill.courses.find(c => c.tier === tier);
+    if (!course) return { success: false, message: 'Invalid course tier.' };
+
+    ensureUserSkills(user);
+    const st = user.skills[skillKey];
+
+    if (st.tiersCompleted.includes(tier)) {
+        return { success: false, message: `You have already completed ${course.title}.` };
+    }
+
+    if ((user.age || 0) < (course.minAge || skill.minAge || 12)) {
+        return { success: false, message: `You must be at least age ${course.minAge || skill.minAge || 12} to enroll in ${course.title}.` };
+    }
+
+    if (st.xp < (course.minXp || 0)) {
+        return { success: false, message: `Requires at least ${course.minXp} Mastery XP in ${skill.shortName} (Current: ${st.xp} XP). Practice or complete an earlier workshop first!` };
+    }
+
+    if ((user.money || 0) < course.cost) {
+        return { success: false, message: `Insufficient funds! You need ${Utils.formatMoney(course.cost)} to enroll in ${course.title}.` };
+    }
+
+    user.money -= course.cost;
+    st.xp = Math.min(100, st.xp + course.xpGain);
+    st.tiersCompleted.push(tier);
+    if (course.grantsCert) {
+        st.certified = true;
+    }
+
+    const statDeltas = [];
+    if (course.stats) {
+        for (const [statName, delta] of Object.entries(course.stats)) {
+            adjustStat(user, statName, delta);
+            statDeltas.push(`+${delta} ${statName.charAt(0).toUpperCase() + statName.slice(1)}`);
+        }
+    }
+
+    const certMsg = course.grantsCert ? ` Earned Master Certificate: ${skill.certificateTitle}!` : '';
+    return {
+        success: true,
+        course,
+        skill,
+        xpGain: course.xpGain,
+        newXp: st.xp,
+        certified: st.certified,
+        statDeltas,
+        message: `Completed "${course.title}" (+${course.xpGain} Mastery XP${statDeltas.length ? ', ' + statDeltas.join(', ') : ''}).${certMsg}`
+    };
 }
 
 /**
@@ -5106,8 +5354,9 @@ function attemptCrime(crimeId, user, targetPersonId = null) {
     const priorConvictions = user.criminalRecord.filter(r => r.verdict === 'guilty').length;
     const smartsBonus = (clampStat(user.smarts, 50) - 50) * 0.003;
     const priorPenalty = priorConvictions * 0.05;
+    const martialArtsBonus = crime.category !== 'juvenile' ? (getSkillXp(user, 'martial_arts') / 100) * 0.15 : 0;
 
-    const finalChance = Math.min(0.92, Math.max(0.10, crime.baseSuccessRate + smartsBonus - priorPenalty));
+    const finalChance = Math.min(0.92, Math.max(0.10, crime.baseSuccessRate + smartsBonus + martialArtsBonus - priorPenalty));
     const roll = Math.random();
     const isSuccess = roll < finalChance;
 
@@ -5255,14 +5504,17 @@ function handleArrestAction(user, actionType, bribeAmount = 0) {
     }
 
     if (actionType === 'flee') {
-        const healthChance = (clampStat(user.health, 50) / 100) * 0.55;
+        const martialArtsXp = getSkillXp(user, 'martial_arts');
+        const martialFleeBonus = (martialArtsXp / 100) * 0.20;
+        const healthChance = Math.min(0.90, (clampStat(user.health, 50) / 100) * 0.55 + martialFleeBonus);
         if (Math.random() < healthChance) {
             user.pendingTrial = null;
             adjustStat(user, 'happiness', 15);
             return { success: true, outcome: 'escaped', message: "You sprinted down an alley, lost the sirens, and escaped police custody!" };
         } else {
             pending.extraCharges.push("Resisting Arrest & Evading Officers");
-            adjustStat(user, 'health', -10);
+            const healthPenalty = martialArtsXp >= 50 ? -5 : -10;
+            adjustStat(user, 'health', healthPenalty);
             adjustStat(user, 'happiness', -15);
             return { success: true, outcome: 'flee_failed', message: "Officers tackled you to the ground and added resisting arrest charges!" };
         }
@@ -5681,7 +5933,8 @@ function attackPrisonInmate(user, targetType, targetId, weaponType = 'fists') {
         return { success: false, msg: "You do not own a Handmade Shank in your cell mattress stash!" };
     }
 
-    const userPower = clampStat(user.health, 50) + clampStat(user.smarts, 50) + (usingShank ? 40 : 0);
+    const martialArtsPower = Math.round((getSkillXp(user, 'martial_arts') / 100) * 50);
+    const userPower = clampStat(user.health, 50) + clampStat(user.smarts, 50) + (usingShank ? 40 : 0) + martialArtsPower;
     const inmateDefense = Math.floor(Math.random() * 50) + 40;
     const win = Math.random() < (userPower / (userPower + inmateDefense));
 
@@ -5746,7 +5999,8 @@ function attackPrisonInmate(user, targetType, targetId, weaponType = 'fists') {
             }
         }
     } else {
-        adjustStat(user, 'health', -35);
+        const healthLoss = Math.max(15, Math.round(35 * (1 - (getSkillXp(user, 'martial_arts') / 100) * 0.5)));
+        adjustStat(user, 'health', -healthLoss);
         adjustStat(user, 'happiness', -20);
 
         const guardCaught = Math.random() < 0.35; // 35% chance guards break up lost fight
@@ -5760,7 +6014,7 @@ function attackPrisonInmate(user, targetType, targetId, weaponType = 'fists') {
                 killed: false,
                 solitary: true,
                 targetName: target.name,
-                msg: `BRAWL BROKEN UP! ${target.name} overpowered you in the fight before guards intervened and threw you into Solitary Confinement for 1 year! Lost 35 Health.`
+                msg: `BRAWL BROKEN UP! ${target.name} overpowered you in the fight before guards intervened and threw you into Solitary Confinement for 1 year! Lost ${healthLoss} Health.`
             };
         } else {
             return {
@@ -5768,7 +6022,7 @@ function attackPrisonInmate(user, targetType, targetId, weaponType = 'fists') {
                 killed: false,
                 solitary: false,
                 targetName: target.name,
-                msg: `${target.name} retaliated fiercely and overpowered you in the brawl! Lost 35 Health and 20 Happiness.`
+                msg: `${target.name} retaliated fiercely and overpowered you in the brawl! Lost ${healthLoss} Health and 20 Happiness.`
             };
         }
     }
@@ -5828,15 +6082,17 @@ function interactYardInmate(user, inmateId, actionType) {
     }
 
     if (actionType === 'challenge_boss') {
-        const userPower = clampStat(user.health, 50) + clampStat(user.smarts, 50);
+        const martialArtsPower = Math.round((getSkillXp(user, 'martial_arts') / 100) * 50);
+        const userPower = clampStat(user.health, 50) + clampStat(user.smarts, 50) + martialArtsPower;
         if (Math.random() < (userPower / 180)) {
             stats.respect = Math.min(100, (stats.respect || 25) + 40);
             stats.guardRelation = Math.max(0, (stats.guardRelation || 50) - 15);
             return { success: true, msg: `You challenged ${inmate.name} for Yard Supremacy and WON the brawl! Gained +40 Respect!` };
         } else {
-            adjustStat(user, 'health', -30);
+            const healthLoss = Math.max(15, Math.round(30 * (1 - (getSkillXp(user, 'martial_arts') / 100) * 0.5)));
+            adjustStat(user, 'health', -healthLoss);
             adjustStat(user, 'happiness', -20);
-            return { success: false, msg: `${inmate.name} defeated you in the yard brawl! Lost 30 Health and 20 Happiness.` };
+            return { success: false, msg: `${inmate.name} defeated you in the yard brawl! Lost ${healthLoss} Health and 20 Happiness.` };
         }
     }
 
@@ -6457,5 +6713,13 @@ export const GameLogic = {
     sellContrabandItem,
     doSolitaryActivity,
     attackPrisonInmate,
-    getMinRetireYears
+    getMinRetireYears,
+    ensureUserSkills,
+    getSkillState,
+    getSkillXp,
+    hasCareerSkillCertification,
+    getCareerUnlockingSkills,
+    getCareerSkillBonuses,
+    executePracticeSkill,
+    executeEnrollSkillCourse
 };
