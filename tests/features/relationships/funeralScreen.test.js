@@ -88,5 +88,45 @@ describe('Funeral Screen Minor vs Adult Logic', () => {
         expect(renderedHtml).toContain('Plan Their Funeral');
         expect(renderedHtml).toContain('Donate Body to Science');
         expect(renderedHtml).toContain('Look the Other Way');
+        expect(renderedHtml).toContain('fa-monument');
+        expect(renderedHtml).not.toContain('fa-tombstone');
+    });
+
+    test('Funeral screen renders fa-monument and card buttons with readable classes', () => {
+        const spyRender = jest.spyOn(UI, 'renderScreen').mockImplementation(() => {});
+
+        state.gameState = {
+            user: {
+                username: 'Alex',
+                age: 16,
+                money: 500,
+                relationships: [],
+                deceasedFamily: []
+            },
+            pendingFunerals: [
+                {
+                    id: 'mother_1',
+                    name: 'Ashley Campbell',
+                    type: 'Mother',
+                    category: 'family',
+                    age: 54,
+                    deathCause: 'a sudden heart attack',
+                    inheritanceAmt: 119000
+                }
+            ]
+        };
+
+        processNextFuneral();
+
+        expect(spyRender).toHaveBeenCalledTimes(1);
+        const renderedHtml = spyRender.mock.calls[0][0];
+
+        expect(renderedHtml).toContain('fa-monument');
+        expect(renderedHtml).not.toContain('fa-tombstone');
+        expect(renderedHtml).toContain('Tragedy Strikes');
+        expect(renderedHtml).toContain('Inheritance');
+        expect(renderedHtml).toContain('$119,000');
+        expect(renderedHtml).toContain('Attend Funeral');
+        expect(renderedHtml).toContain('Not Attend Funeral');
     });
 });
