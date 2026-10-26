@@ -235,6 +235,8 @@ export const askPartnerToMove = lazy('more', 'askPartnerToMove');
 export const confirmMoveAlone = lazy('more', 'confirmMoveAlone');
 export const openSkillsModal = lazy('more', 'openSkillsModal');
 export const toggleSkillExpand = lazy('more', 'toggleSkillExpand');
+export const collapseSkills = lazy('more', 'collapseSkills');
+export const closeSkillsModal = lazy('more', 'closeSkillsModal');
 export const practiceSkill = lazy('more', 'practiceSkill');
 export const enrollSkillCourse = lazy('more', 'enrollSkillCourse');
 
@@ -1645,6 +1647,8 @@ const routeHandlers = {
   selectDiet,
   openSkillsModal,
   toggleSkillExpand,
+  collapseSkills,
+  closeSkillsModal,
   practiceSkill,
   enrollSkillCourse,
   openLotteryModal,

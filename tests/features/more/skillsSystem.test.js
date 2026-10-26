@@ -3,7 +3,7 @@ import { state } from '../../../public/src/core/state.js';
 import { CAREER_TRACKS, SKILL_TRACKS } from '../../../public/src/core/constants.js';
 import { isTrackLocked, getTrackWarnings, getEligibleCareers } from '../../../public/src/core/recommendations.js';
 import { migrateState } from '../../../public/src/core/saveSlotManager.js';
-import { openSkillsModal, toggleSkillExpand, practiceSkill, enrollSkillCourse } from '../../../public/src/features/more/moreScreen.js';
+import { openSkillsModal, toggleSkillExpand, collapseSkills, closeSkillsModal, practiceSkill, enrollSkillCourse } from '../../../public/src/features/more/moreScreen.js';
 
 describe('Skills & Courses System and Game Integrations', () => {
     beforeEach(() => {
@@ -154,34 +154,45 @@ describe('Skills & Courses System and Game Integrations', () => {
         expect(migrated.user.skills.martial_arts.tiersCompleted).toContain(1);
     });
 
-    test('openSkillsModal renders surface-level options and expands on toggleSkillExpand', () => {
+    test('openSkillsModal renders surface-level options, handles navigation buttons, and closes without history stack', () => {
         openSkillsModal();
         const modalContent = document.getElementById('modal-content');
+        const modalOverlay = document.getElementById('modal-overlay');
+
         expect(modalContent.textContent).toContain('Computer Programming & Software');
         expect(modalContent.textContent).toContain('Public Speaking & Leadership');
+        expect(modalContent.textContent).toContain('Back to More Options');
         // By default, surface level rows are collapsed so courses and practice are hidden
         expect(modalContent.textContent).not.toContain('Tier 1 Workshop');
         expect(modalContent.textContent).not.toContain('Practice (+10 XP)');
+        expect(modalContent.textContent).not.toContain('Back to Skill Options');
 
-        // Expanding coding shows courses, practice button, and impact summary
+        // Expanding coding shows courses, practice button, and Back to Skill Options
         toggleSkillExpand('coding');
         expect(modalContent.textContent).toContain('Practice (+10 XP)');
         expect(modalContent.textContent).toContain('Tier 1 Workshop');
         expect(modalContent.textContent).toContain('Intro to Python & Web Dev');
+        expect(modalContent.textContent).toContain('Back to Skill Options');
 
-        // Toggling coding again collapses it
-        toggleSkillExpand('coding');
+        // Clicking Back to Skill Options (collapseSkills) collapses coding
+        collapseSkills();
         expect(modalContent.textContent).not.toContain('Tier 1 Workshop');
         expect(modalContent.textContent).not.toContain('Practice (+10 XP)');
+        expect(modalContent.textContent).not.toContain('Back to Skill Options');
 
         // Practicing a skill automatically expands that skill
         practiceSkill('leadership');
         expect(state.gameState.user.skills.leadership.xp).toBe(10);
         expect(modalContent.textContent).toContain('Public Speaking & Leadership');
         expect(modalContent.textContent).toContain('Practice (+10 XP)');
+        expect(modalContent.textContent).toContain('Back to Skill Options');
 
         enrollSkillCourse('leadership', 1);
         expect(state.gameState.user.skills.leadership.xp).toBe(35);
         expect(state.gameState.user.skills.leadership.tiersCompleted).toContain(1);
+
+        // Closing the modal returns directly to More Options and closes modal overlay
+        closeSkillsModal();
+        expect(modalOverlay.classList.contains('hidden')).toBe(true);
     });
 });
