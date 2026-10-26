@@ -4,6 +4,7 @@ import { UI } from '../../ui/ui.js';
 import { GameLogic } from '../../core/gameLogic.js';
 import { renderPersonInteraction, isDeadNPC } from './relationshipScreen.js';
 import { unlockAchievement } from '../../core/achievementManager.js';
+import { SoundManager } from '../../core/soundManager.js';
 
 const WEDDING_TIERS = [
     { name: "Courthouse", cost: 200, desc: "A simple, no-frills ceremony" },
@@ -89,6 +90,7 @@ export const confirmWeddingPlan = (personId, index) => {
 
     GameLogic.adjustStat(user, 'happiness', tier.cost >= 20000 ? 30 : 20);
     addLog(`You married ${person.name} in a ${tier.name.toLowerCase()} wedding!`, 'good');
+    SoundManager.play('romance');
     UI.updateHeader(user);
     UI.showModal('Congratulations!', `You are now married to ${Utils.escapeHtml(person.name)}!`, () => openNameChangeChoice(personId));
 };

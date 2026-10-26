@@ -7,6 +7,7 @@ import { saveGame } from '../../core/main.js';
 import { CAREER_TRACKS, PART_TIME_JOBS, SPECIAL_CAREER_TRACKS } from '../../core/constants.js';
 import { GameLogic } from '../../core/gameLogic.js';
 import { isTrackLocked, getTrackWarnings } from '../../core/recommendations.js';
+import { SoundManager } from '../../core/soundManager.js';
 
 const get = id => document.getElementById(id);
 
@@ -381,6 +382,7 @@ export function answerInterview(answerIdx) {
 
     if (answerIdx === _pendingInterview.correctAnswer) {
         // ── Correct ──────────────────────────────────────────────────────────
+        SoundManager.play('milestone');
         if (_pendingInterview.type === 'career') {
             _hireCareer(_pendingInterview.trackKey);
         } else {

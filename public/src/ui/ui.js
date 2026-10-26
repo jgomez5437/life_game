@@ -1,6 +1,7 @@
 import { Utils } from './utils.js';
 import { renderAvatar } from './avatarRenderer.js';
 import { state } from '../core/state.js';
+import { SoundManager } from '../core/soundManager.js';
 
 const _elements = {
     get name() { return document.getElementById('header-name'); },
@@ -366,6 +367,7 @@ export const UI = {
         if (isMoney) {
             const formattedAbs = Utils.formatMoney(Math.abs(delta));
             text = `${sign}${formattedAbs} ${emoji}`.trim();
+            SoundManager.play(isPositive ? 'cashGain' : 'cashSpend');
         } else {
             const absVal = Math.abs(delta);
             const labelPart = label ? ` ${label}` : '';
@@ -724,6 +726,11 @@ export const UI = {
             _hideBottomNavBar();
             return;
         }
+
+        if (bottomNav._lastActiveTab && bottomNav._lastActiveTab !== activeTab) {
+            SoundManager.play('uiClick');
+        }
+        bottomNav._lastActiveTab = activeTab;
 
         bottomNav.classList.remove('hidden');
 

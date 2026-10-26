@@ -5,6 +5,7 @@ import { addLog } from '../player/mainScreen.js';
 import { UI } from '../../ui/ui.js';
 import { Utils } from '../../ui/utils.js';
 import { unlockAchievement } from '../../core/achievementManager.js';
+import { SoundManager } from '../../core/soundManager.js';
 
 const get = id => document.getElementById(id);
 
@@ -337,6 +338,7 @@ function finishBlackjackGame(playerNaturalBlackjack) {
     const user = state.gameState.user;
     
     if (outcome === 'win') {
+        SoundManager.play('casinoWin');
         user.money += betAmount * 2;
         GameLogic.adjustStat(user, 'happiness', betAmount >= 5000 ? 15 : 5);
         addLog(`Won ${Utils.formatMoney(betAmount)} at Blackjack!`, 'good');
@@ -344,6 +346,7 @@ function finishBlackjackGame(playerNaturalBlackjack) {
         user.money += betAmount;
         addLog(`Pushed ${Utils.formatMoney(betAmount)} at Blackjack.`, 'neutral');
     } else {
+        SoundManager.play('casinoLose');
         GameLogic.adjustStat(user, 'happiness', betAmount >= 5000 ? -10 : -3);
         addLog(`Lost ${Utils.formatMoney(betAmount)} at Blackjack.`, 'bad');
     }
@@ -490,8 +493,10 @@ export function confirmRouletteBet(type, target) {
         try {
             const result = GameLogic.playRoulette(user, type, target, betAmount);
             if (result.isWin) {
+                SoundManager.play('casinoWin');
                 GameLogic.adjustStat(user, 'happiness', result.netProfit >= 5000 ? 20 : 5);
             } else {
+                SoundManager.play('casinoLose');
                 GameLogic.adjustStat(user, 'happiness', betAmount >= 5000 ? -10 : -3);
             }
             saveGame();
@@ -638,7 +643,12 @@ export function confirmSlotsSpin(betAmount) {
         try {
             const result = GameLogic.spinSlotMachine(user, wager);
             if (result.isJackpot) {
+                SoundManager.play('jackpot');
                 unlockAchievement('mega_jackpot', user);
+            } else if (result.isWin) {
+                SoundManager.play('casinoWin');
+            } else {
+                SoundManager.play('casinoLose');
             }
             if (result.isWin) {
                 GameLogic.adjustStat(user, 'happiness', result.isJackpot ? 30 : (result.netProfit >= 5000 ? 15 : 5));
