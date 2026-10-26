@@ -65,6 +65,26 @@ describe('EventManager & Random Life Events Engine', () => {
                 });
             }
         });
+
+        test('all event option titles are clean of leading emojis to prevent duplicate icons', () => {
+            const user = state.gameState.user;
+            const emojiPattern = /^[\p{Extended_Pictographic}\u200d\uFE0F]/u;
+            for (const key in LIFE_EVENTS) {
+                const evt = LIFE_EVENTS[key];
+                const mockNPC = {
+                    id: 'npc_1',
+                    name: 'Test NPC',
+                    type: 'Classmate',
+                    status: 50,
+                    age: 18,
+                    proposedMajor: 'Art'
+                };
+                const renderResult = evt.render(user, mockNPC);
+                renderResult.options.forEach(opt => {
+                    expect(emojiPattern.test(opt.title)).toBe(false);
+                });
+            }
+        });
     });
 
     describe('Life Stage Trigger Conditions', () => {
