@@ -13,6 +13,7 @@ import { EulogyGenerator } from '../../core/eulogyGenerator.js';
 import { loadModule, preloadForContext } from '../../core/moduleLoader.js';
 import { checkPeriodicAchievements } from '../../core/achievementManager.js';
 import { EventManager } from '../../core/eventManager.js';
+import { SoundManager } from '../../core/soundManager.js';
 const get = id => document.getElementById(id);
 
 function checkSchoolActionTaken(user) {
@@ -36,6 +37,7 @@ export async function ageUp() {
 
     if (user.inPrison) {
         user.age++;
+        SoundManager.play('ageUp');
         const prisonRes = GameLogic.processPrisonAgeUp(user);
         if (prisonRes.events && prisonRes.events.length > 0) {
             prisonRes.events.forEach(eMsg => addLog(eMsg, 'neutral'));
@@ -70,6 +72,7 @@ export async function ageUp() {
 
     // 2. The Core Update
     user.age++;
+    SoundManager.play('ageUp');
 
     // 3. Run The Sub-Systems
     handleHealth(user);
@@ -122,6 +125,7 @@ export async function ageUp() {
 }
 
 function handleDeath(user, cause) {
+    SoundManager.play('death');
     user.lifeStatus = "Deceased";
     user.isDead = true;
     user.isAlive = false;
@@ -412,6 +416,7 @@ async function handleFinances(user) {
                         user.yearsInRole = 0;
                         GameLogic.adjustStat(user, 'happiness', 25);
                         addLog(`You've been promoted to ${nextLevel.title} in the Syndicate! Cut: ${Utils.formatMoney(user.jobSalary)}/yr. (+25 Happiness)`, 'major');
+                        SoundManager.play('milestone');
                     }
                 }
             }
@@ -481,6 +486,7 @@ async function handleFinances(user) {
                                 user.jobPerformance = 60;
                                 GameLogic.adjustStat(user, 'happiness', 20);
                                 addLog(`Promoted to ${nextLevel.title}! New salary: ${Utils.formatMoney(user.jobSalary)}/yr. (+20 Happiness)`, 'major');
+                                SoundManager.play('milestone');
                                 promoted = true;
                             }
                         }
@@ -606,6 +612,7 @@ function handleEducation(user) {
         if (user.schoolPerformance > 25) {
             GameLogic.adjustStat(user, 'happiness', 15);
             addLog("You graduated High School! Enroll in University or find a job. (+15 Happiness)", 'good');
+            SoundManager.play('milestone');
             user.highSchoolGraduated = true;
             user.highSchoolRetained = false;
             user.isStudent = false;
@@ -642,6 +649,7 @@ function handleEducation(user) {
                 user.relationships = user.relationships.filter(r => r.category !== 'classmate');
                 GameLogic.adjustStat(user, 'happiness', 20);
                 addLog(`You finished University with a degree in ${user.major}! (+20 Happiness)`, 'good');
+                SoundManager.play('milestone');
             } else {
                 addLog(`Completed year ${user.universitySchoolYear} of University.`, 'neutral');
             }
@@ -667,6 +675,7 @@ function handleEducation(user) {
                 user.relationships = user.relationships.filter(r => r.category !== 'classmate');
                 GameLogic.adjustStat(user, 'happiness', 25);
                 addLog(`Graduated from ${user.gradSchoolType}! (+25 Happiness)`, 'good');
+                SoundManager.play('milestone');
             } else {
                 addLog(`Completed year ${user.gradSchoolYear} of ${user.gradSchoolType}.`, 'neutral');
             }
@@ -827,6 +836,7 @@ function handlePregnancy(user) {
     if (!user.relationships) user.relationships = [];
     user.relationships.push(child);
     addLog(`You had a baby ${isMale ? 'boy' : 'girl'}! Welcome, ${child.name}.`, 'good');
+    SoundManager.play('newBaby');
 
     user.isExpecting = false;
     user.expectingWithId = null;

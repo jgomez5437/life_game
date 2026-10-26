@@ -6,6 +6,7 @@ import { saveGame } from '../../core/main.js';
 import { GameLogic } from '../../core/gameLogic.js';
 import { renderAvatar } from '../../ui/avatarRenderer.js';
 import { LIFE_EVENTS } from '../../core/eventManager.js';
+import { SoundManager } from '../../core/soundManager.js';
 
 export const processNextLifeEvent = () => {
     const queue = state.gameState?.pendingEvents;
@@ -110,6 +111,7 @@ export const processNextLifeEvent = () => {
         </div>
     `;
 
+    SoundManager.play('eventPopup');
     UI.showCustomModal({
         title: titleText,
         content: modalHtml,

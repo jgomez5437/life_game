@@ -1,5 +1,6 @@
 import { state, addLog } from './state.js';
 import { Utils } from '../ui/utils.js';
+import { SoundManager } from './soundManager.js';
 
 export const ACHIEVEMENTS_CATALOG = [
     {
@@ -312,6 +313,9 @@ export function unlockAchievement(achievementId, user = null, extraData = {}) {
 
     // Add celebration entry to life log
     addLog(`🏆 Achievement Unlocked: ${achievement.title} — ${achievement.description}`, 'major');
+
+    // Play achievement fanfare sound effect
+    SoundManager.play('achievement');
 
     // Trigger celebration toast UI notification
     triggerAchievementToast(achievement);

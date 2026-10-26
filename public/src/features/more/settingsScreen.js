@@ -5,6 +5,7 @@ import { saveGame, resetGame } from '../../core/main.js';
 import { renderLifeDashboard } from '../player/mainScreen.js';
 import { logout } from '../../auth/auth.js';
 import { getAchievementProgress } from '../../core/achievementManager.js';
+import { SoundManager } from '../../core/soundManager.js';
 
 export function openSettingsModal() {
     const isCloud = !!state.userAuthId;
@@ -311,6 +312,9 @@ export function toggleSettingSFX() {
     const current = localStorage.getItem('life_game_sfx') !== 'false';
     const next = !current;
     localStorage.setItem('life_game_sfx', next.toString());
+    if (next) {
+        SoundManager.play('toggleOn');
+    }
     
     const btn = document.getElementById('setting-sfx-btn');
     if (btn) {

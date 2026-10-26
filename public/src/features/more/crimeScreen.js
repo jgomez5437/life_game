@@ -6,6 +6,7 @@ import { loadModule } from '../../core/moduleLoader.js';
 import { UI } from '../../ui/ui.js';
 import { Utils } from '../../ui/utils.js';
 import { unlockAchievement } from '../../core/achievementManager.js';
+import { SoundManager } from '../../core/soundManager.js';
 
 const get = id => document.getElementById(id);
 
@@ -384,6 +385,7 @@ export function showArrestModal(crime, extraCharges = []) {
         </div>
     `;
 
+    SoundManager.play('arrest');
     UI.showCustomModal({
         title: "Police Arrest",
         content: html,
