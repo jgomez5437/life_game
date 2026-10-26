@@ -154,7 +154,7 @@ describe('Skills & Courses System and Game Integrations', () => {
         expect(migrated.user.skills.martial_arts.tiersCompleted).toContain(1);
     });
 
-    test('openSkillsModal renders surface-level options, handles navigation buttons, and closes without history stack', () => {
+    test('openSkillsModal renders surface-level options, handles expand/collapse, and closes to More Options', () => {
         openSkillsModal();
         const modalContent = document.getElementById('modal-content');
         const modalOverlay = document.getElementById('modal-overlay');
@@ -167,25 +167,24 @@ describe('Skills & Courses System and Game Integrations', () => {
         expect(modalContent.textContent).not.toContain('Practice (+10 XP)');
         expect(modalContent.textContent).not.toContain('Back to Skill Options');
 
-        // Expanding coding shows courses, practice button, and Back to Skill Options
+        // Expanding coding shows courses and practice button
         toggleSkillExpand('coding');
         expect(modalContent.textContent).toContain('Practice (+10 XP)');
         expect(modalContent.textContent).toContain('Tier 1 Workshop');
         expect(modalContent.textContent).toContain('Intro to Python & Web Dev');
-        expect(modalContent.textContent).toContain('Back to Skill Options');
+        expect(modalContent.textContent).not.toContain('Back to Skill Options');
 
-        // Clicking Back to Skill Options (collapseSkills) collapses coding
-        collapseSkills();
+        // Toggling coding again collapses it
+        toggleSkillExpand('coding');
         expect(modalContent.textContent).not.toContain('Tier 1 Workshop');
         expect(modalContent.textContent).not.toContain('Practice (+10 XP)');
-        expect(modalContent.textContent).not.toContain('Back to Skill Options');
 
         // Practicing a skill automatically expands that skill
         practiceSkill('leadership');
         expect(state.gameState.user.skills.leadership.xp).toBe(10);
         expect(modalContent.textContent).toContain('Public Speaking & Leadership');
         expect(modalContent.textContent).toContain('Practice (+10 XP)');
-        expect(modalContent.textContent).toContain('Back to Skill Options');
+        expect(modalContent.textContent).not.toContain('Back to Skill Options');
 
         enrollSkillCourse('leadership', 1);
         expect(state.gameState.user.skills.leadership.xp).toBe(35);

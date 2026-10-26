@@ -115,6 +115,15 @@ describe('Light Mode Theme & UI Contrast Verification', () => {
             expect(cssContent).toContain('body.light-mode.desktop-panels-active .desktop-panel .desktop-rec-btn');
             expect(cssContent).toContain('body.light-mode.desktop-panels-active .desktop-panel .text-white:not(.desktop-rec-btn)');
         });
+
+        test('styles.css contains high-contrast dark slate styling for action buttons in light mode', () => {
+            expect(cssContent).toContain('body.light-mode .more-option-btn.bg-slate-700');
+            expect(cssContent).toContain('body.light-mode button.bg-slate-700');
+            expect(cssContent).toContain('body.light-mode [data-action="closeSkillsModal"]');
+            expect(cssContent).toContain('body.light-mode [data-action="buyGymMembership"]');
+            expect(cssContent).toContain('background-color: #334155 !important');
+            expect(cssContent).toContain('border-color: #1e293b !important');
+        });
     });
 
     describe('Feature Screens DOM Markup', () => {

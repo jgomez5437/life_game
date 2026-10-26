@@ -985,6 +985,32 @@ body.light-mode .border-slate-500 {
 }
 
 /* --------------------------------------------------------------------------
+   Solid Slate / Dark Gray Action Buttons in Light Mode
+   (Join Gym, Modal Back to More Options, Action Buttons)
+   -------------------------------------------------------------------------- */
+body.light-mode .more-option-btn.bg-slate-700,
+body.light-mode .more-option-btn.bg-slate-800,
+body.light-mode button.bg-slate-700,
+body.light-mode button.bg-slate-800,
+body.light-mode [data-action="closeSkillsModal"],
+body.light-mode [data-action="buyGymMembership"] {
+    background-color: #334155 !important;
+    border-color: #1e293b !important;
+    color: #ffffff !important;
+}
+
+body.light-mode .more-option-btn.bg-slate-700:hover,
+body.light-mode .more-option-btn.bg-slate-800:hover,
+body.light-mode button.bg-slate-700:hover,
+body.light-mode button.bg-slate-800:hover,
+body.light-mode [data-action="closeSkillsModal"]:hover,
+body.light-mode [data-action="buyGymMembership"]:hover {
+    background-color: #1e293b !important;
+    border-color: #0f172a !important;
+    color: #ffffff !important;
+}
+
+/* --------------------------------------------------------------------------
    Solid Buttons & Badges - ALWAYS White Text in Light Mode
    -------------------------------------------------------------------------- */
 body.light-mode .btn-primary,
