@@ -290,6 +290,19 @@ export function migrateState(rawState) {
     const lifetimeCrimesCommitted = toNum(u.lifetimeCrimesCommitted, 0, 0);
     const mafiaCrimesThisYear = toNum(u.mafiaCrimesThisYear, 0, 0);
 
+    // Athlete & Pro Sports Subsystem
+    const athleteSport = u.athleteSport ? toStr(u.athleteSport, null) : null;
+    const athleteContract = (u.athleteContract && typeof u.athleteContract === 'object' && !Array.isArray(u.athleteContract)) ? u.athleteContract : null;
+    const athleteCareerEarnings = toNum(u.athleteCareerEarnings, 0, 0);
+    const athletePoorSeasons = toNum(u.athletePoorSeasons, 0, 0);
+    const athleteGamesThisYear = toNum(u.athleteGamesThisYear, 0, 0);
+    const athleteEndorsementThisYear = toBool(u.athleteEndorsementThisYear, false);
+    const athleteRings = toNum(u.athleteRings, 0, 0);
+    const athleteMvps = toNum(u.athleteMvps, 0, 0);
+    const athleteDraftsEntered = (u.athleteDraftsEntered && typeof u.athleteDraftsEntered === 'object' && !Array.isArray(u.athleteDraftsEntered)) ? u.athleteDraftsEntered : {};
+    const athleteTryoutYear = (u.athleteTryoutYear && typeof u.athleteTryoutYear === 'object' && !Array.isArray(u.athleteTryoutYear)) ? u.athleteTryoutYear : {};
+    const schoolSportsHistory = (u.schoolSportsHistory && typeof u.schoolSportsHistory === 'object' && !Array.isArray(u.schoolSportsHistory)) ? u.schoolSportsHistory : {};
+
     // 6. Prison State
     const prisonSentenceRemaining = toNum(u.prisonSentenceRemaining, 0, 0);
     const prisonTotalSentence = toNum(u.prisonTotalSentence, 0, 0);
@@ -444,6 +457,18 @@ export function migrateState(rawState) {
         hasSeenExpenseMsg,
         lifetimeCrimesCommitted,
         mafiaCrimesThisYear,
+
+        athleteSport,
+        athleteContract,
+        athleteCareerEarnings,
+        athletePoorSeasons,
+        athleteGamesThisYear,
+        athleteEndorsementThisYear,
+        athleteRings,
+        athleteMvps,
+        athleteDraftsEntered,
+        athleteTryoutYear,
+        schoolSportsHistory,
 
         inPrison,
         prisonSentenceRemaining,

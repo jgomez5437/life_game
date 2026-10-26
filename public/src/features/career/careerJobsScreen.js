@@ -4,7 +4,7 @@ import { addLog } from '../player/mainScreen.js';
 import { Utils } from '../../ui/utils.js';
 import { UI } from '../../ui/ui.js';
 import { saveGame } from '../../core/main.js';
-import { CAREER_TRACKS, PART_TIME_JOBS, SPECIAL_CAREER_TRACKS } from '../../core/constants.js';
+import { CAREER_TRACKS, PART_TIME_JOBS, SPECIAL_CAREER_TRACKS, PRO_SPORTS_LEAGUES } from '../../core/constants.js';
 import { GameLogic } from '../../core/gameLogic.js';
 import { isTrackLocked, getTrackWarnings } from '../../core/recommendations.js';
 import { SoundManager } from '../../core/soundManager.js';
@@ -441,7 +441,20 @@ export function joinSpecialCareer(trackKey) {
     if (!track) return;
 
     if (track.premiumPack && !hasPurchasedPack(track.premiumPack)) {
-        UI.showModal("Syndicate Expansion Required", "You must unlock the Mafia Syndicate Expansion Pack in The Spot store to join organized crime.");
+        if (trackKey === 'pro_athlete') {
+            UI.showModal("Athlete Pack Required", "You must unlock the Athlete & Pro Sports Expansion Pack in The Spot store to draft into professional sports leagues.");
+        } else {
+            UI.showModal("Syndicate Expansion Required", "You must unlock the Mafia Syndicate Expansion Pack in The Spot store to join organized crime.");
+        }
+        return;
+    }
+
+    if (trackKey === 'pro_athlete') {
+        if ((user.age || 0) < 18) {
+            UI.showModal("Too Young for Pro Sports", "Professional sports leagues require you to be at least 18 years old. Focus on school and hone your skills in Workshops & Courses!");
+            return;
+        }
+        openProSportsEntryModal('football');
         return;
     }
 
@@ -518,4 +531,287 @@ export function confirmJoinSpecialCareer(trackKey) {
 
     addLog(`You swore the oath and were initiated into ${track.label} as a ${level.title}.`, 'major');
     renderActivities();
+}
+
+let _currentProSportTab = 'football';
+
+export function openProSportsEntryModal(selectedSportKey = 'football') {
+    const user = state.gameState.user;
+    if (!user) return;
+    _currentProSportTab = selectedSportKey;
+
+    const prospect = GameLogic.evaluateAthleteProspect(user, selectedSportKey);
+    const league = prospect.league;
+
+    const sportsTabs = [
+        { key: 'football', label: 'Football', icon: 'fa-football-ball' },
+        { key: 'basketball', label: 'Basketball', icon: 'fa-basketball-ball' },
+        { key: 'baseball', label: 'Baseball', icon: 'fa-baseball-ball' },
+        { key: 'soccer', label: 'Soccer', icon: 'fa-futbol' }
+    ];
+
+    const tabsHtml = `
+        <div class="grid grid-cols-4 gap-1.5 p-1 bg-slate-900 rounded-xl border border-slate-700/80 mb-3">
+            ${sportsTabs.map(tab => {
+                const isActive = tab.key === selectedSportKey;
+                return `
+                    <button data-action="selectProSportTab" data-args="&apos;${tab.key}&apos;" class="py-2 px-1 rounded-lg text-xs font-bold transition flex flex-col items-center gap-1 ${
+                        isActive
+                            ? 'bg-emerald-600 text-white shadow'
+                            : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                    }">
+                        <i class="fas ${tab.icon} text-sm"></i>
+                        <span class="text-[10px] truncate">${tab.label}</span>
+                    </button>
+                `;
+            }).join('')}
+        </div>
+    `;
+
+    const sportSkill = GameLogic.getSkillState(user, league.skillKey);
+    const condSkill = GameLogic.getSkillState(user, 'conditioning');
+
+    const draftEntered = Boolean(user.athleteDraftsEntered?.[selectedSportKey]);
+    const triedThisYear = user.athleteTryoutYear?.[selectedSportKey] === user.age;
+    const isDraftEligible = user.age >= 18 && user.age <= 23 && !draftEntered && prospect.passedPhysical;
+    const isTryoutEligible = user.age >= 18 && user.age <= 35 && !triedThisYear && prospect.passedPhysical;
+
+    const modalContent = `
+        <div class="space-y-3.5 text-left max-h-[75vh] overflow-y-auto pr-1">
+            ${tabsHtml}
+
+            <!-- League Header Card -->
+            <div class="bg-gradient-to-r from-slate-900 to-slate-850 p-3.5 rounded-xl border border-slate-700 flex items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-xl bg-emerald-950/60 border border-emerald-700/60 flex items-center justify-center text-emerald-400 text-2xl shrink-0">
+                        <i class="fas ${league.icon}"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-white text-sm">${league.name}</h4>
+                        <div class="text-[11px] text-emerald-400 font-semibold">${league.leagueName}</div>
+                        <div class="text-[10px] text-slate-400 mt-0.5">Prize: <i class="fas fa-ring text-amber-400 mr-0.5"></i>${league.championshipName}</div>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Salary Range</div>
+                    <div class="text-xs font-black text-white">${Utils.formatMoney(league.levels[0].salary)} - ${Utils.formatMoney(league.levels[4].salary)}</div>
+                </div>
+            </div>
+
+            <!-- Scouting Report Card -->
+            <div class="bg-slate-900/90 p-3.5 rounded-xl border border-slate-700/80 space-y-2.5">
+                <div class="flex items-center justify-between">
+                    <div class="text-xs font-bold text-white flex items-center gap-1.5">
+                        <i class="fas fa-clipboard-check text-emerald-400"></i> Scouting Combine Evaluation
+                    </div>
+                    <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-lg ${
+                        prospect.prospectScore >= 75
+                            ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-700/60'
+                            : prospect.prospectScore >= 50
+                            ? 'bg-blue-950/80 text-blue-300 border border-blue-700/60'
+                            : 'bg-amber-950/80 text-amber-300 border border-amber-700/60'
+                    }">${prospect.grade}</span>
+                </div>
+
+                <!-- Stat Bars -->
+                <div class="space-y-1.5 text-[11px]">
+                    <div>
+                        <div class="flex justify-between text-slate-300 mb-0.5">
+                            <span>Health & Physical (${user.health || 0}/100)</span>
+                            <span class="font-bold text-emerald-400">${prospect.healthPoints} / 35 pts</span>
+                        </div>
+                        <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                            <div class="h-full bg-emerald-500 rounded-full" style="width: ${Math.min(100, ((user.health || 0) / 100) * 100)}%"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between text-slate-300 mb-0.5">
+                            <span>${league.name} Skill (${sportSkill.xp || 0} XP${sportSkill.certified ? ' • Certified' : ''})</span>
+                            <span class="font-bold text-emerald-400">${prospect.sportPoints} / 45 pts</span>
+                        </div>
+                        <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                            <div class="h-full bg-indigo-500 rounded-full" style="width: ${sportSkill.xp || 0}%"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between text-slate-300 mb-0.5">
+                            <span>Strength & Conditioning (${condSkill.xp || 0} XP)</span>
+                            <span class="font-bold text-emerald-400">${prospect.conditioningPoints} / 20 pts</span>
+                        </div>
+                        <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                            <div class="h-full bg-orange-500 rounded-full" style="width: ${condSkill.xp || 0}%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                ${!prospect.passedPhysical ? `
+                    <div class="p-2.5 rounded-lg bg-red-950/60 border border-red-800/60 text-red-300 text-[11px] flex items-center gap-2">
+                        <i class="fas fa-exclamation-triangle shrink-0"></i>
+                        <span>Health is below 50. Team doctors will not clear you for pro combine workouts or contact drills until you heal!</span>
+                    </div>
+                ` : ''}
+            </div>
+
+            <!-- Two Entry Options -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                <!-- Option 1: Pro Draft Combine -->
+                <div class="bg-slate-900 p-3 rounded-xl border border-slate-700 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-xs font-bold text-white flex items-center gap-1.5">
+                                <i class="fas fa-trophy text-amber-400"></i> Pro Draft Combine
+                            </span>
+                            <span class="text-[10px] font-bold text-slate-400">Ages 18–23</span>
+                        </div>
+                        <p class="text-[11px] text-slate-300 leading-relaxed mb-2">
+                            Enter the official league rookie draft. High scouting scores award 1st-round multi-year rookie contracts and multi-million dollar signing bonuses!
+                        </p>
+                        <div class="text-[10px] font-bold text-emerald-400 mb-3">
+                            Draft Probability: ${Math.round(prospect.draftOdds * 100)}%
+                        </div>
+                    </div>
+                    <button data-action="enterProSportsDraft" data-args="&apos;${selectedSportKey}&apos;" ${!isDraftEligible ? 'disabled' : ''} class="w-full py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                        isDraftEligible
+                            ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow'
+                            : 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed'
+                    }">
+                        <i class="fas fa-file-contract"></i> ${draftEntered ? 'Draft Already Entered' : user.age > 23 ? 'Draft Age Exceeded (23)' : !prospect.passedPhysical ? 'Failed Physical' : 'Declare for Draft'}
+                    </button>
+                </div>
+
+                <!-- Option 2: Free Agent Tryout -->
+                <div class="bg-slate-900 p-3 rounded-xl border border-slate-700 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-xs font-bold text-white flex items-center gap-1.5">
+                                <i class="fas fa-running text-cyan-400"></i> Walk-On Tryouts
+                            </span>
+                            <span class="text-[10px] font-bold text-slate-400">Ages 18–35</span>
+                        </div>
+                        <p class="text-[11px] text-slate-300 leading-relaxed mb-2">
+                            Attend open team tryouts. Proving yourself lands a 1-year or 2-year trial contract at league rookie minimum (${Utils.formatMoney(league.levels[0].salary)}/yr).
+                        </p>
+                        <div class="text-[10px] font-bold text-cyan-400 mb-3">
+                            Tryout Probability: ${Math.round(prospect.tryoutOdds * 100)}%
+                        </div>
+                    </div>
+                    <button data-action="enterProSportsTryout" data-args="&apos;${selectedSportKey}&apos;" ${!isTryoutEligible ? 'disabled' : ''} class="w-full py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                        isTryoutEligible
+                            ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow'
+                            : 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed'
+                    }">
+                        <i class="fas fa-shoe-prints"></i> ${triedThisYear ? 'Tried Out This Year' : user.age > 35 ? 'Age Limit Exceeded (35)' : !prospect.passedPhysical ? 'Failed Physical' : 'Attend Open Tryout'}
+                    </button>
+                </div>
+            </div>
+
+            <div class="pt-1">
+                <button data-action="hideModal" class="w-full bg-slate-800 hover:bg-slate-750 text-slate-300 font-semibold py-2 rounded-xl text-xs transition border border-slate-700">
+                    Close
+                </button>
+            </div>
+        </div>
+    `;
+
+    const modalOverlay = document.getElementById('modal-overlay');
+    const isAlreadyOpen = modalOverlay && !modalOverlay.classList.contains('hidden');
+    if (isAlreadyOpen) {
+        UI.replaceModalContent("Pro Sports Combine & Leagues", modalContent);
+    } else {
+        UI.showCustomModal({
+            title: "Pro Sports Combine & Leagues",
+            content: modalContent,
+            showCloseBtn: true
+        });
+    }
+}
+
+export function selectProSportTab(sportKey) {
+    openProSportsEntryModal(sportKey);
+}
+
+export function enterProSportsDraft(sportKey) {
+    const user = state.gameState.user;
+    const result = GameLogic.attemptAthleteDraft(user, sportKey);
+    if (typeof saveGame === 'function') saveGame();
+    UI.updateHeader(user);
+
+    if (result.success && result.drafted) {
+        addLog(result.message, 'major');
+        SoundManager.play('milestone');
+        UI.showModal("Drafted into Pro League!", `
+            <div class="text-center space-y-3">
+                <div class="text-4xl">🏆</div>
+                <h3 class="text-lg font-black text-emerald-400">Welcome to the Pros!</h3>
+                <p class="text-xs text-slate-300">${result.message}</p>
+                <div class="p-3 bg-slate-900 rounded-xl border border-emerald-500/30 text-left space-y-1 text-xs">
+                    <div class="flex justify-between text-slate-300">
+                        <span>Contract Deal:</span>
+                        <span class="font-bold text-white">${result.contract.totalYears}-Yr / ${Utils.formatMoney(result.contract.totalValue)}</span>
+                    </div>
+                    <div class="flex justify-between text-slate-300">
+                        <span>Annual Salary:</span>
+                        <span class="font-bold text-emerald-400">${Utils.formatMoney(result.annualSalary)} / yr</span>
+                    </div>
+                    <div class="flex justify-between text-slate-300">
+                        <span>Upfront Signing Bonus:</span>
+                        <span class="font-bold text-amber-400">${Utils.formatMoney(result.signingBonus)}</span>
+                    </div>
+                </div>
+            </div>
+        `);
+        renderActivities();
+    } else {
+        addLog(result.message, 'bad');
+        UI.showModal("Draft Results", `
+            <div class="text-center space-y-3">
+                <div class="text-4xl">📋</div>
+                <h3 class="text-lg font-bold text-amber-400">Undrafted</h3>
+                <p class="text-xs text-slate-300">${result.message}</p>
+            </div>
+        `);
+        openProSportsEntryModal(sportKey);
+    }
+}
+
+export function enterProSportsTryout(sportKey) {
+    const user = state.gameState.user;
+    const result = GameLogic.attemptAthleteTryout(user, sportKey);
+    if (typeof saveGame === 'function') saveGame();
+    UI.updateHeader(user);
+
+    if (result.success && result.signed) {
+        addLog(result.message, 'major');
+        SoundManager.play('milestone');
+        UI.showModal("Pro Tryout Successful!", `
+            <div class="text-center space-y-3">
+                <div class="text-4xl">⭐</div>
+                <h3 class="text-lg font-black text-emerald-400">Contract Signed!</h3>
+                <p class="text-xs text-slate-300">${result.message}</p>
+                <div class="p-3 bg-slate-900 rounded-xl border border-emerald-500/30 text-left space-y-1 text-xs">
+                    <div class="flex justify-between text-slate-300">
+                        <span>Contract Deal:</span>
+                        <span class="font-bold text-white">${result.contract.totalYears}-Yr / ${Utils.formatMoney(result.contract.totalValue)}</span>
+                    </div>
+                    <div class="flex justify-between text-slate-300">
+                        <span>Annual Salary:</span>
+                        <span class="font-bold text-emerald-400">${Utils.formatMoney(result.annualSalary)} / yr</span>
+                    </div>
+                </div>
+            </div>
+        `);
+        renderActivities();
+    } else {
+        addLog(result.message, 'bad');
+        UI.showModal("Tryout Feedback", `
+            <div class="text-center space-y-3">
+                <div class="text-4xl">🏃</div>
+                <h3 class="text-lg font-bold text-slate-300">Tryout Completed</h3>
+                <p class="text-xs text-slate-300">${result.message}</p>
+            </div>
+        `);
+        openProSportsEntryModal(sportKey);
+    }
 }

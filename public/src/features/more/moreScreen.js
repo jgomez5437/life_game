@@ -87,10 +87,15 @@ export function openSkillsModal(feedbackMsg = null, feedbackType = 'good') {
         martial_arts: { bg: 'bg-red-950/60',    text: 'text-red-400',    border: 'border-red-800/60' },
         culinary:     { bg: 'bg-emerald-950/60',text: 'text-emerald-400',border: 'border-emerald-800/60' },
         design:       { bg: 'bg-purple-950/60', text: 'text-purple-400', border: 'border-purple-800/60' },
-        trades_tech:  { bg: 'bg-cyan-950/60',   text: 'text-cyan-400',   border: 'border-cyan-800/60' }
+        trades_tech:  { bg: 'bg-cyan-950/60',   text: 'text-cyan-400',   border: 'border-cyan-800/60' },
+        conditioning: { bg: 'bg-orange-950/60', text: 'text-orange-400', border: 'border-orange-800/60' },
+        football:     { bg: 'bg-emerald-950/60',text: 'text-emerald-400',border: 'border-emerald-800/60' },
+        basketball:   { bg: 'bg-amber-950/60',  text: 'text-amber-400',  border: 'border-amber-800/60' },
+        baseball:     { bg: 'bg-blue-950/60',   text: 'text-blue-400',   border: 'border-blue-800/60' },
+        soccer:       { bg: 'bg-teal-950/60',   text: 'text-teal-400',   border: 'border-teal-800/60' }
     };
 
-    const skillCardsHtml = SKILL_TRACKS.map(skill => {
+    const renderSkillCard = (skill) => {
         const st = GameLogic.getSkillState(user, skill.key);
         const xp = st.xp || 0;
         const isCertified = Boolean(st.certified);
@@ -206,7 +211,13 @@ export function openSkillsModal(feedbackMsg = null, feedbackType = 'good') {
                 ` : ''}
             </div>
         `;
-    }).join('');
+    };
+
+    const generalSkills = SKILL_TRACKS.filter(s => s.category !== 'sports');
+    const sportsSkills = SKILL_TRACKS.filter(s => s.category === 'sports');
+
+    const generalCardsHtml = generalSkills.map(renderSkillCard).join('');
+    const sportsCardsHtml = sportsSkills.map(renderSkillCard).join('');
 
     const modalContent = `
         <div class="space-y-3 text-left max-h-[70vh] overflow-y-auto pr-1">
@@ -215,9 +226,25 @@ export function openSkillsModal(feedbackMsg = null, feedbackType = 'good') {
                 Tap any skill to view workshops, bootcamps, and practice options.
             </p>
 
-            <!-- Surface-Level Skill Cards -->
+            <!-- General & Career Skills Section -->
+            <div class="flex items-center gap-2 pt-1 pb-0.5">
+                <i class="fas fa-briefcase text-slate-400 text-xs"></i>
+                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">General & Career Skills</h3>
+            </div>
             <div class="space-y-2">
-                ${skillCardsHtml}
+                ${generalCardsHtml}
+            </div>
+
+            <!-- Sports & Athletics Section -->
+            <div class="flex items-center justify-between pt-3 pb-0.5 border-t border-slate-800">
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-running text-emerald-400 text-xs"></i>
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-400">Sports & Athletics</h3>
+                </div>
+                <span class="text-[10px] text-slate-400 font-semibold">Boosts Health & Draft Odds</span>
+            </div>
+            <div class="space-y-2">
+                ${sportsCardsHtml}
             </div>
 
             <!-- Modal Bottom Navigation Controls -->

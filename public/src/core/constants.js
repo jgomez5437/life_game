@@ -259,6 +259,73 @@ export const CAREER_TRACKS = [
     }
 ];
 
+export const PRO_SPORTS_LEAGUES = {
+    basketball: {
+        key: 'basketball',
+        name: 'Pro Basketball',
+        leagueName: 'Premier Basketball Association (PBA)',
+        icon: 'fa-basketball-ball',
+        skillKey: 'basketball',
+        championshipName: 'Hardwood Finals Ring',
+        signingBonuses: { round1: 4000000, round2: 750000, late: 150000 },
+        levels: [
+            { title: 'Rookie Rotation',     salary:  1150000, minYears: 1 },
+            { title: 'Starting Five',       salary: 12500000, minYears: 2 },
+            { title: 'League All-Star',     salary: 28000000, minYears: 3 },
+            { title: 'All-League Max Star', salary: 45000000, minYears: 3 },
+            { title: 'Supermax Legend',     salary: 58000000, minYears: null }
+        ]
+    },
+    football: {
+        key: 'football',
+        name: 'Pro Football',
+        leagueName: 'National Gridiron League (NGL)',
+        icon: 'fa-football-ball',
+        skillKey: 'football',
+        championshipName: 'Gridiron Bowl Ring',
+        signingBonuses: { round1: 8500000, round2: 1500000, late: 250000 },
+        levels: [
+            { title: 'Rookie Roster',       salary:   795000, minYears: 1 },
+            { title: 'Starting Lineup',     salary:  4500000, minYears: 2 },
+            { title: 'Pro Bowl Selection',  salary: 16000000, minYears: 3 },
+            { title: 'All-Pro Franchise',   salary: 32000000, minYears: 3 },
+            { title: 'Gridiron Hall of Famer', salary: 52000000, minYears: null }
+        ]
+    },
+    baseball: {
+        key: 'baseball',
+        name: 'Pro Baseball',
+        leagueName: 'Major Diamond League (MDL)',
+        icon: 'fa-baseball-ball',
+        skillKey: 'baseball',
+        championshipName: 'World Diamond Ring',
+        signingBonuses: { round1: 3500000, round2: 600000, late: 125000 },
+        levels: [
+            { title: 'Rookie Call-Up',      salary:   740000, minYears: 1 },
+            { title: 'Everyday Starter',    salary:  5200000, minYears: 2 },
+            { title: 'Diamond All-Star',    salary: 18500000, minYears: 3 },
+            { title: 'Franchise Slugger',   salary: 34000000, minYears: 3 },
+            { title: 'Cooperstown Legend',  salary: 46000000, minYears: null }
+        ]
+    },
+    soccer: {
+        key: 'soccer',
+        name: 'Pro Soccer',
+        leagueName: 'Global Champions Premiership (GCP)',
+        icon: 'fa-futbol',
+        skillKey: 'soccer',
+        championshipName: 'Champions Cup Medal',
+        signingBonuses: { round1: 3000000, round2: 650000, late: 100000 },
+        levels: [
+            { title: 'First-Team Reserve',  salary:   650000, minYears: 1 },
+            { title: 'Starting XI Regular', salary:  4000000, minYears: 2 },
+            { title: 'Premier Club Star',   salary: 14000000, minYears: 3 },
+            { title: 'World XI Superstar',  salary: 28000000, minYears: 3 },
+            { title: "Ballon d'Or Legend",  salary: 48000000, minYears: null }
+        ]
+    }
+};
+
 export const SPECIAL_CAREER_TRACKS = [
     {
         key: 'mafia_syndicate', label: 'La Cosa Nostra', icon: 'fa-user-ninja',
@@ -269,6 +336,17 @@ export const SPECIAL_CAREER_TRACKS = [
             { title: 'Street Boss', salary:  500000, minYears: 4 },
             { title: 'Underboss',   salary: 1500000, minYears: 5 },
             { title: 'The Don',     salary: 4000000, minYears: null }
+        ]
+    },
+    {
+        key: 'pro_athlete', label: 'Pro Athlete', icon: 'fa-football-ball',
+        reqDegree: false, reqGrad: null, reqMajors: null, premiumPack: 'athlete_pack',
+        levels: [
+            { title: 'Rookie Roster',       salary:   795000, minYears: 1 },
+            { title: 'Starting Lineup',     salary:  4500000, minYears: 2 },
+            { title: 'Pro Bowl Selection',  salary: 16000000, minYears: 3 },
+            { title: 'All-Pro Franchise',   salary: 32000000, minYears: 3 },
+            { title: 'Gridiron Hall of Famer', salary: 52000000, minYears: null }
         ]
     }
 ];
@@ -340,6 +418,7 @@ export const SUPPLIERS = [
 export const SKILL_TRACKS = [
     {
         key: 'coding',
+        category: 'general',
         name: 'Computer Programming & Software',
         shortName: 'Coding & Tech',
         icon: 'fa-laptop-code',
@@ -359,6 +438,7 @@ export const SKILL_TRACKS = [
     },
     {
         key: 'leadership',
+        category: 'general',
         name: 'Public Speaking & Leadership',
         shortName: 'Leadership & Speaking',
         icon: 'fa-bullhorn',
@@ -378,6 +458,7 @@ export const SKILL_TRACKS = [
     },
     {
         key: 'martial_arts',
+        category: 'general',
         name: 'Martial Arts & Physical Defense',
         shortName: 'Martial Arts & Defense',
         icon: 'fa-hand-rock',
@@ -397,6 +478,7 @@ export const SKILL_TRACKS = [
     },
     {
         key: 'culinary',
+        category: 'general',
         name: 'Culinary Arts & Gastronomy',
         shortName: 'Culinary Arts',
         icon: 'fa-utensils',
@@ -416,6 +498,7 @@ export const SKILL_TRACKS = [
     },
     {
         key: 'design',
+        category: 'general',
         name: 'Creative Design & Digital Media',
         shortName: 'Creative & Design',
         icon: 'fa-palette',
@@ -435,6 +518,7 @@ export const SKILL_TRACKS = [
     },
     {
         key: 'trades_tech',
+        category: 'general',
         name: 'Skilled Trades & Mechanics',
         shortName: 'Trades & Mechanics',
         icon: 'fa-tools',
@@ -450,6 +534,110 @@ export const SKILL_TRACKS = [
             { tier: 1, title: 'Electrical, Plumbing & Carpentry Basics', cost: 300, xpGain: 25, minXp: 0, minAge: 14, stats: { smarts: 3, health: 2 } },
             { tier: 2, title: 'HVAC, Welding & Heavy Systems Bootcamp', cost: 1800, xpGain: 35, minXp: 25, minAge: 16, stats: { smarts: 5, health: 4 } },
             { tier: 3, title: 'Master Contractor License Exam', cost: 4500, xpGain: 40, minXp: 60, minAge: 18, stats: { smarts: 7, health: 5 }, grantsCert: true }
+        ]
+    },
+    {
+        key: 'conditioning',
+        category: 'sports',
+        name: 'Strength & Conditioning',
+        shortName: 'Strength & Conditioning',
+        icon: 'fa-dumbbell',
+        color: 'orange',
+        minAge: 12,
+        certificateTitle: 'Certified Elite Athletic Trainer',
+        practiceStats: { health: 3, looks: 1 },
+        unlocksCareers: [],
+        fastTrackCareers: [],
+        boostsCareers: ['pro_athlete', 'military', 'fire_service', 'law_enforcement'],
+        impactSummary: 'Maximizes physical conditioning, boosts Pro Sports Draft Combine odds, and speeds injury recovery.',
+        courses: [
+            { tier: 1, title: 'Speed, Agility & Plyometrics Clinic', cost: 250, xpGain: 25, minXp: 0, minAge: 12, stats: { health: 4, looks: 1 } },
+            { tier: 2, title: 'Varsity Strength & Combine Conditioning', cost: 1200, xpGain: 35, minXp: 25, minAge: 15, stats: { health: 8, looks: 3 } },
+            { tier: 3, title: 'Pro Athletic Performance & Biomechanics Cert', cost: 3500, xpGain: 40, minXp: 60, minAge: 18, stats: { health: 12, looks: 5 }, grantsCert: true }
+        ]
+    },
+    {
+        key: 'football',
+        category: 'sports',
+        name: 'Pro Football & Gridiron Skills',
+        shortName: 'Pro Football',
+        icon: 'fa-football-ball',
+        color: 'emerald',
+        minAge: 12,
+        sportKey: 'football',
+        certificateTitle: 'All-American Gridiron Prospect',
+        practiceStats: { health: 2, happiness: 1 },
+        unlocksCareers: ['pro_athlete'],
+        fastTrackCareers: [],
+        boostsCareers: ['pro_athlete'],
+        impactSummary: 'Drills route running, tackling, and football IQ; directly increases Pro Football draft round & contract value.',
+        courses: [
+            { tier: 1, title: 'Youth Football Fundamentals Camp', cost: 300, xpGain: 25, minXp: 0, minAge: 12, stats: { health: 3, happiness: 2 } },
+            { tier: 2, title: 'Varsity Scouting Showcase & Tournament', cost: 1500, xpGain: 35, minXp: 25, minAge: 15, stats: { health: 6, smarts: 3 } },
+            { tier: 3, title: 'Elite Pro Gridiron Combine Certification', cost: 4000, xpGain: 40, minXp: 60, minAge: 18, stats: { health: 10, smarts: 5 }, grantsCert: true }
+        ]
+    },
+    {
+        key: 'basketball',
+        category: 'sports',
+        name: 'Basketball & Court Mastery',
+        shortName: 'Pro Basketball',
+        icon: 'fa-basketball-ball',
+        color: 'amber',
+        minAge: 12,
+        sportKey: 'basketball',
+        certificateTitle: 'All-American Court Prospect',
+        practiceStats: { health: 2, happiness: 1 },
+        unlocksCareers: ['pro_athlete'],
+        fastTrackCareers: [],
+        boostsCareers: ['pro_athlete'],
+        impactSummary: 'Perfects shooting, handles, and court vision; directly increases Pro Basketball draft position & salary.',
+        courses: [
+            { tier: 1, title: 'Shooting Mechanics & Ball-Handling Clinic', cost: 300, xpGain: 25, minXp: 0, minAge: 12, stats: { health: 3, happiness: 2 } },
+            { tier: 2, title: 'AAU Elite Summer Circuit', cost: 1500, xpGain: 35, minXp: 25, minAge: 15, stats: { health: 6, smarts: 3 } },
+            { tier: 3, title: 'Pro Hardwood Combine Certification', cost: 4000, xpGain: 40, minXp: 60, minAge: 18, stats: { health: 10, smarts: 5 }, grantsCert: true }
+        ]
+    },
+    {
+        key: 'baseball',
+        category: 'sports',
+        name: 'Baseball & Diamond Skills',
+        shortName: 'Pro Baseball',
+        icon: 'fa-baseball-ball',
+        color: 'blue',
+        minAge: 12,
+        sportKey: 'baseball',
+        certificateTitle: 'Five-Tool Prospect Certification',
+        practiceStats: { health: 2, happiness: 1 },
+        unlocksCareers: ['pro_athlete'],
+        fastTrackCareers: [],
+        boostsCareers: ['pro_athlete'],
+        impactSummary: 'Hones batting eye, pitching velocity, and fielding; increases Pro Baseball draft round & signing bonus.',
+        courses: [
+            { tier: 1, title: 'Batting Cage & Pitching Mechanics Clinic', cost: 300, xpGain: 25, minXp: 0, minAge: 12, stats: { health: 3, happiness: 2 } },
+            { tier: 2, title: 'Summer Showcase League & Tournament', cost: 1500, xpGain: 35, minXp: 25, minAge: 15, stats: { health: 6, smarts: 3 } },
+            { tier: 3, title: 'Pro Diamond Five-Tool Certification', cost: 4000, xpGain: 40, minXp: 60, minAge: 18, stats: { health: 10, smarts: 5 }, grantsCert: true }
+        ]
+    },
+    {
+        key: 'soccer',
+        category: 'sports',
+        name: 'Soccer & Pitch Tactics',
+        shortName: 'Pro Soccer',
+        icon: 'fa-futbol',
+        color: 'teal',
+        minAge: 12,
+        sportKey: 'soccer',
+        certificateTitle: 'Elite Youth Academy Graduate',
+        practiceStats: { health: 2, happiness: 1 },
+        unlocksCareers: ['pro_athlete'],
+        fastTrackCareers: [],
+        boostsCareers: ['pro_athlete'],
+        impactSummary: 'Builds stamina, footwork, and tactical awareness; increases Pro Soccer contract value and trial success.',
+        courses: [
+            { tier: 1, title: 'Technical Footwork & Striker Clinic', cost: 300, xpGain: 25, minXp: 0, minAge: 12, stats: { health: 3, happiness: 2 } },
+            { tier: 2, title: 'Premier Youth Academy Cup & Trial', cost: 1500, xpGain: 35, minXp: 25, minAge: 15, stats: { health: 6, smarts: 3 } },
+            { tier: 3, title: 'FIFA Pro License & Trial Certification', cost: 4000, xpGain: 40, minXp: 60, minAge: 18, stats: { health: 10, smarts: 5 }, grantsCert: true }
         ]
     }
 ];

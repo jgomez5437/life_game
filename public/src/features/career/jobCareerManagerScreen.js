@@ -2,7 +2,7 @@ import { state } from '../../core/state.js';
 import { renderActivities } from './occupationScreen.js';
 import { addLog } from '../player/mainScreen.js';
 import { Utils } from '../../ui/utils.js';
-import { CAREER_TRACKS, SPECIAL_CAREER_TRACKS } from '../../core/constants.js';
+import { CAREER_TRACKS, SPECIAL_CAREER_TRACKS, PRO_SPORTS_LEAGUES } from '../../core/constants.js';
 import { saveGame } from '../../core/main.js';
 import { GameLogic } from '../../core/gameLogic.js';
 import { loadModule } from '../../core/moduleLoader.js';
@@ -16,6 +16,9 @@ export function renderCareerManager() {
     const user = state.gameState.user;
     if (user.careerTrack === 'mafia_syndicate') {
         return renderMafiaManager();
+    }
+    if (user.careerTrack === 'pro_athlete') {
+        return renderAthleteManager();
     }
 
     const p = user.jobPerformance;
@@ -397,4 +400,179 @@ export function attemptMafiaCrime(type) {
             }
         });
     }
+}
+
+export function renderAthleteManager() {
+    const user = state.gameState.user;
+    const league = PRO_SPORTS_LEAGUES[user.athleteSport] || PRO_SPORTS_LEAGUES.football;
+    const lvlIdx = user.careerLevel || 0;
+    const level = league.levels[lvlIdx] || league.levels[0];
+    const totalLevels = league.levels.length;
+
+    const contract = user.athleteContract || {
+        contractType: 'Rookie Deal',
+        totalYears: 2,
+        yearsRemaining: 1,
+        annualSalary: user.jobSalary || level.salary,
+        totalValue: (user.jobSalary || level.salary) * 2
+    };
+
+    const quotaActions = user.athleteGamesThisYear || 0;
+    const quotaMet = quotaActions >= 3;
+    const quotaClass = quotaMet ? 'text-emerald-400' : 'text-amber-400';
+
+    const dots = league.levels.map((lvl, i) => {
+        const filled = i <= lvlIdx;
+        return `<div class="w-3 h-3 rounded-full ${filled ? 'bg-emerald-500' : 'bg-slate-700'} border ${filled ? 'border-emerald-400' : 'border-slate-600'}" title="${lvl.title}"></div>`;
+    }).join('');
+
+    UI.updateBottomNav('work');
+    get('game-container').innerHTML = `
+        <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
+            <div class="mb-4">
+                <button data-action="renderActivities" class="text-slate-400 hover:text-white text-xs flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition border border-slate-700/50">
+                    <i class="fas fa-arrow-left"></i> Back to Occupation
+                </button>
+            </div>
+
+            <!-- Header Badge -->
+            <div class="text-center mb-4">
+                <div class="w-16 h-16 rounded-2xl bg-emerald-950/60 flex items-center justify-center text-emerald-400 mx-auto mb-2.5 text-2xl border border-emerald-500/30 shadow-lg shadow-emerald-950/40">
+                    <i class="fas ${league.icon}"></i>
+                </div>
+                <div class="text-[11px] font-extrabold uppercase tracking-widest text-emerald-400 mb-0.5">${league.leagueName}</div>
+                <h2 class="text-2xl font-black text-white tracking-wide">${Utils.escapeHtml(user.jobTitle || level.title)}</h2>
+                <p class="text-slate-300 text-xs font-semibold mt-0.5">${Utils.formatMoney(user.jobSalary)} / year salary</p>
+            </div>
+
+            <!-- Active Multi-Year Contract Card -->
+            <div class="bg-slate-900/90 p-3.5 rounded-xl border border-emerald-500/30 mb-3 text-left">
+                <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-xs font-bold text-white flex items-center gap-1.5">
+                        <i class="fas fa-file-contract text-emerald-400"></i> ${contract.team ? `${contract.team} · ` : ''}${contract.contractType || 'Active Contract'}
+                    </span>
+                    <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-lg ${
+                        contract.yearsRemaining <= 1
+                            ? 'bg-amber-950/80 text-amber-300 border border-amber-700/60 animate-pulse'
+                            : 'bg-slate-800 text-slate-300 border border-slate-700'
+                    }">
+                        ${contract.yearsRemaining <= 1 ? '🔥 Final Contract Year' : `${contract.yearsRemaining} of ${contract.totalYears} Yrs Left`}
+                    </span>
+                </div>
+                <div class="flex items-center justify-between text-xs text-slate-300">
+                    <span>Total Deal: <strong class="text-white">${contract.totalYears}-Yr / ${Utils.formatMoney(contract.totalValue)}</strong></span>
+                    <span>Annual: <strong class="text-emerald-400">${Utils.formatMoney(user.jobSalary)}/yr</strong></span>
+                </div>
+            </div>
+
+            <!-- Rank & Trophy Case Card -->
+            <div class="bg-slate-800/90 p-4 rounded-xl border border-slate-700 mb-3 shadow">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-xs font-bold text-slate-300 uppercase tracking-wider">${league.name} Stature</span>
+                    <span class="text-xs text-slate-400 font-semibold">Tier ${lvlIdx + 1} of ${totalLevels}</span>
+                </div>
+                <div class="flex gap-2 mb-3">${dots}</div>
+
+                <!-- Trophies & Stats Grid -->
+                <div class="grid grid-cols-3 gap-2 bg-slate-900/80 p-2.5 rounded-lg border border-slate-700/60 text-center text-xs">
+                    <div>
+                        <div class="text-[10px] text-slate-400 uppercase font-bold">Rings</div>
+                        <div class="text-sm font-black text-amber-400 flex items-center justify-center gap-1 mt-0.5">
+                            <i class="fas fa-ring text-[11px]"></i> ${user.athleteRings || 0}
+                        </div>
+                    </div>
+                    <div>
+                        <div class="text-[10px] text-slate-400 uppercase font-bold">MVPs</div>
+                        <div class="text-sm font-black text-amber-300 flex items-center justify-center gap-1 mt-0.5">
+                            <i class="fas fa-trophy text-[11px]"></i> ${user.athleteMvps || 0}
+                        </div>
+                    </div>
+                    <div>
+                        <div class="text-[10px] text-slate-400 uppercase font-bold">Career Cut</div>
+                        <div class="text-sm font-black text-emerald-400 mt-0.5 truncate">
+                            ${Utils.formatMoney(user.athleteCareerEarnings || user.jobSalary)}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Season Readiness Quota -->
+                <div class="mt-3 bg-slate-900 rounded-lg p-2.5 text-center border border-slate-700/70">
+                    <div class="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-0.5">Season Readiness Quota</div>
+                    <div class="text-xl font-black ${quotaClass}">${quotaActions} / 3 Completed</div>
+                    <div class="text-[10px] text-slate-400 mt-0.5">Complete at least 3 season actions per year to remain in game shape and collect full pay.</div>
+                </div>
+            </div>
+
+            <!-- Pro Actions Section -->
+            <h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2 px-1">Pro Sports Operations</h3>
+            <div class="space-y-2 mb-6">
+                ${createAthleteActionBtn('Position Drills', 'Run playbook schemes and scrimmage (+5 Sport XP, +1 Health).', 'fa-clipboard-list', 'drills', 'text-emerald-400')}
+                ${createAthleteActionBtn('Weight Room & Conditioning', 'Heavy strength and agility training (+5 Cond XP, +3 Health).', 'fa-dumbbell', 'conditioning', 'text-orange-400')}
+                ${createAthleteActionBtn('Film Study & Playbook', 'Break down opposing schemes with coaches (+2 Smarts, 0% injury risk).', 'fa-video', 'film_study', 'text-indigo-400')}
+                ${createAthleteActionBtn('Headline Rivalry Match', 'Lead your team on game day! High cash bonuses and playoff glory.', 'fa-star', 'play_match', 'text-amber-400')}
+                ${createAthleteActionBtn('Brand Endorsement Deal', 'Sign sponsorship campaigns for gear and commercials (Rank 2+).', 'fa-handshake', 'endorsement', 'text-cyan-400', user.athleteEndorsementThisYear || lvlIdx < 1)}
+
+                <button data-action="confirmQuitCareer" class="w-full bg-slate-800 p-3.5 rounded-xl border border-slate-700 flex items-center justify-between hover:bg-slate-750 transition group mt-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-lg bg-slate-700 flex items-center justify-center text-slate-400">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </div>
+                        <div class="text-left">
+                            <h4 class="font-bold text-white text-xs">Request Release / Retire</h4>
+                            <div class="text-[10px] text-slate-500">Walk away from your pro contract</div>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right text-slate-600 text-xs"></i>
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+function createAthleteActionBtn(title, desc, icon, actionType, iconColor = 'text-emerald-400', isDisabled = false) {
+    const disabledAttr = isDisabled ? 'disabled' : '';
+    const cursorClass = isDisabled ? 'opacity-50 cursor-not-allowed bg-slate-800/60' : 'cursor-pointer hover:border-emerald-500/50 hover:bg-slate-750';
+
+    return `
+        <button data-action="attemptAthleteAction" data-args="&apos;${actionType}&apos;" ${disabledAttr} class="w-full bg-slate-800 p-3 rounded-xl border border-slate-700 flex items-center justify-between transition ${cursorClass}">
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="w-9 h-9 rounded-lg bg-slate-900 flex items-center justify-center ${iconColor} shrink-0 text-sm">
+                    <i class="fas ${icon}"></i>
+                </div>
+                <div class="text-left min-w-0 flex-1">
+                    <div class="font-bold text-white text-xs truncate">${title}</div>
+                    <div class="text-[10px] text-slate-400 truncate">${desc}</div>
+                </div>
+            </div>
+            <i class="fas fa-chevron-right text-slate-600 text-xs shrink-0 ml-2"></i>
+        </button>
+    `;
+}
+
+export function attemptAthleteAction(type) {
+    const user = state.gameState.user;
+    const result = GameLogic.processAthleteAction(type);
+
+    if (typeof saveGame === 'function') saveGame();
+    UI.updateHeader(user);
+
+    if (result.success) {
+        addLog(result.message, 'good');
+        UI.showModal("Team Facility Update", `
+            <div class="text-center space-y-3">
+                <div class="text-4xl">⚡</div>
+                <h3 class="text-base font-bold text-emerald-400">Activity Logged</h3>
+                <p class="text-xs text-slate-300 leading-relaxed">${result.message}</p>
+            </div>
+        `);
+    } else {
+        addLog(result.message, 'bad');
+        UI.showModal("Action Unavailable", `
+            <div class="text-center space-y-2">
+                <div class="text-3xl">⚠️</div>
+                <p class="text-xs text-slate-300">${result.message}</p>
+            </div>
+        `);
+    }
+    renderAthleteManager();
 }

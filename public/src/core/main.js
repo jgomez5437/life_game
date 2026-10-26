@@ -47,6 +47,10 @@ export const applyForJob = lazy('careerJobs', 'applyForJob');
 export const applyForCareerTrack = lazy('careerJobs', 'applyForCareerTrack');
 export const joinSpecialCareer = lazy('careerJobs', 'joinSpecialCareer');
 export const confirmJoinSpecialCareer = lazy('careerJobs', 'confirmJoinSpecialCareer');
+export const openProSportsEntryModal = lazy('careerJobs', 'openProSportsEntryModal');
+export const selectProSportTab = lazy('careerJobs', 'selectProSportTab');
+export const enterProSportsDraft = lazy('careerJobs', 'enterProSportsDraft');
+export const enterProSportsTryout = lazy('careerJobs', 'enterProSportsTryout');
 export const answerInterview = lazy('careerJobs', 'answerInterview');
 export const retryInterview = lazy('careerJobs', 'retryInterview');
 
@@ -55,6 +59,8 @@ export const quitCareer = lazy('jobCareerManager', 'quitCareer');
 export const confirmRetire = lazy('jobCareerManager', 'confirmRetire');
 export const retire = lazy('jobCareerManager', 'retire');
 export const renderCareerManager = lazy('jobCareerManager', 'renderCareerManager');
+export const renderAthleteManager = lazy('jobCareerManager', 'renderAthleteManager');
+export const attemptAthleteAction = lazy('jobCareerManager', 'attemptAthleteAction');
 export const workHarderJob = lazy('jobCareerManager', 'workHarderJob');
 export const slackOffJob = lazy('jobCareerManager', 'slackOffJob');
 export const attemptMafiaCrime = lazy('jobCareerManager', 'attemptMafiaCrime');
@@ -728,6 +734,12 @@ export async function showPurchaseSuccessModal(packId) {
         actionBtnHtml = `
             <button data-action="renderCrimeDashboard" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-xl text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-red-500/20">
                 <i class="fas fa-user-ninja"></i> Open Underworld Hub
+            </button>
+        `;
+    } else if (packId === 'athlete_pack') {
+        actionBtnHtml = `
+            <button data-action="renderActivities" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20">
+                <i class="fas fa-football-ball"></i> Open Pro Sports Hub
             </button>
         `;
     }
@@ -1473,6 +1485,12 @@ const routeHandlers = {
   applyForCareerTrack,
   joinSpecialCareer,
   confirmJoinSpecialCareer,
+  openProSportsEntryModal,
+  selectProSportTab,
+  enterProSportsDraft,
+  enterProSportsTryout,
+  renderAthleteManager,
+  attemptAthleteAction,
   attemptMafiaCrime,
   answerInterview,
   retryInterview,
