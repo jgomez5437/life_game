@@ -99,28 +99,28 @@ export const LIFE_EVENTS = {
             options: [
                 {
                     id: "fight_back",
-                    title: "🥊 Fight Back",
+                    title: "Fight Back",
                     description: "Stand your ground and throw a counter-punch",
                     icon: "fa-fist-raised",
                     color: "red"
                 },
                 {
                     id: "tell_teacher",
-                    title: "🗣️ Tell the Teacher / Principal",
+                    title: "Tell the Teacher / Principal",
                     description: "Report the bullying to school staff",
                     icon: "fa-user-tie",
                     color: "blue"
                 },
                 {
                     id: "defuse",
-                    title: "🕊️ Defuse with Wit & Humor",
+                    title: "Defuse with Wit & Humor",
                     description: "Try to disarm the tension with a witty comeback",
                     icon: "fa-laugh-beam",
                     color: "emerald"
                 },
                 {
                     id: "walk_away",
-                    title: "🚶 Walk Away",
+                    title: "Walk Away",
                     description: "Ignore the taunts and walk away",
                     icon: "fa-walking",
                     color: "slate"
@@ -215,21 +215,21 @@ export const LIFE_EVENTS = {
                 options: [
                     {
                         id: "go_enthusiastic",
-                        title: "✈️ Go Enthusiastically",
+                        title: "Go Enthusiastically",
                         description: "Pack your bags with excitement",
                         icon: "fa-plane-departure",
                         color: "emerald"
                     },
                     {
                         id: "ask_money",
-                        title: "🛍️ Ask for Souvenir Money",
+                        title: "Ask for Souvenir Money",
                         description: "Ask for spending cash for the gift shop",
                         icon: "fa-hand-holding-usd",
                         color: "amber"
                     },
                     {
                         id: "complain",
-                        title: "🛋️ Complain & Beg to Stay Home",
+                        title: "Complain & Beg to Stay Home",
                         description: "Refuse to go and stay glued to screens",
                         icon: "fa-couch",
                         color: "slate"
@@ -300,21 +300,21 @@ export const LIFE_EVENTS = {
             options: [
                 {
                     id: "take_blame",
-                    title: "🛡️ Take the Blame",
+                    title: "Take the Blame",
                     description: "Shield your sibling from punishment",
                     icon: "fa-shield-alt",
                     color: "emerald"
                 },
                 {
                     id: "cover_up",
-                    title: "🧪 Superglue Cover-Up",
+                    title: "Superglue Cover-Up",
                     description: "Attempt an emergency repair before parents return",
                     icon: "fa-tools",
                     color: "blue"
                 },
                 {
                     id: "snitch_sibling",
-                    title: "👆 Snitch Immediately",
+                    title: "Snitch Immediately",
                     description: "Point the finger at your sibling",
                     icon: "fa-bullhorn",
                     color: "red"
@@ -374,21 +374,21 @@ export const LIFE_EVENTS = {
             options: [
                 {
                     id: "complex_robotics",
-                    title: "🤖 Build a Solar Robotics Project",
+                    title: "Build a Solar Robotics Project",
                     description: "Aim for 1st Place with an ambitious build",
                     icon: "fa-robot",
                     color: "emerald"
                 },
                 {
                     id: "baking_soda_volcano",
-                    title: "🌋 Classic Baking Soda Volcano",
+                    title: "Classic Baking Soda Volcano",
                     description: "Reliable, messy, and classic",
                     icon: "fa-mountain",
                     color: "blue"
                 },
                 {
                     id: "slacker_poster",
-                    title: "📄 Slap Together a Poster Overnight",
+                    title: "Slap Together a Poster Overnight",
                     description: "Minimal effort science project",
                     icon: "fa-file-alt",
                     color: "slate"
@@ -461,21 +461,21 @@ export const LIFE_EVENTS = {
             options: [
                 {
                     id: "drive_carefully",
-                    title: "🚗 Drive Carefully & Practice Parking",
+                    title: "Drive Carefully & Practice Parking",
                     description: "Focus on mirrors and smooth braking",
                     icon: "fa-car",
                     color: "emerald"
                 },
                 {
                     id: "speed_up",
-                    title: "⚡ Step on the Gas",
+                    title: "Step on the Gas",
                     description: "See how fast this car can accelerate!",
                     icon: "fa-tachometer-alt",
                     color: "amber"
                 },
                 {
                     id: "refuse_drive",
-                    title: "🛑 Too Anxious to Drive",
+                    title: "Too Anxious to Drive",
                     description: "Ask to switch back to the passenger seat",
                     icon: "fa-ban",
                     color: "slate"
@@ -540,14 +540,14 @@ export const LIFE_EVENTS = {
             options: [
                 {
                     id: "sneak_out",
-                    title: "🌙 Sneak Out Bedroom Window",
+                    title: "Sneak Out Bedroom Window",
                     description: "Creep out and head to the bonfire party",
                     icon: "fa-moon",
                     color: "purple"
                 },
                 {
                     id: "stay_home",
-                    title: "📖 Stay Home & Study",
+                    title: "Stay Home & Study",
                     description: "Play it safe and sleep early",
                     icon: "fa-book-open",
                     color: "blue"
@@ -602,21 +602,21 @@ export const LIFE_EVENTS = {
             options: [
                 {
                     id: "accept_with_flair",
-                    title: "✨ Say Yes & Go Together",
+                    title: "Say Yes & Go Together",
                     description: "Rent an outfit and hit the dance floor",
                     icon: "fa-star",
                     color: "emerald"
                 },
                 {
                     id: "go_with_friends",
-                    title: "💃 Go with a Group of Friends",
+                    title: "Go with a Group of Friends",
                     description: "Dance with your squad without romance drama",
                     icon: "fa-users",
                     color: "blue"
                 },
                 {
                     id: "skip_prom",
-                    title: "🚫 Skip Prom Entirely",
+                    title: "Skip Prom Entirely",
                     description: "Save your money and relax at home",
                     icon: "fa-times-circle",
                     color: "slate"
@@ -686,28 +686,28 @@ export const LIFE_EVENTS = {
                 options: [
                     {
                         id: "approve_dream",
-                        title: "🎓 Support Their Dream Major",
+                        title: "Support Their Dream Major",
                         description: `Encourage them to pursue ${proposedMajor}`,
                         icon: "fa-thumbs-up",
                         color: "emerald"
                     },
                     {
                         id: "suggest_stem",
-                        title: "💻 Suggest Computer Science & Tech",
+                        title: "Suggest Computer Science & Tech",
                         description: "Steer them toward high-demand tech careers",
                         icon: "fa-laptop-code",
                         color: "blue"
                     },
                     {
                         id: "suggest_business",
-                        title: "📈 Suggest Business & Finance",
+                        title: "Suggest Business & Finance",
                         description: "Steer them toward executive commerce & management",
                         icon: "fa-chart-line",
                         color: "blue"
                     },
                     {
                         id: "fund_tuition",
-                        title: "💰 Gift $10,000 Tuition Assistance",
+                        title: "Gift $10,000 Tuition Assistance",
                         description: "Cover college expenses out of pocket",
                         icon: "fa-graduation-cap",
                         color: "amber",
@@ -715,7 +715,7 @@ export const LIFE_EVENTS = {
                     },
                     {
                         id: "dismiss_child",
-                        title: "🤷 Tell Them They're an Adult Now",
+                        title: "Tell Them They're an Adult Now",
                         description: "Let them figure out life on their own",
                         icon: "fa-times-circle",
                         color: "slate"
@@ -806,28 +806,28 @@ export const LIFE_EVENTS = {
             options: [
                 {
                     id: "call_out_public",
-                    title: "💥 Call Them Out in the Meeting",
+                    title: "Call Them Out in the Meeting",
                     description: "Present live version history and timestamps",
                     icon: "fa-bullhorn",
                     color: "red"
                 },
                 {
                     id: "private_boss_meeting",
-                    title: "📁 Meet Privately with Your Boss",
+                    title: "Meet Privately with Your Boss",
                     description: "Share the commit logs and document timestamps calmly",
                     icon: "fa-user-tie",
                     color: "blue"
                 },
                 {
                     id: "demand_coworker_share",
-                    title: "🤝 Confront Coworker in Private",
+                    title: "Confront Coworker in Private",
                     description: "Demand a follow-up correction email to the team",
                     icon: "fa-handshake",
                     color: "emerald"
                 },
                 {
                     id: "let_it_slide",
-                    title: "🤐 Let It Slide",
+                    title: "Let It Slide",
                     description: "Keep quiet to avoid workplace tension",
                     icon: "fa-comment-slash",
                     color: "slate"
@@ -907,7 +907,7 @@ export const LIFE_EVENTS = {
                 options: [
                     {
                         id: "book_getaway",
-                        title: "🥂 Book the Luxury Resort ($1,500)",
+                        title: "Book the Luxury Resort ($1,500)",
                         description: "Pamper yourselves with fine dining & massages",
                         icon: "fa-glass-cheers",
                         color: "emerald",
@@ -915,7 +915,7 @@ export const LIFE_EVENTS = {
                     },
                     {
                         id: "budget_staycation",
-                        title: "🕯️ Cook a Romantic Dinner at Home ($100)",
+                        title: "Cook a Romantic Dinner at Home ($100)",
                         description: "Candlelight pasta and music at home",
                         icon: "fa-utensils",
                         color: "blue",
@@ -923,7 +923,7 @@ export const LIFE_EVENTS = {
                     },
                     {
                         id: "decline_getaway",
-                        title: "💼 Too Busy with Work / Errands",
+                        title: "Too Busy with Work / Errands",
                         description: "Politely pass on the getaway plans",
                         icon: "fa-ban",
                         color: "slate"
@@ -982,21 +982,21 @@ export const LIFE_EVENTS = {
             options: [
                 {
                     id: "play_for_gold",
-                    title: "🏓 Play with Full Agility & Competitive Fire",
+                    title: "Play with Full Agility & Competitive Fire",
                     description: "Serve aces and dive for drop shots",
                     icon: "fa-trophy",
                     color: "emerald"
                 },
                 {
                     id: "coach_team",
-                    title: "📋 Coach from the Sidelines",
+                    title: "Coach from the Sidelines",
                     description: "Guide your doubles partners strategically",
                     icon: "fa-clipboard-list",
                     color: "blue"
                 },
                 {
                     id: "enjoy_bingo",
-                    title: "☕ Head to the Clubhouse for Bingo & Tea",
+                    title: "Head to the Clubhouse for Bingo & Tea",
                     description: "Enjoy a relaxed afternoon with friends",
                     icon: "fa-mug-hot",
                     color: "slate"
@@ -1070,14 +1070,14 @@ export const LIFE_EVENTS = {
                 options: [
                     {
                         id: "gift_heirloom",
-                        title: "🎁 Pass Down the Heirloom",
+                        title: "Pass Down the Heirloom",
                         description: "Bestow the prized watch as a family heirloom",
                         icon: "fa-gift",
                         color: "emerald"
                     },
                     {
                         id: "keep_for_now",
-                        title: "🕰️ Keep It in Your Collection",
+                        title: "Keep It in Your Collection",
                         description: "Share fond memories of the watch while holding onto it",
                         icon: "fa-clock",
                         color: "slate"

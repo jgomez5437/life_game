@@ -78,13 +78,14 @@ export const processNextLifeEvent = () => {
         const iconHtml = opt.icon ? `<i class="fas ${Utils.escapeHtml(opt.icon)} text-lg sm:text-xl"></i>` : '';
         const disabledAttr = isDisabled ? 'disabled aria-disabled="true"' : '';
         const npcArg = targetNPC ? `'${targetNPC.id}'` : 'null';
+        const cleanTitle = (opt.title || '').replace(/^[\p{Extended_Pictographic}\u200d\uFE0F\s]+/u, '').trim() || opt.title;
 
         return `
             <button data-action="selectLifeEventChoice" data-args="'${Utils.escapeHtml(item.eventId)}', '${Utils.escapeHtml(opt.id)}', ${npcArg}" ${disabledAttr} class="w-full ${btnBgClass} font-bold py-3 px-4 rounded-xl flex items-center justify-between transition group shadow-md text-left">
                 <div class="flex items-center gap-3">
                     ${iconHtml}
                     <div>
-                        <div class="font-bold text-sm leading-tight">${Utils.escapeHtml(opt.title)}</div>
+                        <div class="font-bold text-sm leading-tight">${Utils.escapeHtml(cleanTitle)}</div>
                         ${opt.description ? `<div class="text-[11px] ${descColor} mt-0.5">${Utils.escapeHtml(opt.description)}</div>` : ''}
                     </div>
                 </div>

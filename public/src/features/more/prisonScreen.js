@@ -1196,7 +1196,7 @@ export function openInmateDetailModal(inmateId) {
 
     actionButtons += `
         <button data-action="openAttackPromptModal" data-args="${targetTypeArg}, ${targetIdArg}" class="col-span-2 bg-red-950 hover:bg-red-900 border border-red-700 text-red-100 font-extrabold p-3 rounded-xl text-xs flex items-center justify-center gap-2 transition shadow">
-            <i class="fas fa-hand-fist text-red-500 text-sm"></i> ⚔️ Attack Inmate
+            <i class="fas fa-hand-fist text-red-500 text-sm"></i> Attack Inmate
         </button>
     `;
 
