@@ -3,7 +3,7 @@ import { state, hasPurchasedPack } from '../../core/state.js';
 import { renderLifeDashboard, renderDeathScreen, addLog, refreshClassmates } from '../player/mainScreen.js';
 import { processNextFuneral, processNextTeacherReplacement } from '../relationships/funeralScreen.js';
 import { Utils } from '../../ui/utils.js';
-import { MAJORS, CAREER_TRACKS, SPECIAL_CAREER_TRACKS, PART_TIME_JOBS, GRAD_SCHOOLS } from '../../core/constants.js';
+import { MAJORS, CAREER_TRACKS, SPECIAL_CAREER_TRACKS, PRO_SPORTS_LEAGUES, PART_TIME_JOBS, GRAD_SCHOOLS } from '../../core/constants.js';
 import { UI } from '../../ui/ui.js';
 import { hasInstantDiplomaPerk, grantInstantUniversityDegree, grantInstantGradDegree, renderInstantDiplomaHub } from '../education/instantDiploma.js';
 
@@ -692,34 +692,52 @@ if (user.age < 15) {
 
     SPECIAL_CAREER_TRACKS.forEach(t => {
         const isUnownedPremium = t.premiumPack && !hasPurchasedPack(t.premiumPack);
+        const isCurrentTrack = user.careerTrack === t.key;
         const level0 = t.levels[0];
-        const activeClass = (user.careerTrack === t.key) 
+        const activeClass = isCurrentTrack 
             ? 'border-green-500 bg-slate-800' 
             : 'border-slate-700 bg-slate-800 hover:bg-slate-750 hover:border-blue-500/50 cursor-pointer';
 
         let onclickAttr = '';
         if (isUnownedPremium) {
             onclickAttr = `data-action="previewPackDetails" data-args="&apos;${t.premiumPack}&apos;"`;
-        } else if (user.careerTrack === t.key) {
+        } else if (isCurrentTrack) {
             onclickAttr = `data-action="renderCareerManager"`;
         } else {
             onclickAttr = `data-action="joinSpecialCareer" data-args="&apos;${t.key}&apos;"`;
         }
 
         let trailingIcon = isUnownedPremium ? `<i class="fas fa-lock text-amber-400 text-lg"></i>` : `<i class="fas fa-chevron-right text-slate-600"></i>`;
-        if (user.careerTrack === t.key) trailingIcon = `<i class="fas fa-check-circle text-green-500 text-lg"></i>`;
+        if (isCurrentTrack) trailingIcon = `<i class="fas fa-check-circle text-green-500 text-lg"></i>`;
+
+        let cardIcon = t.icon;
+        let cardSubtitle = '';
+        if (isUnownedPremium) {
+            cardSubtitle = 'Unlock in Store';
+        } else if (isCurrentTrack) {
+            if (t.key === 'pro_athlete' && user.athleteSport && PRO_SPORTS_LEAGUES[user.athleteSport]) {
+                cardIcon = PRO_SPORTS_LEAGUES[user.athleteSport].icon;
+            }
+            cardSubtitle = `${user.jobTitle} - ${Utils.formatMoney(user.jobSalary)}/yr`;
+        } else {
+            if (t.key === 'pro_athlete') {
+                cardSubtitle = 'Draft Combine & Tryouts ($650K–$58M/yr)';
+            } else {
+                cardSubtitle = `${level0.title} - ${Utils.formatMoney(GameLogic.calculateScaledSalary(level0.salary, user.city))}/yr`;
+            }
+        }
 
         content += `
             <div ${onclickAttr} class="p-4 rounded-xl border transition ${activeClass}">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-xl bg-slate-700 flex items-center justify-center text-slate-300">
-                            <i class="fas ${t.icon} text-lg"></i>
+                            <i class="fas ${cardIcon} text-lg"></i>
                         </div>
                         <div>
                             <h3 class="font-bold text-white text-sm">${t.label}</h3>
-                            <div class="text-xs ${isUnownedPremium ? 'text-amber-400' : 'text-slate-400'}">
-                                ${isUnownedPremium ? 'Unlock in Store' : `${level0.title} - ${Utils.formatMoney(GameLogic.calculateScaledSalary(level0.salary, user.city))}/yr`}
+                            <div class="text-xs ${isUnownedPremium ? 'text-amber-400' : isCurrentTrack ? 'text-green-400 font-semibold' : 'text-slate-400'}">
+                                ${cardSubtitle}
                             </div>
                         </div>
                     </div>

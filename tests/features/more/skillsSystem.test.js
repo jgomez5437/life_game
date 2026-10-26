@@ -44,8 +44,10 @@ describe('Skills & Courses System and Game Integrations', () => {
         };
     });
 
-    test('SKILL_TRACKS defines all 6 core skills and 3 course tiers each', () => {
-        expect(SKILL_TRACKS).toHaveLength(6);
+    test('SKILL_TRACKS defines all 11 skills (6 general + 5 sports) and 3 course tiers each', () => {
+        expect(SKILL_TRACKS).toHaveLength(11);
+        expect(SKILL_TRACKS.filter(s => s.category === 'general')).toHaveLength(6);
+        expect(SKILL_TRACKS.filter(s => s.category === 'sports')).toHaveLength(5);
         SKILL_TRACKS.forEach(skill => {
             expect(skill.courses).toHaveLength(3);
             expect(skill.courses[2].grantsCert).toBe(true);

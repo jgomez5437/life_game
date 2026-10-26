@@ -78,6 +78,23 @@ export const STORE_PACKS = [
         status: 'available'
     },
     {
+        id: 'athlete_pack',
+        title: 'Athlete & Pro Sports',
+        category: 'career',
+        price: '$3.99',
+        badge: 'New',
+        badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+        icon: 'fa-football-ball text-emerald-400',
+        desc: 'Draft into professional sports leagues. Win championship rings, sign multi-million dollar contracts, and enter the Hall of Fame.',
+        features: [
+            'Pro Football, Basketball, Soccer & Baseball Leagues',
+            'Draft Combine & Mega Contract Negotiations',
+            'Championship Rings & MVP Trophies',
+            'Endorsement Deals & Sports Hall of Fame'
+        ],
+        status: 'available'
+    },
+    {
         id: 'vip_supporter',
         title: 'VIP Supporter & Unique Theme',
         category: 'cosmetic',
@@ -108,23 +125,6 @@ export const STORE_PACKS = [
             'Host Art Gallery Exhibitions & Auctions',
             'Sell Prints & Collect Lifelong Royalties',
             'Build Creative Fame & Art Critic Reputation'
-        ],
-        status: 'coming_soon'
-    },
-    {
-        id: 'athlete_pack',
-        title: 'Athlete & Pro Sports',
-        category: 'career',
-        price: '$3.99',
-        badge: 'Career Pack',
-        badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
-        icon: 'fa-football-ball text-emerald-400',
-        desc: 'Draft into professional sports leagues. Win championship rings, sign multi-million dollar contracts, and enter the Hall of Fame.',
-        features: [
-            'Pro Football, Basketball, Soccer & Baseball Leagues',
-            'Draft Combine & Mega Contract Negotiations',
-            'Championship Rings & MVP Trophies',
-            'Endorsement Deals & Sports Hall of Fame'
         ],
         status: 'coming_soon'
     },

@@ -237,7 +237,7 @@ export const PACK_CATALOG = {
     name: 'Athlete & Pro Sports',
     amount: 399,
     currency: 'usd',
-    available: false,
+    available: true,
     priceId: process.env.STRIPE_PRICE_ATHLETE_PACK || 'price_athlete_pack'
   },
   politician_pack: {

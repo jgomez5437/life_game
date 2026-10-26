@@ -4,7 +4,7 @@ export { addLog };
 import { Utils } from '../../ui/utils.js';
 import { UI } from '../../ui/ui.js';
 import { saveGame, resetGame } from '../../core/main.js';
-import { CAREER_TRACKS, SPECIAL_CAREER_TRACKS, GRAD_SCHOOLS } from '../../core/constants.js';
+import { CAREER_TRACKS, SPECIAL_CAREER_TRACKS, PRO_SPORTS_LEAGUES, GRAD_SCHOOLS } from '../../core/constants.js';
 import { AvatarLogic } from '../../core/avatarLogic.js';
 import { renderAvatar } from '../../ui/avatarRenderer.js';
 import { captureAnnualSnapshot } from '../../core/timeMachine.js';
@@ -421,6 +421,138 @@ async function handleFinances(user) {
                 }
             }
             user.mafiaCrimesThisYear = 0;
+            user.careerActionTaken = false;
+        } else if (user.careerTrack === 'pro_athlete') {
+            const league = PRO_SPORTS_LEAGUES[user.athleteSport] || PRO_SPORTS_LEAGUES.football;
+            const lvlIdx = user.careerLevel || 0;
+            const level = league.levels[lvlIdx] || league.levels[0];
+            const nextLevel = league.levels[lvlIdx + 1];
+
+            // Mandatory Age 42+ Retirement
+            if ((user.age || 0) >= 42) {
+                addLog(`At age ${user.age}, you have hung up your cleats and officially retired from professional sports. What an incredible athletic career!`, 'major');
+                user.careerTrack = null;
+                user.careerLevel = 0;
+                user.jobTitle = null;
+                user.jobSalary = 0;
+                user.athleteContract = null;
+                if ((user.yearsInCareer || 0) >= 8) {
+                    user.isRetired = true;
+                    user.retirementPension = Math.round(level.salary * 0.15);
+                    addLog(`Your ${user.yearsInCareer} years of league service qualified you for an annual pension of ${Utils.formatMoney(user.retirementPension)}/yr.`, 'good');
+                }
+            } else {
+                user.athleteContract = user.athleteContract || {
+                    contractType: 'Rookie Deal',
+                    totalYears: 2,
+                    yearsRemaining: 1,
+                    annualSalary: user.jobSalary,
+                    totalValue: user.jobSalary * 2
+                };
+
+                // Decrement contract years remaining
+                user.athleteContract.yearsRemaining = Math.max(0, (user.athleteContract.yearsRemaining || 1) - 1);
+
+                const quota = user.athleteGamesThisYear || 0;
+                if (quota < 3) {
+                    // Missed season actions
+                    user.athletePoorSeasons = (user.athletePoorSeasons || 0) + 1;
+                    const fineSalary = Math.round(user.jobSalary * 0.5);
+                    user.money += fineSalary;
+                    user.athleteCareerEarnings = (user.athleteCareerEarnings || 0) + fineSalary;
+                    GameLogic.adjustStat(user, 'happiness', -12);
+                    addLog(`You failed your team workout & season quota (${quota}/3). Fined 50% of your annual salary, receiving ${Utils.formatMoney(fineSalary)}. (-12 Happiness)`, 'bad');
+
+                    if (user.athletePoorSeasons >= 2) {
+                        addLog(`Due to repeated failure to report in playing shape, the ${league.leagueName} franchise has waived your contract. You are now a Free Agent.`, 'bad');
+                        user.careerTrack = null;
+                        user.jobTitle = null;
+                        user.jobSalary = 0;
+                        user.athleteContract = null;
+                        user.athletePoorSeasons = 0;
+                    }
+                } else {
+                    // Quota met: full salary installment
+                    user.athletePoorSeasons = 0;
+                    user.money += user.jobSalary;
+                    user.athleteCareerEarnings = (user.athleteCareerEarnings || 0) + user.jobSalary;
+                    user.yearsInRole = (user.yearsInRole || 0) + 1;
+                    addLog(`You completed the season with the ${league.leagueName} and received your contract salary of ${Utils.formatMoney(user.jobSalary)}.`, 'good');
+
+                    // Championship Ring Roll (scales with prospectScore & careerLevel)
+                    const evalResult = GameLogic.evaluateAthleteProspect(user, user.athleteSport);
+                    const ringChance = Math.min(0.35, 0.08 + (evalResult.prospectScore / 100) * 0.15 + lvlIdx * 0.03);
+                    if (Math.random() < ringChance) {
+                        user.athleteRings = (user.athleteRings || 0) + 1;
+                        const ringBonus = GameLogic.calculateScaledSalary(100000 + lvlIdx * 150000, user.city);
+                        user.money += ringBonus;
+                        user.athleteCareerEarnings = (user.athleteCareerEarnings || 0) + ringBonus;
+                        GameLogic.adjustStat(user, 'happiness', 25);
+                        addLog(`CHAMPIONS! You and your squad won the ${league.championshipName}! Won a championship ring and a ${Utils.formatMoney(ringBonus)} bonus! (+25 Happiness)`, 'major');
+                        SoundManager.play('milestone');
+                    }
+
+                    // MVP Award Roll (available at Level 2+)
+                    if (lvlIdx >= 2) {
+                        const mvpChance = Math.min(0.25, 0.04 + (evalResult.prospectScore / 100) * 0.12);
+                        if (Math.random() < mvpChance) {
+                            user.athleteMvps = (user.athleteMvps || 0) + 1;
+                            GameLogic.adjustStat(user, 'happiness', 20);
+                            addLog(`🏆 LEAGUE MVP! You were officially named Most Valuable Player of the ${league.leagueName}! (+20 Happiness)`, 'major');
+                            SoundManager.play('milestone');
+                        }
+                    }
+
+                    // Natural athletic physical decay if age >= 33
+                    if (user.age >= 33) {
+                        const healthDecay = Math.floor(Math.random() * 3) + 2;
+                        GameLogic.adjustStat(user, 'health', -healthDecay);
+                    }
+                }
+
+                // Contract Expiration & Multi-Year Extension Negotiation
+                if (user.careerTrack === 'pro_athlete' && user.athleteContract.yearsRemaining <= 0) {
+                    if ((user.health || 0) < 45 || user.athletePoorSeasons > 0) {
+                        addLog(`Your contract expired and the team decided not to re-sign you due to health and conditioning concerns. You are now a Free Agent.`, 'bad');
+                        user.careerTrack = null;
+                        user.jobTitle = null;
+                        user.jobSalary = 0;
+                        user.athleteContract = null;
+                    } else {
+                        // Extension negotiation
+                        let targetLvl = lvlIdx;
+                        if (nextLevel && user.yearsInRole >= (level.minYears || 1)) {
+                            const evalResult = GameLogic.evaluateAthleteProspect(user, user.athleteSport);
+                            const promoChance = Math.min(0.85, 0.40 + (evalResult.prospectScore / 100) * 0.35);
+                            if (Math.random() < promoChance) {
+                                targetLvl = lvlIdx + 1;
+                            }
+                        }
+
+                        user.careerLevel = targetLvl;
+                        const newContract = GameLogic.generateAthleteContract(user.athleteSport, targetLvl, 70, false);
+                        const scaledNewSalary = GameLogic.calculateScaledSalary(newContract.annualSalary, user.city);
+                        user.jobSalary = scaledNewSalary;
+                        user.jobTitle = league.levels[targetLvl].title;
+                        user.athleteContract = newContract;
+                        user.yearsInRole = 0;
+
+                        if (newContract.signingBonus > 0) {
+                            const scaledBonus = GameLogic.calculateScaledSalary(newContract.signingBonus, user.city);
+                            user.money += scaledBonus;
+                            user.athleteCareerEarnings = (user.athleteCareerEarnings || 0) + scaledBonus;
+                            addLog(`CONTRACT EXTENSION! Signed a new ${newContract.totalYears}-Year, ${Utils.formatMoney(newContract.totalValue)} ${newContract.contractType} as ${user.jobTitle}! Salary: ${Utils.formatMoney(scaledNewSalary)}/yr with a ${Utils.formatMoney(scaledBonus)} extension bonus!`, 'major');
+                        } else {
+                            addLog(`CONTRACT EXTENSION! Signed a new ${newContract.totalYears}-Year, ${Utils.formatMoney(newContract.totalValue)} ${newContract.contractType} as ${user.jobTitle}! New salary: ${Utils.formatMoney(scaledNewSalary)}/yr.`, 'major');
+                        }
+                        GameLogic.adjustStat(user, 'happiness', 20);
+                        SoundManager.play('milestone');
+                    }
+                }
+            }
+
+            user.athleteGamesThisYear = 0;
+            user.athleteEndorsementThisYear = false;
             user.careerActionTaken = false;
         } else {
             user.money += user.jobSalary;
