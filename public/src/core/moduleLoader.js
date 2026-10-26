@@ -214,6 +214,8 @@ export const ACTION_TO_MODULE = {
     confirmMoveAlone: 'more',
     openSkillsModal: 'more',
     toggleSkillExpand: 'more',
+    collapseSkills: 'more',
+    closeSkillsModal: 'more',
     practiceSkill: 'more',
     enrollSkillCourse: 'more',
     renderCasinoHub: 'casino',
