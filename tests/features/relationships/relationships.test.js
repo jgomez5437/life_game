@@ -375,4 +375,19 @@ describe('Dead NPC Interaction Guard (H-13)', () => {
             jest.useRealTimers();
         });
     });
+
+    describe('Person Interaction Screen Layout', () => {
+        test('renders with whole-page scrolling container without inner overflow-y-auto trap or h-full', () => {
+            const living = state.gameState.user.relationships[0];
+            renderPersonInteraction(living.id);
+            const container = document.getElementById('game-container');
+            const outerDiv = container.querySelector('.fade-in');
+            expect(outerDiv).not.toBeNull();
+            expect(outerDiv.classList.contains('h-full')).toBe(false);
+            expect(outerDiv.classList.contains('max-w-lg')).toBe(true);
+            expect(container.querySelector('.overflow-y-auto')).toBeNull();
+            expect(container.querySelector('.custom-scrollbar')).toBeNull();
+        });
+    });
 });
+
