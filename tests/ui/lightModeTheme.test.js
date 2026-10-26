@@ -123,6 +123,16 @@ describe('Light Mode Theme & UI Contrast Verification', () => {
             expect(cssContent).toContain('body.light-mode [data-action="buyGymMembership"]');
             expect(cssContent).toContain('background-color: #334155 !important');
             expect(cssContent).toContain('border-color: #1e293b !important');
+            // button.bg-slate-800 must NOT be in the dark slate rule so option cards render as white cards
+            expect(cssContent).not.toContain('body.light-mode button.bg-slate-800,');
+        });
+
+        test('styles.css contains hover text protection, disabled button styling, and amber/emerald subtext guarantees', () => {
+            expect(cssContent).toContain('body.light-mode .hover\\:text-white:hover');
+            expect(cssContent).toContain('body.light-mode .group:hover .group-hover\\:text-white');
+            expect(cssContent).toContain('body.light-mode button:disabled');
+            expect(cssContent).toContain('body.light-mode .bg-amber-600 .text-amber-200');
+            expect(cssContent).toContain('body.light-mode .bg-emerald-600 .text-emerald-300');
         });
     });
 

@@ -991,7 +991,6 @@ body.light-mode .border-slate-500 {
 body.light-mode .more-option-btn.bg-slate-700,
 body.light-mode .more-option-btn.bg-slate-800,
 body.light-mode button.bg-slate-700,
-body.light-mode button.bg-slate-800,
 body.light-mode [data-action="closeSkillsModal"],
 body.light-mode [data-action="buyGymMembership"] {
     background-color: #334155 !important;
@@ -1002,12 +1001,30 @@ body.light-mode [data-action="buyGymMembership"] {
 body.light-mode .more-option-btn.bg-slate-700:hover,
 body.light-mode .more-option-btn.bg-slate-800:hover,
 body.light-mode button.bg-slate-700:hover,
-body.light-mode button.bg-slate-800:hover,
 body.light-mode [data-action="closeSkillsModal"]:hover,
 body.light-mode [data-action="buyGymMembership"]:hover {
     background-color: #1e293b !important;
     border-color: #0f172a !important;
     color: #ffffff !important;
+}
+
+/* Light Mode Hover Text & Icon Protection */
+body.light-mode .hover\:text-white:hover,
+body.light-mode .group:hover .group-hover\:text-white {
+    color: #0f172a !important;
+}
+
+/* Light Mode Disabled Buttons Styling */
+body.light-mode button:disabled,
+body.light-mode button.cursor-not-allowed {
+    background-color: #f1f5f9 !important;
+    border-color: #e2e8f0 !important;
+    color: #94a3b8 !important;
+    box-shadow: none !important;
+}
+body.light-mode button:disabled *,
+body.light-mode button.cursor-not-allowed * {
+    color: #94a3b8 !important;
 }
 
 /* --------------------------------------------------------------------------
@@ -1017,6 +1034,8 @@ body.light-mode .btn-primary,
 body.light-mode .btn-primary *,
 body.light-mode .btn-life,
 body.light-mode .btn-life *,
+body.light-mode button.bg-slate-700,
+body.light-mode button.bg-slate-700 *,
 body.light-mode .more-option-btn,
 body.light-mode .more-option-btn *,
 body.light-mode .active-age-badge,
@@ -1101,7 +1120,7 @@ body.light-mode [class*="from-slate-900"][class*="to-slate-900"] .text-white {
 /* --------------------------------------------------------------------------
    Base Typography (Invert dark-mode white text on light cards)
    -------------------------------------------------------------------------- */
-body.light-mode .text-white:not(.btn-primary):not(.btn-primary *):not(.btn-age-up):not(.btn-age-up *):not(.btn-life):not(.btn-life *):not(.more-option-btn):not(.more-option-btn *):not(.active-age-badge):not(.active-age-badge *):not(.graveyard-lineage-header):not(.graveyard-lineage-header *):not(.bg-blue-500):not(.bg-blue-500 *):not(.bg-blue-600):not(.bg-blue-600 *):not(.bg-blue-700):not(.bg-blue-700 *):not(.bg-blue-800):not(.bg-blue-800 *):not(.bg-cyan-500):not(.bg-cyan-500 *):not(.bg-cyan-600):not(.bg-cyan-600 *):not(.bg-cyan-700):not(.bg-cyan-700 *):not(.bg-cyan-800):not(.bg-cyan-800 *):not(.bg-indigo-500):not(.bg-indigo-500 *):not(.bg-indigo-600):not(.bg-indigo-600 *):not(.bg-indigo-700):not(.bg-indigo-700 *):not(.bg-indigo-800):not(.bg-indigo-800 *):not(.bg-purple-500):not(.bg-purple-500 *):not(.bg-purple-600):not(.bg-purple-600 *):not(.bg-purple-700):not(.bg-purple-700 *):not(.bg-purple-800):not(.bg-purple-800 *):not(.bg-emerald-600):not(.bg-emerald-600 *):not(.bg-emerald-700):not(.bg-emerald-700 *):not(.bg-emerald-800):not(.bg-emerald-800 *):not(.bg-green-600):not(.bg-green-600 *):not(.bg-green-700):not(.bg-green-700 *):not(.bg-green-800):not(.bg-green-800 *):not(.bg-red-600):not(.bg-red-600 *):not(.bg-red-700):not(.bg-red-700 *):not(.bg-red-800):not(.bg-red-800 *):not(.bg-pink-600):not(.bg-pink-600 *):not(.bg-amber-600):not(.bg-amber-600 *):not(.bg-amber-700):not(.bg-amber-700 *):not([class*="from-amber-400"]):not([class*="from-amber-400"] *):not([class*="from-amber-600"]):not([class*="from-amber-600"] *):not([class*="from-cyan-"]):not([class*="from-cyan-"] *):not([class*="from-blue-"]):not([class*="from-blue-"] *):not([class*="from-indigo-"]):not([class*="from-indigo-"] *):not([class*="from-purple-"]):not([class*="from-purple-"] *):not([class*="from-emerald-"]):not([class*="from-emerald-"] *):not([class*="from-red-"]):not([class*="from-red-"] *):not([class*="from-slate-900"]):not([class*="from-slate-900"] *) {
+body.light-mode .text-white:not(.btn-primary):not(.btn-primary *):not(.btn-age-up):not(.btn-age-up *):not(.btn-life):not(.btn-life *):not(button.bg-slate-700):not(button.bg-slate-700 *):not(.more-option-btn):not(.more-option-btn *):not(.active-age-badge):not(.active-age-badge *):not(.graveyard-lineage-header):not(.graveyard-lineage-header *):not(.bg-blue-500):not(.bg-blue-500 *):not(.bg-blue-600):not(.bg-blue-600 *):not(.bg-blue-700):not(.bg-blue-700 *):not(.bg-blue-800):not(.bg-blue-800 *):not(.bg-cyan-500):not(.bg-cyan-500 *):not(.bg-cyan-600):not(.bg-cyan-600 *):not(.bg-cyan-700):not(.bg-cyan-700 *):not(.bg-cyan-800):not(.bg-cyan-800 *):not(.bg-indigo-500):not(.bg-indigo-500 *):not(.bg-indigo-600):not(.bg-indigo-600 *):not(.bg-indigo-700):not(.bg-indigo-700 *):not(.bg-indigo-800):not(.bg-indigo-800 *):not(.bg-purple-500):not(.bg-purple-500 *):not(.bg-purple-600):not(.bg-purple-600 *):not(.bg-purple-700):not(.bg-purple-700 *):not(.bg-purple-800):not(.bg-purple-800 *):not(.bg-emerald-600):not(.bg-emerald-600 *):not(.bg-emerald-700):not(.bg-emerald-700 *):not(.bg-emerald-800):not(.bg-emerald-800 *):not(.bg-green-600):not(.bg-green-600 *):not(.bg-green-700):not(.bg-green-700 *):not(.bg-green-800):not(.bg-green-800 *):not(.bg-red-600):not(.bg-red-600 *):not(.bg-red-700):not(.bg-red-700 *):not(.bg-red-800):not(.bg-red-800 *):not(.bg-pink-600):not(.bg-pink-600 *):not(.bg-amber-600):not(.bg-amber-600 *):not(.bg-amber-700):not(.bg-amber-700 *):not([class*="from-amber-400"]):not([class*="from-amber-400"] *):not([class*="from-amber-600"]):not([class*="from-amber-600"] *):not([class*="from-cyan-"]):not([class*="from-cyan-"] *):not([class*="from-blue-"]):not([class*="from-blue-"] *):not([class*="from-indigo-"]):not([class*="from-indigo-"] *):not([class*="from-purple-"]):not([class*="from-purple-"] *):not([class*="from-emerald-"]):not([class*="from-emerald-"] *):not([class*="from-red-"]):not([class*="from-red-"] *):not([class*="from-slate-900"]):not([class*="from-slate-900"] *) {
     color: #0f172a !important;
 }
 
@@ -1268,6 +1287,10 @@ body.light-mode .bg-blue-600 .text-slate-300,
 body.light-mode .bg-blue-600 .text-slate-400,
 body.light-mode .bg-blue-500 .text-blue-100,
 body.light-mode .bg-blue-500 .text-blue-200,
+body.light-mode .bg-blue-500 .text-blue-300,
+body.light-mode .bg-blue-500 .text-slate-200,
+body.light-mode .bg-blue-500 .text-slate-300,
+body.light-mode .bg-blue-500 .text-slate-400,
 body.light-mode .bg-indigo-600 .text-indigo-100,
 body.light-mode .bg-indigo-600 .text-indigo-200,
 body.light-mode .bg-indigo-600 .text-indigo-300,
@@ -1276,18 +1299,59 @@ body.light-mode .bg-indigo-600 .text-slate-300,
 body.light-mode .bg-indigo-600 .text-slate-400,
 body.light-mode .bg-indigo-500 .text-indigo-100,
 body.light-mode .bg-indigo-500 .text-indigo-200,
+body.light-mode .bg-indigo-500 .text-indigo-300,
+body.light-mode .bg-indigo-500 .text-slate-200,
+body.light-mode .bg-indigo-500 .text-slate-300,
+body.light-mode .bg-indigo-500 .text-slate-400,
 body.light-mode .bg-emerald-600 .text-emerald-100,
 body.light-mode .bg-emerald-600 .text-emerald-200,
+body.light-mode .bg-emerald-600 .text-emerald-300,
 body.light-mode .bg-emerald-600 .text-slate-200,
 body.light-mode .bg-emerald-600 .text-slate-300,
+body.light-mode .bg-emerald-600 .text-slate-400,
+body.light-mode .bg-emerald-500 .text-emerald-100,
+body.light-mode .bg-emerald-500 .text-emerald-200,
+body.light-mode .bg-emerald-500 .text-emerald-300,
+body.light-mode .bg-emerald-500 .text-slate-200,
+body.light-mode .bg-emerald-500 .text-slate-300,
 body.light-mode .bg-green-600 .text-green-100,
 body.light-mode .bg-green-600 .text-green-200,
+body.light-mode .bg-green-600 .text-green-300,
+body.light-mode .bg-green-600 .text-slate-200,
+body.light-mode .bg-green-600 .text-slate-300,
+body.light-mode .bg-green-500 .text-green-100,
+body.light-mode .bg-green-500 .text-green-200,
+body.light-mode .bg-amber-600 .text-amber-100,
+body.light-mode .bg-amber-600 .text-amber-200,
+body.light-mode .bg-amber-600 .text-amber-300,
+body.light-mode .bg-amber-600 .text-slate-200,
+body.light-mode .bg-amber-600 .text-slate-300,
+body.light-mode .bg-amber-500 .text-amber-100,
+body.light-mode .bg-amber-500 .text-amber-200,
+body.light-mode .bg-amber-500 .text-slate-200,
 body.light-mode .bg-purple-600 .text-purple-100,
 body.light-mode .bg-purple-600 .text-purple-200,
+body.light-mode .bg-purple-600 .text-purple-300,
+body.light-mode .bg-purple-600 .text-slate-200,
+body.light-mode .bg-purple-500 .text-purple-100,
+body.light-mode .bg-purple-500 .text-purple-200,
 body.light-mode .bg-pink-600 .text-pink-100,
 body.light-mode .bg-pink-600 .text-pink-200,
+body.light-mode .bg-pink-600 .text-pink-300,
+body.light-mode .bg-pink-600 .text-slate-200,
+body.light-mode .bg-pink-500 .text-pink-100,
+body.light-mode .bg-pink-500 .text-pink-200,
 body.light-mode .bg-red-600 .text-red-100,
 body.light-mode .bg-red-600 .text-red-200,
+body.light-mode .bg-red-600 .text-red-300,
+body.light-mode .bg-red-600 .text-slate-200,
+body.light-mode .bg-red-500 .text-red-100,
+body.light-mode .bg-red-500 .text-red-200,
+body.light-mode .bg-rose-600 .text-rose-100,
+body.light-mode .bg-rose-600 .text-rose-200,
+body.light-mode .bg-cyan-600 .text-cyan-100,
+body.light-mode .bg-cyan-600 .text-cyan-200,
+body.light-mode .bg-cyan-600 .text-slate-200,
 body.light-mode .btn-primary [class*="text-"]:not(.text-slate-950),
 body.light-mode .btn-life [class*="text-"] {
     color: rgba(255, 255, 255, 0.88) !important;
