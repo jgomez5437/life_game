@@ -881,7 +881,7 @@ export const renderPersonInteraction = (id, backAction = null) => {
     UI.updateBottomNav('social');
     const container = document.getElementById('game-container');
     container.innerHTML = `
-        <div class="fade-in flex flex-col h-full max-w-lg mx-auto">
+        <div class="fade-in flex flex-col max-w-lg mx-auto pb-4">
             <div class="mb-4">
                 <button data-action="${targetBackAction}" class="text-slate-400 hover:text-white text-xs flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition border border-slate-700/50">
                     <i class="fas fa-arrow-left"></i> ${backLabel}
@@ -919,7 +919,7 @@ export const renderPersonInteraction = (id, backAction = null) => {
             ` : ''}
 
             <div class="text-xs text-slate-400 font-bold mb-3 uppercase tracking-widest px-1">Choose an Action</div>
-            <div class="flex-1 overflow-y-auto pb-4 custom-scrollbar">
+            <div class="pb-4">
                 ${buttonsHtml}
             </div>
         </div>
