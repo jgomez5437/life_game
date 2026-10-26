@@ -545,7 +545,12 @@ body.light-mode .bg-slate-900\/80,
 body.light-mode .bg-slate-900\/70,
 body.light-mode .bg-slate-900\/60,
 body.light-mode .bg-slate-900\/50,
-body.light-mode .bg-slate-950 {
+body.light-mode .bg-slate-950,
+body.light-mode .bg-slate-950\/80,
+body.light-mode .bg-slate-950\/70,
+body.light-mode .bg-slate-950\/60,
+body.light-mode .bg-slate-950\/50,
+body.light-mode .bg-slate-950\/40 {
     background-color: #f1f5f9 !important;
     border-color: #cbd5e1 !important;
 }
@@ -754,6 +759,7 @@ body.light-mode .bg-purple-800\/80 {
 body.light-mode .bg-indigo-950,
 body.light-mode .bg-indigo-950\/40,
 body.light-mode .bg-indigo-950\/60,
+body.light-mode .bg-indigo-950\/70,
 body.light-mode .bg-indigo-950\/80,
 body.light-mode .bg-indigo-900,
 body.light-mode .bg-indigo-900\/30,

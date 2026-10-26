@@ -213,6 +213,7 @@ export const ACTION_TO_MODULE = {
     askPartnerToMove: 'more',
     confirmMoveAlone: 'more',
     openSkillsModal: 'more',
+    toggleSkillExpand: 'more',
     practiceSkill: 'more',
     enrollSkillCourse: 'more',
     renderCasinoHub: 'casino',
