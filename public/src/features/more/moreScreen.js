@@ -181,13 +181,6 @@ export function openSkillsModal(feedbackMsg = null, feedbackType = 'good') {
                 <!-- Expanded Drawer (Courses & Practice) -->
                 ${isExpanded ? `
                     <div class="px-3 pb-3 pt-2.5 border-t border-slate-700/60 bg-slate-900/60 space-y-3">
-                        <div class="flex items-center justify-between pb-1.5 border-b border-slate-700/40">
-                            <button data-action="collapseSkills" class="more-option-btn text-[11px] font-bold text-slate-300 hover:text-white flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 transition border border-slate-700/60">
-                                <i class="fas fa-arrow-left text-[10px]"></i> Back to Skill Options
-                            </button>
-                            <span class="text-[10px] text-slate-400 font-extrabold uppercase tracking-wide">Workshops & Practice</span>
-                        </div>
-
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-0.5">
                             <p class="text-[11px] text-slate-300 leading-relaxed">${skill.impactSummary}</p>
                             ${!ageLocked ? `
@@ -218,16 +211,9 @@ export function openSkillsModal(feedbackMsg = null, feedbackType = 'good') {
     const modalContent = `
         <div class="space-y-3 text-left max-h-[70vh] overflow-y-auto pr-1">
             ${feedbackBanner}
-            <div class="flex items-center justify-between px-0.5">
-                <p class="text-[11px] text-slate-400 leading-relaxed">
-                    ${_expandedSkillKey ? 'Select a course or practice action below.' : 'Tap any skill to view workshops, bootcamps, and practice options.'}
-                </p>
-                ${_expandedSkillKey ? `
-                    <button data-action="collapseSkills" class="text-[11px] font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 shrink-0 ml-2">
-                        <i class="fas fa-chevron-left text-[10px]"></i> All Skills
-                    </button>
-                ` : ''}
-            </div>
+            <p class="text-[11px] text-slate-400 leading-relaxed px-0.5">
+                Tap any skill to view workshops, bootcamps, and practice options.
+            </p>
 
             <!-- Surface-Level Skill Cards -->
             <div class="space-y-2">
@@ -235,13 +221,8 @@ export function openSkillsModal(feedbackMsg = null, feedbackType = 'good') {
             </div>
 
             <!-- Modal Bottom Navigation Controls -->
-            <div class="pt-2 border-t border-slate-700/60 flex items-center gap-2">
-                ${_expandedSkillKey ? `
-                    <button data-action="collapseSkills" class="more-option-btn flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-2.5 rounded-xl text-xs transition border border-slate-700 flex items-center justify-center gap-1.5">
-                        <i class="fas fa-arrow-left text-[10px]"></i> Back to Skill Options
-                    </button>
-                ` : ''}
-                <button data-action="closeSkillsModal" class="more-option-btn flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-2.5 rounded-xl text-xs transition border border-slate-600 flex items-center justify-center gap-1.5 shadow-sm">
+            <div class="pt-2 border-t border-slate-700/60">
+                <button data-action="closeSkillsModal" class="more-option-btn w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-2.5 rounded-xl text-xs transition border border-slate-600 flex items-center justify-center gap-1.5 shadow-sm">
                     <i class="fas fa-th-large text-[10px]"></i> Back to More Options
                 </button>
             </div>
