@@ -88,18 +88,27 @@ function getVehicleListHtml(assets) {
 
 // --- HELPER: Generates the HTML for the list of properties ---
 function getPropertyListHtml(assets) {
+    const user = state.gameState?.user;
     const properties = assets.filter(a => a.category === 'property');
 
     if (properties.length === 0) {
         return `<div class="bg-slate-800 p-4 rounded border border-slate-700 text-slate-500 italic text-sm text-center">You don't own any real estate.</div>`;
     }
 
+    const isManagerHired = GameLogic.isPropertyManagerHired(user);
+
     return properties.map(p => {
         const isRented = p.isRented && p.tenant;
+        const monthlyRent = p.tenant?.monthlyRent || p.tenant?.rent || 0;
         const tenantBadge = isRented 
-            ? `<span class="bg-green-900/60 text-green-300 border border-green-700 text-[9px] uppercase px-1.5 py-0.5 rounded font-bold"><i class="fas fa-user-check text-[8px] mr-0.5"></i> Rented ($${p.tenant.rent.toLocaleString()}/mo)</span>`
+            ? `<span class="bg-green-900/60 text-green-300 border border-green-700 text-[9px] uppercase px-1.5 py-0.5 rounded font-bold"><i class="fas fa-user-check text-[8px] mr-0.5"></i> Rented ($${monthlyRent.toLocaleString()}/mo)</span>`
             : `<span class="bg-slate-700 text-slate-400 text-[9px] uppercase px-1.5 py-0.5 rounded font-bold">Vacant</span>`;
         
+        const isManaged = isRented && isManagerHired;
+        const managedBadge = isManaged
+            ? `<span class="bg-indigo-900/60 text-indigo-300 border border-indigo-700 text-[9px] uppercase px-1.5 py-0.5 rounded font-bold"><i class="fas fa-user-tie text-[8px] mr-0.5"></i> Managed</span>`
+            : '';
+
         const mortgageBadge = p.hasMortgage && p.mortgage && p.mortgage.principal > 0
             ? `<span class="bg-amber-900/60 text-amber-300 border border-amber-700 text-[9px] uppercase px-1.5 py-0.5 rounded font-bold"><i class="fas fa-landmark text-[8px] mr-0.5"></i> Mortgage ($${Math.round(p.mortgage.monthlyPayment).toLocaleString()}/mo)</span>`
             : `<span class="bg-blue-900/40 text-blue-300 text-[9px] uppercase px-1.5 py-0.5 rounded font-bold">Paid Off</span>`;
@@ -114,6 +123,7 @@ function getPropertyListHtml(assets) {
                         <h4 class="font-bold text-white text-sm group-hover:text-green-300 transition">${p.name}</h4>
                         <div class="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5 flex-wrap">
                             ${tenantBadge}
+                            ${managedBadge}
                             ${mortgageBadge}
                         </div>
                     </div>
@@ -156,6 +166,81 @@ export function renderAssets() {
     const vehicleHtml = getVehicleListHtml(assets);
     const propertyHtml = getPropertyListHtml(assets);
     const jewelryHtml = getJewelryListHtml(assets);
+
+    const hasRealEstate = assets.some(a => a.category === 'property');
+    let propertyManagerCardHtml = '';
+    if (hasRealEstate) {
+        if (GameLogic.isPropertyManagerHired(user)) {
+            const pm = user.propertyManager;
+            const pmSummary = GameLogic.getPropertyManagerSummary(user);
+            propertyManagerCardHtml = `
+                <div class="bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 p-4 rounded-xl border border-indigo-700/60 mb-4 shadow-md">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-full overflow-hidden border-2 border-indigo-400 bg-slate-800 shrink-0 shadow">
+                                ${renderAvatar(pm)}
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <h4 class="font-bold text-white text-sm">${Utils.escapeHtml(pm.name)}</h4>
+                                    <span class="bg-indigo-900/80 text-indigo-300 border border-indigo-700 text-[9px] uppercase px-1.5 py-0.5 rounded font-extrabold">Active</span>
+                                </div>
+                                <div class="text-[11px] text-indigo-300 font-semibold">${Utils.escapeHtml(pm.title || 'Licensed Property Manager')}</div>
+                                <div class="text-[10px] text-slate-400 mt-0.5">Managing ${pmSummary.managedCount} ${pmSummary.managedCount === 1 ? 'rental' : 'rentals'} • 10% Fee</div>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-[10px] uppercase font-bold text-slate-400">Net Monthly</div>
+                            <div class="text-green-400 font-bold text-sm">${Utils.formatMoney(pmSummary.netMonthly)}/mo</div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2 bg-slate-900/80 p-2.5 rounded-lg border border-slate-800 text-center mb-3">
+                        <div>
+                            <div class="text-[9px] uppercase font-bold text-slate-400">Gross Rent</div>
+                            <div class="text-white font-bold text-xs mt-0.5">${Utils.formatMoney(pmSummary.grossMonthly)}/mo</div>
+                        </div>
+                        <div class="border-x border-slate-800 px-1">
+                            <div class="text-[9px] uppercase font-bold text-amber-400">10% Fee</div>
+                            <div class="text-amber-400 font-bold text-xs mt-0.5">-${Utils.formatMoney(pmSummary.feeMonthly)}/mo</div>
+                        </div>
+                        <div>
+                            <div class="text-[9px] uppercase font-bold text-slate-400">Lifetime Paid</div>
+                            <div class="text-slate-300 font-bold text-xs mt-0.5">${Utils.formatMoney(pm.lifetimeFeesPaid || 0)}</div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        ${pm.lastReport ? `
+                            <button data-action="viewLastManagerReport" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-3 rounded-lg text-xs transition flex items-center justify-center gap-1.5 shadow-sm">
+                                <i class="fas fa-file-invoice-dollar"></i> View Annual Report
+                            </button>
+                        ` : ''}
+                        <button data-action="openFirePropertyManagerConfirm" class="${pm.lastReport ? 'shrink-0' : 'w-full'} bg-slate-800 hover:bg-red-950/60 text-slate-300 hover:text-red-300 hover:border-red-800/80 font-bold py-2 px-3 rounded-lg text-xs transition flex items-center justify-center gap-1.5 border border-slate-700">
+                            <i class="fas fa-user-times"></i> Fire Manager
+                        </button>
+                    </div>
+                </div>
+            `;
+        } else {
+            propertyManagerCardHtml = `
+                <div class="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 p-4 rounded-xl border border-slate-700/80 mb-4 flex items-center justify-between gap-3 shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-indigo-900/40 border border-indigo-700/50 flex items-center justify-center text-indigo-400 shrink-0">
+                            <i class="fas fa-user-tie text-lg"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-white text-sm">Hire a Property Manager</h4>
+                            <p class="text-xs text-slate-400 leading-snug">Auto-collect rent & handle tenant renewals for a flat 10% fee.</p>
+                        </div>
+                    </div>
+                    <button data-action="openHirePropertyManagerModal" class="shrink-0 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-3.5 rounded-lg text-xs transition shadow-md shadow-indigo-950 flex items-center gap-1.5">
+                        <i class="fas fa-user-plus"></i> Hire
+                    </button>
+                </div>
+            `;
+        }
+    }
 
     UI.updateBottomNav('assets');
     const backBtnHtml = !UI.isBottomNavEnabled() ? `
@@ -265,6 +350,7 @@ export function renderAssets() {
                     <h3 class="text-slate-400 font-bold mb-2 text-sm uppercase flex items-center gap-2">
                         <i class="fas fa-home text-green-400"></i> Properties
                     </h3>
+                    ${propertyManagerCardHtml}
                     <div class="flex flex-col">
                         ${propertyHtml}
                     </div>
@@ -468,6 +554,7 @@ export const renderPropertyManager = (id) => {
     const renovationOptions = GameLogic.calculateRenovationOptions(property);
     const isRenovatedThisYear = property.renovatedThisYear || (user.age !== undefined && property.lastRenovationAge === user.age);
     const isPristine = property.condition >= 100 && property.maxCondition >= 100;
+    const isManaged = GameLogic.isPropertyManaged(user, property);
 
     const renovationHtml = renovationOptions.map(opt => {
         const canAffordRenov = user.money >= opt.cost;
@@ -572,6 +659,25 @@ export const renderPropertyManager = (id) => {
                 </h3>
 
                 ${property.isRented && property.tenant ? `
+                    ${isManaged ? `
+                        <div class="bg-indigo-950/60 border border-indigo-800/70 rounded-xl p-3 mt-3 flex items-center justify-between">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-9 h-9 rounded-full overflow-hidden border border-indigo-400 bg-slate-800 shrink-0">
+                                    ${renderAvatar(user.propertyManager)}
+                                </div>
+                                <div>
+                                    <div class="text-[10px] uppercase font-bold text-indigo-300 flex items-center gap-1">
+                                        <i class="fas fa-shield-alt text-[9px]"></i> Managed by ${Utils.escapeHtml(user.propertyManager.name)}
+                                    </div>
+                                    <div class="text-xs text-slate-300">10% Fee (${Utils.formatMoney(Math.round(property.tenant.monthlyRent * 0.10))}/mo)</div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-[9px] uppercase font-bold text-slate-400">Net Rent</div>
+                                <div class="text-xs text-green-400 font-bold">${Utils.formatMoney(Math.round(property.tenant.monthlyRent * 0.90))}/mo</div>
+                            </div>
+                        </div>
+                    ` : ''}
                     <div class="bg-slate-900 p-4 rounded-xl border border-slate-700 mt-3 flex items-center gap-4">
                         <div class="w-16 h-16 rounded-full overflow-hidden border-2 border-blue-500/60 bg-slate-800 shrink-0 shadow-md">
                             ${renderAvatar(property.tenant)}
@@ -964,6 +1070,19 @@ export const processNextTenantDefaultEvent = () => {
 
     const event = queue[0];
     const user = state.gameState.user;
+
+    // Check for property manager annual report FIRST before per-property checks
+    if (event.eventType === 'manager_report') {
+        const report = user?.propertyManager?.lastReport;
+        if (!report) {
+            queue.shift();
+            processNextTenantDefaultEvent();
+            return;
+        }
+        renderAnnualManagerReportModal(report, true);
+        return;
+    }
+
     const property = (user && user.assets || []).find(a => a.id === event.propertyId);
 
     // Stale event validation: if property is gone, not rented, or has no tenant, purge and skip
@@ -1559,6 +1678,386 @@ export const confirmGiftVehicle = (vehicleId, personId) => {
     UI.showModal("Vehicle Gifted!", `You gave your ${Utils.escapeHtml(vehicle.name)} to ${Utils.escapeHtml(person.name)}! They were overwhelmed with gratitude (+${boost}% Relationship).`);
     renderAssets();
 };
+
+// --- PROPERTY MANAGER UI HANDLERS ---
+let _candidateManager = null;
+
+export const openHirePropertyManagerModal = () => {
+    const user = state.gameState?.user;
+    if (!user) return;
+    const rented = (user.assets || []).filter(a => a.category === 'property' && a.isRented && a.tenant);
+    if (rented.length === 0) {
+        UI.showModal(
+            "No Rented Properties",
+            "You need at least one rented property before hiring a property manager. Buy a property and list it for rent first!"
+        );
+        return;
+    }
+
+    _candidateManager = GameLogic.generatePropertyManagerCandidate();
+    const summary = GameLogic.getPropertyManagerSummary(user);
+
+    const modalHtml = `
+        <div class="space-y-4">
+            <div class="bg-indigo-950/60 p-4 rounded-xl border border-indigo-700/60 text-center shadow-lg">
+                <div class="w-20 h-20 rounded-full overflow-hidden border-2 border-indigo-400 bg-slate-800 mx-auto mb-2 shadow-md">
+                    ${renderAvatar(_candidateManager)}
+                </div>
+                <h3 class="text-white font-bold text-lg">${Utils.escapeHtml(_candidateManager.name)}</h3>
+                <p class="text-indigo-300 text-xs font-semibold">${Utils.escapeHtml(_candidateManager.title)}</p>
+                <div class="mt-2 inline-block bg-indigo-900/80 text-indigo-200 text-xs font-bold px-3 py-1 rounded-full border border-indigo-600/70">
+                    Fee: 10% of Collected Rent
+                </div>
+            </div>
+
+            <div class="bg-slate-900 p-3.5 rounded-xl border border-slate-700/80 text-xs space-y-2 text-slate-300">
+                <div class="font-bold text-white text-sm mb-1">What your manager handles:</div>
+                <div class="flex items-start gap-2">
+                    <i class="fas fa-check text-green-400 mt-0.5"></i>
+                    <span><strong>Manages only rented properties</strong> (never your personal home or vacant units).</span>
+                </div>
+                <div class="flex items-start gap-2">
+                    <i class="fas fa-check text-green-400 mt-0.5"></i>
+                    <span><strong>Collects rent</strong> and resolves late payments quietly.</span>
+                </div>
+                <div class="flex items-start gap-2">
+                    <i class="fas fa-check text-green-400 mt-0.5"></i>
+                    <span><strong>Takes care of lease renewals</strong> and finds replacement tenants automatically.</span>
+                </div>
+                <div class="flex items-start gap-2">
+                    <i class="fas fa-check text-green-400 mt-0.5"></i>
+                    <span><strong>Contacts you for repairs</strong> so you can approve or decline each request.</span>
+                </div>
+            </div>
+
+            <div class="bg-slate-800 p-3 rounded-xl border border-slate-700 text-xs space-y-1.5">
+                <div class="text-slate-400 font-bold uppercase text-[10px]">Rental Portfolio Preview</div>
+                <div class="flex justify-between text-slate-300">
+                    <span>Active Rentals:</span>
+                    <span class="font-bold text-white">${summary.managedCount} properties</span>
+                </div>
+                <div class="flex justify-between text-slate-300">
+                    <span>Gross Monthly Rent:</span>
+                    <span class="font-bold text-green-400">${Utils.formatMoney(summary.grossMonthly)}/mo</span>
+                </div>
+                <div class="flex justify-between text-slate-300">
+                    <span>10% Management Fee:</span>
+                    <span class="font-bold text-amber-400">-${Utils.formatMoney(summary.feeMonthly)}/mo</span>
+                </div>
+                <div class="flex justify-between text-white font-bold pt-1 border-t border-slate-700 text-sm">
+                    <span>Net to You:</span>
+                    <span class="text-green-400">${Utils.formatMoney(summary.netMonthly)}/mo</span>
+                </div>
+            </div>
+
+            <div class="space-y-2 pt-2">
+                <button data-action="confirmHirePropertyManager" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-lg shadow-indigo-900/40">
+                    <i class="fas fa-handshake"></i> Hire ${_candidateManager.name} (10% Fee)
+                </button>
+                <button data-action="hideModal" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-2.5 rounded-xl text-xs transition">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    `;
+
+    UI.showCustomModal({
+        title: "Hire a Property Manager",
+        content: modalHtml,
+        showCloseBtn: true
+    });
+};
+
+export const confirmHirePropertyManager = () => {
+    const user = state.gameState?.user;
+    if (!user) return;
+    const res = GameLogic.hirePropertyManager(user, _candidateManager);
+    if (!res.success) {
+        UI.showModal("Hiring Failed", res.reason);
+        return;
+    }
+    addLog(`Hired ${res.manager.name} as your Property Manager (10% fee).`, 'good');
+    saveGame();
+    UI.hideModal();
+    UI.updateHeader(user);
+    renderAssets();
+    UI.showModal(
+        "Property Manager Hired!",
+        `You have hired ${Utils.escapeHtml(res.manager.name)}! They will collect rent (taking a 10% fee), manage lease renewals, and contact you when repairs are needed.`
+    );
+};
+
+export const openFirePropertyManagerConfirm = () => {
+    const user = state.gameState?.user;
+    if (!user || !user.propertyManager) return;
+    const name = user.propertyManager.name;
+
+    UI.showConfirm(
+        "Fire Property Manager?",
+        `Are you sure you want to fire ${Utils.escapeHtml(name)}? You will have to collect rent, handle tenant lease renewals, and screen new applicants yourself.`,
+        "Fire Manager",
+        () => {
+            const res = GameLogic.firePropertyManager(user);
+            if (res.success) {
+                addLog(`Fired property manager ${name}. You are now managing your rentals yourself.`, 'neutral');
+                saveGame();
+                UI.updateHeader(user);
+                renderAssets();
+                UI.showModal("Manager Fired", `You have let ${Utils.escapeHtml(name)} go. You are now responsible for managing all your properties.`);
+            }
+        },
+        "Keep Manager"
+    );
+};
+
+export function getAnnualManagerReportHtml(report, isAgeUpFlow = true) {
+    const user = state.gameState?.user;
+    const pm = user?.propertyManager;
+    if (!pm || !report) return '';
+
+    const propsHtml = (report.properties || []).map(p => `
+        <div class="bg-slate-900/90 p-2.5 rounded-lg border border-slate-700/80 flex justify-between items-center text-xs">
+            <div>
+                <div class="font-bold text-white">${Utils.escapeHtml(p.propertyName)}</div>
+                <div class="text-[11px] text-slate-400">Tenant: <span class="text-slate-200">${Utils.escapeHtml(p.tenantName)}</span> • ${Utils.escapeHtml(p.note)}</div>
+            </div>
+            <div class="text-right">
+                <div class="text-green-400 font-bold">${Utils.formatMoney(p.gross)}</div>
+                <div class="text-[10px] text-slate-400">Net: ${Utils.formatMoney(p.net)}</div>
+            </div>
+        </div>
+    `).join('') || '<div class="text-xs text-slate-400 italic text-center py-2">No active rentals collected this year.</div>';
+
+    const activityHtml = (report.activity || []).map(a => `
+        <div class="text-xs text-slate-300 flex items-start gap-2 bg-slate-900/50 p-2 rounded-lg border border-slate-800">
+            <i class="fas ${a.icon || 'fa-info-circle'} text-indigo-400 mt-0.5"></i>
+            <span>${Utils.escapeHtml(a.text)}</span>
+        </div>
+    `).join('');
+
+    const repairs = report.repairs || [];
+    const pendingRepairs = repairs.filter(r => r.status === 'pending');
+
+    const repairsHtml = repairs.map(r => {
+        let actionContent = '';
+        if (r.status === 'approved') {
+            actionContent = `<span class="bg-green-900/60 text-green-300 border border-green-700 text-[10px] uppercase px-2 py-0.5 rounded font-bold"><i class="fas fa-check mr-1"></i>Approved (${Utils.formatMoney(r.cost)})</span>`;
+        } else if (r.status === 'declined') {
+            actionContent = `<span class="bg-red-900/60 text-red-300 border border-red-700 text-[10px] uppercase px-2 py-0.5 rounded font-bold"><i class="fas fa-times mr-1"></i>Declined (-${r.conditionLoss}% Cond)</span>`;
+        } else {
+            const canAfford = (user?.money || 0) >= r.cost;
+            actionContent = `
+                <div class="flex items-center gap-2">
+                    <button data-action="approveManagerRepairAction" data-args="'${r.id}'"
+                        ${canAfford ? '' : 'disabled'}
+                        class="${canAfford ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-slate-700 opacity-50 cursor-not-allowed text-slate-400'} px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">
+                        <i class="fas fa-wrench"></i> Approve (${Utils.formatMoney(r.cost)})
+                    </button>
+                    <button data-action="declineManagerRepairAction" data-args="'${r.id}'"
+                        class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-2.5 py-1.5 rounded-lg text-xs font-bold transition">
+                        Decline
+                    </button>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="bg-slate-900 p-3 rounded-xl border border-slate-700/80 space-y-2">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <div class="font-bold text-white text-xs flex items-center gap-1.5">
+                            <i class="fas ${r.icon || 'fa-wrench'} text-amber-400"></i>
+                            ${Utils.escapeHtml(r.type)}
+                        </div>
+                        <div class="text-[11px] text-slate-400">${Utils.escapeHtml(r.propertyName)} • Tenant: ${Utils.escapeHtml(r.tenantName)}</div>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-amber-300 font-bold text-xs">${Utils.formatMoney(r.cost)}</span>
+                    </div>
+                </div>
+                <p class="text-[11px] text-slate-300">${Utils.escapeHtml(r.desc)}</p>
+                <div class="flex justify-between items-center pt-1 border-t border-slate-800 text-[10px] text-slate-400">
+                    <span>Impact: <span class="text-green-400">+${r.conditionGain}% condition</span> if approved / <span class="text-red-400">-${r.conditionLoss}%</span> if declined</span>
+                    <div>${actionContent}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    const approveAllBtn = pendingRepairs.length > 1 ? `
+        <button data-action="approveAllManagerRepairsAction" class="w-full bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold py-2 rounded-xl transition flex items-center justify-center gap-1.5 mb-2">
+            <i class="fas fa-check-double"></i> Approve All Pending Repairs (${pendingRepairs.length})
+        </button>
+    ` : '';
+
+    return `
+        <div class="space-y-4">
+            <!-- MANAGER HEADER -->
+            <div class="bg-indigo-950/60 p-4 rounded-xl border border-indigo-700/60 text-center shadow-lg">
+                <div class="w-16 h-16 rounded-full overflow-hidden border-2 border-indigo-400 bg-slate-800 mx-auto mb-2 shadow-md">
+                    ${renderAvatar(pm)}
+                </div>
+                <h3 class="text-white font-bold text-lg">${Utils.escapeHtml(pm.name)}</h3>
+                <p class="text-indigo-300 text-xs font-semibold">Annual Rental Portfolio Report • Age ${report.age}</p>
+                <p class="text-slate-300 text-xs mt-2 italic">"Here is your annual financial breakdown and property updates for this year."</p>
+            </div>
+
+            <!-- FINANCIAL SUMMARY -->
+            <div class="bg-slate-800 p-3.5 rounded-xl border border-slate-700 grid grid-cols-3 gap-2 text-center">
+                <div class="bg-slate-900/80 p-2 rounded-lg border border-slate-700/50">
+                    <div class="text-[9px] uppercase font-bold text-slate-400">Gross Rent</div>
+                    <div class="text-green-400 font-bold text-xs mt-0.5">${Utils.formatMoney(report.gross)}</div>
+                </div>
+                <div class="bg-slate-900/80 p-2 rounded-lg border border-slate-700/50">
+                    <div class="text-[9px] uppercase font-bold text-amber-400">10% Fee</div>
+                    <div class="text-amber-400 font-bold text-xs mt-0.5">-${Utils.formatMoney(report.fee)}</div>
+                </div>
+                <div class="bg-slate-900/80 p-2 rounded-lg border border-slate-700/50">
+                    <div class="text-[9px] uppercase font-bold text-emerald-400">Net to You</div>
+                    <div class="text-emerald-300 font-bold text-xs mt-0.5">+${Utils.formatMoney(report.net)}</div>
+                </div>
+            </div>
+
+            <!-- PER PROPERTY RENT -->
+            <div class="bg-slate-800 p-3 rounded-xl border border-slate-700 space-y-2">
+                <div class="text-slate-400 font-bold uppercase text-[10px] flex items-center gap-1.5">
+                    <i class="fas fa-building text-indigo-400"></i> Collected Rent by Property
+                </div>
+                <div class="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                    ${propsHtml}
+                </div>
+            </div>
+
+            <!-- ACTIVITY (RENEWALS / REPLACEMENTS) -->
+            ${activityHtml ? `
+                <div class="bg-slate-800 p-3 rounded-xl border border-slate-700 space-y-2">
+                    <div class="text-slate-400 font-bold uppercase text-[10px] flex items-center gap-1.5">
+                        <i class="fas fa-clipboard-check text-indigo-400"></i> Portfolio Activity
+                    </div>
+                    <div class="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                        ${activityHtml}
+                    </div>
+                </div>
+            ` : ''}
+
+            <!-- REPAIRS -->
+            ${repairs.length > 0 ? `
+                <div class="bg-slate-800 p-3 rounded-xl border border-slate-700 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <div class="text-slate-400 font-bold uppercase text-[10px] flex items-center gap-1.5">
+                            <i class="fas fa-tools text-amber-400"></i> Repair Requests (${repairs.length})
+                        </div>
+                        ${pendingRepairs.length > 0 ? '<span class="text-[10px] text-amber-400 font-bold">Action Needed</span>' : '<span class="text-[10px] text-green-400 font-bold">All Resolved</span>'}
+                    </div>
+                    ${approveAllBtn}
+                    <div class="space-y-2">
+                        ${repairsHtml}
+                    </div>
+                </div>
+            ` : ''}
+
+            <!-- DISMISS BUTTON -->
+            <div class="pt-2">
+                <button data-action="${isAgeUpFlow ? 'dismissManagerReportAction' : 'hideModal'}" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl text-xs transition shadow-lg shadow-indigo-900/40">
+                    <i class="fas fa-check mr-1.5"></i> ${isAgeUpFlow ? 'Done & Continue' : 'Close Report'}
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+function updateManagerReportModal(report) {
+    const isAgeUpFlow = Array.isArray(state.gameState?.pendingTenantEvents) && state.gameState.pendingTenantEvents[0]?.eventType === 'manager_report';
+    const user = state.gameState?.user;
+    const pm = user?.propertyManager;
+    const title = pm ? `Annual Report from ${Utils.escapeHtml(pm.name)}` : "Annual Rental Report";
+    UI.replaceModalContent(title, getAnnualManagerReportHtml(report, isAgeUpFlow));
+}
+
+export const renderAnnualManagerReportModal = (report, isAgeUpFlow = true) => {
+    const user = state.gameState?.user;
+    const pm = user?.propertyManager;
+    const title = pm ? `Annual Report from ${Utils.escapeHtml(pm.name)}` : "Annual Rental Report";
+    const content = getAnnualManagerReportHtml(report, isAgeUpFlow);
+
+    UI.showCustomModal({
+        title,
+        content,
+        showCloseBtn: !isAgeUpFlow
+    });
+};
+
+export const viewLastManagerReport = () => {
+    const user = state.gameState?.user;
+    if (!user || !user.propertyManager || !user.propertyManager.lastReport) {
+        UI.showModal("No Report Available", "Your property manager hasn't submitted an annual report yet. You will receive one after you age up.");
+        return;
+    }
+    renderAnnualManagerReportModal(user.propertyManager.lastReport, false);
+};
+
+export const approveManagerRepairAction = (repairId) => {
+    const user = state.gameState?.user;
+    if (!user) return;
+    const result = GameLogic.resolveManagerRepair(user, repairId, true);
+    if (!result.success) {
+        UI.showModal("Repair Failed", result.reason);
+        return;
+    }
+    addLog(`Approved repair: ${result.repair.type} on ${result.propertyName} for ${Utils.formatMoney(result.repair.cost)}.`, 'good');
+    saveGame();
+    UI.updateHeader(user);
+    updateManagerReportModal(user.propertyManager?.lastReport);
+};
+
+export const declineManagerRepairAction = (repairId) => {
+    const user = state.gameState?.user;
+    if (!user) return;
+    const result = GameLogic.resolveManagerRepair(user, repairId, false);
+    if (!result.success) {
+        UI.showModal("Action Failed", result.reason);
+        return;
+    }
+    addLog(`Declined repair: ${result.repair.type} on ${result.propertyName}. Property condition dropped by ${result.repair.conditionLoss}%.`, 'bad');
+    saveGame();
+    UI.updateHeader(user);
+    updateManagerReportModal(user.propertyManager?.lastReport);
+};
+
+export const approveAllManagerRepairsAction = () => {
+    const user = state.gameState?.user;
+    if (!user) return;
+    const pending = GameLogic.getPendingManagerRepairs(user);
+    if (pending.length === 0) return;
+
+    let approvedCount = 0;
+    let totalCost = 0;
+    for (const r of pending) {
+        const res = GameLogic.resolveManagerRepair(user, r.id, true);
+        if (res.success) {
+            approvedCount++;
+            totalCost += r.cost;
+        } else {
+            break;
+        }
+    }
+    if (approvedCount > 0) {
+        addLog(`Approved ${approvedCount} property repair${approvedCount === 1 ? '' : 's'} for a total of ${Utils.formatMoney(totalCost)}.`, 'good');
+        saveGame();
+        UI.updateHeader(user);
+    }
+    updateManagerReportModal(user.propertyManager?.lastReport);
+};
+
+export const dismissManagerReportAction = () => {
+    const queue = state.gameState?.pendingTenantEvents;
+    if (queue && queue.length > 0 && queue[0].eventType === 'manager_report') {
+        queue.shift();
+    }
+    UI.closeAllModals();
+    processNextTenantDefaultEvent();
+};
+
 
 
 

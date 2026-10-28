@@ -132,6 +132,14 @@ export const forgiveTenantDamage = lazy('assets', 'forgiveTenantDamage');
 export const renewLeaseSameRate = lazy('assets', 'renewLeaseSameRate');
 export const renewLeaseWithIncrease = lazy('assets', 'renewLeaseWithIncrease');
 export const declineLeaseRenewal = lazy('assets', 'declineLeaseRenewal');
+export const openHirePropertyManagerModal = lazy('assets', 'openHirePropertyManagerModal');
+export const confirmHirePropertyManager = lazy('assets', 'confirmHirePropertyManager');
+export const openFirePropertyManagerConfirm = lazy('assets', 'openFirePropertyManagerConfirm');
+export const viewLastManagerReport = lazy('assets', 'viewLastManagerReport');
+export const approveManagerRepairAction = lazy('assets', 'approveManagerRepairAction');
+export const declineManagerRepairAction = lazy('assets', 'declineManagerRepairAction');
+export const approveAllManagerRepairsAction = lazy('assets', 'approveAllManagerRepairsAction');
+export const dismissManagerReportAction = lazy('assets', 'dismissManagerReportAction');
 export const renderJewelryManager = lazy('assets', 'renderJewelryManager');
 export const toggleWearJewelry = lazy('assets', 'toggleWearJewelry');
 export const toggleInsureJewelry = lazy('assets', 'toggleInsureJewelry');
@@ -1545,6 +1553,14 @@ const routeHandlers = {
   renewLeaseSameRate,
   renewLeaseWithIncrease,
   declineLeaseRenewal,
+  openHirePropertyManagerModal,
+  confirmHirePropertyManager,
+  openFirePropertyManagerConfirm,
+  viewLastManagerReport,
+  approveManagerRepairAction,
+  declineManagerRepairAction,
+  approveAllManagerRepairsAction,
+  dismissManagerReportAction,
   get renderActivities() { return renderActivities; },
   processQuarter,
   setBusinessTab,
