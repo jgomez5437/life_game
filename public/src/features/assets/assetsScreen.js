@@ -990,6 +990,7 @@ export const openTenantScreening = (propertyId) => {
     if (!property) return;
 
     const applicants = GameLogic.generateTenantApplicants(property);
+    property._screeningApplicants = applicants;
 
     const applicantsHtml = applicants.map(app => `
         <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex items-center gap-4">
