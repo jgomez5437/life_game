@@ -3371,7 +3371,7 @@ function generateTenantApplicants(property) {
         age: Math.floor(Math.random() * 25) + 30,
         type: 'Reliable Professional',
         quality: 'excellent',
-        monthlyRent: Math.max(500, Math.floor(val * 0.007)),
+        monthlyRent: Math.max(500, Math.round(val * 0.007)),
         leaseYears: 2,
         desc: 'Corporate professional with verified credit and stellar landlord references.'
     };
@@ -3384,7 +3384,7 @@ function generateTenantApplicants(property) {
         age: Math.floor(Math.random() * 15) + 22,
         type: 'Working Roommates',
         quality: 'good',
-        monthlyRent: Math.max(650, Math.floor(val * 0.009)),
+        monthlyRent: Math.max(650, Math.round(val * 0.009)),
         leaseYears: 1,
         desc: 'Steady combined income willing to pay higher rent for a flexible 1-year term.'
     };
@@ -3397,7 +3397,7 @@ function generateTenantApplicants(property) {
         age: Math.floor(Math.random() * 20) + 25,
         type: 'Unscreened Applicant',
         quality: 'risky',
-        monthlyRent: Math.max(800, Math.floor(val * 0.011)),
+        monthlyRent: Math.max(800, Math.round(val * 0.011)),
         leaseYears: 3,
         desc: 'Offers top-tier rent and a long lease, but has an unverified employment history.'
     };
@@ -3416,7 +3416,8 @@ function acceptTenantLease(user, propertyId, applicantId) {
         return { success: false, reason: "Property is already occupied by a tenant." };
     }
 
-    const applicants = generateTenantApplicants(property);
+    const applicants = property._screeningApplicants || generateTenantApplicants(property);
+    delete property._screeningApplicants;
     const selected = applicants.find(a => a.id === applicantId);
     if (!selected) return { success: false, reason: "Invalid applicant selected." };
 
@@ -3788,8 +3789,10 @@ function collectManagedRent(user, asset, report) {
 
 function placeReplacementTenant(asset) {
     const applicants = generateTenantApplicants(asset);
-    const preferred = Math.random() < 0.7 ? 'excellent' : 'good';
-    const pick = applicants.find(a => a.quality === preferred) || applicants[0];
+    const targetQuality = asset.tenant?.quality || 'excellent';
+    const pick = applicants.find(a => a.quality === targetQuality) ||
+                 applicants.find(a => a.quality === 'excellent') ||
+                 applicants[0];
     if (!pick) {
         asset.isRented = false;
         asset.tenant = null;
