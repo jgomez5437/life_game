@@ -2775,14 +2775,19 @@ function calculateMonthlyMortgage(principal, annualRate = 0.065, years = 30) {
     return Number.isFinite(monthlyPayment) ? Math.round(monthlyPayment) : 0;
 }
 
-function calculateTotalRentalIncome(assets) {
+function calculateTotalRentalIncome(assets, user = null) {
     if (!Array.isArray(assets)) return 0;
-    return assets.reduce((sum, asset) => {
+    const gross = assets.reduce((sum, asset) => {
         if (asset.category === 'property' && asset.isRented && asset.tenant && asset.tenant.monthlyRent) {
             return sum + asset.tenant.monthlyRent;
         }
         return sum;
     }, 0);
+    // A hired property manager keeps a fee on all rent collected
+    if (isPropertyManagerHired(user)) {
+        return gross - Math.round(gross * PROPERTY_MANAGER_FEE_RATE);
+    }
+    return gross;
 }
 
 function getMinRetireYears(userOrTrack) {
@@ -2798,7 +2803,7 @@ function calculateUserMonthlyIncome(user) {
     if (user.hasBusiness && user.ceoSalary) monthlyIncome += user.ceoSalary;
     if (user.jobTitle && user.jobSalary) monthlyIncome += Math.floor(user.jobSalary / 12);
     if (user.isRetired && user.retirementPension) monthlyIncome += Math.floor(user.retirementPension / 12);
-    monthlyIncome += calculateTotalRentalIncome(user.assets);
+    monthlyIncome += calculateTotalRentalIncome(user.assets, user);
     return monthlyIncome;
 }
 
@@ -2944,14 +2949,18 @@ function calculateFinancialBreakdown(user) {
         a && a.category === 'property' && a.isRented &&
         ((a.tenant && a.tenant.monthlyRent > 0) || a.monthlyRent > 0)
     );
-    const rentOf = (p) => (p.tenant && p.tenant.monthlyRent) ? p.tenant.monthlyRent : (p.monthlyRent || 0);
+    const managerFeeFactor = isPropertyManagerHired(user) ? (1 - PROPERTY_MANAGER_FEE_RATE) : 1;
+    const rentOf = (p) => {
+        const gross = (p.tenant && p.tenant.monthlyRent) ? p.tenant.monthlyRent : (p.monthlyRent || 0);
+        return Math.round(gross * managerFeeFactor);
+    };
     const rentalMonthly = rentedProperties.reduce((sum, p) => sum + rentOf(p), 0);
     const rentalAnnual = rentalMonthly * 12;
     incomeItems.push({
         id: 'rental_income',
         label: 'Rental Income',
         sublabel: rentedProperties.length > 0
-            ? `${rentedProperties.length} Rented ${rentedProperties.length === 1 ? 'Property' : 'Properties'}`
+            ? `${rentedProperties.length} Rented ${rentedProperties.length === 1 ? 'Property' : 'Properties'}${managerFeeFactor < 1 ? ' • Managed (after 10% fee)' : ''}`
             : 'No Active Tenants',
         icon: 'fa-house-user',
         color: 'text-teal-400',
@@ -3432,11 +3441,18 @@ function processRentalIncome(user, stateRef) {
     if (!user || !Array.isArray(user.assets)) return 0;
 
     let totalCollectedThisYear = 0;
+    const managerHired = isPropertyManagerHired(user);
+    const report = managerHired ? getCurrentManagerReport(user, true) : null;
 
     user.assets.forEach(asset => {
         if (asset.category === 'property' && asset.isRented && asset.tenant && asset.tenant.monthlyRent) {
             // If renewal is pending from a prior expired lease, do not collect regular income
             if (asset.tenant.renewalPending) {
+                return;
+            }
+
+            if (managerHired) {
+                totalCollectedThisYear += collectManagedRent(user, asset, report);
                 return;
             }
 
@@ -3484,14 +3500,27 @@ function processRentalIncome(user, stateRef) {
         }
     });
 
+    if (report && report.properties.length > 0) {
+        const count = report.properties.length;
+        addLog(`Property manager ${user.propertyManager.name} collected $${report.gross.toLocaleString()} in rent across ${count} ${count === 1 ? 'property' : 'properties'} (10% fee: $${report.fee.toLocaleString()}). You received $${report.net.toLocaleString()}.`, 'good');
+    }
+
     return totalCollectedThisYear;
 }
 
 function processTenantEvents(user, stateRef) {
     if (!user || !Array.isArray(user.assets)) return;
 
+    const managerHired = isPropertyManagerHired(user);
+    const report = managerHired ? getCurrentManagerReport(user) : null;
+
     user.assets.forEach(asset => {
         if (asset.category === 'property' && asset.isRented && asset.tenant) {
+            if (managerHired) {
+                processManagedTenant(user, asset, report);
+                return;
+            }
+
             // Check if renewal was already pending from a previous turn or lease was already expired/negative
             if (asset.tenant.renewalPending || asset.tenant.leaseYears <= 0) {
                 const lapsedTenantName = asset.tenant.name;
@@ -3571,6 +3600,20 @@ function processTenantEvents(user, stateRef) {
             }
         }
     });
+
+    if (managerHired && stateRef && stateRef.gameState) {
+        if (!Array.isArray(stateRef.gameState.pendingTenantEvents)) stateRef.gameState.pendingTenantEvents = [];
+        // The manager handles overdue rent, renewals and damage for managed properties: drop legacy popups for them
+        stateRef.gameState.pendingTenantEvents = stateRef.gameState.pendingTenantEvents.filter(e => {
+            if (e.eventType === 'manager_report') return false;
+            const prop = user.assets.find(a => a.id === e.propertyId);
+            return !isPropertyManaged(user, prop);
+        });
+        const hasContent = report.properties.length > 0 || report.activity.length > 0 || report.repairs.length > 0;
+        if (hasContent) {
+            stateRef.gameState.pendingTenantEvents.push({ eventType: 'manager_report', age: report.age });
+        }
+    }
 }
 
 function evictTenant(user, propertyId) {
@@ -3588,6 +3631,284 @@ function evictTenant(user, propertyId) {
     property.tenant = null;
 
     return { success: true, propertyName: property.name, tenantName };
+}
+
+// --- PROPERTY MANAGER ---
+// A hired property manager runs every RENTED property (vacant properties are never managed
+// and never charged). They collect rent for a disclosed fee, quietly handle late rent,
+// auto-renew leases / place replacement tenants, and only escalate repair requests.
+
+const PROPERTY_MANAGER_FEE_RATE = 0.10;
+const MANAGER_REPAIR_CHANCE = 0.20;
+const MANAGER_REPAIR_CONDITION_GAIN = 5;
+const MANAGER_BASE_RENEWAL_CHANCE = 0.70;
+const MANAGER_NEGLECTED_RENEWAL_CHANCE = 0.50;
+
+const MANAGER_REPAIR_TYPES = [
+    { type: 'Leaky Roof', icon: 'fa-house-damage', desc: 'Water is getting in during storms. Needs patching before it spreads.' },
+    { type: 'HVAC Failure', icon: 'fa-fan', desc: 'The heating/cooling unit stopped working. The tenant is uncomfortable.' },
+    { type: 'Water Heater', icon: 'fa-fire', desc: 'The water heater is failing and needs replacement.' },
+    { type: 'Plumbing Leak', icon: 'fa-faucet', desc: 'A pipe is leaking under the kitchen sink.' },
+    { type: 'Appliance Replacement', icon: 'fa-blender', desc: 'A major appliance broke down and needs replacing.' },
+    { type: 'Electrical Issue', icon: 'fa-bolt', desc: 'Faulty wiring is tripping breakers. Should be fixed for safety.' },
+    { type: 'Tenant Wear & Tear', icon: 'fa-paint-roller', desc: 'Normal wear and tear: scuffed walls, worn carpet, loose fixtures.' }
+];
+
+function isPropertyManagerHired(user) {
+    return !!(user && user.propertyManager && user.propertyManager.hired);
+}
+
+function isPropertyManaged(user, asset) {
+    return isPropertyManagerHired(user) &&
+        !!asset && asset.category === 'property' && !!asset.isRented && !!asset.tenant;
+}
+
+function getRentedProperties(user) {
+    if (!user || !Array.isArray(user.assets)) return [];
+    return user.assets.filter(a => a && a.category === 'property' && a.isRented && a.tenant && a.tenant.monthlyRent > 0);
+}
+
+function generatePropertyManagerCandidate() {
+    const gender = Math.random() < 0.5 ? 'male' : 'female';
+    const id = `pm_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
+    return {
+        id,
+        name: `${getRandomFirstName(gender)} ${getRandomLastName()}`,
+        gender,
+        age: Math.floor(Math.random() * 25) + 30,
+        title: 'Licensed Property Manager',
+        feeRate: PROPERTY_MANAGER_FEE_RATE,
+        appearance: AvatarLogic.generateRandomAppearance(id, gender)
+    };
+}
+
+function hirePropertyManager(user, candidate = null) {
+    if (!user) return { success: false, reason: "No player found." };
+    if (!isAlive(user)) return { success: false, reason: "Cannot hire a property manager while dead or at 0 HP." };
+    if (isPropertyManagerHired(user)) return { success: false, reason: "You already have a property manager." };
+    if (getRentedProperties(user).length === 0) {
+        return { success: false, reason: "You need at least one rented property before hiring a property manager." };
+    }
+
+    const pick = candidate && candidate.name ? candidate : generatePropertyManagerCandidate();
+    user.propertyManager = {
+        hired: true,
+        id: pick.id,
+        name: pick.name,
+        gender: pick.gender,
+        age: pick.age,
+        title: pick.title || 'Licensed Property Manager',
+        appearance: pick.appearance,
+        feeRate: PROPERTY_MANAGER_FEE_RATE,
+        hiredAtAge: user.age,
+        lifetimeRentCollected: 0,
+        lifetimeFeesPaid: 0,
+        lifetimeRepairSpend: 0,
+        lastReport: null
+    };
+    return { success: true, manager: user.propertyManager };
+}
+
+function firePropertyManager(user) {
+    if (!isPropertyManagerHired(user)) return { success: false, reason: "You don't have a property manager." };
+    const name = user.propertyManager.name;
+    user.propertyManager = null;
+    return { success: true, managerName: name };
+}
+
+function getPropertyManagerSummary(user) {
+    const rented = getRentedProperties(user);
+    const grossMonthly = rented.reduce((sum, p) => sum + p.tenant.monthlyRent, 0);
+    const feeMonthly = Math.round(grossMonthly * PROPERTY_MANAGER_FEE_RATE);
+    return {
+        hired: isPropertyManagerHired(user),
+        manager: isPropertyManagerHired(user) ? user.propertyManager : null,
+        feeRate: PROPERTY_MANAGER_FEE_RATE,
+        managedCount: rented.length,
+        grossMonthly,
+        feeMonthly,
+        netMonthly: grossMonthly - feeMonthly
+    };
+}
+
+// Returns this year's report, creating a fresh one when the stored report is from a prior year.
+function getCurrentManagerReport(user, forceNew = false) {
+    const pm = user.propertyManager;
+    if (!forceNew && pm.lastReport && pm.lastReport.age === user.age) return pm.lastReport;
+    pm.lastReport = {
+        age: user.age,
+        properties: [],
+        activity: [],
+        repairs: [],
+        gross: 0,
+        fee: 0,
+        net: 0
+    };
+    return pm.lastReport;
+}
+
+function collectManagedRent(user, asset, report) {
+    const pm = user.propertyManager;
+    const tenant = asset.tenant;
+    const monthly = tenant.monthlyRent;
+    let months = 12;
+    let note = 'Paid in full';
+
+    // Manager chases late payments, so losses are smaller than self-managed and no popups are raised
+    if (tenant.quality === 'risky' && Math.random() < 0.25) {
+        months = 11;
+        note = 'Fell 2 months behind; I recovered 1 month';
+    } else if (tenant.quality === 'good' && Math.random() < 0.10) {
+        note = 'Paid late; I collected in full';
+    }
+
+    const gross = monthly * months;
+    const fee = Math.round(gross * PROPERTY_MANAGER_FEE_RATE);
+    const net = gross - fee;
+
+    user.money += net;
+    pm.lifetimeRentCollected = (pm.lifetimeRentCollected || 0) + gross;
+    pm.lifetimeFeesPaid = (pm.lifetimeFeesPaid || 0) + fee;
+
+    report.properties.push({
+        propertyId: asset.id,
+        propertyName: asset.name,
+        tenantName: tenant.name,
+        monthlyRent: monthly,
+        gross,
+        fee,
+        net,
+        note
+    });
+    report.gross += gross;
+    report.fee += fee;
+    report.net += net;
+    return net;
+}
+
+function placeReplacementTenant(asset) {
+    const applicants = generateTenantApplicants(asset);
+    const preferred = Math.random() < 0.7 ? 'excellent' : 'good';
+    const pick = applicants.find(a => a.quality === preferred) || applicants[0];
+    if (!pick) {
+        asset.isRented = false;
+        asset.tenant = null;
+        return null;
+    }
+    asset.isRented = true;
+    asset.tenant = {
+        id: `${pick.id}_${Date.now()}_${Math.floor(Math.random() * 1e6)}`,
+        name: pick.name,
+        gender: pick.gender,
+        age: pick.age,
+        type: pick.type,
+        quality: pick.quality,
+        monthlyRent: pick.monthlyRent,
+        leaseYears: pick.leaseYears,
+        appearance: pick.appearance,
+        renewalPending: false
+    };
+    return asset.tenant;
+}
+
+function processManagedTenant(user, asset, report) {
+    const pm = user.propertyManager;
+    const tenant = asset.tenant;
+
+    if (tenant.renewalPending) {
+        // Renewal left over from before the manager was hired: resolve it now
+        tenant.renewalPending = false;
+        tenant.leaseYears = 0;
+    } else {
+        tenant.leaseYears -= 1;
+    }
+
+    if (tenant.leaseYears <= 0) {
+        const renewChance = tenant.repairNeglect > 0 ? MANAGER_NEGLECTED_RENEWAL_CHANCE : MANAGER_BASE_RENEWAL_CHANCE;
+        let leaveReason = `${tenant.name} chose not to renew at ${asset.name}`;
+
+        if (Math.random() < renewChance) {
+            const years = Math.floor(Math.random() * 3) + 1;
+            const newRent = Math.floor(tenant.monthlyRent * 1.05);
+            if (Math.random() < 0.80) {
+                tenant.monthlyRent = newRent;
+                tenant.leaseYears = years;
+                tenant.repairNeglect = 0;
+                const text = `Renewed ${tenant.name}'s lease at ${asset.name} for ${years} year${years === 1 ? '' : 's'} at $${newRent.toLocaleString()}/mo (+5%).`;
+                report.activity.push({ type: 'renewal', icon: 'fa-file-signature', text });
+                addLog(`Property manager ${pm.name}: ${text}`, 'good');
+                return;
+            }
+            leaveReason = `${tenant.name} declined the 5% increase and moved out of ${asset.name}`;
+        } else if (tenant.repairNeglect > 0) {
+            leaveReason = `${tenant.name} moved out of ${asset.name}, unhappy about unrepaired issues`;
+        }
+
+        const newTenant = placeReplacementTenant(asset);
+        const text = newTenant
+            ? `${leaveReason}. I placed a new tenant, ${newTenant.name}, at $${newTenant.monthlyRent.toLocaleString()}/mo (${newTenant.leaseYears}-yr lease).`
+            : `${leaveReason}. The property is now vacant.`;
+        report.activity.push({ type: 'new_tenant', icon: 'fa-user-plus', text });
+        addLog(`Property manager ${pm.name}: ${text}`, 'neutral');
+        return;
+    }
+
+    if (Math.random() < MANAGER_REPAIR_CHANCE) {
+        const def = MANAGER_REPAIR_TYPES[Math.floor(Math.random() * MANAGER_REPAIR_TYPES.length)];
+        const cost = Math.max(300, Math.floor((asset.value || 0) * (0.005 + Math.random() * 0.005)));
+        report.repairs.push({
+            id: `repair_${asset.id}_${report.age}_${report.repairs.length}`,
+            propertyId: asset.id,
+            propertyName: asset.name,
+            tenantName: tenant.name,
+            type: def.type,
+            icon: def.icon,
+            desc: def.desc,
+            cost,
+            conditionLoss: 10 + Math.floor(Math.random() * 6),
+            conditionGain: MANAGER_REPAIR_CONDITION_GAIN,
+            status: 'pending'
+        });
+    }
+}
+
+function getPendingManagerRepairs(user) {
+    if (!isPropertyManagerHired(user) || !user.propertyManager.lastReport) return [];
+    return (user.propertyManager.lastReport.repairs || []).filter(r => r.status === 'pending');
+}
+
+function resolveManagerRepair(user, repairId, approve) {
+    if (!isPropertyManagerHired(user) || !user.propertyManager.lastReport) {
+        return { success: false, reason: "No property manager report found." };
+    }
+    const pm = user.propertyManager;
+    const repair = (pm.lastReport.repairs || []).find(r => r.id === repairId);
+    if (!repair) return { success: false, reason: "Repair request not found." };
+    if (repair.status !== 'pending') return { success: false, reason: "This repair request was already handled." };
+
+    const property = (user.assets || []).find(a => a.id === repair.propertyId && a.category === 'property');
+    if (!property) {
+        repair.status = 'cancelled';
+        return { success: true, status: 'cancelled', repair };
+    }
+    if (property.condition === undefined) property.condition = 100;
+    if (property.maxCondition === undefined) property.maxCondition = 100;
+
+    if (approve) {
+        if ((user.money || 0) < repair.cost) {
+            return { success: false, reason: `Insufficient funds. This repair costs $${repair.cost.toLocaleString()}.` };
+        }
+        user.money -= repair.cost;
+        property.condition = Math.min(property.maxCondition, property.condition + repair.conditionGain);
+        pm.lifetimeRepairSpend = (pm.lifetimeRepairSpend || 0) + repair.cost;
+        repair.status = 'approved';
+        return { success: true, status: 'approved', repair, propertyName: property.name };
+    }
+
+    property.condition = Math.max(0, property.condition - repair.conditionLoss);
+    if (property.tenant) property.tenant.repairNeglect = (property.tenant.repairNeglect || 0) + 1;
+    repair.status = 'declined';
+    return { success: true, status: 'declined', repair, propertyName: property.name };
 }
 
 
@@ -7050,6 +7371,15 @@ export const GameLogic = {
     processRentalIncome,
     processTenantEvents,
     evictTenant,
+    PROPERTY_MANAGER_FEE_RATE,
+    isPropertyManagerHired,
+    isPropertyManaged,
+    generatePropertyManagerCandidate,
+    hirePropertyManager,
+    firePropertyManager,
+    getPropertyManagerSummary,
+    resolveManagerRepair,
+    getPendingManagerRepairs,
     calculatePropertySaleTiers,
     generatePropertyBuyerOffer,
     completePropertySale,
