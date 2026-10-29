@@ -1797,6 +1797,20 @@ const FUNERAL_ACTION_WHITELIST = new Set([
     'selectLifeEventChoice',
     'finishLifeEvent',
     'processNextLifeEvent',
+    // Property manager annual report actions
+    'dismissManagerReportAction',
+    'approveManagerRepairAction',
+    'declineManagerRepairAction',
+    'approveAllManagerRepairsAction',
+    // Tenant event popups (lease renewal, damage, overdue rent)
+    'renewLeaseSameRate',
+    'renewLeaseWithIncrease',
+    'declineLeaseRenewal',
+    'demandTenantRepairPayment',
+    'forgiveTenantDamage',
+    'demandTenantRentPayment',
+    'forgiveTenantRent',
+    'evictTenantFromEvent',
     'hideModal',
     'closeAllModals'
 ]);

@@ -101,4 +101,35 @@ describe('Global Navigation Locking (Router & Modal Interception)', () => {
         // User should not be able to navigate to work screen
         expect(document.getElementById('game-container').innerHTML).not.toContain('Current Status');
     });
+
+    test('Manager report Done is not hijacked by a pending life event and clears the report from the queue', async () => {
+        state.gameState.user.propertyManager = { hired: true, name: 'Pat Manager', lastReport: { age: 30, properties: [], activity: [], repairs: [] } };
+        state.gameState.user.assets = [];
+        state.gameState.pendingEvents = [{ eventId: 'nonexistent_event' }];
+        state.gameState.pendingTenantEvents = [{ eventType: 'manager_report', age: 30 }];
+
+        document.getElementById('game-container').innerHTML =
+            '<button id="pm-done" data-action="dismissManagerReportAction">Done</button>';
+        document.getElementById('pm-done').dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // The action ran instead of being intercepted by the life event lock
+        expect(state.gameState.pendingTenantEvents.find(e => e.eventType === 'manager_report')).toBeUndefined();
+    });
+
+    test('Tenant popup actions are whitelisted while a life event is pending', async () => {
+        state.gameState.user.assets = [];
+        state.gameState.pendingEvents = [{ eventId: 'nonexistent_event' }];
+        state.gameState.pendingTenantEvents = [{ eventType: 'overdue', propertyId: 'p1', tenantId: 't1' }];
+
+        document.getElementById('game-container').innerHTML =
+            '<button id="forgive" data-action="forgiveTenantRent" data-args="p1, \'t1\'">Forgive</button>';
+        document.getElementById('forgive').dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // forgiveTenantRent shifts the queued tenant event; the lock would have left it untouched
+        expect(state.gameState.pendingTenantEvents.length).toBe(0);
+    });
 });
