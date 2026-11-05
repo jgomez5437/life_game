@@ -499,5 +499,35 @@ describe('Persistent Global Bottom Navigation & Active Tab States', () => {
             expect(firstLogCard.getAttribute('data-log-age')).toBe('22');
             expect(firstLogCard.classList.contains('current-age-log-card')).toBe(true);
         });
+
+        test('renderLifeDashboard isolates #life-history-header from #life-history-scroll inside #life-history-card so age sections scroll below the header without overlap', () => {
+            state.gameState.user.age = 29;
+            state.gameState.lifeLog = [
+                { age: 29, events: [{ msg: 'Promoted to Corporal! New salary: $62,500/yr.', color: 'text-amber-400' }] },
+                { age: 28, events: [{ msg: 'Served honorably.', color: 'text-emerald-400' }] }
+            ];
+
+            renderLifeDashboard(state.gameState);
+
+            const card = document.getElementById('life-history-card');
+            expect(card).not.toBeNull();
+
+            const header = document.getElementById('life-history-header');
+            expect(header).not.toBeNull();
+            expect(header.textContent.trim()).toBe('Life History');
+
+            const scrollEl = document.getElementById('life-history-scroll');
+            expect(scrollEl).not.toBeNull();
+
+            // Header is outside and above the scroll container
+            expect(header.parentElement).toBe(card);
+            expect(scrollEl.parentElement).toBe(card);
+            expect(scrollEl.contains(header)).toBe(false);
+
+            // Scroll container only holds the age sections below the header
+            const ageCards = scrollEl.querySelectorAll('[data-log-age]');
+            expect(ageCards.length).toBe(2);
+            expect(ageCards[0].getAttribute('data-log-age')).toBe('29');
+        });
     });
 });

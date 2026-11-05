@@ -1184,10 +1184,12 @@ export function renderLifeDashboard(maybeGameState) {
         <div class="flex flex-col h-full max-w-lg mx-auto">
             ${vipBannerHtml}
             ${snapshotStripHtml}
-            <div id="life-history-scroll" class="flex-1 overflow-y-auto ${!isBottomNav ? 'mb-2' : ''} bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
-                <h3 class="font-bold text-slate-300 mb-4 sticky top-0 bg-transparent backdrop-blur-md py-1 border-b border-slate-700/50">Life History</h3>
-                <div class="space-y-2">
-                    ${logHtml.length > 0 ? logHtml : '<div class="text-slate-600 text-sm italic">Life has just begun...</div>'}
+            <div id="life-history-card" class="flex-1 min-h-0 flex flex-col overflow-hidden ${!isBottomNav ? 'mb-2' : ''} bg-slate-800/50 rounded-xl border border-slate-700/50">
+                <h3 id="life-history-header" class="font-bold text-slate-300 px-4 py-2.5 sm:py-3 border-b border-slate-700/50 shrink-0">Life History</h3>
+                <div id="life-history-scroll" class="flex-1 overflow-y-auto p-4">
+                    <div class="space-y-2">
+                        ${logHtml.length > 0 ? logHtml : '<div class="text-slate-600 text-sm italic">Life has just begun...</div>'}
+                    </div>
                 </div>
             </div>
             ${inlineNavHtml}
