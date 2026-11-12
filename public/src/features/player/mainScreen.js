@@ -200,8 +200,7 @@ export function renderDeathScreen(user, cause) {
             <div id="eulogy-container" class="bg-slate-800 p-6 rounded-xl border border-slate-700 w-full mb-6 shadow-2xl">
                 <h3 class="text-sm font-bold text-slate-400 mb-2 uppercase tracking-wider text-left">Life Summary</h3>
                 <div class="relative w-full">
-                    <p id="eulogy-text" class="text-slate-300 italic text-sm text-left leading-relaxed line-clamp-5 overflow-hidden">"${Utils.escapeHtml(eulogy)}"</p>
-                    <button id="eulogy-view-more" data-action="showFullEulogy" class="hidden mt-3 text-blue-400 hover:text-blue-300 text-xs font-bold uppercase tracking-wider text-left w-full">View More &rarr;</button>
+                    <p id="eulogy-text" class="text-slate-300 italic text-sm text-left leading-relaxed">"${Utils.escapeHtml(eulogy)}"</p>
                 </div>
             </div>
             
@@ -225,14 +224,6 @@ export function renderDeathScreen(user, cause) {
     UI.resetHeader();
     UI.hideBottomNav();
     UI.renderScreen(deathHTML);
-
-    setTimeout(() => {
-        const p = document.getElementById('eulogy-text');
-        const btn = document.getElementById('eulogy-view-more');
-        if (p && btn && p.scrollHeight > p.clientHeight) {
-            btn.classList.remove('hidden');
-        }
-    }, 50);
 }
 
 export function showFullEulogy() {

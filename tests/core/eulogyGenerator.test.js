@@ -57,7 +57,7 @@ describe('Procedural Eulogy Generator Suite', () => {
         expect(classifyArchetype({ age: 65, gradDegree: true, jobTitle: 'Brain Surgeon', wealthTier: 'wealthy' })).toBe('SCHOLAR_PROFESSIONAL');
     });
 
-    test('Generates exactly 3 sentences for various life scenarios', () => {
+    test('Generates an intricate narrative (4-6 sentences) for various life scenarios', () => {
         const testScenarios = [
             {
                 // Tycoon
@@ -88,10 +88,10 @@ describe('Procedural Eulogy Generator Suite', () => {
                     money: 80000,
                     jobTitle: 'School Teacher',
                     relationships: [
-                        { type: 'Husband', category: 'spouse' },
-                        { type: 'Son', category: 'child' },
-                        { type: 'Daughter', category: 'child' },
-                        { type: 'Son', category: 'child' }
+                        { type: 'Husband', category: 'spouse', name: 'Carlos Santos' },
+                        { type: 'Son', category: 'child', name: 'Mateo' },
+                        { type: 'Daughter', category: 'child', name: 'Sofia' },
+                        { type: 'Son', category: 'child', name: 'Lucas' }
                     ],
                     city: 'Madrid',
                     country: 'Spain'
@@ -103,11 +103,12 @@ describe('Procedural Eulogy Generator Suite', () => {
         testScenarios.forEach(({ user, cause }) => {
             const eulogy = EulogyGenerator.generate(user, [], cause);
             expect(typeof eulogy).toBe('string');
-            expect(eulogy.length).toBeGreaterThan(50);
+            expect(eulogy.length).toBeGreaterThan(100);
 
             // Count sentences by splitting on terminal punctuation followed by space or end of string
             const sentences = eulogy.match(/[^.!?]+[.!?]+/g) || [];
-            expect(sentences.length).toBe(3);
+            expect(sentences.length).toBeGreaterThanOrEqual(4);
+            expect(sentences.length).toBeLessThanOrEqual(6);
         });
     });
 
@@ -142,7 +143,11 @@ describe('Procedural Eulogy Generator Suite', () => {
         expect(eulogy).not.toContain('parole');
         expect(eulogy).not.toContain('penal code');
         expect(eulogy).not.toContain('tax');
+        expect(eulogy).not.toContain('cubicle');
         expect(eulogy).toContain('Little Emma');
+
+        const sentences = eulogy.match(/[^.!?]+[.!?]+/g) || [];
+        expect(sentences.length).toBe(4);
     });
 
     test('Unemployed character never receives fake job titles or honest labor phrasing', () => {
@@ -170,7 +175,8 @@ describe('Procedural Eulogy Generator Suite', () => {
         const emptyEulogy = EulogyGenerator.generate({});
         expect(typeof emptyEulogy).toBe('string');
         const sentences = emptyEulogy.match(/[^.!?]+[.!?]+/g) || [];
-        expect(sentences.length).toBe(3);
+        expect(sentences.length).toBeGreaterThanOrEqual(4);
+        expect(sentences.length).toBeLessThanOrEqual(6);
     });
 
     test('Graveyard ancestor schema (ageAtDeath, causeOfDeath, finalNetWorth) produces correct eulogy', () => {
@@ -217,5 +223,173 @@ describe('Procedural Eulogy Generator Suite', () => {
             expect(eulogy).not.toMatch(/\.\./);   // no "old age.."
             expect(eulogy).not.toMatch(/\."/);    // no 'cancer."' mid-sentence
         });
+    });
+
+    // =========================================================================
+    // SPECIFIC GAME SYSTEMS VALIDATION
+    // =========================================================================
+
+    test('Weaves in Pro Athlete career, championship rings, and MVP awards', () => {
+        const athlete = {
+            username: 'Kobe Miller',
+            gender: 'male',
+            age: 39,
+            money: 85000000,
+            careerTrack: 'pro_athlete',
+            athleteSport: 'basketball',
+            athleteRings: 3,
+            athleteMvps: 2,
+            athleteCareerEarnings: 120000000,
+            city: 'Los Angeles',
+            country: 'United States'
+        };
+
+        const eulogy = EulogyGenerator.generate(athlete, [], 'Helicopter Incident');
+        expect(eulogy).toContain('Premier Basketball Association');
+        expect(eulogy).toContain('championship rings');
+        expect(eulogy).toContain('MVP awards');
+    });
+
+    test('Weaves in Mafia Syndicate Don rank and La Cosa Nostra', () => {
+        const mobster = {
+            username: 'Vito Corleone',
+            gender: 'male',
+            age: 62,
+            money: 15000000,
+            careerTrack: 'mafia_syndicate',
+            jobTitle: 'The Don',
+            careerLevel: 4,
+            city: 'New York',
+            country: 'United States'
+        };
+
+        const eulogy = EulogyGenerator.generate(mobster, [], 'Heart Attack');
+        expect(eulogy).toContain('The Don');
+        expect(eulogy).toContain('La Cosa Nostra');
+    });
+
+    test('Weaves in Entrepreneur company name, industry, and public IPO', () => {
+        const founder = {
+            username: 'Elon Vance',
+            gender: 'male',
+            age: 54,
+            money: 25000000,
+            hasBusiness: true,
+            companyName: 'HyperCloud Technologies',
+            industry: 'tech_saas',
+            isPublic: true,
+            employees: 150,
+            city: 'San Francisco',
+            country: 'United States'
+        };
+
+        const eulogy = EulogyGenerator.generate(founder, [], 'Workplace Overexertion');
+        expect(eulogy).toContain('HyperCloud Technologies');
+        expect(eulogy).toContain('IPO');
+    });
+
+    test('Weaves in University major and Graduate School degree', () => {
+        const doctor = {
+            username: 'Dr. Gregory House',
+            gender: 'male',
+            age: 58,
+            money: 450000,
+            major: 'Biology',
+            gradSchoolDegree: 'Medical School',
+            jobTitle: 'Chief of Medicine',
+            city: 'Princeton',
+            country: 'United States'
+        };
+
+        const eulogy = EulogyGenerator.generate(doctor, [], 'Complications');
+        expect(eulogy).toContain('Doctor of Medicine (M.D.)');
+    });
+
+    test('Weaves in named relationships (spouse, children, best friend, rival)', () => {
+        const player = {
+            username: 'Arthur Pendelton',
+            gender: 'male',
+            age: 65,
+            money: 150000,
+            jobTitle: 'Banker',
+            relationships: [
+                { type: 'Wife', category: 'spouse', name: 'Guinevere' },
+                { type: 'Son', category: 'child', name: 'Lancelot' },
+                { type: 'Daughter', category: 'child', name: 'Elaine' },
+                { type: 'Friend', category: 'friend', name: 'Merlin', status: 95 },
+                { type: 'Enemy', category: 'enemy', name: 'Mordred', status: 5 }
+            ],
+            city: 'London',
+            country: 'United Kingdom'
+        };
+
+        const eulogy = EulogyGenerator.generate(player, [], 'Natural Causes');
+        expect(eulogy).toContain('Guinevere');
+        expect(eulogy).toContain('Lancelot');
+        expect(eulogy).toContain('Elaine');
+        expect(eulogy).toContain('Merlin');
+        expect(eulogy).toContain('Mordred');
+    });
+
+    test('Weaves in musical instrument mastery and real estate portfolio', () => {
+        const musician = {
+            username: 'Ludwig Beethoven',
+            gender: 'male',
+            age: 56,
+            money: 300000,
+            jobTitle: 'Composer',
+            skills: {
+                piano: { xp: 95, certified: true }
+            },
+            assets: [
+                { category: 'property', name: 'Vienna Manor Estate', value: 800000, isRented: true },
+                { category: 'property', name: 'Rhine Villa', value: 450000, isRented: true },
+                { category: 'property', name: 'Mountain Retreat', value: 350000 }
+            ],
+            city: 'Vienna',
+            country: 'Austria'
+        };
+
+        const eulogy = EulogyGenerator.generate(musician, [], 'Liver Failure');
+        expect(eulogy.toLowerCase()).toContain('piano');
+        expect(eulogy).toContain('Vienna Manor Estate');
+        expect(eulogy).toContain('3');
+    });
+
+    test('Weaves in prison incarceration, facility name, and cellmate', () => {
+        const convict = {
+            username: 'Red Redding',
+            gender: 'male',
+            age: 60,
+            inPrison: true,
+            prisonTotalSentence: 25,
+            facilityName: 'Shawshank State Prison',
+            cellmate: { name: 'Andy Dufresne' },
+            city: 'Portland',
+            country: 'United States'
+        };
+
+        const eulogy = EulogyGenerator.generate(convict, [], 'Old Age');
+        expect(eulogy).toContain('Shawshank State Prison');
+        expect(eulogy).toContain('Andy Dufresne');
+    });
+
+    test('Weaves in multi-generational lineage and ancestor tribute', () => {
+        const heir = {
+            username: 'John Rockefeller III',
+            gender: 'male',
+            age: 70,
+            money: 5000000,
+            generation: 3,
+            pastLives: [
+                { name: 'John Rockefeller Jr.', ageAtDeath: 86 }
+            ],
+            city: 'New York',
+            country: 'United States'
+        };
+
+        const eulogy = EulogyGenerator.generate(heir, [], 'Natural Causes');
+        expect(eulogy).toContain('John Rockefeller Jr.');
+        expect(eulogy).toContain('3rd-generation');
     });
 });
