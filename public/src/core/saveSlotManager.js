@@ -373,6 +373,66 @@ export function migrateState(rawState) {
     const pastLives = Array.isArray(u.pastLives) ? u.pastLives.filter(p => p && typeof p === 'object') : [];
     const generation = toNum(u.generation, 1, 1);
 
+    // 10. Property Manager Subsystem
+    let propertyManager = null;
+    if (u.propertyManager && typeof u.propertyManager === 'object' && toBool(u.propertyManager.hired, false)) {
+        const pm = u.propertyManager;
+        let lastReport = null;
+        if (pm.lastReport && typeof pm.lastReport === 'object' && !Array.isArray(pm.lastReport)) {
+            const lr = pm.lastReport;
+            lastReport = {
+                age: toNum(lr.age, age, 0),
+                properties: Array.isArray(lr.properties) ? lr.properties.filter(p => p && typeof p === 'object').map(p => ({
+                    propertyId: toStr(p.propertyId),
+                    propertyName: toStr(p.propertyName),
+                    tenantName: toStr(p.tenantName),
+                    monthlyRent: toNum(p.monthlyRent, 0, 0),
+                    gross: toNum(p.gross, 0, 0),
+                    fee: toNum(p.fee, 0, 0),
+                    net: toNum(p.net, 0, 0),
+                    note: toStr(p.note)
+                })) : [],
+                activity: Array.isArray(lr.activity) ? lr.activity.filter(a => a && typeof a === 'object').map(a => ({
+                    type: toStr(a.type),
+                    icon: toStr(a.icon),
+                    text: toStr(a.text)
+                })) : [],
+                repairs: Array.isArray(lr.repairs) ? lr.repairs.filter(r => r && typeof r === 'object').map(r => ({
+                    id: toStr(r.id),
+                    propertyId: toStr(r.propertyId),
+                    propertyName: toStr(r.propertyName),
+                    tenantName: toStr(r.tenantName),
+                    type: toStr(r.type),
+                    icon: toStr(r.icon),
+                    desc: toStr(r.desc),
+                    cost: toNum(r.cost, 0, 0),
+                    conditionLoss: toNum(r.conditionLoss, 0, 0),
+                    conditionGain: toNum(r.conditionGain, 0, 0),
+                    status: ['pending', 'approved', 'declined', 'cancelled'].includes(r.status) ? r.status : 'pending'
+                })) : [],
+                gross: toNum(lr.gross, 0, 0),
+                fee: toNum(lr.fee, 0, 0),
+                net: toNum(lr.net, 0, 0)
+            };
+        }
+
+        propertyManager = {
+            hired: true,
+            id: toStr(pm.id, `pm_${Date.now()}`),
+            name: toStr(pm.name, 'Property Manager'),
+            gender: ['male', 'female', 'non-binary'].includes(pm.gender) ? pm.gender : 'female',
+            age: toNum(pm.age, 35, 18, 120),
+            title: toStr(pm.title, 'Licensed Property Manager'),
+            appearance: (pm.appearance && typeof pm.appearance === 'object' && !Array.isArray(pm.appearance)) ? { ...pm.appearance } : null,
+            feeRate: toNum(pm.feeRate, 0.10, 0, 1),
+            hiredAtAge: toNum(pm.hiredAtAge, age, 0, 150),
+            lifetimeRentCollected: toNum(pm.lifetimeRentCollected, 0, 0),
+            lifetimeFeesPaid: toNum(pm.lifetimeFeesPaid, 0, 0),
+            lifetimeRepairSpend: toNum(pm.lifetimeRepairSpend, 0, 0),
+            lastReport
+        };
+    }
+
     // Build the migrated user object with strict schema whitelist
     const migratedUser = {
         username: toStr(u.username || u.name, "Player"),
@@ -486,6 +546,7 @@ export function migrateState(rawState) {
         yardInmates,
 
         assets,
+        propertyManager,
         investments,
 
         relationships,

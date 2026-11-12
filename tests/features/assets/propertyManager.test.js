@@ -1,6 +1,8 @@
+import { jest } from '@jest/globals';
 import { GameLogic } from '../../../public/src/core/gameLogic.js';
 import { state } from '../../../public/src/core/state.js';
 import { UI } from '../../../public/src/ui/ui.js';
+import { migrateState } from '../../../public/src/core/saveSlotManager.js';
 import {
     openHirePropertyManagerModal,
     confirmHirePropertyManager,
@@ -10,7 +12,8 @@ import {
     declineManagerRepairAction,
     approveAllManagerRepairsAction,
     dismissManagerReportAction,
-    getAnnualManagerReportHtml
+    getAnnualManagerReportHtml,
+    processNextTenantDefaultEvent
 } from '../../../public/src/features/assets/assetsScreen.js';
 
 describe('Feature: Property Manager', () => {
@@ -403,5 +406,109 @@ describe('Feature: Property Manager', () => {
             expect(pick.monthlyRent).toBe(3150);
         }
     });
+
+    test('migrateState persists propertyManager, appearance, and lastReport across state migrations', () => {
+        GameLogic.hirePropertyManager(mockUser);
+        expect(GameLogic.isPropertyManagerHired(mockUser)).toBe(true);
+
+        const pm = mockUser.propertyManager;
+        pm.lastReport = {
+            age: 35,
+            properties: [
+                { propertyId: 'prop_rented_1', propertyName: 'Sunset', tenantName: 'Alice', monthlyRent: 2000, gross: 24000, fee: 2400, net: 21600, note: 'Paid' }
+            ],
+            activity: [{ type: 'renewal', icon: 'fa-file', text: 'Renewed lease' }],
+            repairs: [
+                { id: 'r1', propertyId: 'prop_rented_1', propertyName: 'Sunset', tenantName: 'Alice', type: 'HVAC', icon: 'fa-fan', desc: 'Fix', cost: 1000, conditionLoss: 10, conditionGain: 5, status: 'pending' }
+            ],
+            gross: 24000,
+            fee: 2400,
+            net: 21600
+        };
+
+        const rawState = { user: mockUser };
+        const migrated = migrateState(rawState);
+
+        expect(migrated).toBeDefined();
+        expect(migrated.user).toBeDefined();
+        expect(migrated.user.propertyManager).toBeDefined();
+        expect(migrated.user.propertyManager.hired).toBe(true);
+        expect(migrated.user.propertyManager.name).toBe(pm.name);
+        expect(migrated.user.propertyManager.feeRate).toBe(0.10);
+        expect(migrated.user.propertyManager.appearance).toEqual(pm.appearance);
+        expect(migrated.user.propertyManager.lastReport).toBeDefined();
+        expect(migrated.user.propertyManager.lastReport.gross).toBe(24000);
+        expect(migrated.user.propertyManager.lastReport.repairs.length).toBe(1);
+        expect(migrated.user.propertyManager.lastReport.repairs[0].status).toBe('pending');
+        expect(GameLogic.isPropertyManagerHired(migrated.user)).toBe(true);
+    });
+
+    test('migrateState sets propertyManager to null when manager was not hired or fired', () => {
+        const rawStateNoManager = { user: { ...mockUser, propertyManager: null } };
+        const migrated = migrateState(rawStateNoManager);
+        expect(migrated.user.propertyManager).toBeNull();
+        expect(GameLogic.isPropertyManagerHired(migrated.user)).toBe(false);
+    });
+
+    test('Hiring manager clears renewalPending on existing tenants and collects managed rent without skipping', () => {
+        // Tenant previously had lease expire and renewal was pending
+        mockUser.assets[0].tenant.renewalPending = true;
+        mockUser.assets[0].tenant.leaseYears = 0;
+
+        GameLogic.hirePropertyManager(mockUser);
+        expect(mockUser.assets[0].tenant.renewalPending).toBe(false);
+        expect(mockUser.assets[0].tenant.leaseYears).toBe(1);
+
+        const collected = GameLogic.processRentalIncome(mockUser, state);
+        // Both properties should have rent collected (gross $4,500/mo * 12 = $54,000, net $48,600 after 10% fee)
+        expect(collected).toBe(48600);
+    });
+
+    test('processNextTenantDefaultEvent drops stale lease_expiration event if property is now managed', () => {
+        GameLogic.hirePropertyManager(mockUser);
+
+        // Queue a stale lease_expiration event
+        state.gameState.pendingTenantEvents = [
+            {
+                eventType: 'lease_expiration',
+                propertyId: mockUser.assets[0].id,
+                propertyName: mockUser.assets[0].name,
+                tenantId: mockUser.assets[0].tenant.id,
+                tenantName: mockUser.assets[0].tenant.name,
+                currentRent: 2000,
+                increasedRent: 2100,
+                requestedYears: 2
+            }
+        ];
+
+        const showCustomModalSpy = jest.spyOn(UI, 'showCustomModal');
+        processNextTenantDefaultEvent();
+
+        // Stale lease_expiration should have been shifted and no modal shown
+        expect(state.gameState.pendingTenantEvents.length).toBe(0);
+        expect(showCustomModalSpy).not.toHaveBeenCalled();
+        showCustomModalSpy.mockRestore();
+    });
+
+    test('confirmHirePropertyManager purges pending tenant events for managed properties', () => {
+        // Queue an unmanaged lease_expiration event
+        state.gameState.pendingTenantEvents = [
+            {
+                eventType: 'lease_expiration',
+                propertyId: mockUser.assets[0].id,
+                propertyName: mockUser.assets[0].name,
+                tenantId: mockUser.assets[0].tenant.id,
+                tenantName: mockUser.assets[0].tenant.name
+            }
+        ];
+
+        openHirePropertyManagerModal();
+        confirmHirePropertyManager();
+
+        expect(GameLogic.isPropertyManagerHired(mockUser)).toBe(true);
+        // The queued lease_expiration event for the now-managed property should be purged
+        expect(state.gameState.pendingTenantEvents.length).toBe(0);
+    });
 });
+
 

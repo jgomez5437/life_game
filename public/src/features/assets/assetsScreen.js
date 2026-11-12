@@ -1,6 +1,7 @@
 import { GameLogic } from '../../core/gameLogic.js';
 import { state } from '../../core/state.js';
 import { saveGame } from '../../core/main.js';
+import { captureAnnualSnapshot } from '../../core/timeMachine.js';
 import { renderShoppingHub } from './goShoppingScreen.js';
 import { renderLifeDashboard, renderDeathScreen, addLog } from '../player/mainScreen.js';
 import { processNextFuneral, processNextTeacherReplacement } from '../relationships/funeralScreen.js';
@@ -1093,6 +1094,13 @@ export const processNextTenantDefaultEvent = () => {
         return;
     }
 
+    // Managed property validation: the property manager handles renewals, overdue rent, and damage
+    if (GameLogic.isPropertyManaged(user, property)) {
+        queue.shift();
+        processNextTenantDefaultEvent();
+        return;
+    }
+
     const tenantAvatarObj = event.tenant || { name: event.tenantName, age: 35 };
 
     if (event.eventType === 'lease_expiration') {
@@ -1777,7 +1785,16 @@ export const confirmHirePropertyManager = () => {
         UI.showModal("Hiring Failed", res.reason);
         return;
     }
+    // Drop any pending legacy tenant events for managed properties
+    if (state.gameState && Array.isArray(state.gameState.pendingTenantEvents)) {
+        state.gameState.pendingTenantEvents = state.gameState.pendingTenantEvents.filter(e => {
+            if (e.eventType === 'manager_report') return true;
+            const prop = (user.assets || []).find(a => a.id === e.propertyId);
+            return !GameLogic.isPropertyManaged(user, prop);
+        });
+    }
     addLog(`Hired ${res.manager.name} as your Property Manager (10% fee).`, 'good');
+    captureAnnualSnapshot(state.gameState);
     saveGame();
     UI.hideModal();
     UI.updateHeader(user);
@@ -1801,6 +1818,7 @@ export const openFirePropertyManagerConfirm = () => {
             const res = GameLogic.firePropertyManager(user);
             if (res.success) {
                 addLog(`Fired property manager ${name}. You are now managing your rentals yourself.`, 'neutral');
+                captureAnnualSnapshot(state.gameState);
                 saveGame();
                 UI.updateHeader(user);
                 renderAssets();
@@ -2006,6 +2024,7 @@ export const approveManagerRepairAction = (repairId) => {
         return;
     }
     addLog(`Approved repair: ${result.repair.type} on ${result.propertyName} for ${Utils.formatMoney(result.repair.cost)}.`, 'good');
+    captureAnnualSnapshot(state.gameState);
     saveGame();
     UI.updateHeader(user);
     updateManagerReportModal(user.propertyManager?.lastReport);
@@ -2020,6 +2039,7 @@ export const declineManagerRepairAction = (repairId) => {
         return;
     }
     addLog(`Declined repair: ${result.repair.type} on ${result.propertyName}. Property condition dropped by ${result.repair.conditionLoss}%.`, 'bad');
+    captureAnnualSnapshot(state.gameState);
     saveGame();
     UI.updateHeader(user);
     updateManagerReportModal(user.propertyManager?.lastReport);
@@ -2044,6 +2064,7 @@ export const approveAllManagerRepairsAction = () => {
     }
     if (approvedCount > 0) {
         addLog(`Approved ${approvedCount} property repair${approvedCount === 1 ? '' : 's'} for a total of ${Utils.formatMoney(totalCost)}.`, 'good');
+        captureAnnualSnapshot(state.gameState);
         saveGame();
         UI.updateHeader(user);
     }

@@ -928,6 +928,62 @@ describe('Time Machine & Multi-Save Slots Engine', () => {
             expect(state.gameState.user.corporateDebt).toBeDefined();
             expect(state.gameState.lifeLog).toBeDefined();
         });
+
+        test('loadSlot and saveToSlot preserve propertyManager across slot loads and saves', () => {
+            const pmSlotStore = {
+                activeSlotId: 'slot_1',
+                slots: {
+                    slot_1: {
+                        id: 'slot_1',
+                        name: 'Landlord Hero',
+                        lastSaved: Date.now(),
+                        data: {
+                            user: {
+                                username: 'Landlord Hero',
+                                age: 40,
+                                money: 150000,
+                                propertyManager: {
+                                    hired: true,
+                                    id: 'pm_test_99',
+                                    name: 'Morgan Blake',
+                                    gender: 'female',
+                                    age: 38,
+                                    title: 'Licensed Property Manager',
+                                    feeRate: 0.10,
+                                    hiredAtAge: 38,
+                                    lifetimeRentCollected: 50000,
+                                    lifetimeFeesPaid: 5000,
+                                    lifetimeRepairSpend: 1200,
+                                    lastReport: {
+                                        age: 40,
+                                        gross: 24000,
+                                        fee: 2400,
+                                        net: 21600,
+                                        properties: [],
+                                        activity: [],
+                                        repairs: []
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+            localStorage.setItem('life_game_slots', JSON.stringify(pmSlotStore));
+
+            loadSlot('slot_1');
+            expect(state.gameState).not.toBeNull();
+            expect(state.gameState.user.propertyManager).toBeDefined();
+            expect(state.gameState.user.propertyManager.hired).toBe(true);
+            expect(state.gameState.user.propertyManager.name).toBe('Morgan Blake');
+            expect(state.gameState.user.propertyManager.lastReport.net).toBe(21600);
+
+            // Resave to slot
+            saveToSlot('slot_1');
+            const store = getSlotsStore();
+            expect(store.slots['slot_1'].data.user.propertyManager.hired).toBe(true);
+            expect(store.slots['slot_1'].data.user.propertyManager.name).toBe('Morgan Blake');
+        });
     });
 });
 
