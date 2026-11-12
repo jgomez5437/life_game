@@ -226,6 +226,8 @@ export const ACTION_TO_MODULE = {
     closeSkillsModal: 'more',
     practiceSkill: 'more',
     enrollSkillCourse: 'more',
+    askParentInstrumentPermission: 'more',
+    takeInstrumentLesson: 'more',
     renderCasinoHub: 'casino',
     openBlackjackBetting: 'casino',
     startBlackjackGame: 'casino',
