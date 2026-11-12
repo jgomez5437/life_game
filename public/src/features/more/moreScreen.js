@@ -7,7 +7,34 @@ import { UI } from '../../ui/ui.js';
 import { Utils, COUNTRIES_DATA } from '../../ui/utils.js';
 import { unlockAchievement } from '../../core/achievementManager.js';
 import { SKILL_TRACKS } from '../../core/constants.js';
-import { saveToSlot } from '../../core/saveSlotManager.js';
+import {
+    renderSkillsHub,
+    openSkillsModal,
+    setSkillsCategory,
+    openSkillDetail,
+    backToSkillsHub,
+    toggleSkillExpand,
+    collapseSkills,
+    practiceSkill,
+    enrollSkillCourse,
+    askParentInstrumentPermission,
+    takeInstrumentLesson,
+    resetSkillsViewState
+} from './skillsScreen.js';
+
+export {
+    renderSkillsHub,
+    openSkillsModal,
+    setSkillsCategory,
+    openSkillDetail,
+    backToSkillsHub,
+    toggleSkillExpand,
+    collapseSkills,
+    practiceSkill,
+    enrollSkillCourse,
+    askParentInstrumentPermission,
+    takeInstrumentLesson
+};
 
 const get = id => document.getElementById(id);
 
@@ -39,402 +66,14 @@ function renderSlimOptionRow({ icon, iconBg, iconColor, title, subtitle, badgeTe
     `;
 }
 
-let _expandedSkillKey = null;
-
-export function toggleSkillExpand(skillKey) {
-    _expandedSkillKey = (_expandedSkillKey === skillKey) ? null : skillKey;
-    openSkillsModal();
-}
-
-export function collapseSkills() {
-    _expandedSkillKey = null;
-    openSkillsModal();
-}
-
 export function closeSkillsModal() {
-    _expandedSkillKey = null;
+    resetSkillsViewState();
     UI.closeAllModals();
     renderMoreDashboard();
 }
 
-export function openSkillsModal(feedbackMsg = null, feedbackType = 'good') {
-    const user = state.gameState?.user;
-    if (!user) return;
-
-    GameLogic.ensureUserSkills(user);
-    const practiceLeft = Math.max(0, 2 - (user.skillActionsThisYear || 0));
-    const instrumentPracticesLeft = Math.max(0, 3 - (user.instrumentPracticesThisYear || 0));
-    const instrumentLessonsLeft = Math.max(0, 3 - (user.instrumentLessonsThisYear || 0));
-    const livingParents = GameLogic.getLivingParents ? GameLogic.getLivingParents(user) : [];
-    const avgParentStatus = livingParents.length > 0
-        ? Math.round(livingParents.reduce((sum, p) => sum + (typeof p.status === 'number' ? p.status : 50), 0) / livingParents.length)
-        : 100;
-
-    const modalOverlay = document.getElementById('modal-overlay');
-    const isAlreadyOpen = modalOverlay && !modalOverlay.classList.contains('hidden');
-    if (!isAlreadyOpen && !feedbackMsg) {
-        _expandedSkillKey = null;
-    }
-
-    const feedbackBanner = (typeof feedbackMsg === 'string' && feedbackMsg.trim())
-        ? `<div class="p-2.5 rounded-xl border text-xs font-semibold flex items-center gap-2 ${
-            feedbackType === 'bad'
-                ? 'bg-red-950/50 border-red-700/60 text-red-300'
-                : 'bg-emerald-950/50 border-emerald-700/60 text-emerald-300'
-        }">
-            <i class="fas ${feedbackType === 'bad' ? 'fa-exclamation-circle' : 'fa-check-circle'}"></i>
-            <span>${Utils.escapeHtml(feedbackMsg)}</span>
-        </div>`
-        : '';
-
-    const colorBadgeMap = {
-        coding:       { bg: 'bg-indigo-950/60', text: 'text-indigo-400', border: 'border-indigo-800/60' },
-        leadership:   { bg: 'bg-amber-950/60',  text: 'text-amber-400',  border: 'border-amber-800/60' },
-        martial_arts: { bg: 'bg-red-950/60',    text: 'text-red-400',    border: 'border-red-800/60' },
-        culinary:     { bg: 'bg-emerald-950/60',text: 'text-emerald-400',border: 'border-emerald-800/60' },
-        design:       { bg: 'bg-purple-950/60', text: 'text-purple-400', border: 'border-purple-800/60' },
-        trades_tech:  { bg: 'bg-cyan-950/60',   text: 'text-cyan-400',   border: 'border-cyan-800/60' },
-        conditioning: { bg: 'bg-orange-950/60', text: 'text-orange-400', border: 'border-orange-800/60' },
-        football:     { bg: 'bg-emerald-950/60',text: 'text-emerald-400',border: 'border-emerald-800/60' },
-        basketball:   { bg: 'bg-amber-950/60',  text: 'text-amber-400',  border: 'border-amber-800/60' },
-        baseball:     { bg: 'bg-blue-950/60',   text: 'text-blue-400',   border: 'border-blue-800/60' },
-        soccer:       { bg: 'bg-teal-950/60',   text: 'text-teal-400',   border: 'border-teal-800/60' },
-        guitar:       { bg: 'bg-amber-950/60',  text: 'text-amber-400',  border: 'border-amber-800/60' },
-        piano:        { bg: 'bg-indigo-950/60', text: 'text-indigo-400', border: 'border-indigo-800/60' },
-        drums:        { bg: 'bg-red-950/60',    text: 'text-red-400',    border: 'border-red-800/60' },
-        violin:       { bg: 'bg-purple-950/60', text: 'text-purple-400', border: 'border-purple-800/60' },
-        vocals:       { bg: 'bg-pink-950/60',   text: 'text-pink-400',   border: 'border-pink-800/60' },
-        saxophone:    { bg: 'bg-teal-950/60',   text: 'text-teal-400',   border: 'border-teal-800/60' },
-        bass:         { bg: 'bg-cyan-950/60',   text: 'text-cyan-400',   border: 'border-cyan-800/60' }
-    };
-
-    const renderSkillCard = (skill) => {
-        const st = GameLogic.getSkillState(user, skill.key);
-        const xp = st.xp || 0;
-        const isCertified = Boolean(st.certified);
-        const isInstrument = skill.category === 'instruments';
-        const isUnder18 = (user.age || 0) < 18;
-        const minAge = skill.minAge || (isInstrument ? 6 : 12);
-        const ageLocked = (user.age || 0) < minAge;
-        const isExpanded = _expandedSkillKey === skill.key;
-        const colorBadge = colorBadgeMap[skill.key] || colorBadgeMap.coding;
-
-        const needsParentPermission = isInstrument && isUnder18 && livingParents.length > 0 && !st.parentApproved;
-        const isDeniedThisYear = isInstrument && isUnder18 && st.deniedAge === user.age;
-
-        const canPractice = isInstrument
-            ? (!ageLocked && !needsParentPermission && instrumentPracticesLeft > 0 && xp < 100)
-            : (!ageLocked && practiceLeft > 0 && xp < 100);
-
-        const canLesson = isInstrument && !ageLocked && !needsParentPermission && instrumentLessonsLeft > 0 && xp < 100;
-
-        const practiceStatLabels = Object.entries(skill.practiceStats || {})
-            .map(([k, v]) => `+${v} ${k.charAt(0).toUpperCase() + k.slice(1)}`)
-            .join(', ');
-
-        const coursesHtml = skill.courses.map(course => {
-            const done = st.tiersCompleted.includes(course.tier);
-            const courseAgeLocked = (user.age || 0) < (course.minAge || minAge);
-            const xpLocked = xp < (course.minXp || 0);
-            const isCoveredByParents = isInstrument && isUnder18 && st.parentApproved;
-            const actualCost = isCoveredByParents ? 0 : course.cost;
-            const cantAfford = !isCoveredByParents && (user.money || 0) < actualCost;
-
-            const statBonusStr = Object.entries(course.stats || {})
-                .map(([k, v]) => `+${v} ${k.charAt(0).toUpperCase() + k.slice(1)}`)
-                .join(' · ');
-
-            const tierLabel = isInstrument
-                ? (course.tier === 1 ? 'Grade 1 Recital' : course.tier === 2 ? 'Intermediate Jury' : 'Master Virtuoso Cert')
-                : (course.tier === 1 ? 'Tier 1 Workshop' : course.tier === 2 ? 'Tier 2 Bootcamp' : 'Tier 3 Master Cert');
-
-            let actionBtn = '';
-            if (done) {
-                actionBtn = `<span class="text-[10px] font-bold text-emerald-400 bg-emerald-950/50 border border-emerald-700/50 px-2 py-1 rounded-lg shrink-0"><i class="fas fa-check mr-1"></i>Completed</span>`;
-            } else if (needsParentPermission) {
-                actionBtn = `<span class="text-[10px] font-bold text-amber-300 bg-amber-950/40 border border-amber-800/50 px-2 py-1 rounded-lg shrink-0"><i class="fas fa-lock mr-1"></i>Needs Permission</span>`;
-            } else if (courseAgeLocked) {
-                actionBtn = `<span class="text-[10px] font-bold text-slate-400 bg-slate-700/30 border border-slate-700 px-2 py-1 rounded-lg shrink-0"><i class="fas fa-lock mr-1"></i>Age ${course.minAge}+</span>`;
-            } else if (xpLocked) {
-                actionBtn = `<span class="text-[10px] font-bold text-amber-300 bg-amber-950/40 border border-amber-800/50 px-2 py-1 rounded-lg shrink-0"><i class="fas fa-lock mr-1"></i>Req ${course.minXp} XP</span>`;
-            } else {
-                actionBtn = `<button data-action="enrollSkillCourse" data-args="&apos;${skill.key}&apos;, ${course.tier}" class="more-option-btn text-[11px] font-bold px-2.5 py-1 rounded-lg transition shrink-0 ${
-                    cantAfford
-                        ? 'bg-slate-700 text-slate-400 border border-slate-600 hover:bg-slate-600'
-                        : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow'
-                }">${isCoveredByParents ? 'Free (Parents)' : Utils.formatMoney(course.cost)}</button>`;
-            }
-
-            return `
-                <div class="bg-slate-900 border ${done ? 'border-emerald-800/60' : 'border-slate-700/70'} rounded-lg p-2.5 flex items-center justify-between gap-2.5">
-                    <div class="min-w-0 flex-1 text-left">
-                        <div class="flex items-center gap-1.5 flex-wrap">
-                            <span class="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-slate-700/50 text-indigo-300 border border-slate-700">${tierLabel}</span>
-                            ${course.grantsCert ? `<span class="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-amber-950/60 text-amber-300 border border-amber-700/50"><i class="fas fa-certificate mr-0.5"></i>Certificate</span>` : ''}
-                        </div>
-                        <div class="text-xs font-bold text-white truncate mt-1">${course.title}</div>
-                        <div class="text-[10px] text-slate-400 mt-0.5">+${course.xpGain} XP · ${statBonusStr}${isCoveredByParents ? ' · Free (Parents)' : ''}</div>
-                    </div>
-                    ${actionBtn}
-                </div>
-            `;
-        }).join('');
-
-        return `
-            <div class="bg-slate-800/90 hover:bg-slate-800 border ${isCertified ? 'border-indigo-500/60' : 'border-slate-700/80'} rounded-xl overflow-hidden transition-all text-left">
-                <!-- Surface-Level Header Row (Tap to Expand/Collapse) -->
-                <div data-action="toggleSkillExpand" data-args="&apos;${skill.key}&apos;" class="p-3 cursor-pointer flex items-center justify-between gap-2.5 select-none hover:bg-slate-700/20 transition">
-                    <div class="flex items-center gap-2.5 min-w-0 flex-1">
-                        <div class="w-9 h-9 rounded-lg ${colorBadge.bg} ${colorBadge.text} border ${colorBadge.border} flex items-center justify-center text-sm shrink-0">
-                            <i class="fas ${skill.icon}"></i>
-                        </div>
-                        <div class="min-w-0 flex-1">
-                            <div class="font-bold text-white text-xs flex items-center gap-1.5 flex-wrap">
-                                <span>${skill.name}</span>
-                                ${isCertified ? `<span class="text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded bg-indigo-600/40 text-indigo-300 border border-indigo-400/50"><i class="fas fa-certificate mr-1"></i>Certified</span>` : ''}
-                                ${needsParentPermission ? `<span class="text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded bg-amber-950/60 text-amber-300 border border-amber-800/60"><i class="fas fa-user-friends mr-1"></i>Ask Parents</span>` : ''}
-                                ${isInstrument && st.parentApproved && isUnder18 ? `<span class="text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded bg-emerald-950/60 text-emerald-300 border border-emerald-800/60"><i class="fas fa-check mr-1"></i>Permitted</span>` : ''}
-                            </div>
-                            <div class="flex items-center gap-2 mt-1">
-                                <div class="w-20 sm:w-28 h-1.5 bg-slate-700 rounded-full overflow-hidden shrink-0">
-                                    <div class="h-full bg-gradient-to-r from-indigo-500 to-emerald-400 transition-all duration-300" style="width: ${xp}%"></div>
-                                </div>
-                                <span class="text-[10px] font-semibold ${xp >= 80 ? 'text-emerald-400' : 'text-slate-400'}">${xp} / 100 XP</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-2 shrink-0">
-                        ${ageLocked ? `
-                            <span class="text-[10px] font-bold text-red-400 bg-red-950/40 border border-red-800/40 px-2 py-0.5 rounded-lg">Age ${minAge}+</span>
-                        ` : `
-                            <span class="text-[11px] font-bold px-2 py-1 rounded-lg bg-slate-700/40 text-slate-300 flex items-center gap-1">
-                                <span class="text-[10px] uppercase font-extrabold">${isExpanded ? 'Close' : 'View'}</span>
-                                <i class="fas fa-chevron-${isExpanded ? 'up' : 'down'} text-[9px] text-slate-400"></i>
-                            </span>
-                        `}
-                    </div>
-                </div>
-
-                <!-- Expanded Drawer (Courses & Practice) -->
-                ${isExpanded ? `
-                    <div class="px-3 pb-3 pt-2.5 border-t border-slate-700/60 bg-slate-900/60 space-y-3">
-                        ${needsParentPermission ? `
-                            <div class="bg-amber-950/30 border border-amber-800/60 rounded-xl p-3 text-left space-y-2">
-                                <div class="flex items-center justify-between gap-2">
-                                    <div class="font-bold text-amber-300 text-xs flex items-center gap-1.5">
-                                        <i class="fas fa-user-friends"></i> Parental Permission Required (Under 18)
-                                    </div>
-                                    <span class="text-[10px] text-slate-400">Parent Relations: ${avgParentStatus}%</span>
-                                </div>
-                                <p class="text-[11px] text-slate-300">
-                                    You need your parents' permission to play ${skill.shortName}. If they agree, they will also cover all lesson fees and recitals while you are under 18!
-                                </p>
-                                ${isDeniedThisYear ? `
-                                    <button disabled class="w-full bg-slate-800 border border-red-700/50 text-red-400 font-bold py-2 rounded-lg text-xs cursor-not-allowed flex items-center justify-center gap-1.5">
-                                        <i class="fas fa-times-circle"></i> Parents Said No (Ask Again Next Year)
-                                    </button>
-                                ` : `
-                                    <button data-action="askParentInstrumentPermission" data-args="&apos;${skill.key}&apos;" class="more-option-btn w-full bg-pink-600 hover:bg-pink-500 text-white font-bold py-2 rounded-lg text-xs transition shadow flex items-center justify-center gap-1.5">
-                                        <i class="fas fa-hand-holding-heart"></i> Ask Parents for Permission
-                                    </button>
-                                `}
-                            </div>
-                        ` : ''}
-
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-0.5">
-                            <p class="text-[11px] text-slate-300 leading-relaxed">${skill.impactSummary}</p>
-                            <div class="flex items-center gap-1.5 shrink-0 flex-wrap">
-                                ${!ageLocked && !needsParentPermission && !isInstrument ? `
-                                    <button data-action="practiceSkill" data-args="&apos;${skill.key}&apos;" ${!canPractice ? 'disabled' : ''} class="more-option-btn text-xs font-bold px-3 py-1.5 rounded-lg transition shrink-0 ${
-                                        canPractice
-                                            ? 'bg-emerald-700 hover:bg-emerald-600 text-white'
-                                            : 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed'
-                                    }">
-                                        <i class="fas fa-bolt mr-1"></i>${xp >= 100 ? 'Max XP' : 'Practice (+10 XP)'}
-                                    </button>
-                                ` : ''}
-
-                                ${!ageLocked && !needsParentPermission && isInstrument ? `
-                                    <button data-action="practiceSkill" data-args="&apos;${skill.key}&apos;" ${!canPractice ? 'disabled' : ''} class="more-option-btn text-xs font-bold px-2.5 py-1.5 rounded-lg transition shrink-0 ${
-                                        canPractice
-                                            ? 'bg-emerald-700 hover:bg-emerald-600 text-white'
-                                            : 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed'
-                                    }">
-                                        <i class="fas fa-bolt mr-1"></i>${xp >= 100 ? 'Max XP' : `Practice (${instrumentPracticesLeft}/3)`}
-                                    </button>
-                                    <button data-action="takeInstrumentLesson" data-args="&apos;${skill.key}&apos;" ${!canLesson ? 'disabled' : ''} class="more-option-btn text-xs font-bold px-2.5 py-1.5 rounded-lg transition shrink-0 ${
-                                        canLesson
-                                            ? 'bg-indigo-600 hover:bg-indigo-500 text-white'
-                                            : 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed'
-                                    }">
-                                        <i class="fas fa-chalkboard-teacher mr-1"></i>${xp >= 100 ? 'Master' : `Lesson (${isUnder18 ? 'Free' : '$200'} · ${instrumentLessonsLeft}/3)`}
-                                    </button>
-                                ` : ''}
-                            </div>
-                        </div>
-
-                        <div>
-                            <div class="flex items-center justify-between text-[10px] font-bold text-slate-400 mb-1">
-                                <span>Practice Boosts: <span class="text-indigo-300">${practiceStatLabels}</span></span>
-                                ${isInstrument ? `<span class="text-amber-400/90 font-medium"><i class="fas fa-info-circle mr-1"></i>XP slows down at 75%+</span>` : ''}
-                            </div>
-                            <div class="space-y-1.5 pt-0.5">
-                                ${coursesHtml}
-                            </div>
-                        </div>
-                    </div>
-                ` : ''}
-            </div>
-        `;
-    };
-
-    const generalSkills = SKILL_TRACKS.filter(s => s.category === 'general');
-    const instrumentSkills = SKILL_TRACKS.filter(s => s.category === 'instruments');
-    const sportsSkills = SKILL_TRACKS.filter(s => s.category === 'sports');
-
-    const generalCardsHtml = generalSkills.map(renderSkillCard).join('');
-    const instrumentCardsHtml = instrumentSkills.map(renderSkillCard).join('');
-    const sportsCardsHtml = sportsSkills.map(renderSkillCard).join('');
-
-    const modalContent = `
-        <div class="space-y-3 text-left max-h-[70vh] overflow-y-auto pr-1">
-            ${feedbackBanner}
-            <p class="text-[11px] text-slate-400 leading-relaxed px-0.5">
-                Tap any skill or instrument to view workshops, private lessons, and practice options.
-            </p>
-
-            <!-- Music & Instruments Section -->
-            <div class="flex items-center justify-between pt-1 pb-0.5">
-                <div class="flex items-center gap-2">
-                    <i class="fas fa-guitar text-amber-400 text-xs"></i>
-                    <h3 class="text-xs font-bold uppercase tracking-wider text-amber-400">Music & Instruments</h3>
-                </div>
-                <span class="text-[10px] text-slate-400 font-semibold">${instrumentPracticesLeft}/3 practices · ${instrumentLessonsLeft}/3 lessons</span>
-            </div>
-            <div class="space-y-2">
-                ${instrumentCardsHtml}
-            </div>
-
-            <!-- General & Career Skills Section -->
-            <div class="flex items-center justify-between pt-3 pb-0.5 border-t border-slate-800">
-                <div class="flex items-center gap-2">
-                    <i class="fas fa-briefcase text-slate-400 text-xs"></i>
-                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">General & Career Skills</h3>
-                </div>
-                <span class="text-[10px] text-slate-400 font-semibold">${practiceLeft}/2 practices left</span>
-            </div>
-            <div class="space-y-2">
-                ${generalCardsHtml}
-            </div>
-
-            <!-- Sports & Athletics Section -->
-            <div class="flex items-center justify-between pt-3 pb-0.5 border-t border-slate-800">
-                <div class="flex items-center gap-2">
-                    <i class="fas fa-running text-emerald-400 text-xs"></i>
-                    <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-400">Sports & Athletics</h3>
-                </div>
-                <span class="text-[10px] text-slate-400 font-semibold">Boosts Health & Draft Odds</span>
-            </div>
-            <div class="space-y-2">
-                ${sportsCardsHtml}
-            </div>
-
-            <!-- Modal Bottom Navigation Controls -->
-            <div class="pt-2 border-t border-slate-700/60">
-                <button data-action="closeSkillsModal" class="more-option-btn w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-2.5 rounded-xl text-xs transition border border-slate-600 flex items-center justify-center gap-1.5 shadow-sm">
-                    <i class="fas fa-th-large text-[10px]"></i> Back to More Options
-                </button>
-            </div>
-        </div>
-    `;
-
-    if (isAlreadyOpen) {
-        UI.replaceModalContent("Skill Workshops & Courses", modalContent);
-    } else {
-        UI.showCustomModal({
-            title: "Skill Workshops & Courses",
-            content: modalContent,
-            showCloseBtn: true,
-            onClose: () => {
-                _expandedSkillKey = null;
-                renderMoreDashboard();
-            }
-        });
-    }
-}
-
-export function askParentInstrumentPermission(skillKey) {
-    const user = state.gameState?.user;
-    if (!user) return;
-
-    _expandedSkillKey = skillKey;
-    const res = GameLogic.executeAskParentInstrumentPermission(user, skillKey);
-    if (res.approved) {
-        addLog(res.message, 'good');
-    } else if (res.deniedThisYear) {
-        addLog(res.message, 'bad');
-    }
-    UI.updateHeader(user);
-    saveToSlot();
-    if (typeof saveGame === 'function') saveGame();
-    openSkillsModal(res.message, res.approved ? 'good' : 'bad');
-}
-
-export function takeInstrumentLesson(skillKey) {
-    const user = state.gameState?.user;
-    if (!user) return;
-
-    _expandedSkillKey = skillKey;
-    const res = GameLogic.executeInstrumentLesson(user, skillKey);
-    if (!res.success) {
-        openSkillsModal(res.message, 'bad');
-        return;
-    }
-
-    addLog(res.message, 'good');
-    UI.updateHeader(user);
-    saveToSlot();
-    if (typeof saveGame === 'function') saveGame();
-    openSkillsModal(res.message, 'good');
-}
-
-export function practiceSkill(skillKey) {
-    const user = state.gameState?.user;
-    if (!user) return;
-
-    _expandedSkillKey = skillKey;
-    const res = GameLogic.executePracticeSkill(user, skillKey);
-    if (!res.success) {
-        openSkillsModal(res.message, 'bad');
-        return;
-    }
-
-    addLog(res.message, 'good');
-    UI.updateHeader(user);
-    saveToSlot();
-    if (typeof saveGame === 'function') saveGame();
-    openSkillsModal(res.message, 'good');
-}
-
-export function enrollSkillCourse(skillKey, tierNum) {
-    const user = state.gameState?.user;
-    if (!user) return;
-
-    _expandedSkillKey = skillKey;
-    const res = GameLogic.executeEnrollSkillCourse(user, skillKey, tierNum);
-    if (!res.success) {
-        openSkillsModal(res.message, 'bad');
-        return;
-    }
-
-    addLog(res.message, res.certified ? 'major' : 'good');
-    UI.updateHeader(user);
-    saveToSlot();
-    if (typeof saveGame === 'function') saveGame();
-    openSkillsModal(res.message, 'good');
-}
-
 export function renderMoreDashboard() {
+    resetSkillsViewState();
     const user = state.gameState?.user;
     if (!user) return;
 
@@ -562,7 +201,7 @@ export function renderMoreDashboard() {
                             badgeColor: 'border-indigo-800/60 text-indigo-300 bg-indigo-950/40',
                             title: 'Skill Workshops & Courses',
                             subtitle: 'Music, Coding, Leadership, Defense, Culinary, Design & Sports',
-                            action: 'openSkillsModal',
+                            action: 'renderSkillsHub',
                             buttonText: 'Explore',
                             buttonStyle: 'bg-indigo-700 hover:bg-indigo-600 text-white',
                             isLocked: skillsLocked,

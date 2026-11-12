@@ -247,14 +247,18 @@ export const updateRelocateCityDropdown = lazy('more', 'updateRelocateCityDropdo
 export const confirmMoveCountry = lazy('more', 'confirmMoveCountry');
 export const askPartnerToMove = lazy('more', 'askPartnerToMove');
 export const confirmMoveAlone = lazy('more', 'confirmMoveAlone');
-export const openSkillsModal = lazy('more', 'openSkillsModal');
-export const toggleSkillExpand = lazy('more', 'toggleSkillExpand');
-export const collapseSkills = lazy('more', 'collapseSkills');
+export const renderSkillsHub = lazy('skills', 'renderSkillsHub');
+export const setSkillsCategory = lazy('skills', 'setSkillsCategory');
+export const openSkillDetail = lazy('skills', 'openSkillDetail');
+export const backToSkillsHub = lazy('skills', 'backToSkillsHub');
+export const openSkillsModal = lazy('skills', 'openSkillsModal');
+export const toggleSkillExpand = lazy('skills', 'toggleSkillExpand');
+export const collapseSkills = lazy('skills', 'collapseSkills');
 export const closeSkillsModal = lazy('more', 'closeSkillsModal');
-export const practiceSkill = lazy('more', 'practiceSkill');
-export const enrollSkillCourse = lazy('more', 'enrollSkillCourse');
-export const askParentInstrumentPermission = lazy('more', 'askParentInstrumentPermission');
-export const takeInstrumentLesson = lazy('more', 'takeInstrumentLesson');
+export const practiceSkill = lazy('skills', 'practiceSkill');
+export const enrollSkillCourse = lazy('skills', 'enrollSkillCourse');
+export const askParentInstrumentPermission = lazy('skills', 'askParentInstrumentPermission');
+export const takeInstrumentLesson = lazy('skills', 'takeInstrumentLesson');
 
 // Crime
 export const renderCrimeDashboard = lazy('crime', 'renderCrimeDashboard');
@@ -1681,6 +1685,10 @@ const routeHandlers = {
   confirmGiftVehicle,
   openDietSelectionModal,
   selectDiet,
+  renderSkillsHub,
+  setSkillsCategory,
+  openSkillDetail,
+  backToSkillsHub,
   openSkillsModal,
   toggleSkillExpand,
   collapseSkills,
