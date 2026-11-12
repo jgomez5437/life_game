@@ -8,6 +8,7 @@ import { openMeetPeopleModal, renderLuxeMatchModal } from '../../public/src/feat
 import { renderInvestmentsScreen } from '../../public/src/features/assets/investmentsScreen.js';
 import { renderLoginScreen } from '../../public/src/auth/loginScreen.js';
 import { renderMoreDashboard } from '../../public/src/features/more/moreScreen.js';
+import { renderSkillsHub, openSkillDetail } from '../../public/src/features/more/skillsScreen.js';
 import { renderGraveyardModal } from '../../public/src/features/player/graveyardScreen.js';
 import { renderLifeDashboard } from '../../public/src/features/player/mainScreen.js';
 
@@ -134,6 +135,13 @@ describe('Light Mode Theme & UI Contrast Verification', () => {
             expect(cssContent).toContain('body.light-mode .bg-amber-600 .text-amber-200');
             expect(cssContent).toContain('body.light-mode .bg-emerald-600 .text-emerald-300');
         });
+
+        test('styles.css contains light mode overrides for Skills & Workshops hub and detail components', () => {
+            expect(cssContent).toContain('body.light-mode .skills-quota-pill');
+            expect(cssContent).toContain('body.light-mode .skill-step-row');
+            expect(cssContent).toContain('body.light-mode .skill-summary-card');
+            expect(cssContent).toContain('body.light-mode .skills-tab-btn:not(.bg-indigo-600)');
+        });
     });
 
     describe('Feature Screens DOM Markup', () => {
@@ -223,6 +231,21 @@ describe('Light Mode Theme & UI Contrast Verification', () => {
             expect(title).not.toBeNull();
             expect(title.classList.contains('text-white')).toBe(true);
             expect(title.textContent).toContain('House of Doe');
+        });
+
+        test('renderSkillsHub and openSkillDetail render light-mode styled hub cards, tabs, and workshop step rows', () => {
+            renderSkillsHub();
+            const container = document.getElementById('game-container');
+            expect(container.querySelectorAll('.skills-quota-pill').length).toBe(2);
+            expect(container.querySelectorAll('.skills-tab-btn').length).toBeGreaterThanOrEqual(5);
+            expect(container.querySelectorAll('.skill-summary-card').length).toBe(18);
+            container.querySelectorAll('.skill-summary-card').forEach(card => {
+                expect(card.classList.contains('more-option-btn')).toBe(false);
+            });
+
+            openSkillDetail('coding');
+            expect(container.querySelectorAll('.skill-step-row').length).toBe(3);
+            expect(container.querySelectorAll('.more-option-btn').length).toBeGreaterThanOrEqual(2);
         });
     });
 });

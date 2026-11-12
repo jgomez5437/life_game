@@ -3,7 +3,7 @@ import { state } from '../../../public/src/core/state.js';
 import { CAREER_TRACKS, SKILL_TRACKS } from '../../../public/src/core/constants.js';
 import { isTrackLocked, getTrackWarnings, getEligibleCareers } from '../../../public/src/core/recommendations.js';
 import { migrateState } from '../../../public/src/core/saveSlotManager.js';
-import { openSkillsModal, toggleSkillExpand, collapseSkills, closeSkillsModal, practiceSkill, enrollSkillCourse, askParentInstrumentPermission, takeInstrumentLesson } from '../../../public/src/features/more/moreScreen.js';
+import { renderSkillsHub, setSkillsCategory, openSkillDetail, backToSkillsHub, openSkillsModal, toggleSkillExpand, collapseSkills, closeSkillsModal, practiceSkill, enrollSkillCourse, askParentInstrumentPermission, takeInstrumentLesson } from '../../../public/src/features/more/moreScreen.js';
 
 describe('Skills & Courses System and Game Integrations', () => {
     beforeEach(() => {
@@ -165,45 +165,61 @@ describe('Skills & Courses System and Game Integrations', () => {
         expect(migrated.user.skills.martial_arts.tiersCompleted).toContain(1);
     });
 
-    test('openSkillsModal renders surface-level options, handles expand/collapse, and closes to More Options', () => {
-        openSkillsModal();
-        const modalContent = document.getElementById('modal-content');
+    test('renderSkillsHub renders full-screen Skills Hub, filters categories, navigates to Skill Detail view, and closes to More Options', () => {
+        renderSkillsHub();
+        const container = document.getElementById('game-container');
         const modalOverlay = document.getElementById('modal-overlay');
 
-        expect(modalContent.textContent).toContain('Computer Programming & Software');
-        expect(modalContent.textContent).toContain('Public Speaking & Leadership');
-        expect(modalContent.textContent).toContain('Back to More Options');
-        // By default, surface level rows are collapsed so courses and practice are hidden
-        expect(modalContent.textContent).not.toContain('Tier 1 Workshop');
-        expect(modalContent.textContent).not.toContain('Practice (+10 XP)');
-        expect(modalContent.textContent).not.toContain('Back to Skill Options');
+        expect(container.textContent).toContain('Skills & Workshops');
+        expect(container.textContent).toContain('2 / 2 Practices Left');
+        expect(container.textContent).toContain('Computer Programming & Software');
+        expect(container.textContent).toContain('Public Speaking & Leadership');
+        expect(container.textContent).toContain('Back to More Options');
+        // Hub surface cards keep workshops & practice actions inside the dedicated Skill Detail view
+        expect(container.textContent).not.toContain('Tier 1 Workshop');
+        expect(container.textContent).not.toContain('Practice (+10 XP)');
 
-        // Expanding coding shows courses and practice button
-        toggleSkillExpand('coding');
-        expect(modalContent.textContent).toContain('Practice (+10 XP)');
-        expect(modalContent.textContent).toContain('Tier 1 Workshop');
-        expect(modalContent.textContent).toContain('Intro to Python & Web Dev');
-        expect(modalContent.textContent).not.toContain('Back to Skill Options');
+        // Category tabs filter summary cards cleanly
+        setSkillsCategory('general');
+        expect(container.textContent).toContain('Computer Programming & Software');
+        expect(container.textContent).not.toContain('Guitar (Acoustic & Electric)');
 
-        // Toggling coding again collapses it
-        toggleSkillExpand('coding');
-        expect(modalContent.textContent).not.toContain('Tier 1 Workshop');
-        expect(modalContent.textContent).not.toContain('Practice (+10 XP)');
+        setSkillsCategory('in_progress');
+        expect(container.textContent).toContain('No Active Skills Yet');
 
-        // Practicing a skill automatically expands that skill
+        setSkillsCategory('all');
+        // Opening coding detail shows training actions and 3-step workshop ladder
+        openSkillDetail('coding');
+        expect(container.textContent).toContain('All Skills');
+        expect(container.textContent).toContain('Practice (+10 XP)');
+        expect(container.textContent).toContain('Tier 1 Workshop');
+        expect(container.textContent).toContain('Intro to Python & Web Dev');
+
+        // Returning to hub hides detail ladder again
+        backToSkillsHub();
+        expect(container.textContent).toContain('Skills & Workshops');
+        expect(container.textContent).not.toContain('Tier 1 Workshop');
+
+        // Practicing a skill keeps user on that skill's detail view with updated XP
         practiceSkill('leadership');
         expect(state.gameState.user.skills.leadership.xp).toBe(10);
-        expect(modalContent.textContent).toContain('Public Speaking & Leadership');
-        expect(modalContent.textContent).toContain('Practice (+10 XP)');
-        expect(modalContent.textContent).not.toContain('Back to Skill Options');
+        expect(container.textContent).toContain('Public Speaking & Leadership');
+        expect(container.textContent).toContain('Practice (+10 XP)');
 
         enrollSkillCourse('leadership', 1);
         expect(state.gameState.user.skills.leadership.xp).toBe(35);
         expect(state.gameState.user.skills.leadership.tiersCompleted).toContain(1);
 
-        // Closing the modal returns directly to More Options and closes modal overlay
+        // Legacy aliases remain functional for backwards compatibility
+        collapseSkills();
+        expect(container.textContent).toContain('Skills & Workshops');
+        toggleSkillExpand('coding');
+        expect(container.textContent).toContain('Tier 1 Workshop');
+
+        // Closing returns to More Options dashboard and keeps modal overlay closed
         closeSkillsModal();
         expect(modalOverlay.classList.contains('hidden')).toBe(true);
+        expect(container.textContent).toContain('Skill Workshops & Courses');
     });
 
     test('Parental permission mechanics under age 18: permission required, refusal, approval, and free courses', () => {
@@ -394,7 +410,7 @@ describe('Skills & Courses System and Game Integrations', () => {
         expect(migrated.user.skills.guitar.xp).toBe(45);
     });
 
-    test('openSkillsModal renders Music & Instruments category, allows parent permission requests and lessons', () => {
+    test('renderSkillsHub renders Music & Instruments category, allows parent permission requests and lessons', () => {
         const user = state.gameState.user;
         user.age = 14;
         user.relationships = [
@@ -402,23 +418,24 @@ describe('Skills & Courses System and Game Integrations', () => {
         ];
 
         openSkillsModal();
-        const modalContent = document.getElementById('modal-content');
-        expect(modalContent.textContent).toContain('Music & Instruments');
-        expect(modalContent.textContent).toContain('Guitar (Acoustic & Electric)');
-        expect(modalContent.textContent).toContain('Ask Parents');
+        setSkillsCategory('instruments');
+        const container = document.getElementById('game-container');
+        expect(container.textContent).toContain('Guitar (Acoustic & Electric)');
+        expect(container.textContent).toContain('Ask Parents');
 
-        // Expand guitar
-        toggleSkillExpand('guitar');
-        expect(modalContent.textContent).toContain('Parental Permission Required');
-        expect(modalContent.textContent).toContain('Ask Parents for Permission');
+        // Open guitar detail view
+        openSkillDetail('guitar');
+        expect(container.textContent).toContain('Music & Instruments');
+        expect(container.textContent).toContain('Parental Permission Required');
+        expect(container.textContent).toContain('Ask Parents for Permission');
 
         // Grant permission
         const origRandom = Math.random;
         Math.random = () => 0.05;
         askParentInstrumentPermission('guitar');
         expect(state.gameState.user.skills.guitar.parentApproved).toBe(true);
-        expect(modalContent.textContent).toContain('Permitted');
-        expect(modalContent.textContent).toContain('Free (Parents)');
+        expect(container.textContent).toContain('Parent Approved');
+        expect(container.textContent).toContain('Free (Parents)');
 
         // Take lesson
         takeInstrumentLesson('guitar');
