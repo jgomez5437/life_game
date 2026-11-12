@@ -253,6 +253,8 @@ export const collapseSkills = lazy('more', 'collapseSkills');
 export const closeSkillsModal = lazy('more', 'closeSkillsModal');
 export const practiceSkill = lazy('more', 'practiceSkill');
 export const enrollSkillCourse = lazy('more', 'enrollSkillCourse');
+export const askParentInstrumentPermission = lazy('more', 'askParentInstrumentPermission');
+export const takeInstrumentLesson = lazy('more', 'takeInstrumentLesson');
 
 // Crime
 export const renderCrimeDashboard = lazy('crime', 'renderCrimeDashboard');
@@ -1685,6 +1687,8 @@ const routeHandlers = {
   closeSkillsModal,
   practiceSkill,
   enrollSkillCourse,
+  askParentInstrumentPermission,
+  takeInstrumentLesson,
   openLotteryModal,
   buyLotteryTicket,
   openMoveCountryModal,

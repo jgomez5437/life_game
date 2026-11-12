@@ -196,6 +196,8 @@ export function migrateState(rawState) {
     const gradSchoolDegree = u.gradSchoolDegree || u.grad_school_degree ? toStr(u.gradSchoolDegree || u.grad_school_degree, null) : null;
     const parentsTried = toBool(u.parentsTried || u.parents_tried, false);
     const skillActionsThisYear = toNum(u.skillActionsThisYear, 0, 0, 10);
+    const instrumentPracticesThisYear = toNum(u.instrumentPracticesThisYear, 0, 0, 10);
+    const instrumentLessonsThisYear = toNum(u.instrumentLessonsThisYear, 0, 0, 10);
     let skills = {};
     if (u.skills && typeof u.skills === 'object' && !Array.isArray(u.skills)) {
         for (const [k, v] of Object.entries(u.skills)) {
@@ -203,7 +205,9 @@ export function migrateState(rawState) {
                 skills[k] = {
                     xp: toNum(v.xp, 0, 0, 100),
                     tiersCompleted: Array.isArray(v.tiersCompleted) ? v.tiersCompleted.filter(t => typeof t === 'number') : [],
-                    certified: toBool(v.certified, false)
+                    certified: toBool(v.certified, false),
+                    parentApproved: toBool(v.parentApproved, false),
+                    deniedAge: (v.deniedAge !== undefined && v.deniedAge !== null) ? toNum(v.deniedAge, null) : null
                 };
             }
         }
@@ -404,6 +408,8 @@ export function migrateState(rawState) {
         gradSchoolDegree,
         ...(u.skills !== undefined ? { skills } : {}),
         ...(u.skillActionsThisYear !== undefined ? { skillActionsThisYear } : {}),
+        ...(u.instrumentPracticesThisYear !== undefined ? { instrumentPracticesThisYear } : {}),
+        ...(u.instrumentLessonsThisYear !== undefined ? { instrumentLessonsThisYear } : {}),
 
         jobTitle,
         jobSalary,

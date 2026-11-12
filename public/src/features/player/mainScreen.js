@@ -29,6 +29,12 @@ function checkActionTaken(user) {
     if (user && user.skillActionsThisYear) {
         user.skillActionsThisYear = 0;
     }
+    if (user && user.instrumentPracticesThisYear) {
+        user.instrumentPracticesThisYear = 0;
+    }
+    if (user && user.instrumentLessonsThisYear) {
+        user.instrumentLessonsThisYear = 0;
+    }
 }
 
 export async function ageUp() {

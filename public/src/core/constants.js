@@ -639,6 +639,153 @@ export const SKILL_TRACKS = [
             { tier: 2, title: 'Premier Youth Academy Cup & Trial', cost: 1500, xpGain: 35, minXp: 25, minAge: 15, stats: { health: 6, smarts: 3 } },
             { tier: 3, title: 'FIFA Pro License & Trial Certification', cost: 4000, xpGain: 40, minXp: 60, minAge: 18, stats: { health: 10, smarts: 5 }, grantsCert: true }
         ]
+    },
+    {
+        key: 'guitar',
+        category: 'instruments',
+        name: 'Guitar (Acoustic & Electric)',
+        shortName: 'Guitar',
+        icon: 'fa-guitar',
+        color: 'amber',
+        minAge: 6,
+        lessonCost: 200,
+        certificateTitle: 'Certified Guitar Virtuoso',
+        practiceStats: { happiness: 2, smarts: 1 },
+        unlocksCareers: ['artist'],
+        fastTrackCareers: [],
+        boostsCareers: ['artist'],
+        impactSummary: 'Hones fingerpicking, chord progressions, and shredding; key skill for future Artist career.',
+        courses: [
+            { tier: 1, title: 'Grade 1 Guitar Recital & Chords', cost: 300, xpGain: 4, minXp: 25, minAge: 6, stats: { happiness: 2, smarts: 2 } },
+            { tier: 2, title: 'Conservatory Intermediate Guitar Jury', cost: 1200, xpGain: 3, minXp: 60, minAge: 10, stats: { happiness: 4, smarts: 3 } },
+            { tier: 3, title: 'Virtuoso Guitar Master Certification', cost: 3000, xpGain: 3, minXp: 90, minAge: 16, stats: { happiness: 6, smarts: 4 }, grantsCert: true }
+        ]
+    },
+    {
+        key: 'piano',
+        category: 'instruments',
+        name: 'Piano & Keyboard',
+        shortName: 'Piano',
+        icon: 'fa-music',
+        color: 'indigo',
+        minAge: 6,
+        lessonCost: 200,
+        certificateTitle: 'Concert Pianist Diploma',
+        practiceStats: { smarts: 2, happiness: 1 },
+        unlocksCareers: ['artist'],
+        fastTrackCareers: [],
+        boostsCareers: ['artist'],
+        impactSummary: 'Master scales, sheet reading, and classical compositions; prized in music auditions.',
+        courses: [
+            { tier: 1, title: 'Grade 1 Piano Recital & Sight-Reading', cost: 300, xpGain: 4, minXp: 25, minAge: 6, stats: { smarts: 3, happiness: 2 } },
+            { tier: 2, title: 'Conservatory Intermediate Piano Jury', cost: 1200, xpGain: 3, minXp: 60, minAge: 10, stats: { smarts: 5, happiness: 3 } },
+            { tier: 3, title: 'Concert Pianist Virtuoso Diploma', cost: 3000, xpGain: 3, minXp: 90, minAge: 16, stats: { smarts: 7, happiness: 5 }, grantsCert: true }
+        ]
+    },
+    {
+        key: 'drums',
+        category: 'instruments',
+        name: 'Drums & Percussion',
+        shortName: 'Drums',
+        icon: 'fa-drum',
+        color: 'red',
+        minAge: 6,
+        lessonCost: 200,
+        certificateTitle: 'Master Percussionist Certificate',
+        practiceStats: { health: 1, happiness: 2 },
+        unlocksCareers: ['artist'],
+        fastTrackCareers: [],
+        boostsCareers: ['artist'],
+        impactSummary: 'Develops rhythm, tempo control, and polyrhythms; powers bands and studio sessions.',
+        courses: [
+            { tier: 1, title: 'Grade 1 Rhythm & Rudiments Recital', cost: 300, xpGain: 4, minXp: 25, minAge: 6, stats: { health: 2, happiness: 2 } },
+            { tier: 2, title: 'Conservatory Intermediate Drum Jury', cost: 1200, xpGain: 3, minXp: 60, minAge: 10, stats: { health: 3, happiness: 4 } },
+            { tier: 3, title: 'Master Percussionist Virtuoso Cert', cost: 3000, xpGain: 3, minXp: 90, minAge: 16, stats: { health: 5, happiness: 6 }, grantsCert: true }
+        ]
+    },
+    {
+        key: 'violin',
+        category: 'instruments',
+        name: 'Violin & Strings',
+        shortName: 'Violin',
+        icon: 'fa-music',
+        color: 'purple',
+        minAge: 6,
+        lessonCost: 200,
+        certificateTitle: 'First-Chair Strings Virtuoso',
+        practiceStats: { smarts: 2, looks: 1 },
+        unlocksCareers: ['artist'],
+        fastTrackCareers: [],
+        boostsCareers: ['artist'],
+        impactSummary: 'Perfection of intonation, bowing, and orchestral concertos; distinguished prestige.',
+        courses: [
+            { tier: 1, title: 'Grade 1 Violin Recital & Etudes', cost: 300, xpGain: 4, minXp: 25, minAge: 6, stats: { smarts: 3, looks: 1 } },
+            { tier: 2, title: 'Conservatory Intermediate Strings Jury', cost: 1200, xpGain: 3, minXp: 60, minAge: 10, stats: { smarts: 5, looks: 2 } },
+            { tier: 3, title: 'First-Chair Strings Virtuoso Diploma', cost: 3000, xpGain: 3, minXp: 90, minAge: 16, stats: { smarts: 7, looks: 4 }, grantsCert: true }
+        ]
+    },
+    {
+        key: 'vocals',
+        category: 'instruments',
+        name: 'Vocals & Singing',
+        shortName: 'Vocals',
+        icon: 'fa-microphone-alt',
+        color: 'pink',
+        minAge: 6,
+        lessonCost: 200,
+        certificateTitle: 'Master Vocalist & Recording Cert',
+        practiceStats: { looks: 2, happiness: 1 },
+        unlocksCareers: ['artist'],
+        fastTrackCareers: [],
+        boostsCareers: ['artist'],
+        impactSummary: 'Vocal range, pitch control, and stage presence; essential for fronting musical acts.',
+        courses: [
+            { tier: 1, title: 'Grade 1 Vocal Recital & Breathing', cost: 300, xpGain: 4, minXp: 25, minAge: 6, stats: { looks: 2, happiness: 2 } },
+            { tier: 2, title: 'Conservatory Intermediate Vocal Jury', cost: 1200, xpGain: 3, minXp: 60, minAge: 10, stats: { looks: 4, happiness: 3 } },
+            { tier: 3, title: 'Master Vocalist Virtuoso Certification', cost: 3000, xpGain: 3, minXp: 90, minAge: 16, stats: { looks: 6, happiness: 5 }, grantsCert: true }
+        ]
+    },
+    {
+        key: 'saxophone',
+        category: 'instruments',
+        name: 'Saxophone & Brass',
+        shortName: 'Saxophone',
+        icon: 'fa-music',
+        color: 'teal',
+        minAge: 6,
+        lessonCost: 200,
+        certificateTitle: 'Master Jazz & Brass Soloist',
+        practiceStats: { health: 1, looks: 1, happiness: 1 },
+        unlocksCareers: ['artist'],
+        fastTrackCareers: [],
+        boostsCareers: ['artist'],
+        impactSummary: 'Breath control, embouchure, and jazz improvisation; soul of jazz and big band ensembles.',
+        courses: [
+            { tier: 1, title: 'Grade 1 Brass Recital & Scales', cost: 300, xpGain: 4, minXp: 25, minAge: 6, stats: { health: 2, looks: 1 } },
+            { tier: 2, title: 'Conservatory Intermediate Brass Jury', cost: 1200, xpGain: 3, minXp: 60, minAge: 10, stats: { health: 3, looks: 3 } },
+            { tier: 3, title: 'Master Brass Soloist Virtuoso Cert', cost: 3000, xpGain: 3, minXp: 90, minAge: 16, stats: { health: 5, looks: 5 }, grantsCert: true }
+        ]
+    },
+    {
+        key: 'bass',
+        category: 'instruments',
+        name: 'Bass Guitar',
+        shortName: 'Bass Guitar',
+        icon: 'fa-guitar',
+        color: 'cyan',
+        minAge: 6,
+        lessonCost: 200,
+        certificateTitle: 'Master Bassist & Groove Cert',
+        practiceStats: { smarts: 1, happiness: 2 },
+        unlocksCareers: ['artist'],
+        fastTrackCareers: [],
+        boostsCareers: ['artist'],
+        impactSummary: 'Slap bass, walking baselines, and pocket timing; the harmonic backbone of any band.',
+        courses: [
+            { tier: 1, title: 'Grade 1 Bass Recital & Groove', cost: 300, xpGain: 4, minXp: 25, minAge: 6, stats: { smarts: 2, happiness: 2 } },
+            { tier: 2, title: 'Conservatory Intermediate Bass Jury', cost: 1200, xpGain: 3, minXp: 60, minAge: 10, stats: { smarts: 3, happiness: 4 } },
+            { tier: 3, title: 'Master Bassist Virtuoso Certification', cost: 3000, xpGain: 3, minXp: 90, minAge: 16, stats: { smarts: 5, happiness: 6 }, grantsCert: true }
+        ]
     }
 ];
 
