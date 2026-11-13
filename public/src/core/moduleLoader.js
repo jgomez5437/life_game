@@ -255,6 +255,9 @@ export const ACTION_TO_MODULE = {
     toggleSettingBottomNav: 'settings',
     toggleSettingTheme: 'settings',
     applyTheme: 'settings',
+    openFeedbackModal: 'settings',
+    selectFeedbackCategory: 'settings',
+    submitFeedback: 'settings',
 
     // Crime & Prison
     renderCrimeDashboard: 'crime',

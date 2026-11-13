@@ -9,7 +9,10 @@ import {
     toggleSettingCompact,
     toggleSettingBottomNav,
     toggleSettingTheme,
-    applyTheme
+    applyTheme,
+    openFeedbackModal,
+    selectFeedbackCategory,
+    submitFeedback
 } from '../../../public/src/features/more/settingsScreen.js';
 import { renderLoginScreen } from '../../../public/src/auth/loginScreen.js';
 import { logout } from '../../../public/src/auth/auth.js';
@@ -241,4 +244,145 @@ describe('Settings Screen & Sign Out Functionality', () => {
         expect(loginBadge.textContent.trim()).toBe('Switch to Light');
         expect(loginIcon.className).toContain('fa-moon');
     });
+
+    test('Submit Feedback button is hidden for guest users and visible for signed-in users', () => {
+        state.userAuthId = null;
+        openSettingsModal();
+        const guestContent = document.getElementById('modal-content').innerHTML;
+        expect(guestContent).not.toContain('data-action="openFeedbackModal"');
+        expect(guestContent).not.toContain('Submit Feedback');
+
+        state.userAuthId = 'auth0|signed_in_user';
+        state.userEmail = 'signedin@example.com';
+        openSettingsModal();
+        const authContent = document.getElementById('modal-content').innerHTML;
+        expect(authContent).toContain('data-action="openFeedbackModal"');
+        expect(authContent).toContain('Submit Feedback');
+    });
+
+    test('openFeedbackModal requires authentication and renders free-form form when signed in', () => {
+        state.userAuthId = null;
+        openFeedbackModal();
+        expect(document.getElementById('modal-title').textContent).toBe('Sign In Required');
+        expect(document.getElementById('feedback-message-input')).toBeNull();
+
+        state.userAuthId = 'auth0|signed_in_user';
+        state.userEmail = 'signedin@example.com';
+        openFeedbackModal();
+
+        expect(document.getElementById('modal-title').textContent).toBe('Submit Feedback');
+        const textarea = document.getElementById('feedback-message-input');
+        expect(textarea).not.toBeNull();
+        expect(document.getElementById('btn-submit-feedback')).not.toBeNull();
+        expect(document.getElementById('modal-content').innerHTML).toContain('signedin@example.com');
+
+        // Live character count updates on input
+        textarea.value = 'More careers please!';
+        textarea.dispatchEvent(new Event('input'));
+        expect(document.getElementById('feedback-char-count').textContent).toBe('20 / 2000');
+
+        // Category selection updates hidden input and aria-pressed
+        selectFeedbackCategory('feature');
+        expect(document.getElementById('feedback-category-input').value).toBe('feature');
+        expect(document.querySelector('[data-feedback-category="feature"]').getAttribute('aria-pressed')).toBe('true');
+        expect(document.querySelector('[data-feedback-category="general"]').getAttribute('aria-pressed')).toBe('false');
+    });
+
+    test('submitFeedback validates short messages inline without calling fetch', async () => {
+        state.userAuthId = 'auth0|signed_in_user';
+        state.userEmail = 'signedin@example.com';
+        const originalFetch = global.fetch;
+        const fetchMock = jest.fn();
+        global.fetch = fetchMock;
+
+        try {
+            openFeedbackModal();
+            const textarea = document.getElementById('feedback-message-input');
+            textarea.value = 'hi';
+
+            await submitFeedback();
+
+            const banner = document.getElementById('feedback-error-banner');
+            expect(banner.classList.contains('hidden')).toBe(false);
+            expect(document.getElementById('feedback-error-text').textContent).toContain('at least 5 characters');
+            expect(fetchMock).not.toHaveBeenCalled();
+        } finally {
+            global.fetch = originalFetch;
+        }
+    });
+
+    test('submitFeedback sends Bearer token to /api/feedback and displays confirmation on 200', async () => {
+        state.userAuthId = 'auth0|signed_in_user';
+        state.userEmail = 'signedin@example.com';
+        const expFuture = Math.floor(Date.now() / 1000) + 3600;
+        state.auth0Client = {
+            getIdTokenClaims: jest.fn(async () => ({ __raw: 'jwt_token_123', exp: expFuture }))
+        };
+
+        const originalFetch = global.fetch;
+        const fetchMock = jest.fn(async () => ({
+            ok: true,
+            status: 200,
+            json: async () => ({ ok: true, id: 7, emailSent: true })
+        }));
+        global.fetch = fetchMock;
+
+        try {
+            openFeedbackModal();
+            selectFeedbackCategory('feature');
+            document.getElementById('feedback-message-input').value = 'Please add a stock market crash event!';
+
+            await submitFeedback();
+
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+            expect(fetchMock).toHaveBeenCalledWith('/api/feedback', expect.objectContaining({
+                method: 'POST',
+                headers: expect.objectContaining({
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer jwt_token_123'
+                }),
+                body: JSON.stringify({
+                    category: 'feature',
+                    message: 'Please add a stock market crash event!',
+                    email: 'signedin@example.com',
+                    appVersion: '1.7.2'
+                })
+            }));
+            expect(document.getElementById('modal-title').textContent).toBe('Feedback Sent');
+        } finally {
+            global.fetch = originalFetch;
+        }
+    });
+
+    test('submitFeedback preserves message and displays inline error on API failure', async () => {
+        state.userAuthId = 'auth0|signed_in_user';
+        state.userEmail = 'signedin@example.com';
+        const expFuture = Math.floor(Date.now() / 1000) + 3600;
+        state.auth0Client = {
+            getIdTokenClaims: jest.fn(async () => ({ __raw: 'jwt_token_123', exp: expFuture }))
+        };
+
+        const originalFetch = global.fetch;
+        global.fetch = jest.fn(async () => ({
+            ok: false,
+            status: 429,
+            json: async () => ({ message: 'Rate limit exceeded. Wait 300s.' })
+        }));
+
+        try {
+            openFeedbackModal();
+            const textarea = document.getElementById('feedback-message-input');
+            textarea.value = 'Keep my draft message intact on error';
+
+            await submitFeedback();
+
+            expect(document.getElementById('modal-title').textContent).toBe('Submit Feedback');
+            expect(document.getElementById('feedback-message-input').value).toBe('Keep my draft message intact on error');
+            expect(document.getElementById('feedback-error-banner').classList.contains('hidden')).toBe(false);
+            expect(document.getElementById('feedback-error-text').textContent).toContain('Rate limit exceeded');
+        } finally {
+            global.fetch = originalFetch;
+        }
+    });
 });
+

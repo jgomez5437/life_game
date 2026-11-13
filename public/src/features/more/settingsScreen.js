@@ -3,9 +3,13 @@ import { UI } from '../../ui/ui.js';
 import { Utils } from '../../ui/utils.js';
 import { saveGame, resetGame } from '../../core/main.js';
 import { renderLifeDashboard } from '../player/mainScreen.js';
-import { logout } from '../../auth/auth.js';
+import { logout, getAuthToken } from '../../auth/auth.js';
 import { getAchievementProgress } from '../../core/achievementManager.js';
 import { SoundManager } from '../../core/soundManager.js';
+
+const APP_VERSION = '1.7.2';
+const MIN_FEEDBACK_LENGTH = 5;
+const MAX_FEEDBACK_LENGTH = 2000;
 
 export function openSettingsModal() {
     const isCloud = !!state.userAuthId;
@@ -159,6 +163,27 @@ export function openSettingsModal() {
                 </div>
             </div>
 
+            ${isCloud ? `
+            <!-- Feedback & Feature Requests (Signed-in Users Only) -->
+            <div class="bg-slate-800/90 p-3.5 rounded-xl border border-indigo-500/30 space-y-2">
+                <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <div class="w-8 h-8 rounded-lg bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 shrink-0">
+                            <i class="fas fa-comment-dots text-sm"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <h3 class="font-bold text-white text-sm">Feedback &amp; Feature Requests</h3>
+                            <p class="text-[11px] text-slate-400">Share suggestions, ideas, or report bugs</p>
+                        </div>
+                    </div>
+                </div>
+                <button data-action="openFeedbackModal" id="btn-settings-feedback" class="w-full bg-indigo-600 hover:bg-indigo-500 border border-indigo-400/40 text-white font-bold py-2 px-3 rounded-lg text-xs transition flex items-center justify-center gap-2 shadow-sm">
+                    <i class="fas fa-paper-plane"></i>
+                    <span>Submit Feedback</span>
+                </button>
+            </div>
+            ` : ''}
+
             <!-- Danger Zone / Game Reset -->
             <div class="bg-slate-800/90 p-3.5 rounded-xl border border-red-900/40 space-y-2">
                 <div class="text-xs font-bold uppercase tracking-wider text-red-400 flex items-center gap-1.5">
@@ -172,7 +197,7 @@ export function openSettingsModal() {
 
             <!-- Footer -->
             <div class="text-center pt-2 border-t border-slate-700 text-xs text-slate-500">
-                <span>Version 1.7.2</span>
+                <span>Version ${APP_VERSION}</span>
             </div>
         </div>
     `;
@@ -417,3 +442,225 @@ export function toggleSettingBottomNav() {
     }
 }
 
+function showFeedbackError(msg) {
+    const banner = document.getElementById('feedback-error-banner');
+    const textEl = document.getElementById('feedback-error-text');
+    if (banner && textEl) {
+        textEl.textContent = msg;
+        banner.classList.remove('hidden');
+    }
+}
+
+function clearFeedbackError() {
+    const banner = document.getElementById('feedback-error-banner');
+    if (banner) {
+        banner.classList.add('hidden');
+    }
+}
+
+export function selectFeedbackCategory(category = 'general') {
+    const valid = ['general', 'feature', 'bug'].includes(category) ? category : 'general';
+    const hiddenInput = document.getElementById('feedback-category-input');
+    if (hiddenInput) {
+        hiddenInput.value = valid;
+    }
+
+    const buttons = document.querySelectorAll('[data-feedback-category]');
+    buttons.forEach(btn => {
+        const isSelected = btn.getAttribute('data-feedback-category') === valid;
+        if (isSelected) {
+            btn.classList.remove('bg-slate-900', 'text-slate-400', 'border-slate-700');
+            btn.classList.add('bg-indigo-600', 'text-white', 'border-indigo-400');
+            btn.setAttribute('aria-pressed', 'true');
+        } else {
+            btn.classList.remove('bg-indigo-600', 'text-white', 'border-indigo-400');
+            btn.classList.add('bg-slate-900', 'text-slate-400', 'border-slate-700');
+            btn.setAttribute('aria-pressed', 'false');
+        }
+    });
+}
+
+export function openFeedbackModal() {
+    if (!state.userAuthId) {
+        UI.showModal(
+            "Sign In Required",
+            "Please sign in to your account to submit feedback or feature requests."
+        );
+        return;
+    }
+
+    const accountLabel = Utils.escapeHtml(
+        state.userEmail || state.gameState?.user?.username || 'Signed-in Player'
+    );
+
+    const content = `
+        <div class="space-y-3 text-left">
+            <div class="bg-slate-900/80 px-3 py-2 rounded-xl border border-slate-700 flex items-center gap-2 text-xs">
+                <i class="fas fa-user-check text-emerald-400 shrink-0"></i>
+                <span class="text-slate-400 shrink-0">Sending as:</span>
+                <span class="text-slate-200 font-semibold truncate">${accountLabel}</span>
+            </div>
+
+            <div class="space-y-1.5">
+                <div class="text-xs font-bold text-slate-300">Topic</div>
+                <input type="hidden" id="feedback-category-input" value="general" />
+                <div class="grid grid-cols-3 gap-1.5">
+                    <button type="button" data-action="selectFeedbackCategory" data-args="'general'" data-feedback-category="general" aria-pressed="true" class="py-1.5 px-2 rounded-lg text-[11px] font-bold border transition bg-indigo-600 text-white border-indigo-400 flex items-center justify-center gap-1">
+                        <i class="fas fa-comment-alt text-[10px]"></i> General
+                    </button>
+                    <button type="button" data-action="selectFeedbackCategory" data-args="'feature'" data-feedback-category="feature" aria-pressed="false" class="py-1.5 px-2 rounded-lg text-[11px] font-bold border transition bg-slate-900 text-slate-400 border-slate-700 hover:bg-slate-800 flex items-center justify-center gap-1">
+                        <i class="fas fa-lightbulb text-[10px]"></i> Feature
+                    </button>
+                    <button type="button" data-action="selectFeedbackCategory" data-args="'bug'" data-feedback-category="bug" aria-pressed="false" class="py-1.5 px-2 rounded-lg text-[11px] font-bold border transition bg-slate-900 text-slate-400 border-slate-700 hover:bg-slate-800 flex items-center justify-center gap-1">
+                        <i class="fas fa-bug text-[10px]"></i> Bug
+                    </button>
+                </div>
+            </div>
+
+            <div class="space-y-1.5">
+                <div class="flex items-center justify-between">
+                    <label for="feedback-message-input" class="text-xs font-bold text-slate-300">Your Feedback or Feature Idea</label>
+                    <span id="feedback-char-count" class="text-[11px] text-slate-400 font-mono">0 / ${MAX_FEEDBACK_LENGTH}</span>
+                </div>
+                <textarea
+                    id="feedback-message-input"
+                    rows="5"
+                    maxlength="${MAX_FEEDBACK_LENGTH}"
+                    placeholder="Share feedback, report a bug, or request a new feature..."
+                    class="w-full rounded-xl bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-500 text-sm p-3 focus:outline-none focus:border-blue-500"
+                ></textarea>
+            </div>
+
+            <div id="feedback-error-banner" class="hidden bg-red-950/60 border border-red-500/50 text-red-300 text-xs rounded-lg px-3 py-2 flex items-start gap-2">
+                <i class="fas fa-exclamation-circle mt-0.5 shrink-0"></i>
+                <span id="feedback-error-text"></span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 pt-1">
+                <button type="button" data-action="hideModal" id="btn-cancel-feedback" class="w-full border border-slate-700 text-slate-300 font-bold py-2.5 rounded-xl bg-slate-900 hover:bg-slate-700 transition text-xs">
+                    Cancel
+                </button>
+                <button type="button" data-action="submitFeedback" id="btn-submit-feedback" class="w-full btn-primary text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5">
+                    <i class="fas fa-paper-plane"></i>
+                    <span>Send Feedback</span>
+                </button>
+            </div>
+        </div>
+    `;
+
+    UI.showCustomModal({
+        title: "Submit Feedback",
+        content,
+        showCloseBtn: true
+    });
+
+    const textarea = document.getElementById('feedback-message-input');
+    const charCount = document.getElementById('feedback-char-count');
+    if (textarea) {
+        textarea.addEventListener('input', () => {
+            clearFeedbackError();
+            if (charCount) {
+                charCount.textContent = `${textarea.value.length} / ${MAX_FEEDBACK_LENGTH}`;
+            }
+        });
+    }
+}
+
+export async function submitFeedback() {
+    if (!state.userAuthId) {
+        showFeedbackError("You must be signed in to submit feedback.");
+        return;
+    }
+
+    const textarea = document.getElementById('feedback-message-input');
+    const categoryInput = document.getElementById('feedback-category-input');
+    const submitBtn = document.getElementById('btn-submit-feedback');
+
+    if (!textarea) return;
+
+    const message = textarea.value.trim();
+    const category = categoryInput?.value || 'general';
+
+    if (message.length < MIN_FEEDBACK_LENGTH) {
+        showFeedbackError(`Please enter at least ${MIN_FEEDBACK_LENGTH} characters before submitting.`);
+        return;
+    }
+
+    if (message.length > MAX_FEEDBACK_LENGTH) {
+        showFeedbackError(`Feedback must be ${MAX_FEEDBACK_LENGTH} characters or fewer.`);
+        return;
+    }
+
+    clearFeedbackError();
+
+    const originalBtnHtml = submitBtn ? submitBtn.innerHTML : '';
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> <span>Sending...</span>';
+    }
+
+    try {
+        let authToken = await getAuthToken();
+        if (!authToken) {
+            authToken = await getAuthToken(true);
+        }
+        if (!authToken) {
+            showFeedbackError("Your session could not be verified. Please sign in again.");
+            return;
+        }
+
+        const payload = JSON.stringify({
+            category,
+            message,
+            email: state.userEmail || null,
+            appVersion: APP_VERSION
+        });
+
+        let response = await fetch('/api/feedback', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: payload
+        });
+
+        if (response.status === 401) {
+            const refreshedToken = await getAuthToken(true);
+            if (refreshedToken) {
+                response = await fetch('/api/feedback', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${refreshedToken}`
+                    },
+                    body: payload
+                });
+            }
+        }
+
+        if (response.ok) {
+            UI.hideModal();
+            UI.showModal(
+                "Feedback Sent",
+                "Thank you! Your feedback has been submitted and will help improve Start a Life."
+            );
+            return;
+        }
+
+        const errData = await response.json().catch(() => ({}));
+        if (response.status === 429) {
+            showFeedbackError(errData.message || "You've submitted feedback recently. Please wait a few minutes before sending another.");
+        } else {
+            showFeedbackError(errData.error || "Could not submit feedback right now. Please try again.");
+        }
+    } catch (err) {
+        console.error('[Feedback] Submission failed:', err);
+        showFeedbackError("Network error while sending feedback. Please check your connection and try again.");
+    } finally {
+        if (submitBtn && document.body.contains(submitBtn)) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnHtml;
+        }
+    }
+}

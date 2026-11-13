@@ -297,6 +297,9 @@ export const toggleSettingCompact = lazy('settings', 'toggleSettingCompact');
 export const toggleSettingBottomNav = lazy('settings', 'toggleSettingBottomNav');
 export const toggleSettingTheme = lazy('settings', 'toggleSettingTheme');
 export const applyTheme = lazy('settings', 'applyTheme');
+export const openFeedbackModal = lazy('settings', 'openFeedbackModal');
+export const selectFeedbackCategory = lazy('settings', 'selectFeedbackCategory');
+export const submitFeedback = lazy('settings', 'submitFeedback');
 
 // Achievements
 export const openAchievementsModal = lazy('achievements', 'openAchievementsModal');
@@ -1738,6 +1741,9 @@ const routeHandlers = {
   toggleSettingCompact,
   toggleSettingBottomNav,
   toggleSettingTheme,
+  openFeedbackModal,
+  selectFeedbackCategory,
+  submitFeedback,
   openPlayerOverviewModal,
   openCashflowModal,
   renderStoreScreen,
