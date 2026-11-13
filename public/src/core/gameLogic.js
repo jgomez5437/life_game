@@ -3744,13 +3744,16 @@ function processRentalIncome(user, stateRef) {
 
     user.assets.forEach(asset => {
         if (asset.category === 'property' && asset.isRented && asset.tenant && asset.tenant.monthlyRent) {
-            // If renewal is pending from a prior expired lease, do not collect regular income
-            if (asset.tenant.renewalPending) {
+            if (managerHired) {
+                if (asset.tenant.renewalPending) {
+                    asset.tenant.renewalPending = false;
+                }
+                totalCollectedThisYear += collectManagedRent(user, asset, report);
                 return;
             }
 
-            if (managerHired) {
-                totalCollectedThisYear += collectManagedRent(user, asset, report);
+            // If renewal is pending from a prior expired lease, do not collect regular income
+            if (asset.tenant.renewalPending) {
                 return;
             }
 
@@ -4004,6 +4007,21 @@ function hirePropertyManager(user, candidate = null) {
         lifetimeRepairSpend: 0,
         lastReport: null
     };
+
+    // Clean up any stale renewalPending flags on existing tenants so manager immediately assumes active management
+    if (Array.isArray(user.assets)) {
+        user.assets.forEach(asset => {
+            if (asset && asset.category === 'property' && asset.isRented && asset.tenant) {
+                if (asset.tenant.renewalPending) {
+                    asset.tenant.renewalPending = false;
+                    if (asset.tenant.leaseYears <= 0) {
+                        asset.tenant.leaseYears = 1;
+                    }
+                }
+            }
+        });
+    }
+
     return { success: true, manager: user.propertyManager };
 }
 
