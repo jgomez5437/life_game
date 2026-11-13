@@ -26,6 +26,16 @@
             touch-action: manipulation;
         }
 
+        input, textarea, select {
+            user-select: text;
+            -webkit-user-select: text;
+        }
+
+        #feedback-message-input {
+            resize: vertical;
+            min-height: 7rem;
+        }
+
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #0c0f17; }

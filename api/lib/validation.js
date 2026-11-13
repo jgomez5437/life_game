@@ -460,3 +460,86 @@ export function injectVerifiedPurchases(gameData, verifiedPurchases) {
   return gameData;
 }
 
+export const MIN_FEEDBACK_LENGTH = 5;
+export const MAX_FEEDBACK_LENGTH = 2000;
+export const MAX_FEEDBACK_PAYLOAD_BYTES = 16 * 1024;
+export const VALID_FEEDBACK_CATEGORIES = new Set(['general', 'feature', 'bug']);
+
+/**
+ * Basic structural email validation for optional reply-to metadata.
+ * Rejects newlines/header-injection characters and malformed strings.
+ */
+export function isValidEmail(email) {
+  if (typeof email !== 'string') return false;
+  const trimmed = email.trim();
+  if (!trimmed || trimmed.length > 254) return false;
+  if (/[\r\n]/.test(trimmed)) return false;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
+}
+
+/**
+ * Escapes HTML special characters for safe email body rendering.
+ */
+export function escapeEmailHtml(value) {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
+ * Validates user feedback / feature request payload.
+ * Returns `{ ok: true, data }` or `{ ok: false, error, status }`.
+ */
+export function validateFeedbackPayload(body) {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return { ok: false, status: 400, error: 'Invalid request body: expected a JSON object' };
+  }
+  if (hasDangerousKeys(body)) {
+    return { ok: false, status: 400, error: 'Security validation failed: forbidden keys detected in payload' };
+  }
+
+  const rawMessage = body.message;
+  if (typeof rawMessage !== 'string') {
+    return { ok: false, status: 400, error: 'Feedback message is required' };
+  }
+
+  const message = rawMessage.trim();
+  if (message.length < MIN_FEEDBACK_LENGTH) {
+    return { ok: false, status: 400, error: `Feedback message must be at least ${MIN_FEEDBACK_LENGTH} characters` };
+  }
+  if (message.length > MAX_FEEDBACK_LENGTH) {
+    return { ok: false, status: 400, error: `Feedback message must be ${MAX_FEEDBACK_LENGTH} characters or fewer` };
+  }
+
+  let category = 'general';
+  if (body.category !== undefined && body.category !== null && body.category !== '') {
+    if (typeof body.category !== 'string') {
+      return { ok: false, status: 400, error: 'Invalid feedback category' };
+    }
+    const normalizedCat = body.category.trim().toLowerCase();
+    if (!VALID_FEEDBACK_CATEGORIES.has(normalizedCat)) {
+      return { ok: false, status: 400, error: 'Invalid feedback category: must be general, feature, or bug' };
+    }
+    category = normalizedCat;
+  }
+
+  const appVersion = typeof body.appVersion === 'string'
+    ? body.appVersion.trim().slice(0, 32)
+    : null;
+
+  const clientEmail = isValidEmail(body.email) ? body.email.trim() : null;
+
+  return {
+    ok: true,
+    data: {
+      category,
+      message,
+      appVersion,
+      clientEmail
+    }
+  };
+}

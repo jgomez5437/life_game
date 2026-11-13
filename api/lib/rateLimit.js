@@ -20,6 +20,7 @@ export const RATE_LIMIT_CONFIGS = {
     checkout: { maxRequests: 10, windowMs: 60 * 1000 },       // 10 checkout sessions / min
     getPurchases: { maxRequests: 60, windowMs: 60 * 1000 },   // 60 entitlement checks / min
     eulogy: { maxRequests: 10, windowMs: 60 * 1000 },         // 10 eulogy requests / min
+    feedback: { maxRequests: 5, windowMs: 10 * 60 * 1000 },   // 5 feedback submissions / 10 min
     health: { maxRequests: 60, windowMs: 60 * 1000 },         // 60 health checks / min
     webhook: { maxRequests: 120, windowMs: 60 * 1000 },       // 120 webhook events / min
     default: { maxRequests: 60, windowMs: 60 * 1000 }         // 60 req / min default
