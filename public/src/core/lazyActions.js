@@ -160,6 +160,7 @@ export const openDepositSavingsModal = lazy('investments', 'openDepositSavingsMo
 export const confirmDepositSavings = lazy('investments', 'confirmDepositSavings');
 export const openWithdrawSavingsModal = lazy('investments', 'openWithdrawSavingsModal');
 export const confirmWithdrawSavings = lazy('investments', 'confirmWithdrawSavings');
+export const setInvestmentInputPreset = lazy('investments', 'setInvestmentInputPreset');
 
 // Relationships
 export const renderRelationships = lazy('relationships', 'renderRelationships');
@@ -211,6 +212,7 @@ export const chooseNameChange = lazy('romance', 'chooseNameChange');
 
 // More Dashboard & Lifestyle
 export const renderMoreDashboard = lazy('more', 'renderMoreDashboard');
+export const openGymModal = lazy('more', 'openGymModal');
 export const buyGymMembership = lazy('more', 'buyGymMembership');
 export const cancelGymMembership = lazy('more', 'cancelGymMembership');
 export const visitGymOneTime = lazy('more', 'visitGymOneTime');

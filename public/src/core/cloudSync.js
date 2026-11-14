@@ -4,14 +4,13 @@ import { state, setVerifiedPurchases } from './state.js';
 import { GameLogic } from './gameLogic.js';
 import { Utils } from '../ui/utils.js';
 import { UI } from '../ui/ui.js';
-import { migrateState, hydrateSlotsStoreFromCloud, buildCloudSavePayload } from './saveSlotManager.js';
+import { migrateState, hydrateSlotsStoreFromCloud, buildCloudSavePayload, saveToSlot } from './saveSlotManager.js';
 import { resolveAdState, onVipPurchased } from './adManager.js';
 import {
     renderDeathScreen,
     renderLifeDashboard,
     renderCharCreation,
-    addLog,
-    saveToSlot
+    addLog
 } from './lazyActions.js';
 
 state.gameState = null;

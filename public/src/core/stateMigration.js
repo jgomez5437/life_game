@@ -296,6 +296,7 @@ export function migrateState(rawState) {
     // 5. Lifestyle & Underworld
     const gymMembership = toBool(u.gymMembership, false);
     const hasBetterDiet = toBool(u.hasBetterDiet, false);
+    const diet = toStr(u.diet, hasBetterDiet ? 'balanced' : 'junk');
     const hasSeenExpenseMsg = toBool(u.hasSeenExpenseMsg || u.has_seen_expense_message, false);
     const hasSeenJobSalary = toBool(u.hasSeenJobSalary || u.has_seen_job_salary, false);
     const lifetimeCrimesCommitted = toNum(u.lifetimeCrimesCommitted, 0, 0);
@@ -362,17 +363,82 @@ export function migrateState(rawState) {
     // 7. Assets & Investments
     const assets = Array.isArray(u.assets || cleanRaw.assets) ? (u.assets || cleanRaw.assets).filter(a => a && typeof a === 'object') : [];
     let investments = null;
-    if (u.investments && typeof u.investments === 'object') {
+    if (u.investments && typeof u.investments === 'object' && !Array.isArray(u.investments)) {
         const rawInv = u.investments;
-        investments = {
-            stocks: Array.isArray(rawInv.stocks) ? rawInv.stocks.filter(s => s && typeof s === 'object') : [],
-            crypto: Array.isArray(rawInv.crypto) ? rawInv.crypto.filter(c => c && typeof c === 'object') : [],
-            savingsAccount: (rawInv.savingsAccount && typeof rawInv.savingsAccount === 'object')
-                ? {
-                    balance: toNum(rawInv.savingsAccount.balance, 0, 0),
-                    apr: toNum(rawInv.savingsAccount.apr, 0.04, 0)
+        const normalizedStocks = {};
+        if (Array.isArray(rawInv.stocks)) {
+            rawInv.stocks.forEach(s => {
+                if (s && typeof s === 'object' && typeof s.symbol === 'string' && s.symbol.trim()) {
+                    const sym = s.symbol.trim();
+                    const shares = toNum(s.shares, 0, 0);
+                    const totalCost = toNum(s.totalCost, 0, 0);
+                    if (shares > 0) {
+                        normalizedStocks[sym] = { shares, totalCost };
+                    }
                 }
-                : { balance: 0, apr: 0.04 }
+            });
+        } else if (rawInv.stocks && typeof rawInv.stocks === 'object') {
+            for (const [sym, holding] of Object.entries(rawInv.stocks)) {
+                if (holding && typeof holding === 'object' && typeof sym === 'string' && sym.trim()) {
+                    const shares = toNum(holding.shares, 0, 0);
+                    const totalCost = toNum(holding.totalCost, 0, 0);
+                    if (shares > 0) {
+                        normalizedStocks[sym.trim()] = { shares, totalCost };
+                    }
+                }
+            }
+        }
+
+        const savings = toNum(
+            rawInv.savings !== undefined ? rawInv.savings : rawInv.savingsAccount?.balance,
+            0,
+            0
+        );
+
+        const stockMarket = Array.isArray(rawInv.stockMarket)
+            ? rawInv.stockMarket
+                .filter(s => s && typeof s === 'object' && typeof s.symbol === 'string' && s.symbol.trim() !== '')
+                .map(s => ({
+                    ...s,
+                    symbol: toStr(s.symbol),
+                    name: toStr(s.name, s.symbol),
+                    sector: toStr(s.sector, 'Technology'),
+                    basePrice: toNum(s.basePrice, 50, 1),
+                    price: toNum(s.price, toNum(s.basePrice, 50, 1), 1),
+                    prevPrice: toNum(s.prevPrice, toNum(s.price, 50, 1), 1),
+                    volatility: toNum(s.volatility, 0.15, 0, 2),
+                    dividendYield: toNum(s.dividendYield, 0, 0, 1),
+                    desc: toStr(s.desc),
+                    icon: sanitizeClassToken(s.icon, 'fa-chart-line'),
+                    color: sanitizeClassToken(s.color, 'text-emerald-400'),
+                    priceHistory: Array.isArray(s.priceHistory)
+                        ? s.priceHistory.map(p => toNum(p, 50, 1)).slice(-12)
+                        : [toNum(s.price, 50, 1)]
+                }))
+            : [];
+
+        const blogPosts = Array.isArray(rawInv.blogPosts)
+            ? rawInv.blogPosts
+                .filter(b => b && typeof b === 'object' && typeof b.symbol === 'string' && b.symbol.trim() !== '')
+                .map(b => ({
+                    id: toStr(b.id, `blog_${Date.now()}`),
+                    title: toStr(b.title),
+                    author: toStr(b.author),
+                    symbol: toStr(b.symbol),
+                    stockName: toStr(b.stockName, b.symbol),
+                    sector: toStr(b.sector, 'General'),
+                    sentiment: ['bullish', 'bearish'].includes(b.sentiment) ? b.sentiment : 'bullish',
+                    impact: toNum(b.impact, 0, -1, 1),
+                    excerpt: toStr(b.excerpt),
+                    age: toNum(b.age, age, 0, 150)
+                }))
+            : [];
+
+        investments = {
+            savings,
+            stocks: normalizedStocks,
+            stockMarket,
+            blogPosts
         };
     }
 
@@ -547,6 +613,7 @@ export function migrateState(rawState) {
 
         gymMembership,
         hasBetterDiet,
+        diet,
         hasSeenExpenseMsg,
         lifetimeCrimesCommitted,
         mafiaCrimesThisYear,

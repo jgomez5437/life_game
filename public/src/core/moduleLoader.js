@@ -157,6 +157,7 @@ export const ACTION_TO_MODULE = {
     confirmDepositSavings: 'investments',
     openWithdrawSavingsModal: 'investments',
     confirmWithdrawSavings: 'investments',
+    setInvestmentInputPreset: 'investments',
 
     // Relationships & Romance
     renderRelationships: 'relationships',
@@ -204,6 +205,7 @@ export const ACTION_TO_MODULE = {
 
     // More, Settings & Casino
     renderMoreDashboard: 'more',
+    openGymModal: 'more',
     buyGymMembership: 'more',
     cancelGymMembership: 'more',
     visitGymOneTime: 'more',
