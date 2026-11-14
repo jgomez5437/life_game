@@ -9,6 +9,7 @@ import { SoundManager } from '../../core/soundManager.js';
 
 export function handleHealth(user) {
     if (typeof user.health !== 'number') user.health = 100;
+    const prevHealth = user.health;
     
     // Call the pure function
     const decay = GameLogic.calculateHealthDecay(user.age);
@@ -17,8 +18,21 @@ export function handleHealth(user) {
     // Mutate state with a hard floor of 0 and cap of 100
     user.health = Math.max(0, Math.min(100, user.health - decay + benefits));
 
+    // Process annual diseases & sicknesses (existing conditions + new contraction rolls)
+    if (typeof GameLogic.processAnnualDiseases === 'function') {
+        const diseaseRes = GameLogic.processAnnualDiseases(user);
+        if (diseaseRes && Array.isArray(diseaseRes.events)) {
+            diseaseRes.events.forEach(ev => {
+                if (ev && ev.msg) addLog(ev.msg, ev.type || 'bad');
+            });
+        }
+        if (diseaseRes && diseaseRes.contracted) {
+            user._pendingDiseaseNotification = diseaseRes.contracted;
+        }
+    }
+
     // Execute UI side-effects
-    if (user.health < 30 && (user.health + decay - benefits) >= 30) {
+    if (user.health < 30 && prevHealth >= 30) {
         addLog("Your health has reached a critical low. Your risk of death is severely elevated.", "major");
     }
 }

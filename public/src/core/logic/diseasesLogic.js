@@ -514,10 +514,16 @@ export function processAnnualDiseases(user, rolls = {}) {
                 recovered.push(d.name);
                 events.push({ msg: `You recovered from ${d.name}.`, type: 'good' });
                 continue;
+            } else if (!d.treatedThisYear && (hPen > 0 || hapPen > 0)) {
+                events.push({
+                    msg: `You are still dealing with ${d.name} (-${hPen} Health).`,
+                    type: 'bad'
+                });
             }
-        } else if (!d.treatedThisYear && hPen >= 6) {
+        } else if (!d.treatedThisYear && (hPen > 0 || hapPen > 0 || lPen > 0)) {
+            const statNote = hPen > 0 ? `-${hPen} Health` : (lPen > 0 ? `-${lPen} Looks` : `-${hapPen} Happiness`);
             events.push({
-                msg: `${d.name} is affecting your health (-${hPen} Health). Consider visiting a doctor.`,
+                msg: `${d.name} is affecting your health (${statNote}). Consider visiting a doctor.`,
                 type: 'bad'
             });
         }
@@ -530,13 +536,13 @@ export function processAnnualDiseases(user, rolls = {}) {
     let contracted = null;
     const age = user.age || 0;
     if (age >= 1 && diseases.length < 3) {
-        let chance = 0.09;
+        let chance = 0.12;
         const currentHealth = user.health ?? user.stats?.health ?? 100;
         if (currentHealth < 40) chance += 0.05;
         if (age >= 60) chance += 0.04;
         if (user.gymMembership) chance -= 0.02;
         if (user.hasBetterDiet || (user.diet && user.diet !== 'junk')) chance -= 0.02;
-        chance = Math.max(0.03, Math.min(0.22, chance));
+        chance = Math.max(0.06, Math.min(0.25, chance));
 
         const contractionRoll = rolls.contractionRoll !== undefined ? rolls.contractionRoll : Math.random();
         if (contractionRoll < chance) {

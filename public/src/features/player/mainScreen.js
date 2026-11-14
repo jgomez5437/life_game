@@ -555,10 +555,26 @@ export function renderLifeDashboard(maybeGameState) {
         </div>
     ` : '';
 
+    const activeDiseases = Array.isArray(user.diseases) ? user.diseases : [];
+    const medicalBannerHtml = activeDiseases.length > 0 ? `
+        <div id="dashboard-medical-banner" class="bg-rose-950/40 border border-rose-500/40 rounded-xl px-3 py-2 mb-2.5 flex items-center justify-between gap-2 shrink-0 shadow-sm">
+            <div class="flex items-center gap-2 min-w-0">
+                <i class="fas fa-notes-medical text-rose-400 text-xs shrink-0"></i>
+                <div class="text-xs text-rose-200 truncate">
+                    <span class="font-bold">Medical:</span> ${activeDiseases.map(d => Utils.escapeHtml(d.name)).join(', ')}
+                </div>
+            </div>
+            <button type="button" data-action="visitDoctor" class="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-[10px] font-bold uppercase tracking-wider shrink-0 transition">
+                Doctor
+            </button>
+        </div>
+    ` : '';
+
     const dashboardHTML = `
         <div class="flex flex-col h-full max-w-lg mx-auto">
             ${vipBannerHtml}
             ${snapshotStripHtml}
+            ${medicalBannerHtml}
             <div id="life-history-card" class="flex-1 min-h-0 flex flex-col overflow-hidden ${!isBottomNav ? 'mb-2' : ''} bg-slate-800/50 rounded-xl border border-slate-700/50">
                 <h3 id="life-history-header" class="font-bold text-slate-300 px-4 py-2.5 sm:py-3 border-b border-slate-700/50 shrink-0">Life History</h3>
                 <div id="life-history-scroll" class="flex-1 overflow-y-auto p-4">
@@ -594,6 +610,53 @@ export function renderLifeDashboard(maybeGameState) {
     const gameContainer = get('game-container');
     if (gameContainer) {
         gameContainer.scrollTop = 0;
+    }
+
+    // Show popup notification if the player contracted a new illness or condition this year
+    if (user._pendingDiseaseNotification) {
+        const contracted = user._pendingDiseaseNotification;
+        delete user._pendingDiseaseNotification;
+        const def = typeof GameLogic.getDiseaseDefinition === 'function'
+            ? GameLogic.getDiseaseDefinition(contracted.id)
+            : null;
+        const isChronic = contracted.category === 'chronic';
+        const badgeLabel = isChronic ? 'Chronic Condition' : (contracted.category === 'std' ? 'Medical Condition' : 'Illness / Sickness');
+        const clinicVisitCost = typeof GameLogic.calculateMedicalVisit === 'function'
+            ? GameLogic.calculateMedicalVisit().cost
+            : 1000;
+        const visitFeeText = (user.age || 0) < 18 ? 'Free (Under 18)' : Utils.formatMoney(def?.doctorCost || clinicVisitCost, user.city);
+        const healthHit = def?.initialHealthHit ?? contracted.healthPenalty ?? 0;
+        const hapHit = def?.initialHappinessHit ?? contracted.happinessPenalty ?? 0;
+        const description = contracted.description || def?.note || 'You are experiencing symptoms and should consider seeing a doctor.';
+
+        UI.showCustomModal({
+            title: isChronic ? '🩺 Medical Diagnosis' : '🤒 Feeling Sick',
+            content: `
+                <div class="text-center py-2 space-y-3">
+                    <div class="w-14 h-14 mx-auto rounded-2xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center">
+                        <i class="fas ${Utils.escapeHtml(contracted.icon || 'fa-virus')} text-2xl text-rose-400"></i>
+                    </div>
+                    <div>
+                        <span class="inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-rose-950/80 text-rose-300 border border-rose-500/30 mb-1">${badgeLabel}</span>
+                        <h4 class="text-lg font-extrabold text-white">${Utils.escapeHtml(contracted.name)}</h4>
+                        <p class="text-xs text-slate-300 mt-1">${Utils.escapeHtml(description)}</p>
+                    </div>
+                    <div class="bg-slate-900/70 border border-slate-700/60 rounded-xl p-2.5 text-xs text-rose-300 font-semibold">
+                        Impact: -${healthHit} Health${hapHit > 0 ? `, -${hapHit} Happiness` : ''}
+                    </div>
+                </div>
+            `,
+            confirmText: `Visit Doctor (${visitFeeText})`,
+            cancelText: 'Dismiss',
+            showCloseBtn: true,
+            onConfirm: () => {
+                loadModule('more').then(m => {
+                    if (m && typeof m.visitDoctor === 'function') {
+                        m.visitDoctor();
+                    }
+                });
+            }
+        });
     }
 
     // Conservative context-aware preloading during idle gameplay
