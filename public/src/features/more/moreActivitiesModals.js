@@ -9,24 +9,82 @@ import { renderMoreDashboard } from './moreScreen.js';
 
 const get = id => document.getElementById(id);
 
+export function openGymModal() {
+    const user = state.gameState?.user;
+    if (!user) return;
+    if ((user.age || 0) < 12) {
+        UI.showModal("Too Young", "You must be at least 12 years old to use the gym.");
+        return;
+    }
+
+    const { boost, cost } = GameLogic.calculateOneTimeGymVisit();
+    const isMember = Boolean(user.gymMembership);
+    const workoutCostLabel = isMember ? 'Free (Member)' : Utils.formatMoney(cost);
+
+    const html = `
+        <div class="space-y-3 text-left">
+            <div class="p-3 rounded-xl border ${isMember ? 'border-blue-500/60 bg-blue-950/30' : 'border-slate-700 bg-slate-800/80'}">
+                <div class="text-xs text-slate-400 uppercase font-bold tracking-wider">Membership Status</div>
+                <div class="text-sm font-bold text-white mt-0.5 flex items-center gap-2">
+                    ${isMember ? 'Active Gym Member' : 'Not a Member'}
+                    ${isMember ? '<span class="text-[10px] bg-blue-600 text-white font-bold px-2 py-0.5 rounded-full">ACTIVE</span>' : ''}
+                </div>
+                <div class="text-xs text-slate-400 mt-0.5">
+                    ${isMember ? '$50/mo ($600/yr) • Unlimited free workouts & +1 annual Health' : 'Pay $20 per visit or join for $50/mo'}
+                </div>
+            </div>
+
+            <button data-action="visitGymOneTime" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-between">
+                <span class="flex items-center gap-2"><i class="fas fa-dumbbell"></i> Workout Today (+${boost} Health, +Looks, +3 Happiness)</span>
+                <span class="font-extrabold">${workoutCostLabel}</span>
+            </button>
+
+            ${isMember ? `
+                <button data-action="cancelGymMembership" class="w-full bg-red-900/50 hover:bg-red-800/70 text-red-200 border border-red-700/60 font-bold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2">
+                    <i class="fas fa-times-circle"></i> Cancel Gym Membership
+                </button>
+            ` : `
+                <button data-action="buyGymMembership" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2">
+                    <i class="fas fa-id-card"></i> Join Gym Membership ($50/mo)
+                </button>
+            `}
+
+            <button data-action="hideModal" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-2.5 rounded-xl text-xs transition border border-slate-600">
+                Close
+            </button>
+        </div>
+    `;
+
+    UI.showCustomModal({
+        title: "Gym & Fitness",
+        content: html,
+        showCloseBtn: true
+    });
+}
+
 export function visitGymOneTime() {
     const user = state.gameState.user;
-    if (user.age < 12) {
+    if ((user.age || 0) < 12) {
         UI.showModal("Too Young", "You must be at least 12 to go to the gym.");
         return;
     }
     const { boost, cost } = GameLogic.calculateOneTimeGymVisit();
     const actualCost = user.gymMembership ? 0 : cost;
-    
-    if (user.money >= actualCost) {
-        user.money -= actualCost;
+
+    if (actualCost <= 0 || (user.money || 0) >= actualCost) {
+        if (actualCost > 0) user.money -= actualCost;
         const healthGain = boost;
         const looksGain = Math.floor(Math.random() * 4) + 2;
         GameLogic.adjustStat(user, 'health', healthGain);
         GameLogic.adjustStat(user, 'looks', looksGain);
         GameLogic.adjustStat(user, 'happiness', 3);
-        addLog(`Worked out at the gym! Restored +${healthGain}% Health, +3% Happiness, and gained +${looksGain} Looks.`, 'good');
+        const msg = `Worked out at the gym! Restored +${healthGain}% Health, +3% Happiness, and gained +${looksGain} Looks.`;
+        addLog(msg, 'good');
         UI.updateHeader(user);
+        if (typeof window.saveGame === 'function') window.saveGame();
+        else saveGame();
+        UI.closeAllModals();
+        UI.showModal("Workout Complete", `<p class="text-slate-300 text-sm">${msg}</p>`);
         renderMoreDashboard();
     } else {
         UI.showModal("Not enough money", "You cannot afford the one-time gym fee.");
@@ -35,12 +93,17 @@ export function visitGymOneTime() {
 
 export function buyGymMembership() {
     const user = state.gameState.user;
-    if (user.age < 12) {
+    if ((user.age || 0) < 12) {
         UI.showModal("Too Young", "You must be at least 12 to join the gym.");
         return;
     }
     user.gymMembership = true;
     addLog("You bought a gym membership.", 'good');
+    UI.updateHeader(user);
+    if (typeof window.saveGame === 'function') window.saveGame();
+    else saveGame();
+    UI.closeAllModals();
+    UI.showModal("Gym Membership Active", `<p class="text-slate-300 text-sm">You joined the gym ($50/mo). Enjoy unlimited workouts!</p>`);
     renderMoreDashboard();
 }
 
@@ -48,6 +111,11 @@ export function cancelGymMembership() {
     const user = state.gameState.user;
     user.gymMembership = false;
     addLog("You cancelled your gym membership.", 'neutral');
+    UI.updateHeader(user);
+    if (typeof window.saveGame === 'function') window.saveGame();
+    else saveGame();
+    UI.closeAllModals();
+    UI.showModal("Membership Cancelled", `<p class="text-slate-300 text-sm">You cancelled your gym membership and will no longer be billed $50/mo.</p>`);
     renderMoreDashboard();
 }
 
@@ -120,21 +188,23 @@ export function selectDiet(dietId) {
     const user = state.gameState.user;
     const plan = GameLogic.getDietPlan(dietId);
 
-    if (user.money < plan.monthlyCost) {
+    if (plan.monthlyCost > 0 && (user.money || 0) < plan.monthlyCost) {
         UI.showModal("Insufficient Funds", `You need ${Utils.formatMoney(plan.monthlyCost)} in cash to pay the upfront month fee for ${plan.name}.`);
         return;
     }
 
-    user.money -= plan.monthlyCost;
+    if (plan.monthlyCost > 0) user.money -= plan.monthlyCost;
     user.diet = dietId;
     user.hasBetterDiet = (dietId !== 'junk');
 
-    addLog(`Switched diet plan to ${plan.name}. Paid ${Utils.formatMoney(plan.monthlyCost)} upfront.`, 'good');
+    addLog(`Switched diet plan to ${plan.name}.${plan.monthlyCost > 0 ? ` Paid ${Utils.formatMoney(plan.monthlyCost)} upfront.` : ''}`, 'good');
     UI.updateHeader(user);
-    UI.hideModal();
+    if (typeof window.saveGame === 'function') window.saveGame();
+    else saveGame();
+    UI.closeAllModals();
     renderMoreDashboard();
 
-    UI.showModal("Diet Plan Active", `You are now on the <strong>${plan.name}</strong>! Upfront 1-month fee of ${Utils.formatMoney(plan.monthlyCost)} deducted.`);
+    UI.showModal("Diet Plan Active", `You are now on the <strong>${plan.name}</strong>!${plan.monthlyCost > 0 ? ` Upfront 1-month fee of ${Utils.formatMoney(plan.monthlyCost)} deducted.` : ''}`);
 }
 
 export function openLotteryModal() {
@@ -364,8 +434,8 @@ export function generalCheckup() {
     const isMinor = (user.age || 0) < 18;
     const cost = isMinor ? 0 : baseCost;
 
-    if ((user.money || 0) >= cost) {
-        user.money -= cost;
+    if (cost <= 0 || (user.money || 0) >= cost) {
+        if (cost > 0) user.money -= cost;
         GameLogic.adjustStat(user, 'health', boost);
         const msg = isMinor
             ? "You visited the doctor for a checkup (covered by your parents) and feel healthier."
@@ -373,6 +443,7 @@ export function generalCheckup() {
         addLog(msg, 'good');
         UI.updateHeader(user);
         if (typeof window.saveGame === 'function') window.saveGame();
+        else saveGame();
         UI.closeAllModals();
         UI.showModal("Medical Checkup", `<p class="text-slate-300 text-sm">${Utils.escapeHtml(msg)} (+${boost} Health)</p>`);
         renderMoreDashboard();

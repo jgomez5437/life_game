@@ -651,221 +651,149 @@ export function openStockDetailsModal(symbol) {
     UI.showModal(`${stock.name} Stock Overview`, modalHTML);
 }
 
+export function setInvestmentInputPreset(inputId, value) {
+    const inp = get(inputId);
+    if (inp) inp.value = value;
+}
+
+function renderPresetRow(inputId, presets, colsClass = 'flex gap-2') {
+    const itemCls = colsClass.startsWith('flex') ? 'flex-1 ' : '';
+    return `<div class="${colsClass}">${presets.map(p => `<button data-action="setInvestmentInputPreset" data-args="'${inputId}', ${p.val}" class="${itemCls}bg-slate-800 hover:bg-slate-750 ${p.cls || 'text-slate-300'} text-xs py-1.5 rounded-lg font-bold border border-slate-700">${p.label}</button>`).join('')}</div>`;
+}
+
+function finishInvestmentTransaction(result, { successTitle, failTitle, successClass, tab }) {
+    const user = state.gameState.user;
+    UI.closeAllModals();
+    if (result.success) {
+        UI.updateHeader(user);
+        saveGame();
+        UI.showModal(successTitle, `<p class="${successClass} font-bold">${result.msg}</p>`);
+    } else {
+        UI.showModal(failTitle, `<p class="text-red-400 font-bold">${result.msg}</p>`);
+    }
+    renderInvestmentsScreen(tab);
+}
+
 export function openBuyStockModal(symbol) {
     const user = state.gameState.user;
+    GameLogic.ensureInvestmentState(user);
     const stock = (user.investments.stockMarket || []).find(s => s.symbol === symbol);
     if (!stock) return;
-
-    const maxAffordable = Math.floor(user.money / stock.price);
-
+    const maxAffordable = Math.max(0, Math.floor((user.money || 0) / stock.price));
     const modalHTML = `
         <div class="space-y-4 text-left">
             <div class="flex justify-between items-center bg-slate-900 p-3 rounded-xl border border-slate-700">
-                <div>
-                    <h4 class="font-bold text-white text-base">${stock.name} (${stock.symbol})</h4>
-                    <div class="text-xs text-slate-400">Current Share Price</div>
-                </div>
+                <div><h4 class="font-bold text-white text-base">${stock.name} (${stock.symbol})</h4><div class="text-xs text-slate-400">Current Share Price</div></div>
                 <div class="text-right font-extrabold text-emerald-400 text-lg">${Utils.formatMoney(stock.price)}</div>
             </div>
-
             <div>
                 <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Number of Shares</label>
                 <input type="number" id="inp-buy-shares" value="1" min="1" max="${Math.max(1, maxAffordable)}" class="w-full bg-slate-900 border border-slate-600 rounded-xl p-3 text-white text-center font-bold text-lg outline-none focus:border-emerald-500">
             </div>
-
-            <div class="flex gap-2">
-                <button onclick="document.getElementById('inp-buy-shares').value = 1" class="flex-1 bg-slate-800 hover:bg-slate-750 text-slate-300 text-xs py-1.5 rounded-lg font-bold border border-slate-700">1 Share</button>
-                <button onclick="document.getElementById('inp-buy-shares').value = 10" class="flex-1 bg-slate-800 hover:bg-slate-750 text-slate-300 text-xs py-1.5 rounded-lg font-bold border border-slate-700">10 Shares</button>
-                <button onclick="document.getElementById('inp-buy-shares').value = ${Math.max(1, maxAffordable)}" class="flex-1 bg-slate-800 hover:bg-slate-750 text-emerald-400 text-xs py-1.5 rounded-lg font-bold border border-slate-700">Max (${maxAffordable})</button>
-            </div>
-
-            <div class="text-xs text-slate-400 flex justify-between px-1">
-                <span>Liquid Cash Available:</span>
-                <strong class="text-white">${Utils.formatMoney(user.money)}</strong>
-            </div>
-
-            <button data-action="confirmBuyStock" data-args="'${stock.symbol}'" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 rounded-xl text-base shadow transition">
-                Confirm Purchase
-            </button>
-        </div>
-    `;
-
+            ${renderPresetRow('inp-buy-shares', [
+                { val: 1, label: '1 Share' },
+                { val: 10, label: '10 Shares' },
+                { val: Math.max(1, maxAffordable), label: `Max (${maxAffordable})`, cls: 'text-emerald-400' }
+            ])}
+            <div class="text-xs text-slate-400 flex justify-between px-1"><span>Liquid Cash Available:</span><strong class="text-white">${Utils.formatMoney(user.money)}</strong></div>
+            <button data-action="confirmBuyStock" data-args="'${stock.symbol}'" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 rounded-xl text-base shadow transition">Confirm Purchase</button>
+        </div>`;
     UI.showModal(`Buy ${stock.symbol} Shares`, modalHTML);
 }
 
 export function confirmBuyStock(symbol) {
-    const user = state.gameState.user;
     const inp = get('inp-buy-shares');
     if (!inp) return;
-
-    const shares = parseInt(inp.value, 10);
-    const result = GameLogic.buyStock(user, symbol, shares);
-
-    UI.hideModal();
-    if (result.success) {
-        saveGame();
-        UI.showModal('Trade Executed', `<p class="text-emerald-400 font-bold">${result.msg}</p>`);
-    } else {
-        UI.showModal('Trade Failed', `<p class="text-red-400 font-bold">${result.msg}</p>`);
-    }
-
-    renderInvestmentsScreen();
+    const result = GameLogic.buyStock(state.gameState.user, symbol, parseInt(inp.value, 10));
+    finishInvestmentTransaction(result, { successTitle: 'Trade Executed', failTitle: 'Trade Failed', successClass: 'text-emerald-400' });
 }
 
 export function openSellStockModal(symbol) {
     const user = state.gameState.user;
+    GameLogic.ensureInvestmentState(user);
     const holding = (user.investments.stocks || {})[symbol];
     const stock = (user.investments.stockMarket || []).find(s => s.symbol === symbol);
     if (!holding || !stock) return;
-
     const ownedShares = holding.shares;
-
     const modalHTML = `
         <div class="space-y-4 text-left">
             <div class="flex justify-between items-center bg-slate-900 p-3 rounded-xl border border-slate-700">
-                <div>
-                    <h4 class="font-bold text-white text-base">${stock.name} (${stock.symbol})</h4>
-                    <div class="text-xs text-slate-400">Current Selling Price</div>
-                </div>
+                <div><h4 class="font-bold text-white text-base">${stock.name} (${stock.symbol})</h4><div class="text-xs text-slate-400">Current Selling Price</div></div>
                 <div class="text-right font-extrabold text-purple-300 text-lg">${Utils.formatMoney(stock.price)}</div>
             </div>
-
             <div>
                 <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Shares to Sell (Owned: ${ownedShares})</label>
                 <input type="number" id="inp-sell-shares" value="1" min="1" max="${ownedShares}" class="w-full bg-slate-900 border border-slate-600 rounded-xl p-3 text-white text-center font-bold text-lg outline-none focus:border-purple-500">
             </div>
-
-            <div class="flex gap-2">
-                <button onclick="document.getElementById('inp-sell-shares').value = 1" class="flex-1 bg-slate-800 hover:bg-slate-750 text-slate-300 text-xs py-1.5 rounded-lg font-bold border border-slate-700">1 Share</button>
-                <button onclick="document.getElementById('inp-sell-shares').value = Math.max(1, Math.floor(${ownedShares} / 2))" class="flex-1 bg-slate-800 hover:bg-slate-750 text-slate-300 text-xs py-1.5 rounded-lg font-bold border border-slate-700">50%</button>
-                <button onclick="document.getElementById('inp-sell-shares').value = ${ownedShares}" class="flex-1 bg-slate-800 hover:bg-slate-750 text-purple-300 text-xs py-1.5 rounded-lg font-bold border border-slate-700">Sell All (${ownedShares})</button>
-            </div>
-
-            <button data-action="confirmSellStock" data-args="'${stock.symbol}'" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-3.5 rounded-xl text-base shadow transition">
-                Confirm Sale
-            </button>
-        </div>
-    `;
-
+            ${renderPresetRow('inp-sell-shares', [
+                { val: 1, label: '1 Share' },
+                { val: Math.max(1, Math.floor(ownedShares / 2)), label: '50%' },
+                { val: ownedShares, label: `Sell All (${ownedShares})`, cls: 'text-purple-300' }
+            ])}
+            <button data-action="confirmSellStock" data-args="'${stock.symbol}'" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-3.5 rounded-xl text-base shadow transition">Confirm Sale</button>
+        </div>`;
     UI.showModal(`Sell ${stock.symbol} Shares`, modalHTML);
 }
 
 export function confirmSellStock(symbol) {
-    const user = state.gameState.user;
     const inp = get('inp-sell-shares');
     if (!inp) return;
-
-    const shares = parseInt(inp.value, 10);
-    const result = GameLogic.sellStock(user, symbol, shares);
-
-    UI.hideModal();
-    if (result.success) {
-        saveGame();
-        UI.showModal('Trade Executed', `<p class="text-purple-300 font-bold">${result.msg}</p>`);
-    } else {
-        UI.showModal('Trade Failed', `<p class="text-red-400 font-bold">${result.msg}</p>`);
-    }
-
-    renderInvestmentsScreen();
+    const result = GameLogic.sellStock(state.gameState.user, symbol, parseInt(inp.value, 10));
+    finishInvestmentTransaction(result, { successTitle: 'Trade Executed', failTitle: 'Trade Failed', successClass: 'text-purple-300' });
 }
 
 export function openDepositSavingsModal() {
     const user = state.gameState.user;
-
+    const maxCash = Math.max(0, Math.floor(user.money || 0));
     const modalHTML = `
         <div class="space-y-4 text-left">
             <div>
                 <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Deposit Amount</label>
-                <input type="number" id="inp-deposit-amt" value="1000" min="100" max="${user.money}" class="w-full bg-slate-900 border border-slate-600 rounded-xl p-3 text-white text-center font-bold text-lg outline-none focus:border-emerald-500">
+                <input type="number" id="inp-deposit-amt" value="1000" min="100" max="${maxCash}" class="w-full bg-slate-900 border border-slate-600 rounded-xl p-3 text-white text-center font-bold text-lg outline-none focus:border-emerald-500">
             </div>
-
-            <div class="grid grid-cols-4 gap-1.5">
-                <button onclick="document.getElementById('inp-deposit-amt').value = 500" class="bg-slate-800 hover:bg-slate-750 text-slate-300 text-xs py-1.5 rounded-lg font-bold border border-slate-700">${Utils.formatMoney(500)}</button>
-                <button onclick="document.getElementById('inp-deposit-amt').value = 2500" class="bg-slate-800 hover:bg-slate-750 text-slate-300 text-xs py-1.5 rounded-lg font-bold border border-slate-700">${Utils.formatMoney(2500)}</button>
-                <button onclick="document.getElementById('inp-deposit-amt').value = 10000" class="bg-slate-800 hover:bg-slate-750 text-slate-300 text-xs py-1.5 rounded-lg font-bold border border-slate-700">${Utils.formatMoney(10000)}</button>
-                <button onclick="document.getElementById('inp-deposit-amt').value = ${user.money}" class="bg-slate-800 hover:bg-slate-750 text-emerald-400 text-xs py-1.5 rounded-lg font-bold border border-slate-700">Max</button>
-            </div>
-
-            <div class="text-xs text-slate-400 flex justify-between px-1">
-                <span>Available Cash:</span>
-                <strong class="text-white">${Utils.formatMoney(user.money)}</strong>
-            </div>
-
-            <button data-action="confirmDepositSavings" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 rounded-xl text-base shadow transition">
-                Confirm Deposit
-            </button>
-        </div>
-    `;
-
+            ${renderPresetRow('inp-deposit-amt', [
+                { val: 500, label: Utils.formatMoney(500) },
+                { val: 2500, label: Utils.formatMoney(2500) },
+                { val: 10000, label: Utils.formatMoney(10000) },
+                { val: maxCash, label: 'Max', cls: 'text-emerald-400' }
+            ], 'grid grid-cols-4 gap-1.5')}
+            <div class="text-xs text-slate-400 flex justify-between px-1"><span>Available Cash:</span><strong class="text-white">${Utils.formatMoney(user.money)}</strong></div>
+            <button data-action="confirmDepositSavings" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 rounded-xl text-base shadow transition">Confirm Deposit</button>
+        </div>`;
     UI.showModal('Deposit into High-Yield Savings', modalHTML);
 }
 
 export function confirmDepositSavings() {
-    const user = state.gameState.user;
     const inp = get('inp-deposit-amt');
     if (!inp) return;
-
-    const amt = parseInt(inp.value, 10);
-    const result = GameLogic.depositSavings(user, amt);
-
-    UI.hideModal();
-    if (result.success) {
-        saveGame();
-        UI.showModal('Deposit Complete', `<p class="text-emerald-400 font-bold">${result.msg}</p>`);
-    } else {
-        UI.showModal('Deposit Failed', `<p class="text-red-400 font-bold">${result.msg}</p>`);
-    }
-
-    renderInvestmentsScreen('savings');
+    const result = GameLogic.depositSavings(state.gameState.user, parseInt(inp.value, 10));
+    finishInvestmentTransaction(result, { successTitle: 'Deposit Complete', failTitle: 'Deposit Failed', successClass: 'text-emerald-400', tab: 'savings' });
 }
 
 export function openWithdrawSavingsModal() {
     const user = state.gameState.user;
     const savings = user.investments?.savings || 0;
-
     const modalHTML = `
         <div class="space-y-4 text-left">
             <div>
                 <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Withdraw Amount</label>
                 <input type="number" id="inp-withdraw-amt" value="${Math.min(1000, savings)}" min="100" max="${savings}" class="w-full bg-slate-900 border border-slate-600 rounded-xl p-3 text-white text-center font-bold text-lg outline-none focus:border-cyan-500">
             </div>
-
-            <div class="grid grid-cols-4 gap-1.5">
-                <button onclick="document.getElementById('inp-withdraw-amt').value = 500" class="bg-slate-800 hover:bg-slate-750 text-slate-300 text-xs py-1.5 rounded-lg font-bold border border-slate-700">${Utils.formatMoney(500)}</button>
-                <button onclick="document.getElementById('inp-withdraw-amt').value = 2500" class="bg-slate-800 hover:bg-slate-750 text-slate-300 text-xs py-1.5 rounded-lg font-bold border border-slate-700">${Utils.formatMoney(2500)}</button>
-                <button onclick="document.getElementById('inp-withdraw-amt').value = 10000" class="bg-slate-800 hover:bg-slate-750 text-slate-300 text-xs py-1.5 rounded-lg font-bold border border-slate-700">${Utils.formatMoney(10000)}</button>
-                <button onclick="document.getElementById('inp-withdraw-amt').value = ${savings}" class="bg-slate-800 hover:bg-slate-750 text-cyan-400 text-xs py-1.5 rounded-lg font-bold border border-slate-700">Withdraw All</button>
-            </div>
-
-            <div class="text-xs text-slate-400 flex justify-between px-1">
-                <span>Savings Balance:</span>
-                <strong class="text-cyan-400">${Utils.formatMoney(savings)}</strong>
-            </div>
-
-            <button data-action="confirmWithdrawSavings" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3.5 rounded-xl text-base shadow transition">
-                Confirm Withdrawal
-            </button>
-        </div>
-    `;
-
+            ${renderPresetRow('inp-withdraw-amt', [
+                { val: 500, label: Utils.formatMoney(500) },
+                { val: 2500, label: Utils.formatMoney(2500) },
+                { val: 10000, label: Utils.formatMoney(10000) },
+                { val: savings, label: 'Withdraw All', cls: 'text-cyan-400' }
+            ], 'grid grid-cols-4 gap-1.5')}
+            <div class="text-xs text-slate-400 flex justify-between px-1"><span>Savings Balance:</span><strong class="text-cyan-400">${Utils.formatMoney(savings)}</strong></div>
+            <button data-action="confirmWithdrawSavings" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3.5 rounded-xl text-base shadow transition">Confirm Withdrawal</button>
+        </div>`;
     UI.showModal('Withdraw from Savings', modalHTML);
 }
 
 export function confirmWithdrawSavings() {
-    const user = state.gameState.user;
     const inp = get('inp-withdraw-amt');
     if (!inp) return;
-
-    const amt = parseInt(inp.value, 10);
-    const result = GameLogic.withdrawSavings(user, amt);
-
-    UI.hideModal();
-    if (result.success) {
-        saveGame();
-        UI.showModal('Withdrawal Complete', `<p class="text-cyan-300 font-bold">${result.msg}</p>`);
-    } else {
-        UI.showModal('Withdrawal Failed', `<p class="text-red-400 font-bold">${result.msg}</p>`);
-    }
-
-    renderInvestmentsScreen('savings');
+    const result = GameLogic.withdrawSavings(state.gameState.user, parseInt(inp.value, 10));
+    finishInvestmentTransaction(result, { successTitle: 'Withdrawal Complete', failTitle: 'Withdrawal Failed', successClass: 'text-cyan-300', tab: 'savings' });
 }

@@ -638,7 +638,7 @@ export function treatDiseaseAtDoctor(user, diseaseId, roll = Math.random()) {
     }
 
     const cost = (user.age || 0) < 18 ? 0 : calculateMedicalVisit().cost;
-    if ((user.money || 0) < cost) {
+    if (cost > 0 && (user.money || 0) < cost) {
         return {
             success: false,
             insufficientFunds: true,

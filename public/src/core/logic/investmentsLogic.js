@@ -452,7 +452,7 @@ export const BLOG_TEMPLATES = [
 ];
 
 export function ensureInvestmentState(user) {
-    if (!user.investments) {
+    if (!user.investments || typeof user.investments !== 'object' || Array.isArray(user.investments)) {
         user.investments = {
             savings: 0,
             stocks: {},
@@ -460,12 +460,40 @@ export function ensureInvestmentState(user) {
             blogPosts: []
         };
     }
-    if (typeof user.investments.savings !== 'number') user.investments.savings = 0;
-    if (!user.investments.stocks) user.investments.stocks = {};
-    if (!user.investments.stockMarket || user.investments.stockMarket.length === 0) {
+    if (typeof user.investments.savings !== 'number' || Number.isNaN(user.investments.savings)) {
+        const legacyBal = user.investments.savingsAccount?.balance;
+        user.investments.savings = (typeof legacyBal === 'number' && !Number.isNaN(legacyBal)) ? legacyBal : 0;
+    }
+    if (!user.investments.stocks || typeof user.investments.stocks !== 'object' || Array.isArray(user.investments.stocks)) {
+        const normalizedStocks = {};
+        if (Array.isArray(user.investments.stocks)) {
+            for (const entry of user.investments.stocks) {
+                if (entry && typeof entry === 'object' && typeof entry.symbol === 'string' && entry.symbol.trim()) {
+                    const shares = Number(entry.shares) || 0;
+                    const totalCost = Number(entry.totalCost) || 0;
+                    if (shares > 0) {
+                        normalizedStocks[entry.symbol.trim()] = { shares, totalCost };
+                    }
+                }
+            }
+            for (const key of Object.keys(user.investments.stocks)) {
+                if (!/^\d+$/.test(key)) {
+                    const val = user.investments.stocks[key];
+                    if (val && typeof val === 'object' && Number(val.shares) > 0) {
+                        normalizedStocks[key] = {
+                            shares: Number(val.shares) || 0,
+                            totalCost: Number(val.totalCost) || 0
+                        };
+                    }
+                }
+            }
+        }
+        user.investments.stocks = normalizedStocks;
+    }
+    if (!Array.isArray(user.investments.stockMarket) || user.investments.stockMarket.length === 0) {
         user.investments.stockMarket = JSON.parse(JSON.stringify(INITIAL_STOCKS));
     }
-    if (!user.investments.blogPosts) user.investments.blogPosts = [];
+    if (!Array.isArray(user.investments.blogPosts)) user.investments.blogPosts = [];
     
     // Ensure all initial stocks are present in market
     INITIAL_STOCKS.forEach(initStock => {
