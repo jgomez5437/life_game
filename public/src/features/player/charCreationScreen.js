@@ -699,6 +699,7 @@ export async function submitCharacter() {
             appearance: draftAppearance,
             relationships: startingFamily,
             assets: [],
+            diseases: [],
             lifeLog: []
         };
 

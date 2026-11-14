@@ -236,6 +236,8 @@ export const visitGymOneTime = lazy('more', 'visitGymOneTime');
 export const startBetterDiet = lazy('more', 'startBetterDiet');
 export const cancelBetterDiet = lazy('more', 'cancelBetterDiet');
 export const visitDoctor = lazy('more', 'visitDoctor');
+export const treatDisease = lazy('more', 'treatDisease');
+export const generalCheckup = lazy('more', 'generalCheckup');
 export const openTravelModal = lazy('more', 'openTravelModal');
 export const bookTrip = lazy('more', 'bookTrip');
 export const openDietSelectionModal = lazy('more', 'openDietSelectionModal');
@@ -1659,6 +1661,8 @@ const routeHandlers = {
   startBetterDiet,
   cancelBetterDiet,
   visitDoctor,
+  treatDisease,
+  generalCheckup,
   openBlackjackBetting,
   startBlackjackGame,
   blackjackHit,

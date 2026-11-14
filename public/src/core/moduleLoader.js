@@ -210,6 +210,8 @@ export const ACTION_TO_MODULE = {
     startBetterDiet: 'more',
     cancelBetterDiet: 'more',
     visitDoctor: 'more',
+    treatDisease: 'more',
+    generalCheckup: 'more',
     openTravelModal: 'more',
     bookTrip: 'more',
     openDietSelectionModal: 'more',

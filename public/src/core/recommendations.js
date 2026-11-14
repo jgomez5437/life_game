@@ -298,6 +298,15 @@ export function buildRecommendations(user) {
             action: 'renderAssets', args: [], actionLabel: 'View'
         });
     }
+    if (Array.isArray(user.diseases) && user.diseases.some(d => !d.treatedThisYear)) {
+        const untreated = user.diseases.filter(d => !d.treatedThisYear);
+        push({
+            id: 'alert-illness', kind: 'alert', tone: 'bad', icon: 'fa-stethoscope',
+            title: `Illness: ${untreated.map(d => d.name).join(', ')}`,
+            subtitle: 'See a doctor for treatment or symptom care.',
+            action: 'visitDoctor', args: [], actionLabel: 'Doctor'
+        });
+    }
 
     // ── Babies & toddlers ────────────────────────────────────────────────────
     if (age < 5) {

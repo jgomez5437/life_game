@@ -173,17 +173,26 @@ export function renderMoreDashboard() {
                             lockText: 'Age 12+'
                         })}
 
-                        ${renderSlimOptionRow({
-                            icon: 'fa-stethoscope',
-                            iconBg: 'bg-red-950/60',
-                            iconColor: 'text-red-400',
-                            badgeColor: 'border-red-800/60 text-red-300',
-                            title: 'Medical Checkup',
-                            subtitle: `Visit Doctor (+10 Health)`,
-                            action: 'visitDoctor',
-                            buttonText: `Visit ($1,000)`,
-                            buttonStyle: 'bg-red-700 hover:bg-red-600 text-white'
-                        })}
+                        ${(() => {
+                            const activeDiseases = Array.isArray(user.diseases) ? user.diseases : [];
+                            const isMinor = (user.age || 0) < 18;
+                            const costLabel = isMinor ? 'Free' : '$1,000';
+                            const subtitle = activeDiseases.length > 0
+                                ? `Active: ${activeDiseases.map(d => Utils.escapeHtml(d.name)).join(', ')}`
+                                : `Visit Doctor (+10 Health)`;
+                            return renderSlimOptionRow({
+                                icon: 'fa-stethoscope',
+                                iconBg: 'bg-red-950/60',
+                                iconColor: 'text-red-400',
+                                badgeText: activeDiseases.length > 0 ? `${activeDiseases.length} Active` : '',
+                                badgeColor: activeDiseases.length > 0 ? 'border-rose-600/60 text-rose-300 bg-rose-950/50' : 'border-red-800/60 text-red-300',
+                                title: activeDiseases.length > 0 ? 'Medical Clinic & Doctor' : 'Medical Checkup',
+                                subtitle,
+                                action: 'visitDoctor',
+                                buttonText: activeDiseases.length > 0 ? 'Clinic' : `Visit (${costLabel})`,
+                                buttonStyle: 'bg-red-700 hover:bg-red-600 text-white'
+                            });
+                        })()}
                     </div>
                 </div>
 
@@ -587,16 +596,122 @@ export function buyLotteryTicket(ticketTypeId) {
 
 
 export function visitDoctor() {
-    const user = state.gameState.user;
-    const { boost, cost } = GameLogic.calculateMedicalVisit();
-    
-    if (user.money >= cost) {
+    const user = state.gameState?.user;
+    if (!user) return;
+    const activeDiseases = Array.isArray(user.diseases) ? user.diseases : [];
+    if (activeDiseases.length > 0) {
+        openMedicalClinicModal();
+    } else {
+        generalCheckup();
+    }
+}
+
+export function openMedicalClinicModal() {
+    const user = state.gameState?.user;
+    if (!user) return;
+    const activeDiseases = Array.isArray(user.diseases) ? user.diseases : [];
+    const isMinor = (user.age || 0) < 18;
+    const visitCost = isMinor ? 0 : GameLogic.calculateMedicalVisit().cost;
+    const costLabel = isMinor ? 'Free (Parents)' : Utils.formatMoney(visitCost);
+
+    const conditionsHtml = activeDiseases.map(d => {
+        const def = GameLogic.getDiseaseDefinition ? GameLogic.getDiseaseDefinition(d.id) : null;
+        const note = def?.note || '';
+        const typeLabel = d.category === 'std' ? 'STD' : (d.category === 'chronic' ? 'Chronic' : 'Illness');
+        const statusLabel = d.curable
+            ? (d.selfResolving ? 'May clear on its own' : 'Needs treatment')
+            : 'Lifelong (manageable)';
+        const btnDisabled = d.treatedThisYear || (!isMinor && (user.money || 0) < visitCost);
+        const btnText = d.treatedThisYear
+            ? 'Treated This Year'
+            : (d.curable ? `Treat (${costLabel})` : `Manage (${costLabel})`);
+
+        return `
+            <div class="bg-slate-900 border border-slate-700 rounded-xl p-3 space-y-2 text-left">
+                <div class="flex items-start justify-between gap-2">
+                    <div>
+                        <div class="text-sm font-bold text-white flex items-center gap-2">
+                            <span>${Utils.escapeHtml(d.name)}</span>
+                            <span class="text-[10px] px-1.5 py-0.5 rounded bg-rose-950/70 text-rose-300 border border-rose-700/50 font-semibold">${typeLabel}</span>
+                        </div>
+                        <div class="text-[11px] text-slate-400 mt-0.5">${Utils.escapeHtml(note)}</div>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between gap-2 pt-1 border-t border-slate-800">
+                    <span class="text-[11px] text-slate-400">${statusLabel}</span>
+                    <button data-action="treatDisease" data-args="'${Utils.escapeHtml(d.id)}'" ${btnDisabled ? 'disabled' : ''} class="px-3 py-1.5 rounded-lg text-xs font-bold transition ${btnDisabled ? 'bg-slate-700 text-slate-400 cursor-not-allowed' : 'bg-red-700 hover:bg-red-600 text-white'}">
+                        ${btnText}
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    const htmlContent = `
+        <div class="space-y-3">
+            <div class="text-xs text-slate-300 text-left">
+                Select a condition to consult a doctor. Treatments have a chance to cure curable conditions or help manage lifelong ones.
+            </div>
+            <div class="space-y-2 max-h-72 overflow-y-auto pr-1">
+                ${conditionsHtml}
+            </div>
+            <div class="pt-2 border-t border-slate-700/60 space-y-2">
+                <button data-action="generalCheckup" class="w-full bg-emerald-700 hover:bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-2">
+                    <i class="fas fa-stethoscope"></i> Routine Checkup (+10 Health · ${costLabel})
+                </button>
+                <button data-action="hideModal" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-2.5 rounded-xl text-xs transition border border-slate-600">
+                    Close Clinic
+                </button>
+            </div>
+        </div>
+    `;
+
+    UI.showCustomModal({
+        title: "Medical Clinic",
+        content: htmlContent,
+        showCloseBtn: true
+    });
+}
+
+export function treatDisease(diseaseId) {
+    const user = state.gameState?.user;
+    if (!user) return;
+
+    const res = GameLogic.treatDiseaseAtDoctor(user, diseaseId);
+    if (!res.success) {
+        UI.showModal("Medical Clinic", `<p class="text-slate-300 text-sm">${Utils.escapeHtml(res.message)}</p>`);
+        return;
+    }
+
+    addLog(res.message, res.cured ? 'good' : 'neutral');
+    UI.updateHeader(user);
+    if (typeof window.saveGame === 'function') window.saveGame();
+    UI.closeAllModals();
+    UI.showModal(
+        res.cured ? "Condition Cured" : (res.managed ? "Care Plan Set" : "Treatment Update"),
+        `<p class="text-slate-300 text-sm">${Utils.escapeHtml(res.message)}</p>`
+    );
+    renderMoreDashboard();
+}
+
+export function generalCheckup() {
+    const user = state.gameState?.user;
+    if (!user) return;
+    const { boost, cost: baseCost } = GameLogic.calculateMedicalVisit();
+    const isMinor = (user.age || 0) < 18;
+    const cost = isMinor ? 0 : baseCost;
+
+    if ((user.money || 0) >= cost) {
         user.money -= cost;
         GameLogic.adjustStat(user, 'health', boost);
-        user.hasFlu = false;
-        user.isSick = false;
-        addLog("You visited the doctor and feel much healthier.", 'good');
+        const msg = isMinor
+            ? "You visited the doctor for a checkup (covered by your parents) and feel healthier."
+            : "You visited the doctor and feel much healthier.";
+        addLog(msg, 'good');
         UI.updateHeader(user);
+        if (typeof window.saveGame === 'function') window.saveGame();
+        UI.closeAllModals();
+        UI.showModal("Medical Checkup", `<p class="text-slate-300 text-sm">${Utils.escapeHtml(msg)} (+${boost} Health)</p>`);
         renderMoreDashboard();
     } else {
         UI.showModal("Not enough money", "You cannot afford to visit the doctor.");

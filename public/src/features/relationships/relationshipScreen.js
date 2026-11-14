@@ -1489,6 +1489,15 @@ export const confirmHookupChoice = (choice) => {
         }
     }
 
+    let stdText = '';
+    if (typeof GameLogic.rollHookupSTD === 'function') {
+        const stdRes = GameLogic.rollHookupSTD(user, isProtection);
+        if (stdRes && stdRes.contracted && stdRes.disease) {
+            stdText = `You contracted <strong>${Utils.escapeHtml(stdRes.disease.name)}</strong>. Visit a doctor to get treated.`;
+            addLog(`You contracted ${stdRes.disease.name} from your hookup. Visit a doctor for treatment.`, 'bad');
+        }
+    }
+
     addLog(`You hooked up with ${person.name}! ${isUnfaithful ? '(Initiated a Secret Affair)' : ''}`, 'good');
     UI.updateHeader(user);
     if (typeof window.saveGame === 'function') window.saveGame();
@@ -1502,7 +1511,8 @@ export const confirmHookupChoice = (choice) => {
             <h4 class="text-lg font-bold text-white mb-1">Passion in the Air</h4>
             <p class="text-xs text-slate-300 mb-3">You spent a passionate night with <strong class="text-pink-300">${Utils.escapeHtml(person.name)}</strong>.</p>
             ${isUnfaithful ? `<div class="text-xs text-amber-400 bg-amber-950/40 p-2 rounded-lg border border-amber-500/30 mb-3 font-semibold">🤫 ${Utils.escapeHtml(person.name)} is now designated as your Secret Affair.</div>` : ''}
-            ${pregnancyText ? `<div class="text-xs text-emerald-400 bg-emerald-950/40 p-2 rounded-lg border border-emerald-500/30 font-semibold">${pregnancyText}</div>` : ''}
+            ${pregnancyText ? `<div class="text-xs text-emerald-400 bg-emerald-950/40 p-2 rounded-lg border border-emerald-500/30 mb-3 font-semibold">${pregnancyText}</div>` : ''}
+            ${stdText ? `<div class="text-xs text-rose-300 bg-rose-950/50 p-2 rounded-lg border border-rose-500/40 font-semibold">${stdText}</div>` : ''}
         </div>
     `;
 
