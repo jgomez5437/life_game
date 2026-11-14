@@ -9,6 +9,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { GameLogic } from '../../core/gameLogic.js';
 import { hasPurchasedPack } from '../../core/state.js';
+import { getAchievementProgress } from '../../core/achievementManager.js';
 import { Utils } from '../../ui/utils.js';
 import { renderAvatar } from '../../ui/avatarRenderer.js';
 import { buildRecommendations, needsWorkAttention, needsAssetsAttention } from '../../core/recommendations.js';
@@ -144,6 +145,8 @@ export function renderProfilePanel(user) {
             <span class="text-[11px] font-bold text-amber-400 flex items-center gap-1">Lounge <i class="fas fa-chevron-right text-[9px]"></i></span>
         </button>` : '';
 
+    const achProgress = getAchievementProgress();
+
     return `
         <div class="desktop-profile flex flex-col gap-3 p-4">
             <button type="button" data-action="openPlayerOverviewModal" class="flex flex-col items-center text-center group" title="Open Life Overview">
@@ -194,6 +197,7 @@ export function renderProfilePanel(user) {
                 ${detailRow('Role', roleValue, roleIcon, 'renderActivities', 'View Occupation & Education')}
                 ${detailRow('Circle', circleValue, circle.icon, 'renderRelationships', 'View Relationships')}
                 ${detailRow('Education', getEducationLabel(user), 'fa-book-open text-indigo-400', 'renderActivities', 'View Education')}
+                ${detailRow('Achievements', `${achProgress.unlockedCount} / ${achProgress.total} Unlocked`, 'fa-trophy text-amber-400', 'openAchievementsModal', 'Open Trophy Room')}
                 ${Array.isArray(user.diseases) && user.diseases.length > 0
                     ? detailRow('Health', user.diseases.map(d => d.name).join(', '), 'fa-notes-medical text-rose-400', 'visitDoctor', 'Visit Doctor / Medical Clinic')
                     : ''}

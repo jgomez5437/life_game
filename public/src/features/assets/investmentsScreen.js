@@ -3,6 +3,7 @@ import { state } from '../../core/state.js';
 import { saveGame } from '../../core/main.js';
 import { Utils } from '../../ui/utils.js';
 import { UI } from '../../ui/ui.js';
+import { checkPeriodicAchievements } from '../../core/achievementManager.js';
 
 const get = id => document.getElementById(id);
 let activeTab = 'hub'; // 'hub' | 'portfolio' | 'stocks' | 'savings' | 'blogs'
@@ -602,7 +603,6 @@ export function openStockDetailsModal(symbol) {
                 <div class="w-full h-20 pt-1">
                     ${renderStockSparkline(history, 300, 70, true)}
                 </div>
-
                 <div class="flex items-end justify-between gap-1.5 h-20 pt-2 border-t border-slate-800">
                     ${history.map(p => {
                         const pct = Math.max(15, Math.min(100, Math.round(((p - minPrice) / range) * 75 + 25)));
@@ -616,7 +616,6 @@ export function openStockDetailsModal(symbol) {
                         `;
                     }).join('')}
                 </div>
-
                 <div class="flex justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-800/60">
                     <span>Period Low: <strong class="text-red-400">${Utils.formatMoney(minPrice)}</strong></span>
                     <span>Period High: <strong class="text-emerald-400">${Utils.formatMoney(maxPrice)}</strong></span>
@@ -665,6 +664,7 @@ function finishInvestmentTransaction(result, { successTitle, failTitle, successC
     const user = state.gameState.user;
     UI.closeAllModals();
     if (result.success) {
+        checkPeriodicAchievements(user);
         UI.updateHeader(user);
         saveGame();
         UI.showModal(successTitle, `<p class="${successClass} font-bold">${result.msg}</p>`);

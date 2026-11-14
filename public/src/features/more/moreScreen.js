@@ -1,5 +1,6 @@
 import { GameLogic } from '../../core/gameLogic.js';
 import { state } from '../../core/state.js';
+import { getAchievementProgress } from '../../core/achievementManager.js';
 import { renderLifeDashboard, renderDeathScreen } from '../player/mainScreen.js';
 import { processNextFuneral, processNextTeacherReplacement } from '../relationships/funeralScreen.js';
 import { UI } from '../../ui/ui.js';
@@ -101,6 +102,7 @@ export function renderMoreDashboard() {
     const ticketsBought = user.lotteryTicketsBoughtThisYear || 0;
     const ticketsLeft = 10 - ticketsBought;
     const certCount = SKILL_TRACKS.filter(s => user.skills?.[s.key]?.certified).length;
+    const achProgress = getAchievementProgress();
 
     UI.updateBottomNav('more');
     const backBtnHtml = !UI.isBottomNavEnabled() ? `
@@ -124,19 +126,34 @@ export function renderMoreDashboard() {
                 <!-- CATEGORY 0: STORE & SPECIAL FEATURES -->
                 <div class="space-y-1.5 text-left">
                     <div class="text-[11px] font-extrabold uppercase tracking-wider text-amber-400 px-1 flex items-center gap-1.5">
-                        <i class="fas fa-gem"></i> Store & Special Features
+                        <i class="fas fa-gem"></i> Store, Trophies & Special Features
                     </div>
-                    ${renderSlimOptionRow({
-                        icon: 'fa-store',
-                        iconBg: 'bg-amber-500/15',
-                        iconColor: 'text-amber-400',
-                        badgeColor: 'border-amber-500/40 text-amber-300',
-                        title: 'Packs & Features Store',
-                        subtitle: 'God Mode, Expansion Packs & Perks',
-                        action: 'renderStoreScreen',
-                        buttonText: 'Open Store',
-                        buttonStyle: 'bg-amber-600 hover:bg-amber-500 text-white shadow'
-                    })}
+                    <div class="grid grid-cols-1 gap-1.5">
+                        ${renderSlimOptionRow({
+                            icon: 'fa-trophy',
+                            iconBg: 'bg-amber-500/15',
+                            iconColor: 'text-amber-400',
+                            badgeText: `${achProgress.unlockedCount} / ${achProgress.total}`,
+                            badgeColor: 'border-amber-500/40 text-amber-300 bg-amber-950/40',
+                            title: 'Trophy Room & Achievements',
+                            subtitle: `${achProgress.percentage}% Complete — View Unlocked & Wild Trophies`,
+                            action: 'openAchievementsModal',
+                            buttonText: 'Trophies',
+                            buttonStyle: 'bg-amber-600 hover:bg-amber-500 text-white shadow'
+                        })}
+
+                        ${renderSlimOptionRow({
+                            icon: 'fa-store',
+                            iconBg: 'bg-amber-500/15',
+                            iconColor: 'text-amber-400',
+                            badgeColor: 'border-amber-500/40 text-amber-300',
+                            title: 'Packs & Features Store',
+                            subtitle: 'God Mode, Expansion Packs & Perks',
+                            action: 'renderStoreScreen',
+                            buttonText: 'Open Store',
+                            buttonStyle: 'bg-amber-600 hover:bg-amber-500 text-white shadow'
+                        })}
+                    </div>
                 </div>
 
                 <!-- CATEGORY 1: HEALTH & WELLNESS -->

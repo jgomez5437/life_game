@@ -225,6 +225,10 @@ export function commitCrimeAction(crimeId) {
 
     const result = GameLogic.attemptCrime(crimeId, user, targetPersonId);
 
+    if (result?.success && (result.crime?.id === 'bank_robbery' || result.crime?.id === 'bank_heist')) {
+        unlockAchievement('clean_getaway', user);
+    }
+
     if (typeof saveGame === 'function') saveGame();
 
     UI.updateHeader(user);
@@ -235,9 +239,6 @@ export function commitCrimeAction(crimeId) {
     }
 
     if (result.success) {
-        if (result.crime?.id === 'bank_heist') {
-            unlockAchievement('clean_getaway', user);
-        }
         if (result.isMurder) {
             showMurderCoverUpModal(result.victimName);
             addLog(`Committed murder against ${result.victimName}. Case remains unsolved.`, 'bad');

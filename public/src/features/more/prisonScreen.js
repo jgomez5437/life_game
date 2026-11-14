@@ -2,6 +2,7 @@ import { GameLogic } from '../../core/gameLogic.js';
 import { state } from '../../core/state.js';
 import { renderLifeDashboard, addLog } from '../player/mainScreen.js';
 import { saveGame } from '../../core/main.js';
+import { checkPeriodicAchievements } from '../../core/achievementManager.js';
 import { UI } from '../../ui/ui.js';
 import { Utils } from '../../ui/utils.js';
 import { renderAvatar } from '../../ui/avatarRenderer.js';
@@ -27,6 +28,8 @@ export function renderPrisonDashboard() {
         renderLifeDashboard();
         return;
     }
+
+    checkPeriodicAchievements(user);
 
     if (!user.yardInmates || user.yardInmates.length === 0) {
         user.yardInmates = GameLogic.generateYardInmates(user.prisonSecurity || 'Medium');

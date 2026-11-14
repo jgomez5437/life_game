@@ -4,7 +4,7 @@ import { addLog } from '../player/mainScreen.js';
 import { saveGame } from '../../core/main.js';
 import { UI } from '../../ui/ui.js';
 import { Utils, COUNTRIES_DATA } from '../../ui/utils.js';
-import { unlockAchievement } from '../../core/achievementManager.js';
+import { unlockAchievement, checkPeriodicAchievements } from '../../core/achievementManager.js';
 import { renderMoreDashboard } from './moreScreen.js';
 
 const get = id => document.getElementById(id);
@@ -196,6 +196,10 @@ export function selectDiet(dietId) {
     if (plan.monthlyCost > 0) user.money -= plan.monthlyCost;
     user.diet = dietId;
     user.hasBetterDiet = (dietId !== 'junk');
+    if (dietId !== 'junk') {
+        user.everChangedFromJunkDiet = true;
+        user.junkFoodStreak = 0;
+    }
 
     addLog(`Switched diet plan to ${plan.name}.${plan.monthlyCost > 0 ? ` Paid ${Utils.formatMoney(plan.monthlyCost)} upfront.` : ''}`, 'good');
     UI.updateHeader(user);
@@ -294,6 +298,7 @@ export function buyLotteryTicket(ticketTypeId) {
             addLog(`Bought a ${result.ticketName} but didn't win anything.`, 'neutral');
         }
 
+        if (typeof saveGame === 'function') saveGame();
         UI.updateHeader(user);
 
         const outcomeHtml = result.payout > 0 ? `
@@ -721,6 +726,7 @@ export function confirmMoveAlone(targetCountry, targetCity) {
 }
 
 function executeRelocation(user, targetCountry, targetCity, partnerMovedWith, partnerObj = null, exPartnerName = null) {
+    const prevCountry = user.country;
     const result = GameLogic.moveCountry(user, targetCountry, targetCity);
 
     if (!result.success) {
@@ -729,9 +735,13 @@ function executeRelocation(user, targetCountry, targetCity, partnerMovedWith, pa
     }
 
     user.relocationsCount = (user.relocationsCount || 0) + 1;
-    if (user.relocationsCount >= 3) {
-        unlockAchievement('globe_trotter', user);
+    if (!Array.isArray(user.visitedCountries)) {
+        user.visitedCountries = prevCountry ? [prevCountry] : [];
     }
+    if (targetCountry && !user.visitedCountries.includes(targetCountry)) {
+        user.visitedCountries.push(targetCountry);
+    }
+    checkPeriodicAchievements(user);
 
     addLog(result.message, result.hadJob ? 'neutral' : 'good');
     UI.updateHeader(user);

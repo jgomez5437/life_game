@@ -5,6 +5,7 @@ import { GameLogic } from './gameLogic.js';
 import { Utils } from '../ui/utils.js';
 import { UI } from '../ui/ui.js';
 import { migrateState, hydrateSlotsStoreFromCloud, buildCloudSavePayload, saveToSlot } from './saveSlotManager.js';
+import { getUnlockedAchievements } from './achievementManager.js';
 import { resolveAdState, onVipPurchased } from './adManager.js';
 import {
     renderDeathScreen,
@@ -60,6 +61,7 @@ export async function updateGameInfo(dbUser, options = {}) {
         state.gameState = migrateState(data);
         if (state.gameState) {
             state.gameState._slotId = activeSlotId;
+            getUnlockedAchievements();
         }
         if (state.gameState?.user) {
             GameLogic.backfillRelationshipGender(state.gameState.user.relationships);

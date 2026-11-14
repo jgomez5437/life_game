@@ -272,6 +272,14 @@ export function generateLuxuryMatch(user, { agePreset = '26-35', wealthTier = 'w
     const last = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
     const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'luxe_rel_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
 
+    const netWorthRanges = {
+        ultra_wealthy: [5500000, 25000000],
+        wealthy: [2000000, 6000000],
+        high_earner: [500000, 2000000]
+    };
+    const [nwMin, nwMax] = netWorthRanges[tierKey] || netWorthRanges.wealthy;
+    const netWorth = Math.floor(Math.random() * (nwMax - nwMin + 1)) + nwMin;
+
     return {
         id,
         name: `${first} ${last}`,
@@ -283,6 +291,8 @@ export function generateLuxuryMatch(user, { agePreset = '26-35', wealthTier = 'w
         occupation: chosenCareer.title,
         occupationType: 'job',
         income: baseSalary,
+        wealthTier: tierKey,
+        netWorth,
         educationLevel: 'University',
         interactedThisYear: false,
         appearance: AvatarLogic.generateRandomAppearance(id, gender)

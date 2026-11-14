@@ -8,6 +8,7 @@ import { Utils } from '../../ui/utils.js';
 import { UI } from '../../ui/ui.js';
 import { renderAvatar } from '../../ui/avatarRenderer.js';
 import { renderPropertyManager } from './assetsPropertySalesModals.js';
+import { checkPeriodicAchievements } from '../../core/achievementManager.js';
 
 export const openTenantScreening = (propertyId) => {
     const user = state.gameState.user;
@@ -62,6 +63,7 @@ export const acceptTenantLease = (propertyId, applicantId) => {
 
     if (result.success) {
         addLog(`Signed a ${result.tenant.leaseYears}-year lease with ${result.tenant.name} for ${result.propertyName} (${Utils.formatMoney(result.tenant.monthlyRent)}/month).`, 'good');
+        checkPeriodicAchievements(user);
         saveGame();
         UI.hideModal();
         UI.updateHeader(user);

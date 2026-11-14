@@ -297,6 +297,13 @@ export function migrateState(rawState) {
     const gymMembership = toBool(u.gymMembership, false);
     const hasBetterDiet = toBool(u.hasBetterDiet, false);
     const diet = toStr(u.diet, hasBetterDiet ? 'balanced' : 'junk');
+    const currentCountry = toStr(u.country, 'United States');
+    const relocationsCount = toNum(u.relocationsCount, 0, 0);
+    const visitedCountries = Array.isArray(u.visitedCountries)
+        ? Array.from(new Set(u.visitedCountries.filter(c => typeof c === 'string' && c.trim() !== '').map(c => c.trim())))
+        : (currentCountry ? [currentCountry] : ['United States']);
+    const junkFoodStreak = toNum(u.junkFoodStreak, 0, 0);
+    const everChangedFromJunkDiet = toBool(u.everChangedFromJunkDiet, hasBetterDiet || (diet !== 'junk'));
     const hasSeenExpenseMsg = toBool(u.hasSeenExpenseMsg || u.has_seen_expense_message, false);
     const hasSeenJobSalary = toBool(u.hasSeenJobSalary || u.has_seen_job_salary, false);
     const lifetimeCrimesCommitted = toNum(u.lifetimeCrimesCommitted, 0, 0);
@@ -614,6 +621,10 @@ export function migrateState(rawState) {
         gymMembership,
         hasBetterDiet,
         diet,
+        relocationsCount,
+        visitedCountries,
+        junkFoodStreak,
+        everChangedFromJunkDiet,
         hasSeenExpenseMsg,
         lifetimeCrimesCommitted,
         mafiaCrimesThisYear,
@@ -713,7 +724,6 @@ export function migrateState(rawState) {
         _slotId
     };
 }
-
 /**
  * Validates save slot identifier against allowed patterns.
  * Allowed: integer 0-9, string '0'-'9', 'slot_1' through 'slot_10', or timestamped 'slot_<10-15 digits>'.
@@ -730,7 +740,6 @@ export function isValidSlotId(slotId) {
     }
     return false;
 }
-
 /**
  * Checks if an exception represents a browser storage quota exceeded error.
  */
@@ -750,7 +759,6 @@ export function isQuotaExceededError(err) {
         ))
     );
 }
-
 /**
  * Attempts automated compaction of stored save slots when quota is exceeded.
  */
@@ -760,11 +768,8 @@ export function attemptStoreCompaction(store) {
         localStorage.removeItem('life_game_save');
         localStorage.removeItem('startALife_saveData');
     } catch (e) {}
-
     if (!store || !store.slots) return false;
-
     let compacted = false;
-
     // 2. Prune snapshots in inactive slots down to 1
     Object.keys(store.slots).forEach(slotId => {
         if (slotId !== store.activeSlotId && Array.isArray(store.slots[slotId]?.data?.snapshots)) {
@@ -774,13 +779,11 @@ export function attemptStoreCompaction(store) {
             }
         }
     });
-
     // 3. Prune snapshots in active slot down to 1
     if (store.slots[store.activeSlotId]?.data?.snapshots?.length > 1) {
         store.slots[store.activeSlotId].data.snapshots = store.slots[store.activeSlotId].data.snapshots.slice(-1);
         compacted = true;
     }
-
     // 4. Compact older lifeLog in inactive slots if still large (> 30 entries)
     Object.keys(store.slots).forEach(slotId => {
         if (slotId !== store.activeSlotId && Array.isArray(store.slots[slotId]?.data?.lifeLog)) {
@@ -790,6 +793,5 @@ export function attemptStoreCompaction(store) {
             }
         }
     });
-
     return compacted;
 }

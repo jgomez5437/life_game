@@ -31,6 +31,16 @@ export function handleHealth(user) {
         }
     }
 
+    // Track adult Junk Food streak (age >= 18) for Junk Food Immortal achievement
+    if ((user.age || 0) >= 18) {
+        if ((user.diet || 'junk') === 'junk' && !user.hasBetterDiet && !user.everChangedFromJunkDiet) {
+            user.junkFoodStreak = (user.junkFoodStreak || 0) + 1;
+        } else {
+            user.junkFoodStreak = 0;
+            user.everChangedFromJunkDiet = true;
+        }
+    }
+
     // Execute UI side-effects
     if (user.health < 30 && prevHealth >= 30) {
         addLog("Your health has reached a critical low. Your risk of death is severely elevated.", "major");

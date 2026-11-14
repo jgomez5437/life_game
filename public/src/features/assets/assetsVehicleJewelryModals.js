@@ -5,6 +5,7 @@ import { addLog } from '../player/mainScreen.js';
 import { Utils } from '../../ui/utils.js';
 import { UI } from '../../ui/ui.js';
 import { renderAssets } from './assetsScreen.js';
+import { unlockAchievement } from '../../core/achievementManager.js';
 
 const get = id => document.getElementById(id);
 
@@ -454,7 +455,7 @@ export const takeJoyride = (id) => {
         GameLogic.adjustStat(user, 'happiness', -5);
         addLog(`Pulled over while driving your ${vehicle.name}! Received a ${Utils.formatMoney(fine)} speeding ticket. (-5 Happiness)`, 'bad');
         UI.showModal("Speeding Ticket!", `A police officer caught you speeding in your ${Utils.escapeHtml(vehicle.name)}! Fined ${Utils.formatMoney(fine)}. (-5 Happiness)`);
-    } else {
+    } else if (roll < 0.96) {
         const scratch = Math.floor(Math.random() * 8) + 5;
         vehicle.condition = Math.max(0, vehicle.condition - scratch);
         GameLogic.adjustStat(user, 'happiness', -10);
@@ -465,6 +466,21 @@ export const takeJoyride = (id) => {
             addLog(`Scratched your ${vehicle.name} while parking! (-${scratch}% condition, -10 Happiness)`, 'bad');
             UI.showModal("Car Scratch!", `You accidentally scraped your ${Utils.escapeHtml(vehicle.name)} against a pillar. (-${scratch}% condition, -10 Happiness)`);
         }
+    } else {
+        const dmgPct = Math.floor(Math.random() * 26) + 15; // 15-40%
+        vehicle.condition = Math.max(0, vehicle.condition - dmgPct);
+        const rawHpLoss = Math.floor(Math.random() * 36) + 20; // 20-55 HP loss
+        const curHp = typeof user.health === 'number' ? user.health : 100;
+        user.health = Math.max(1, curHp - rawHpLoss);
+        GameLogic.adjustStat(user, 'happiness', -25);
+
+        if (user.health <= 5 && user.health > 0) {
+            unlockAchievement('near_death_experience', user);
+        }
+
+        const insuredNote = vehicle.insured ? ' Insurance covered major structural repairs.' : '';
+        addLog(`High-speed crash in your ${vehicle.name}! You barely survived.${insuredNote} (-${rawHpLoss} Health, -${dmgPct}% condition, -25 Happiness)`, 'bad');
+        UI.showModal("Major Crash!", `You lost control of your ${Utils.escapeHtml(vehicle.name)} at high speed! Paramedics rushed to the scene.${insuredNote} (-${rawHpLoss} Health, -25 Happiness)`);
     }
 
     saveGame();

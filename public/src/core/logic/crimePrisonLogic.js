@@ -395,7 +395,9 @@ export function attemptPrisonEscape(user, method) {
     if (Math.random() < escapeChance) {
         user.inPrison = false;
         user.prisonSentenceRemaining = 0;
-        unlockAchievement('supermax_houdini', user);
+        if (!user.prisonSecurity || user.prisonSecurity === 'Maximum' || user.prisonSecurity === 'Supermax') {
+            unlockAchievement('supermax_houdini', user);
+        }
         return {
             success: true,
             escaped: true,
