@@ -130,7 +130,7 @@ export const renderRelationships = () => {
             : '';
 
         return `
-            <div data-action="renderPersonInteraction" data-args="&apos;${person.id}&apos;, &apos;renderRelationships&apos;" class="bg-slate-800 p-3 rounded-xl border border-slate-700 mb-3 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition flex items-center justify-between group">
+            <div data-action="renderPersonInteraction" data-args="&apos;${Utils.escapeHtml(person.id)}&apos;, &apos;renderRelationships&apos;" class="bg-slate-800 p-3 rounded-xl border border-slate-700 mb-3 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition flex items-center justify-between group">
                 <div class="flex items-center gap-4">
                     <div class="w-10 h-10 rounded-full bg-slate-700 overflow-hidden flex items-center justify-center text-slate-400 group-hover:bg-slate-600 transition border border-slate-600">
                         ${renderAvatar(person)}
@@ -619,11 +619,11 @@ export const renderDatingAppModal = (profiles) => {
                     </div>
 
                     <div class="flex flex-wrap gap-1.5 mb-4">
-                        ${p.hobbies.map(h => `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-pink-500/10 text-pink-300 border border-pink-500/20"># ${h}</span>`).join('')}
+                        ${p.hobbies.map(h => `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-pink-500/10 text-pink-300 border border-pink-500/20"># ${Utils.escapeHtml(h)}</span>`).join('')}
                     </div>
                 </div>
 
-                <button data-action="selectDatingAppMatch" data-args="&apos;${p.id}&apos;" class="w-full btn-primary bg-pink-600 hover:bg-pink-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 shadow-md shadow-pink-900/20 transition">
+                <button data-action="selectDatingAppMatch" data-args="&apos;${Utils.escapeHtml(p.id)}&apos;" class="w-full btn-primary bg-pink-600 hover:bg-pink-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 shadow-md shadow-pink-900/20 transition">
                     <i class="fas fa-heart"></i> Swipe Right / Message
                 </button>
             </div>
@@ -913,7 +913,7 @@ export const renderPersonInteraction = (id, backAction = null) => {
             </div>
 
             ${hasPurchasedPack('god_mode') ? `
-                <button data-action="renderGodModeAvatarModal" data-args="&apos;person&apos;, &apos;${person.id}&apos;" class="w-full py-2.5 mb-4 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-xl font-bold text-xs transition flex items-center justify-center gap-1.5 shadow">
+                <button data-action="renderGodModeAvatarModal" data-args="&apos;person&apos;, &apos;${Utils.escapeHtml(person.id)}&apos;" class="w-full py-2.5 mb-4 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-xl font-bold text-xs transition flex items-center justify-center gap-1.5 shadow">
                     <i class="fas fa-user-edit text-amber-400"></i> Edit Appearance (God Mode)
                 </button>
             ` : ''}
@@ -1269,7 +1269,7 @@ export const openRingSelectionModal = (personId) => {
                         <div class="text-xs text-amber-400 font-semibold">${Utils.formatMoney(ring.value)} Value</div>
                     </div>
                 </div>
-                <button data-action="proposeWithRing" data-args="&apos;${personId}&apos;, &apos;${ring.id}&apos;" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs px-3 py-2 rounded-lg transition">
+                <button data-action="proposeWithRing" data-args="&apos;${Utils.escapeHtml(personId)}&apos;, &apos;${Utils.escapeHtml(ring.id)}&apos;" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs px-3 py-2 rounded-lg transition">
                     Propose
                 </button>
             </div>

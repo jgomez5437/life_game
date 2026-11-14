@@ -15,10 +15,10 @@ export default async function handler(request, response) {
   try {
     authUserId = await verifyAuth(request);
   } catch (error) {
-    return response.status(401).json({ error: error.message });
+    return response.status(401).json({ error: 'Unauthorized' });
   }
 
-  // Enforce rate limiting: 20 saves / min per authenticated user
+  // Enforce rate limiting: 60 saves / min per authenticated user
   if (!checkRateLimit(request, response, 'saveGame', null, authUserId)) {
     return;
   }
@@ -34,6 +34,7 @@ export default async function handler(request, response) {
 
     // 3. Grab the data sent from the frontend
     const { email, game_data, slotId: bodySlotId } = request.body || {};
+    const safeEmail = (typeof email === 'string' && email.length <= 254 && !/[\r\n]/.test(email)) ? email.trim() : null;
 
     // 3. Validation: Structure & prototype pollution checks
     if (!game_data || typeof game_data !== 'object' || Array.isArray(game_data)) {
@@ -75,9 +76,13 @@ export default async function handler(request, response) {
       `;
       verifiedPurchases = purchaseResult.rows.map(row => row.pack_id);
     } catch (purchaseErr) {
-      // Gracefully handle missing user_purchases table (new deployments, dev envs).
-      // Treat user as having zero purchases — entitlements stay stripped.
-      console.warn('Could not query user_purchases for entitlement validation:', purchaseErr.message);
+      // Only treat missing user_purchases table (42P01) as empty entitlements.
+      // Transient DB errors must fail the save rather than wiping player purchases.
+      if (purchaseErr?.code === '42P01') {
+        console.warn('user_purchases table does not exist yet; defaulting to empty purchases.');
+      } else {
+        throw purchaseErr;
+      }
     }
 
     injectVerifiedPurchases(game_data, verifiedPurchases);
@@ -85,7 +90,7 @@ export default async function handler(request, response) {
     // 5. The "UPSERT" Query
     await sql`
       INSERT INTO users (auth0_id, email, game_data, last_played_at)
-      VALUES (${authUserId}, ${email}, ${game_data}, NOW())
+      VALUES (${authUserId}, ${safeEmail}, ${game_data}, NOW())
       ON CONFLICT (auth0_id) 
       DO UPDATE SET 
         game_data = ${game_data},

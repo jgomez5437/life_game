@@ -7,17 +7,23 @@ const buyPack = async (...args) => (await import('../features/store/storeScreen.
 
 const STORAGE_KEY = 'life_game_slots';
 
+const MAX_STATE_DEPTH = 32;
+
 /**
  * Recursively deep clones an object safely.
  * Prefers native structuredClone, falling back to a recursive clone for environments
  * or payloads where structuredClone cannot be applied directly.
  */
-export function deepClone(obj, visited = new WeakMap()) {
+export function deepClone(obj, visited = new WeakMap(), depth = 0) {
     if (obj === null || typeof obj !== 'object') {
         return obj;
     }
 
-    if (typeof structuredClone === 'function') {
+    if (depth > MAX_STATE_DEPTH) {
+        return undefined;
+    }
+
+    if (depth === 0 && typeof structuredClone === 'function') {
         try {
             return structuredClone(obj);
         } catch (e) {
@@ -37,16 +43,16 @@ export function deepClone(obj, visited = new WeakMap()) {
         const arrCopy = [];
         visited.set(obj, arrCopy);
         for (let i = 0; i < obj.length; i++) {
-            arrCopy[i] = deepClone(obj[i], visited);
+            arrCopy[i] = deepClone(obj[i], visited, depth + 1);
         }
         return arrCopy;
     }
 
     const objCopy = Object.create(Object.getPrototypeOf(obj));
-    visited.set(objCopy, objCopy);
+    visited.set(obj, objCopy);
     for (const key of Object.keys(obj)) {
         if (['__proto__', 'constructor', 'prototype'].includes(key)) continue;
-        objCopy[key] = deepClone(obj[key], visited);
+        objCopy[key] = deepClone(obj[key], visited, depth + 1);
     }
     return objCopy;
 }
@@ -56,9 +62,9 @@ export function deepClone(obj, visited = new WeakMap()) {
  * - Clamps Infinity / values > Number.MAX_SAFE_INTEGER to Number.MAX_SAFE_INTEGER.
  * - Clamps -Infinity / values < -Number.MAX_SAFE_INTEGER to -Number.MAX_SAFE_INTEGER.
  * - Replaces NaN with 0.
- * - Strips prototype pollution keys.
+ * - Strips prototype pollution keys and caps recursion depth.
  */
-export function sanitizeGameState(obj, visited = new WeakSet()) {
+export function sanitizeGameState(obj, visited = new WeakSet(), depth = 0) {
     if (obj === null || obj === undefined) return obj;
 
     if (typeof obj === 'number') {
@@ -69,12 +75,13 @@ export function sanitizeGameState(obj, visited = new WeakSet()) {
     }
 
     if (typeof obj !== 'object') return obj;
+    if (depth > MAX_STATE_DEPTH) return null;
 
     if (visited.has(obj)) return obj;
     visited.add(obj);
 
     if (Array.isArray(obj)) {
-        return obj.map(item => sanitizeGameState(item, visited));
+        return obj.map(item => sanitizeGameState(item, visited, depth + 1));
     }
 
     const sanitized = {};
@@ -82,7 +89,7 @@ export function sanitizeGameState(obj, visited = new WeakSet()) {
         if (['__proto__', 'constructor', 'prototype', 'purchasedPacks', 'godMode', 'isVIP', 'vipLevel'].includes(key)) continue;
         const val = obj[key];
         if (val !== undefined) {
-            sanitized[key] = sanitizeGameState(val, visited);
+            sanitized[key] = sanitizeGameState(val, visited, depth + 1);
         }
     }
     return sanitized;
@@ -143,6 +150,13 @@ export function migrateState(rawState) {
 
     const toArr = (val, defaultVal = []) => {
         return Array.isArray(val) ? val : defaultVal;
+    };
+
+    const sanitizeClassToken = (val, defaultVal = '') => {
+        const s = toStr(val, defaultVal);
+        if (!s) return defaultVal;
+        const cleaned = s.replace(/[^a-zA-Z0-9_\-\s/]/g, '').trim();
+        return cleaned || defaultVal;
     };
 
     const u = rawUser || {};
@@ -394,7 +408,7 @@ export function migrateState(rawState) {
                 })) : [],
                 activity: Array.isArray(lr.activity) ? lr.activity.filter(a => a && typeof a === 'object').map(a => ({
                     type: toStr(a.type),
-                    icon: toStr(a.icon),
+                    icon: sanitizeClassToken(a.icon, 'fa-info-circle'),
                     text: toStr(a.text)
                 })) : [],
                 repairs: Array.isArray(lr.repairs) ? lr.repairs.filter(r => r && typeof r === 'object').map(r => ({
@@ -403,7 +417,7 @@ export function migrateState(rawState) {
                     propertyName: toStr(r.propertyName),
                     tenantName: toStr(r.tenantName),
                     type: toStr(r.type),
-                    icon: toStr(r.icon),
+                    icon: sanitizeClassToken(r.icon, 'fa-wrench'),
                     desc: toStr(r.desc),
                     cost: toNum(r.cost, 0, 0),
                     conditionLoss: toNum(r.conditionLoss, 0, 0),
@@ -569,7 +583,7 @@ export function migrateState(rawState) {
                     age: toNum(entry.age, migratedUser.age, 0),
                     events: entry.events.map(ev => {
                         if (typeof ev === 'object' && ev !== null && ev.msg) {
-                            return { msg: toStr(ev.msg), color: toStr(ev.color, 'text-gray-400') };
+                            return { msg: toStr(ev.msg), color: sanitizeClassToken(ev.color, 'text-gray-400') };
                         }
                         return { msg: toStr(ev), color: 'text-gray-400' };
                     })

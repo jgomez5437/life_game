@@ -26,7 +26,7 @@ export const openWeddingPlanner = (personId) => {
         const canAfford = user.money >= tier.cost;
         if (canAfford) {
             return `
-                <button data-action="confirmWeddingPlan" data-args="&apos;${personId}&apos;, ${i}" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-pink-500 text-white font-bold py-3 px-4 rounded-xl mb-3 flex items-center justify-between transition group">
+                <button data-action="confirmWeddingPlan" data-args="&apos;${Utils.escapeHtml(personId)}&apos;, ${i}" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-pink-500 text-white font-bold py-3 px-4 rounded-xl mb-3 flex items-center justify-between transition group">
                     <div class="text-left">
                         <div class="text-white font-bold">${tier.name}</div>
                         <div class="text-xs text-slate-400">${tier.desc}</div>
@@ -58,7 +58,7 @@ export const openWeddingPlanner = (personId) => {
             </div>
             <div class="w-full">
                 ${html}
-                <button data-action="renderPersonInteraction" data-args="&apos;${personId}&apos;" class="w-full mt-4 text-slate-400 hover:text-white text-sm">Go Back</button>
+                <button data-action="renderPersonInteraction" data-args="&apos;${Utils.escapeHtml(personId)}&apos;" class="w-full mt-4 text-slate-400 hover:text-white text-sm">Go Back</button>
             </div>
         </div>
     `;
@@ -113,19 +113,19 @@ export const openNameChangeChoice = (personId) => {
             <h1 class="text-3xl font-bold text-white mb-2">A New Name?</h1>
             <p class="text-slate-300 text-sm mb-6">Now that you're married to ${Utils.escapeHtml(person.name)}, would you like to change your name?</p>
             <div class="w-full">
-                <button data-action="chooseNameChange" data-args="&apos;${personId}&apos;, &apos;take_spouse&apos;" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-pink-500 text-white font-bold py-3 px-4 rounded-xl mb-3 text-left transition">
+                <button data-action="chooseNameChange" data-args="&apos;${Utils.escapeHtml(personId)}&apos;, &apos;take_spouse&apos;" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-pink-500 text-white font-bold py-3 px-4 rounded-xl mb-3 text-left transition">
                     <div class="text-white font-bold">Take ${Utils.escapeHtml(theirFirst)}'s Last Name</div>
                     <div class="text-xs text-slate-400">You'll become ${Utils.escapeHtml(yourFirst)} ${Utils.escapeHtml(theirLast)}</div>
                 </button>
-                <button data-action="chooseNameChange" data-args="&apos;${personId}&apos;, &apos;hyphenate&apos;" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-pink-500 text-white font-bold py-3 px-4 rounded-xl mb-3 text-left transition">
+                <button data-action="chooseNameChange" data-args="&apos;${Utils.escapeHtml(personId)}&apos;, &apos;hyphenate&apos;" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-pink-500 text-white font-bold py-3 px-4 rounded-xl mb-3 text-left transition">
                     <div class="text-white font-bold">Hyphenate Your Name</div>
                     <div class="text-xs text-slate-400">You'll become ${Utils.escapeHtml(yourFirst)} ${Utils.escapeHtml(yourLast)}-${Utils.escapeHtml(theirLast)}</div>
                 </button>
-                <button data-action="chooseNameChange" data-args="&apos;${personId}&apos;, &apos;ask_spouse&apos;" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-pink-500 text-white font-bold py-3 px-4 rounded-xl mb-3 text-left transition">
+                <button data-action="chooseNameChange" data-args="&apos;${Utils.escapeHtml(personId)}&apos;, &apos;ask_spouse&apos;" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-pink-500 text-white font-bold py-3 px-4 rounded-xl mb-3 text-left transition">
                     <div class="text-white font-bold">Ask ${Utils.escapeHtml(theirFirst)} to Take Your Name</div>
                     <div class="text-xs text-slate-400">They might say yes... or they might not</div>
                 </button>
-                <button data-action="chooseNameChange" data-args="&apos;${personId}&apos;, &apos;keep&apos;" class="w-full mt-2 text-slate-400 hover:text-white text-sm">Keep Our Own Names</button>
+                <button data-action="chooseNameChange" data-args="&apos;${Utils.escapeHtml(personId)}&apos;, &apos;keep&apos;" class="w-full mt-2 text-slate-400 hover:text-white text-sm">Keep Our Own Names</button>
             </div>
         </div>
     `;

@@ -26,6 +26,8 @@ export const RATE_LIMIT_CONFIGS = {
     default: { maxRequests: 60, windowMs: 60 * 1000 }         // 60 req / min default
 };
 
+export const MAX_STORE_KEYS = 5000;
+
 const rateLimitStore = new Map();
 
 /**
@@ -36,22 +38,41 @@ export function clearRateLimits() {
 }
 
 /**
+ * Returns the current number of tracked keys in the in-memory store.
+ */
+export function getRateLimitStoreSize() {
+    return rateLimitStore.size;
+}
+
+function normalizeIp(rawIp) {
+    if (!rawIp || typeof rawIp !== 'string') return '127.0.0.1';
+    const cleaned = rawIp.trim().slice(0, 64).replace(/[^0-9a-fA-F:.,]/g, '');
+    const first = cleaned.split(',')[0].trim();
+    return first || '127.0.0.1';
+}
+
+/**
  * Extracts client IP from request headers (supports proxies/Cloudflare/Vercel).
+ * Prefers platform-managed single-IP headers before client-modifiable x-forwarded-for.
  * @param {object} request
  * @returns {string} Client IP address
  */
 export function getClientIp(request) {
     if (!request) return '127.0.0.1';
     const headers = request.headers || {};
-    const xForwarded = headers['x-forwarded-for'] || headers['X-Forwarded-For'];
-    if (xForwarded) {
-        return String(xForwarded).split(',')[0].trim();
+    const vercelForwarded = headers['x-vercel-forwarded-for'] || headers['X-Vercel-Forwarded-For'];
+    if (vercelForwarded) {
+        return normalizeIp(String(vercelForwarded));
     }
     const xReal = headers['x-real-ip'] || headers['X-Real-IP'];
     if (xReal) {
-        return String(xReal).trim();
+        return normalizeIp(String(xReal));
     }
-    return request.socket?.remoteAddress || request.connection?.remoteAddress || '127.0.0.1';
+    const xForwarded = headers['x-forwarded-for'] || headers['X-Forwarded-For'];
+    if (xForwarded) {
+        return normalizeIp(String(xForwarded));
+    }
+    return normalizeIp(String(request.socket?.remoteAddress || request.connection?.remoteAddress || '127.0.0.1'));
 }
 
 /**
@@ -69,7 +90,7 @@ export function checkRateLimit(request, response, endpointKey = 'default', custo
     const config = customConfig || RATE_LIMIT_CONFIGS[endpointKey] || RATE_LIMIT_CONFIGS.default;
     const { maxRequests, windowMs } = config;
 
-    const identifier = authUserId || getClientIp(request);
+    const identifier = authUserId ? String(authUserId).slice(0, 128) : getClientIp(request);
     const storeKey = `${endpointKey}:${identifier}`;
     const now = Date.now();
 
@@ -79,18 +100,23 @@ export function checkRateLimit(request, response, endpointKey = 'default', custo
     if (entry) {
         entry.timestamps = entry.timestamps.filter(ts => (now - ts) < windowMs);
     } else {
-        entry = { timestamps: [] };
-        rateLimitStore.set(storeKey, entry);
-    }
-
-    // Periodic cleanup if store grows large (prevents memory leak in warm lambdas)
-    if (rateLimitStore.size > 3000) {
-        for (const [k, v] of rateLimitStore.entries()) {
-            v.timestamps = v.timestamps.filter(ts => (now - ts) < windowMs);
-            if (v.timestamps.length === 0) {
-                rateLimitStore.delete(k);
+        // Periodic cleanup & hard cap enforcement before adding new keys
+        if (rateLimitStore.size >= MAX_STORE_KEYS) {
+            for (const [k, v] of rateLimitStore.entries()) {
+                v.timestamps = v.timestamps.filter(ts => (now - ts) < windowMs);
+                if (v.timestamps.length === 0) {
+                    rateLimitStore.delete(k);
+                }
+            }
+            // If still over cap (e.g. distributed IP flood within windowMs), evict oldest entries FIFO
+            while (rateLimitStore.size >= MAX_STORE_KEYS) {
+                const oldestKey = rateLimitStore.keys().next().value;
+                if (oldestKey === undefined) break;
+                rateLimitStore.delete(oldestKey);
             }
         }
+        entry = { timestamps: [] };
+        rateLimitStore.set(storeKey, entry);
     }
 
     const currentHits = entry.timestamps.length;

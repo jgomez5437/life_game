@@ -4,6 +4,29 @@ import { verifyAuth } from './lib/verifyAuth.js';
 import { checkRateLimit } from './lib/rateLimit.js';
 import { getPackById, VALID_PACK_IDS } from './lib/validation.js';
 
+let purchaseSchemaPromise = null;
+
+async function ensurePurchaseSchema() {
+  if (!purchaseSchemaPromise) {
+    purchaseSchemaPromise = (async () => {
+      await sql`
+        CREATE TABLE IF NOT EXISTS user_purchases (
+          id SERIAL PRIMARY KEY,
+          auth0_id VARCHAR(255) NOT NULL,
+          pack_id VARCHAR(100) NOT NULL,
+          stripe_session_id VARCHAR(255) UNIQUE,
+          amount_paid INT,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+      `;
+    })().catch((err) => {
+      purchaseSchemaPromise = null;
+      throw err;
+    });
+  }
+  return purchaseSchemaPromise;
+}
+
 export default async function handler(request, response) {
   if (request.method !== 'POST') {
     return response.status(405).json({ error: 'Method Not Allowed' });
@@ -11,7 +34,7 @@ export default async function handler(request, response) {
 
   const { sessionId } = request.body || {};
 
-  if (!sessionId || typeof sessionId !== 'string' || !sessionId.trim()) {
+  if (!sessionId || typeof sessionId !== 'string' || !/^cs_(test_|live_)?[a-zA-Z0-9_-]{3,200}$/.test(sessionId.trim())) {
     return response.status(400).json({ error: 'Missing or invalid sessionId parameter' });
   }
 
@@ -122,16 +145,7 @@ export default async function handler(request, response) {
 
     if (resolvedUserId !== 'guest') {
       try {
-        await sql`
-          CREATE TABLE IF NOT EXISTS user_purchases (
-            id SERIAL PRIMARY KEY,
-            auth0_id VARCHAR(255) NOT NULL,
-            pack_id VARCHAR(100) NOT NULL,
-            stripe_session_id VARCHAR(255) UNIQUE,
-            amount_paid INT,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-          );
-        `;
+        await ensurePurchaseSchema();
 
         await sql`
           INSERT INTO user_purchases (auth0_id, pack_id, stripe_session_id, amount_paid)
@@ -151,6 +165,6 @@ export default async function handler(request, response) {
     });
   } catch (error) {
     console.error('Stripe Session Verification Error:', error);
-    return response.status(500).json({ error: error.message || 'Failed to verify checkout session' });
+    return response.status(500).json({ error: 'Failed to verify checkout session' });
   }
 }

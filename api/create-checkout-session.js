@@ -4,6 +4,31 @@ import { verifyAuth } from './lib/verifyAuth.js';
 import { checkRateLimit } from './lib/rateLimit.js';
 import { resolvePack } from './lib/validation.js';
 
+const PRODUCTION_ORIGINS = new Set([
+  'https://startalife.app',
+  'https://www.startalife.app',
+  'https://startalife.vercel.app',
+  'https://nextstepgame.com',
+  'https://www.nextstepgame.com'
+]);
+
+function getEnvAllowedOrigins() {
+  const allowed = new Set();
+  const candidates = [
+    process.env.ALLOWED_ORIGIN,
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
+    process.env.VERCEL_BRANCH_URL ? `https://${process.env.VERCEL_BRANCH_URL}` : null,
+    process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : null
+  ];
+  for (const c of candidates) {
+    if (!c) continue;
+    try {
+      allowed.add(new URL(c).origin.toLowerCase());
+    } catch (_) {}
+  }
+  return allowed;
+}
+
 /**
  * Resolves the client origin from Origin or Referer header against a strict whitelist.
  * Strips pathnames and query strings from referers and prevents open redirects.
@@ -13,20 +38,29 @@ export function resolveOrigin(request) {
   const raw = request?.headers?.origin || request?.headers?.referer || '';
   if (!raw || typeof raw !== 'string') return DEFAULT_ORIGIN;
 
+  const isVercelProduction =
+    process.env.VERCEL_ENV === 'production' ||
+    (process.env.NODE_ENV === 'production' && !process.env.JEST_WORKER_ID);
+
   try {
     const parsed = new URL(raw);
     const origin = parsed.origin.toLowerCase();
 
-    if (origin === 'https://startalife.app' || origin === 'https://startalife.vercel.app') {
+    if (PRODUCTION_ORIGINS.has(origin) || getEnvAllowedOrigins().has(origin)) {
       return origin;
     }
-    // Vercel preview branch deployments
-    if (/^https:\/\/[a-z0-9-_]+\.vercel\.app$/.test(origin)) {
+    // Project-scoped Vercel preview URLs
+    if (/^https:\/\/(startalife|life[-_]?game|nextstep)[a-z0-9-]*\.vercel\.app$/.test(origin)) {
       return origin;
     }
-    // Local development ports (3000, 5173, 4173 on localhost or 127.0.0.1)
-    if (/^http:\/\/(localhost|127\.0\.0\.1):(3000|5173|4173)$/.test(origin)) {
-      return origin;
+    if (!isVercelProduction) {
+      // Non-production preview deployments & local dev servers
+      if (/^https:\/\/[a-z0-9-_]+\.vercel\.app$/.test(origin)) {
+        return origin;
+      }
+      if (/^http:\/\/(localhost|127\.0\.0\.1):(3000|5173|4173)$/.test(origin)) {
+        return origin;
+      }
     }
   } catch (_) {}
 
@@ -133,6 +167,6 @@ export default async function handler(request, response) {
     return response.status(200).json({ url: session.url });
   } catch (error) {
     console.error('Stripe Checkout Error:', error);
-    return response.status(500).json({ error: error.message || 'Failed to create checkout session' });
+    return response.status(500).json({ error: 'Failed to create checkout session' });
   }
 }
