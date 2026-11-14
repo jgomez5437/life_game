@@ -1,27 +1,10 @@
 import { jest } from '@jest/globals';
-
-jest.unstable_mockModule('../../public/src/features/player/mainScreen.js', () => ({
-    addLog: jest.fn(),
-    renderLifeDashboard: jest.fn(),
-    renderDeathScreen: jest.fn(),
-    showFullEulogy: jest.fn(),
-    continueAsChild: jest.fn(),
-    ageUp: jest.fn()
-}));
-
-jest.unstable_mockModule('../../public/src/ui/ui.js', () => ({
-    UI: {
-        renderScreen: jest.fn(),
-        updateHeader: jest.fn(),
-        showModal: jest.fn(),
-        showCustomModal: jest.fn(),
-        closeAllModals: jest.fn()
-    }
-}));
-
-const { GameLogic } = await import('../../public/src/core/gameLogic.js');
-const { migrateState } = await import('../../public/src/core/saveSlotManager.js');
-const { buildRecommendations } = await import('../../public/src/core/recommendations.js');
+import { GameLogic } from '../../public/src/core/gameLogic.js';
+import { migrateState } from '../../public/src/core/saveSlotManager.js';
+import { buildRecommendations } from '../../public/src/core/recommendations.js';
+import { state } from '../../public/src/core/state.js';
+import { UI } from '../../public/src/ui/ui.js';
+import { ageUp, renderLifeDashboard } from '../../public/src/features/player/mainScreen.js';
 
 describe('Diseases, Sicknesses, STDs & Doctor Treatment', () => {
     test('infectUser applies initial stat penalties and syncs flags', () => {
@@ -181,4 +164,73 @@ describe('Diseases, Sicknesses, STDs & Doctor Treatment', () => {
         expect(res.cause).toBe('complications from Pneumonia.');
         randSpy.mockRestore();
     });
+
+    test('ageUp() processes annual diseases, logs contracted illness to Life History, and triggers notification modal on dashboard render', async () => {
+        document.body.innerHTML = `
+            <div id="game-container"></div>
+            <div id="avatar-container"></div>
+            <div id="header-user-info">
+                <span id="header-name">Player</span>
+                <span id="header-age">25</span>
+            </div>
+            <div id="header-bank">$1,000</div>
+            <div id="ui-health">100%</div>
+            <div id="modal-overlay" class="hidden">
+                <div id="modal-title"></div>
+                <div id="modal-content"></div>
+                <div id="modal-actions"></div>
+            </div>
+        `;
+
+        state.gameState = {
+            user: {
+                username: 'SickHero',
+                age: 25,
+                health: 100,
+                happiness: 100,
+                smarts: 80,
+                looks: 80,
+                money: 2000,
+                lifeStatus: 'Alive',
+                relationships: [],
+                diseases: []
+            },
+            lifeLog: [{ age: 25, events: [{ msg: 'Started at 25.', color: 'text-slate-400' }] }],
+            assets: []
+        };
+
+        // Force processAnnualDiseases to deterministically contract an illness during ageUp()
+        const origProcess = GameLogic.processAnnualDiseases;
+        const processSpy = jest.spyOn(GameLogic, 'processAnnualDiseases').mockImplementation((u) =>
+            origProcess(u, { contractionRoll: 0.01, pickRoll: 0.0, durationRoll: 0.5 })
+        );
+        const modalSpy = jest.spyOn(UI, 'showCustomModal');
+
+        await ageUp();
+
+        expect(processSpy).toHaveBeenCalledTimes(1);
+        expect(state.gameState.user.age).toBe(26);
+        expect(state.gameState.user.diseases).toHaveLength(1);
+        const contractedName = state.gameState.user.diseases[0].name;
+
+        const age26Log = state.gameState.lifeLog.find(l => l.age === 26);
+        expect(age26Log).toBeDefined();
+        expect(age26Log.events.some(e => e.msg.includes(contractedName))).toBe(true);
+
+        // Clear any random life event queued during ageUp so renderLifeDashboard renders immediately
+        state.gameState.pendingEvents = [];
+
+        // Render dashboard and verify medical banner + diagnosis notification modal
+        renderLifeDashboard(state.gameState);
+        const banner = document.getElementById('dashboard-medical-banner');
+        expect(banner).not.toBeNull();
+        expect(banner.textContent).toContain(contractedName);
+        expect(modalSpy).toHaveBeenCalledWith(expect.objectContaining({
+            content: expect.stringContaining(contractedName)
+        }));
+
+        processSpy.mockRestore();
+        modalSpy.mockRestore();
+    });
 });
+
