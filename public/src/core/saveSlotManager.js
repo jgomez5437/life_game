@@ -307,6 +307,26 @@ export function migrateState(rawState) {
     const hasSeenJobSalary = toBool(u.hasSeenJobSalary || u.has_seen_job_salary, false);
     const lifetimeCrimesCommitted = toNum(u.lifetimeCrimesCommitted, 0, 0);
     const mafiaCrimesThisYear = toNum(u.mafiaCrimesThisYear, 0, 0);
+    const diseases = Array.isArray(u.diseases)
+        ? u.diseases
+            .filter(d => d && typeof d === 'object' && typeof d.id === 'string' && d.id.trim() !== '')
+            .map(d => ({
+                id: toStr(d.id),
+                name: toStr(d.name, 'Illness'),
+                category: ['sickness', 'chronic', 'std'].includes(d.category) ? d.category : 'sickness',
+                curable: toBool(d.curable, true),
+                selfResolving: toBool(d.selfResolving, false),
+                yearsRemaining: (d.yearsRemaining !== null && d.yearsRemaining !== undefined) ? toNum(d.yearsRemaining, 1, 0, 100) : null,
+                cureChance: toNum(d.cureChance, 0, 0, 1),
+                healthPenalty: toNum(d.healthPenalty, 0, 0, 100),
+                happinessPenalty: toNum(d.happinessPenalty, 0, 0, 100),
+                looksPenalty: toNum(d.looksPenalty, 0, 0, 100),
+                treatedThisYear: toBool(d.treatedThisYear, false),
+                contractedAge: toNum(d.contractedAge, age, 0, 150)
+            }))
+        : [];
+    const isSick = diseases.length > 0 || toBool(u.isSick, false);
+    const hasFlu = diseases.some(d => d.id === 'seasonal_flu') || toBool(u.hasFlu, false);
 
     // Athlete & Pro Sports Subsystem
     const athleteSport = u.athleteSport ? toStr(u.athleteSport, null) : null;
@@ -537,6 +557,9 @@ export function migrateState(rawState) {
         hasSeenExpenseMsg,
         lifetimeCrimesCommitted,
         mafiaCrimesThisYear,
+        diseases,
+        isSick,
+        hasFlu,
 
         athleteSport,
         athleteContract,

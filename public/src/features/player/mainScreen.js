@@ -69,7 +69,7 @@ export async function ageUp() {
     
     // 1. Mortality Check
     const currentHealth = user.health ?? user.stats?.health ?? 100; 
-    const deathCheck = GameLogic.checkMortality(user.age, currentHealth);
+    const deathCheck = GameLogic.checkMortality(user.age, currentHealth, user.diseases);
     
     if (deathCheck.isDead) {
         handleDeath(user, deathCheck.cause);
@@ -303,6 +303,9 @@ export const continueAsChild = (childIndex, inheritedMoney) => {
         hasBusiness: false,
         corporateDebt: { principal: 0, interestRate: 0.08, monthlyPayment: 0 },
         assets: [],
+        diseases: [],
+        isSick: false,
+        hasFlu: false,
         relationships: inheritedRelationships,
         appearance: AvatarLogic.ensureAppearance(selectedChild),
         avatarVersion: selectedChild.avatarVersion || 0,
@@ -861,10 +864,6 @@ function handleLifeEvents(user) {
             const gift = Math.floor(Math.random() * 20) + 5;
             user.money += gift;
             addLog(`Found ${Utils.formatMoney(gift)} on the sidewalk!`, 'good');
-        } else if (roll > 0.9) {
-            GameLogic.adjustStat(user, 'health', -10);
-            GameLogic.adjustStat(user, 'happiness', -10);
-            addLog("Got the flu. Stayed home for a week. (-10 Health, -10 Happiness)", 'bad');
         }
     } 
     // Adult Empty State

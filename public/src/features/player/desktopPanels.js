@@ -194,6 +194,9 @@ export function renderProfilePanel(user) {
                 ${detailRow('Role', roleValue, roleIcon, 'renderActivities', 'View Occupation & Education')}
                 ${detailRow('Circle', circleValue, circle.icon, 'renderRelationships', 'View Relationships')}
                 ${detailRow('Education', getEducationLabel(user), 'fa-book-open text-indigo-400', 'renderActivities', 'View Education')}
+                ${Array.isArray(user.diseases) && user.diseases.length > 0
+                    ? detailRow('Health', user.diseases.map(d => d.name).join(', '), 'fa-notes-medical text-rose-400', 'visitDoctor', 'Visit Doctor / Medical Clinic')
+                    : ''}
             </div>
 
             ${vipHtml}

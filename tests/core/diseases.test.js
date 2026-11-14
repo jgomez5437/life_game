@@ -1,0 +1,184 @@
+import { jest } from '@jest/globals';
+
+jest.unstable_mockModule('../../public/src/features/player/mainScreen.js', () => ({
+    addLog: jest.fn(),
+    renderLifeDashboard: jest.fn(),
+    renderDeathScreen: jest.fn(),
+    showFullEulogy: jest.fn(),
+    continueAsChild: jest.fn(),
+    ageUp: jest.fn()
+}));
+
+jest.unstable_mockModule('../../public/src/ui/ui.js', () => ({
+    UI: {
+        renderScreen: jest.fn(),
+        updateHeader: jest.fn(),
+        showModal: jest.fn(),
+        showCustomModal: jest.fn(),
+        closeAllModals: jest.fn()
+    }
+}));
+
+const { GameLogic } = await import('../../public/src/core/gameLogic.js');
+const { migrateState } = await import('../../public/src/core/saveSlotManager.js');
+const { buildRecommendations } = await import('../../public/src/core/recommendations.js');
+
+describe('Diseases, Sicknesses, STDs & Doctor Treatment', () => {
+    test('infectUser applies initial stat penalties and syncs flags', () => {
+        const user = { age: 25, health: 100, happiness: 100, looks: 80, diseases: [] };
+        const res = GameLogic.infectUser(user, 'seasonal_flu', 0.0);
+
+        expect(res.infected).toBe(true);
+        expect(user.diseases).toHaveLength(1);
+        expect(user.diseases[0].id).toBe('seasonal_flu');
+        expect(user.diseases[0].selfResolving).toBe(true);
+        expect(user.diseases[0].yearsRemaining).toBe(1);
+        expect(user.health).toBe(94);
+        expect(user.happiness).toBe(95);
+        expect(user.isSick).toBe(true);
+        expect(user.hasFlu).toBe(true);
+    });
+
+    test('self-resolving sickness applies annual penalties and clears automatically', () => {
+        const user = { age: 25, health: 100, happiness: 100, looks: 80, diseases: [] };
+        GameLogic.infectUser(user, 'common_cold', 0.0);
+        // Initial hit: -3 health (97), -3 happiness (97)
+        const outcome = GameLogic.processAnnualDiseases(user, { contractionRoll: 0.99 });
+
+        expect(user.health).toBe(94);
+        expect(user.happiness).toBe(94);
+        expect(user.diseases).toHaveLength(0);
+        expect(user.isSick).toBe(false);
+        expect(outcome.recovered).toContain('Common Cold');
+    });
+
+    test('persistent curable illness does not self-resolve over multiple years', () => {
+        const user = { age: 30, health: 100, happiness: 100, looks: 80, diseases: [] };
+        GameLogic.infectUser(user, 'pneumonia');
+
+        GameLogic.processAnnualDiseases(user, { contractionRoll: 0.99 });
+        GameLogic.processAnnualDiseases(user, { contractionRoll: 0.99 });
+
+        expect(user.diseases).toHaveLength(1);
+        expect(user.diseases[0].id).toBe('pneumonia');
+        expect(user.health).toBeLessThan(80);
+    });
+
+    test('treatDiseaseAtDoctor cures curable disease on successful roll and fails on high roll', () => {
+        const user = { age: 28, money: 5000, health: 80, happiness: 80, diseases: [] };
+        GameLogic.infectUser(user, 'pneumonia');
+
+        // Failed cure attempt (roll >= 0.65)
+        const failRes = GameLogic.treatDiseaseAtDoctor(user, 'pneumonia', 0.90);
+        expect(failRes.success).toBe(true);
+        expect(failRes.cured).toBe(false);
+        expect(user.money).toBe(4000);
+        expect(user.diseases).toHaveLength(1);
+        expect(user.diseases[0].treatedThisYear).toBe(true);
+
+        // Cannot treat same condition twice in the same year
+        const repeatRes = GameLogic.treatDiseaseAtDoctor(user, 'pneumonia', 0.10);
+        expect(repeatRes.success).toBe(false);
+        expect(repeatRes.alreadyTreated).toBe(true);
+
+        // Next year resets treatedThisYear and successful roll (< 0.65) cures it
+        GameLogic.processAnnualDiseases(user, { contractionRoll: 0.99 });
+        expect(user.diseases[0].treatedThisYear).toBe(false);
+
+        const cureRes = GameLogic.treatDiseaseAtDoctor(user, 'pneumonia', 0.10);
+        expect(cureRes.success).toBe(true);
+        expect(cureRes.cured).toBe(true);
+        expect(user.money).toBe(3000);
+        expect(user.diseases).toHaveLength(0);
+        expect(user.isSick).toBe(false);
+    });
+
+    test('doctor treatment is free for minors under 18 and enforces cost for adults', () => {
+        const minor = { age: 12, money: 0, health: 90, happiness: 90, diseases: [] };
+        GameLogic.infectUser(minor, 'common_cold');
+        const minorRes = GameLogic.treatDiseaseAtDoctor(minor, 'common_cold', 0.1);
+        expect(minorRes.success).toBe(true);
+        expect(minorRes.cost).toBe(0);
+        expect(minorRes.cured).toBe(true);
+
+        const brokeAdult = { age: 25, money: 200, health: 90, happiness: 90, diseases: [] };
+        GameLogic.infectUser(brokeAdult, 'common_cold');
+        const brokeRes = GameLogic.treatDiseaseAtDoctor(brokeAdult, 'common_cold', 0.1);
+        expect(brokeRes.success).toBe(false);
+        expect(brokeRes.insufficientFunds).toBe(true);
+        expect(brokeAdult.money).toBe(200);
+    });
+
+    test('chronic/lifelong conditions persist after doctor visit but reduce annual penalty', () => {
+        const userUntreated = { age: 50, money: 5000, health: 90, happiness: 90, diseases: [] };
+        const userTreated = { age: 50, money: 5000, health: 90, happiness: 90, diseases: [] };
+
+        GameLogic.infectUser(userUntreated, 'heart_disease');
+        GameLogic.infectUser(userTreated, 'heart_disease');
+
+        const docRes = GameLogic.treatDiseaseAtDoctor(userTreated, 'heart_disease');
+        expect(docRes.success).toBe(true);
+        expect(docRes.cured).toBe(false);
+        expect(docRes.managed).toBe(true);
+        expect(userTreated.diseases).toHaveLength(1);
+
+        const healthBeforeUntreated = userUntreated.health;
+        const healthBeforeTreated = userTreated.health;
+
+        GameLogic.processAnnualDiseases(userUntreated, { contractionRoll: 0.99 });
+        GameLogic.processAnnualDiseases(userTreated, { contractionRoll: 0.99 });
+
+        const lossUntreated = healthBeforeUntreated - userUntreated.health;
+        const lossTreated = healthBeforeTreated - userTreated.health;
+
+        expect(lossUntreated).toBe(12);
+        expect(lossTreated).toBe(4);
+        expect(userTreated.diseases).toHaveLength(1);
+    });
+
+    test('rollHookupSTD respects protection vs no-protection probabilities and affects stats', () => {
+        const userNoProt = { age: 25, health: 100, happiness: 100, looks: 80, diseases: [] };
+        // Unprotected threshold is 0.20, so triggerRoll 0.15 contracts an STD
+        const stdRes = GameLogic.rollHookupSTD(userNoProt, false, { triggerRoll: 0.15, pickRoll: 0.1 });
+        expect(stdRes.contracted).toBe(true);
+        expect(stdRes.disease.category).toBe('std');
+        expect(userNoProt.health).toBeLessThan(100);
+        expect(userNoProt.happiness).toBeLessThan(100);
+        expect(userNoProt.looks).toBeLessThan(80);
+
+        const userProt = { age: 25, health: 100, happiness: 100, looks: 80, diseases: [] };
+        // Protected threshold is 0.025, so triggerRoll 0.10 does NOT contract an STD
+        const safeRes = GameLogic.rollHookupSTD(userProt, true, { triggerRoll: 0.10 });
+        expect(safeRes.contracted).toBe(false);
+        expect(userProt.diseases).toHaveLength(0);
+    });
+
+    test('migrateState preserves and sanitizes active diseases across saves', () => {
+        const user = { username: 'Test Player', age: 26, health: 85, happiness: 80, looks: 75, diseases: [] };
+        GameLogic.infectUser(user, 'chlamydia');
+
+        const migrated = migrateState({ user });
+        expect(migrated.user.diseases).toHaveLength(1);
+        expect(migrated.user.diseases[0].id).toBe('chlamydia');
+        expect(migrated.user.diseases[0].name).toBe('Chlamydia');
+        expect(migrated.user.isSick).toBe(true);
+    });
+
+    test('buildRecommendations surfaces illness alert for untreated conditions', () => {
+        const user = { age: 25, money: 2000, diseases: [{ id: 'chlamydia', name: 'Chlamydia', treatedThisYear: false }] };
+        const recs = buildRecommendations(user);
+        expect(recs.some(r => r.id === 'alert-illness' && r.action === 'visitDoctor')).toBe(true);
+
+        user.diseases[0].treatedThisYear = true;
+        const recsAfter = buildRecommendations(user);
+        expect(recsAfter.some(r => r.id === 'alert-illness')).toBe(false);
+    });
+
+    test('checkMortality attributes fatal outcome at low health to severe active disease', () => {
+        const randSpy = jest.spyOn(Math, 'random').mockReturnValue(0.001);
+        const res = GameLogic.checkMortality(40, 20, [{ id: 'pneumonia', name: 'Pneumonia', treatedThisYear: false }]);
+        expect(res.isDead).toBe(true);
+        expect(res.cause).toBe('complications from Pneumonia.');
+        randSpy.mockRestore();
+    });
+});

@@ -182,6 +182,26 @@ export function openPlayerOverviewModal() {
                         <div class="h-full bg-pink-500 transition-all duration-300" style="width: ${currentLooks}%"></div>
                     </div>
                 </div>
+
+                ${Array.isArray(user.diseases) && user.diseases.length > 0 ? `
+                    <div class="pt-2 border-t border-slate-700/60">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <span class="text-[11px] font-bold text-rose-400 uppercase tracking-wider flex items-center gap-1">
+                                <i class="fas fa-notes-medical text-[10px]"></i> Active Conditions
+                            </span>
+                            <button data-action="visitDoctor" class="text-[10px] font-bold px-2 py-0.5 rounded bg-red-700 hover:bg-red-600 text-white transition">
+                                Visit Doctor
+                            </button>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5">
+                            ${user.diseases.map(d => `
+                                <span class="text-[11px] px-2 py-0.5 rounded-full bg-rose-950/70 border border-rose-500/40 text-rose-300 font-semibold">
+                                    ${Utils.escapeHtml(d.name)}${d.treatedThisYear ? ' · Treated' : ''}
+                                </span>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
             </div>
 
             <!-- Financial Summary Grid (Clickable -> Opens Cashflow & Net Worth Modal) -->

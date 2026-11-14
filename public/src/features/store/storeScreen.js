@@ -766,6 +766,9 @@ export function maxGodModeStats() {
     GameLogic.setStat(user, 'happiness', 100);
     GameLogic.setStat(user, 'smarts', 100);
     GameLogic.setStat(user, 'looks', 100);
+    user.diseases = [];
+    user.isSick = false;
+    user.hasFlu = false;
     saveGame();
     UI.updateHeader(user);
     UI.showModal("God Mode", "All stats maxed out to 100%!");
