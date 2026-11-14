@@ -225,10 +225,29 @@ describe('Diseases, Sicknesses, STDs & Doctor Treatment', () => {
         const banner = document.getElementById('dashboard-medical-banner');
         expect(banner).not.toBeNull();
         expect(banner.textContent).toContain(contractedName);
+        const bannerDoctorBtn = banner.querySelector('button[data-action="visitDoctor"]');
+        expect(bannerDoctorBtn).not.toBeNull();
+
         expect(modalSpy).toHaveBeenCalledWith(expect.objectContaining({
+            confirmText: 'Visit Doctor ($1,000)',
             content: expect.stringContaining(contractedName)
         }));
 
+        // Confirming the diagnosis popup should invoke more.visitDoctor() and open Medical Clinic
+        const confirmBtn = document.getElementById('custom-modal-confirm');
+        expect(confirmBtn).not.toBeNull();
+        confirmBtn.click();
+
+        for (let i = 0; i < 40; i++) {
+            if (document.getElementById('modal-title')?.textContent === 'Medical Clinic') break;
+            await new Promise(resolve => setTimeout(resolve, 25));
+        }
+
+        expect(document.getElementById('modal-title')?.textContent).toBe('Medical Clinic');
+        expect(document.getElementById('modal-content')?.innerHTML).toContain(contractedName);
+        expect(document.getElementById('modal-content')?.querySelector('button[data-action="treatDisease"]')).not.toBeNull();
+
+        UI.closeAllModals();
         processSpy.mockRestore();
         modalSpy.mockRestore();
     });

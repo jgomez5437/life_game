@@ -144,17 +144,21 @@ Players guide a procedurally generated character from birth to death—making pi
 
 ```
 life_game/
+├── AGENTS.md                           # AI Agent navigation & domain routing map
 ├── api/                                # Vercel Serverless API Endpoints
 │   ├── lib/
+│   │   ├── rateLimit.js                # Per-IP/User API rate limiting helper
+│   │   ├── validation.js               # Server-side game state schema validator
 │   │   └── verifyAuth.js               # JWT & Auth0 token verification helper
 │   ├── create-checkout-session.js      # Stripe checkout session generator
-│   ├── generateEulogy.js               # Google Gemini 2.5 Flash AI eulogy endpoint
+│   ├── feedback.js                     # Player feedback submission endpoint
 │   ├── getPurchases.js                 # Store purchases and entitlements retriever
 │   ├── index.js                        # API status & health check endpoint
 │   ├── load.js                         # Database game state retriever
 │   ├── login.js                        # User profile sync & database upsert
 │   ├── saveGame.js                     # JSONB state persistence endpoint
-│   └── stripe-webhook.js               # Stripe webhook transaction handler
+│   ├── stripe-webhook.js               # Stripe webhook transaction handler
+│   └── verify-checkout-session.js      # Post-checkout entitlement verifier
 ├── public/                             # Client-Side Assets & Source Code
 │   ├── index.html                      # Primary application entry shell
 │   ├── styles.css                      # Custom theme overrides, fonts & animations
@@ -165,9 +169,14 @@ life_game/
 │       │   ├── auth.js                 # Auth0 client wrapper & session manager
 │       │   └── loginScreen.js          # Guest vs. Account login UI view
 │       ├── core/                       # Core Game Engine & State
+│       │   ├── logic/                  # Domain-split pure game logic modules
+│       │   ├── events/                 # Categorized life event catalogs
 │       │   ├── avatarLogic.js          # Trait seeds, phenotype calculation & aging math
-│       │   ├── gameLogic.js            # Master game engine, turn loop, & death engine
+│       │   ├── constants.js            # Shared career, education, & skill constants
+│       │   ├── eventManager.js         # Life events barrel & evaluation engine
+│       │   ├── gameLogic.js            # Master game logic barrel & exports
 │       │   ├── main.js                 # Bootstrap initialization & event delegation router
+│       │   ├── moduleLoader.js         # 3-tier hybrid dynamic module loader
 │       │   ├── saveSlotManager.js      # Multi-slot local & cloud save management
 │       │   ├── state.js                # Single source of truth state
 │       │   └── timeMachine.js          # Turn rewind & state snapshot history
@@ -180,27 +189,16 @@ life_game/
 │           ├── business/               # Startup creation, VC dashboard, & P&L management
 │           ├── career/                 # Job listings, promotions, special careers & mafia
 │           ├── education/              # School management, degrees, & Instant Diploma
-│           ├── more/                   # Casino minigames, crime, prison, & game settings
+│           ├── life/                   # Random life event decision modals
+│           ├── more/                   # Casino minigames, crime, prison, skills, & settings
 │           ├── player/                 # Character creation, main dashboard, & graveyard
 │           ├── relationships/          # Dating, family tree, marriage, & funerals
 │           └── store/                  # God Mode, VIP Lounge, & expansion pack purchases
-├── tests/                              # Automated Unit Test Suites
-│   ├── avatar.test.js                  # Avatar phenotype & SVG generation tests
-│   ├── businessOverhaul.test.js        # Business valuation, revenue, & VC tests
-│   ├── citySalaryScaling.test.js       # Location salary multiplier tests
-│   ├── crimeSystem.test.js             # Crime formulas & arrest risk tests
-│   ├── funeralScreen.test.js           # Eulogy formatting & funeral view tests
-│   ├── gameLogic.test.js               # Master game loop & state mutation tests
-│   ├── godModeEntitlements.test.js     # God mode permission tests
-│   ├── graveyard.test.js               # Ancestral records & past life tests
-│   ├── instantDiploma.test.js          # Academic shortcut tests
-│   ├── prison.test.js                  # Prison sentences, escapes, & riot tests
-│   ├── smartsAndLooks.test.js          # Stat calculation & modifier tests
-│   ├── specialCareersAndMafia.test.js  # Syndicate ranks & special career tests
-│   ├── store.test.js                   # Store entitlement tests
-│   ├── timeMachineAndSaveSlots.test.js # Snapshot history & save slot tests
-│   ├── utils.test.js                   # Utility & math formatter tests
-│   └── vipSupporter.test.js            # Supporter badge & perk tests
+├── tests/                              # Automated Unit Test Suites (Jest + JSDOM)
+│   ├── api/                            # Serverless endpoint, security & validation tests
+│   ├── core/                           # Core logic, state, cloud sync & event tests
+│   ├── features/                       # Domain feature & screen controller tests
+│   └── ui/                             # Avatar SVG, modal, theme & navigation tests
 ├── package.json                        # Dependencies, build scripts & metadata
 ├── vercel.json                         # Vercel deployment & routing configuration
 ├── vite.config.js                      # Vite build configuration
@@ -327,7 +325,7 @@ npm test
 2. **Event Delegation**: Never inject inline JavaScript handlers into dynamic HTML strings. Always use `data-action` and `data-args`.
 3. **Modal System**: Use the centralized `UI.showModal({ title, content, buttons })` helper in `public/src/ui/ui.js` for dialogs and confirmations.
 4. **Mandatory Testing for New Logic**: Any new algorithmic feature, stat calculation, or balance change must be accompanied by unit tests in the `tests/` directory.
-5. **Documentation Maintenance**: When changing architecture, adding new feature modules, or refactoring state, always keep `CLAUDE.md` and `README.md` synchronized.
+5. **Documentation Maintenance**: When changing architecture, adding new feature modules, or refactoring state, always keep `AGENTS.md`, `CLAUDE.md`, and `README.md` synchronized.
 
 ---
 
