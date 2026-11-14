@@ -525,6 +525,10 @@ export function moveCountry(user, targetCountry, targetCity) {
     user.city = targetCity;
 
     if (hadJob) {
+        user.lastJobTitle = oldJobTitle;
+        user.peakJobTitle = user.peakJobTitle || oldJobTitle;
+        if (user.careerTrack) user.lastCareerTrack = user.careerTrack;
+        user.totalYearsWorked = (user.totalYearsWorked || 0) + (user.yearsInCareer || 0);
         user.jobTitle = null;
         user.jobSalary = 0;
         user.jobPerformance = 50;
@@ -532,6 +536,7 @@ export function moveCountry(user, targetCountry, targetCity) {
         user.careerTrack = null;
         user.careerLevel = 0;
         user.yearsInRole = 0;
+        user.yearsInCareer = 0;
         user.consecutivePoorYears = 0;
         user.hasSeenJobSalary = false;
     }

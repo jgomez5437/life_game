@@ -88,6 +88,7 @@ export const evictTenantAction = (propertyId) => {
 };
 
 export const processNextTenantDefaultEvent = () => {
+    if (!state.gameState || !state.gameState.user) return;
     const queue = state.gameState.pendingTenantEvents;
     if (!queue || queue.length === 0) {
         processNextFuneral();

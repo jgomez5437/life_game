@@ -392,4 +392,197 @@ describe('Procedural Eulogy Generator Suite', () => {
         expect(eulogy).toContain('John Rockefeller Jr.');
         expect(eulogy).toContain('3rd-generation');
     });
+
+    // =========================================================================
+    // HISTORICAL CONTEXT REGRESSION TESTS (RETIREMENT, WIDOWHOOD, TYCOON)
+    // =========================================================================
+
+    test('Widowed parent after 51 years married is never called a single parent or lone wolf', () => {
+        const widowedParent = {
+            username: 'Arthur Vance',
+            gender: 'male',
+            age: 76,
+            city: 'San Francisco',
+            country: 'United States',
+            money: 150000,
+            jobTitle: 'Architect',
+            relationships: [
+                { type: 'Son', category: 'child', name: 'Marcus Vance', age: 48 },
+                { type: 'Daughter', category: 'child', name: 'Claire Vance', age: 45 }
+            ],
+            deceasedFamily: [
+                {
+                    id: 'sp_1',
+                    name: 'Eleanor Vance',
+                    type: 'Wife',
+                    category: 'spouse',
+                    deathAge: 74,
+                    deathCause: 'Natural Causes',
+                    yearDied: 75
+                }
+            ]
+        };
+        const lifeLog = [
+            { age: 24, events: [{ msg: 'You married Eleanor Vance in a big wedding!', color: 'text-green-400' }] }
+        ];
+
+        const profile = harvestLifeProfile(widowedParent, lifeLog, 'Old Age');
+        expect(profile.hasSpouse).toBe(false);
+        expect(profile.isWidowed).toBe(true);
+        expect(profile.lateSpouseName).toBe('Eleanor Vance');
+        expect(profile.yearsMarried).toBe(51);
+        expect(profile.marriagesCount).toBe(1);
+
+        const eulogy = EulogyGenerator.generate(widowedParent, lifeLog, 'Old Age');
+        expect(eulogy).toContain('Eleanor Vance');
+        expect(eulogy).toContain('51');
+        expect(eulogy.toLowerCase()).not.toContain('single parent');
+        expect(eulogy.toLowerCase()).not.toContain('lone wolf');
+    });
+
+    test('Childless widowed character honors late spouse instead of lone wolf fallback', () => {
+        const widow = {
+            username: 'Margaret Holloway',
+            gender: 'female',
+            age: 80,
+            city: 'London',
+            country: 'United Kingdom',
+            money: 300000,
+            jobTitle: 'Librarian',
+            relationships: [],
+            deceasedFamily: [
+                { name: 'Thomas Holloway', type: 'Husband', deathAge: 78, yearDied: 77, yearsMarried: 45 }
+            ]
+        };
+
+        const profile = harvestLifeProfile(widow, [], 'Natural Causes');
+        expect(profile.isWidowed).toBe(true);
+        expect(profile.lateSpouseName).toBe('Thomas Holloway');
+        expect(profile.yearsMarried).toBe(45);
+
+        const eulogy = EulogyGenerator.generate(widow, [], 'Natural Causes');
+        expect(eulogy).toContain('Thomas Holloway');
+        expect(eulogy).toContain('45');
+        expect(eulogy.toLowerCase()).not.toContain('lone wolf');
+    });
+
+    test('Retired Engineering Director via retire() fields is recognized and never called a slacker', () => {
+        const retiredExec = {
+            username: 'Richard Sterling',
+            gender: 'male',
+            age: 74,
+            city: 'New York',
+            country: 'United States',
+            money: 1200000,
+            jobTitle: null,
+            careerTrack: null,
+            isRetired: true,
+            retiredFromJobTitle: 'Engineering Director',
+            retiredCareerTrack: 'engineering',
+            retiredYearsInCareer: 32,
+            retirementPension: 791000
+        };
+
+        const profile = harvestLifeProfile(retiredExec, [], 'Old Age');
+        expect(profile.isRetired).toBe(true);
+        expect(profile.jobTitle).toBe('Engineering Director');
+        expect(profile.retirementPension).toBe(791000);
+        expect(profile.yearsInCareer).toBe(32);
+        expect(classifyArchetype(profile)).not.toBe('LOVABLE_SLACKER');
+
+        const eulogy = EulogyGenerator.generate(retiredExec, [], 'Old Age');
+        expect(eulogy).toContain('Engineering Director');
+        expect(eulogy).toContain('$791k');
+        expect(eulogy.toLowerCase()).not.toContain('evaded traditional employment');
+        expect(eulogy.toLowerCase()).not.toContain('sidestepped the workforce');
+    });
+
+    test('Legacy save with null retiredFromJobTitle reconstructs career from lifeLog', () => {
+        const legacyRetiree = {
+            username: 'Walter Bishop',
+            gender: 'male',
+            age: 72,
+            city: 'Boston',
+            country: 'United States',
+            money: 500000,
+            jobTitle: null,
+            isRetired: true,
+            retirementPension: 791000
+        };
+        const lifeLog = [
+            { age: 23, events: [{ msg: 'Hired as Junior Engineer in Engineering! Starting salary: $75,000/yr.', color: 'good' }] },
+            { age: 40, events: [{ msg: 'Promoted to Engineering Director! New salary: $1,200,000/yr. (+20 Happiness)', color: 'major' }] },
+            { age: 58, events: [{ msg: 'Retired from your position as Engineering Director. You will now receive a pension of $791,000/yr.', color: 'major' }] }
+        ];
+
+        const profile = harvestLifeProfile(legacyRetiree, lifeLog, 'Natural Causes');
+        expect(profile.isRetired).toBe(true);
+        expect(profile.jobTitle).toBe('Engineering Director');
+
+        const eulogy = EulogyGenerator.generate(legacyRetiree, lifeLog, 'Natural Causes');
+        expect(eulogy).toContain('Engineering Director');
+        expect(eulogy).toContain('$791k');
+        expect(eulogy.toLowerCase()).not.toContain('evaded traditional employment');
+    });
+
+    test('$30.3M tycoon estate never uses modest comfort or cozy nest egg phrasing', () => {
+        const tycoon = {
+            username: 'Evelyn Mercer',
+            gender: 'female',
+            age: 79,
+            city: 'San Francisco',
+            country: 'United States',
+            money: 30300000,
+            jobTitle: 'Engineering Director',
+            assets: []
+        };
+
+        const profile = harvestLifeProfile(tycoon, [], 'Old Age');
+        expect(profile.wealthTier).toBe('tycoon');
+        expect(profile.totalEstate).toBe(30300000);
+
+        const eulogy = EulogyGenerator.generate(tycoon, [], 'Old Age');
+        expect(eulogy).toContain('$30.3M');
+        expect(eulogy.toLowerCase()).not.toContain('modest comfort');
+        expect(eulogy.toLowerCase()).not.toContain('cozy nest egg');
+    });
+
+    test('Full playtest scenario: widowed 1yr after 51yr marriage, retired Engineering Director, $30.3M estate', () => {
+        const player = {
+            username: 'Henry Mercer',
+            gender: 'male',
+            age: 76,
+            city: 'San Francisco',
+            country: 'United States',
+            money: 28000000,
+            assets: [{ category: 'property', name: 'Pacific Heights Estate', value: 2300000 }],
+            jobTitle: null,
+            isRetired: true,
+            retiredFromJobTitle: 'Engineering Director',
+            retiredYearsInCareer: 35,
+            retirementPension: 791000,
+            relationships: [
+                { type: 'Son', category: 'child', name: 'Daniel Mercer', age: 49 },
+                { type: 'Daughter', category: 'child', name: 'Hannah Mercer', age: 46 }
+            ],
+            deceasedFamily: [
+                { name: 'Beatrice Mercer', type: 'Wife', category: 'spouse', deathAge: 74, yearDied: 75 }
+            ]
+        };
+        const lifeLog = [
+            { age: 24, events: [{ msg: 'You married Beatrice Mercer in a destination wedding!', color: 'good' }] },
+            { age: 59, events: [{ msg: 'Retired from your position as Engineering Director. You will now receive a pension of $791,000/yr.', color: 'major' }] }
+        ];
+
+        const eulogy = EulogyGenerator.generate(player, lifeLog, 'Natural Causes');
+        expect(eulogy).toContain('Engineering Director');
+        expect(eulogy).toContain('$791k');
+        expect(eulogy).toContain('Beatrice Mercer');
+        expect(eulogy).toContain('51');
+        expect(eulogy).toContain('$30.3M');
+        expect(eulogy.toLowerCase()).not.toContain('single parent');
+        expect(eulogy.toLowerCase()).not.toContain('evaded traditional employment');
+        expect(eulogy.toLowerCase()).not.toContain('modest comfort');
+        expect(eulogy.toLowerCase()).not.toContain('cozy nest egg');
+    });
 });

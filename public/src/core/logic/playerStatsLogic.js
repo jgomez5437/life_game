@@ -215,14 +215,14 @@ export function generateLifeSuggestions(user) {
     }
 
     // 2. Career & Education
-    if (!user.jobTitle && user.age >= 18 && !user.isStudent) {
+    if (!user.jobTitle && !user.hasBusiness && !user.isRetired && user.age >= 18 && !user.isStudent && !user.universityEnrolled && !user.gradSchoolEnrolled) {
         suggestions.push({
             category: 'Career Aspiration',
             icon: 'fa-briefcase text-amber-400',
             title: 'Seek Employment',
             desc: 'You are currently unemployed. Visit the Occupations tab to apply for a job or enroll in University.'
         });
-    } else if (user.jobPerformance >= 80) {
+    } else if (user.jobTitle && user.jobPerformance >= 80) {
         suggestions.push({
             category: 'Career Growth',
             icon: 'fa-chart-line text-blue-400',

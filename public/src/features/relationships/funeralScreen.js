@@ -7,6 +7,7 @@ import { GameLogic } from '../../core/gameLogic.js';
 import { renderAvatar } from '../../ui/avatarRenderer.js';
 
 export const processNextFuneral = () => {
+    if (!state.gameState || !state.gameState.user) return;
     if (!state.gameState.pendingFunerals || state.gameState.pendingFunerals.length === 0) {
         // Queue is empty, check pending teacher replacements or proceed to dashboard
         if (state.gameState.pendingTeacherReplacements && state.gameState.pendingTeacherReplacements.length > 0) {
@@ -368,15 +369,22 @@ const finishFuneralAndNext = (deceased) => {
     }
 
     // Archive if family
-    if (['family', 'spouse', 'child'].includes(deceased.category)) {
+    if (['family', 'spouse', 'child'].includes(deceased.category) || ['Wife', 'Husband', 'Spouse'].includes(deceased.type)) {
         if (!user.deceasedFamily) user.deceasedFamily = [];
+        const marriedAge = typeof deceased.marriedAtAge === 'number'
+            ? deceased.marriedAtAge
+            : (typeof user.marriedAtAge === 'number' ? user.marriedAtAge : null);
+        const yearDied = deceased.yearDied || user.age;
+        const yearsMarried = deceased.yearsMarried ?? (typeof marriedAge === 'number' ? Math.max(1, yearDied - marriedAge) : undefined);
         user.deceasedFamily.push({
             id: deceased.id,
             name: deceased.name,
             type: deceased.type,
+            category: deceased.category,
             deathAge: deceased.age,
             deathCause: deceased.deathCause,
-            yearDied: user.age
+            yearDied,
+            ...(typeof yearsMarried === 'number' ? { yearsMarried } : {})
         });
     }
 

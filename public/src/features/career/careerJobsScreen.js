@@ -204,6 +204,11 @@ function _hireCareer(trackKey) {
     user.consecutivePoorYears = 0;
     user.jobTitle             = entry.title;
     user.jobSalary            = scaledSalary;
+    user.lastJobTitle         = entry.title;
+    if (!user.peakJobTitle || scaledSalary >= (user.peakJobSalary || 0)) {
+        user.peakJobTitle = entry.title;
+        user.peakJobSalary = scaledSalary;
+    }
     user.jobPerformance       = 50;
     user.careerActionTaken    = false;
     user.hasSeenJobSalary     = true;
@@ -219,6 +224,11 @@ function _hirePartTime(title, salary) {
     const user = state.gameState.user;
     user.jobTitle          = title;
     user.jobSalary         = salary;
+    user.lastJobTitle      = title;
+    if (!user.peakJobTitle || salary >= (user.peakJobSalary || 0)) {
+        user.peakJobTitle = title;
+        user.peakJobSalary = salary;
+    }
     user.jobPerformance    = 50;
     user.yearsInCareer     = 0;
     user.careerActionTaken = false;
@@ -524,6 +534,11 @@ export function confirmJoinSpecialCareer(trackKey) {
     const level = track.levels[0];
     user.jobTitle = level.title;
     user.jobSalary = GameLogic.calculateScaledSalary(level.salary, user.city);
+    user.lastJobTitle = level.title;
+    if (!user.peakJobTitle || user.jobSalary >= (user.peakJobSalary || 0)) {
+        user.peakJobTitle = level.title;
+        user.peakJobSalary = user.jobSalary;
+    }
     user.hasSeenJobSalary = false;
     user.mafiaCrimesThisYear = 0;
 

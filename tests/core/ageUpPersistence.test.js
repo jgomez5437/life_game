@@ -4,6 +4,7 @@ import { ageUp, renderLifeDashboard } from '../../public/src/features/player/mai
 import { saveToSlot, getSlotsStore, hydrateSlotsStoreFromCloud, persistSlotsStore } from '../../public/src/core/saveSlotManager.js';
 import { saveGame, updateGameInfo, flushPendingSave } from '../../public/src/core/main.js';
 import { Utils } from '../../public/src/ui/utils.js';
+import { GameLogic } from '../../public/src/core/gameLogic.js';
 
 describe('Age Up State Persistence & Refresh Protection', () => {
     beforeEach(() => {
@@ -304,5 +305,44 @@ describe('Age Up State Persistence & Refresh Protection', () => {
         const reloaded = slotsStore.slots[activeId].data;
 
         expect(reloaded.user.age).toBe(21);
+    });
+
+    test('Retired user under age 65 with pension logs pension receipt and never logs Unemployed. Savings are dwindling.', async () => {
+        state.gameState = {
+            user: {
+                username: 'RetiredExec',
+                age: 58,
+                health: 95,
+                happiness: 90,
+                smarts: 90,
+                looks: 70,
+                money: 5000000,
+                city: 'San Francisco',
+                gender: 'male',
+                lifeStatus: 'Adult',
+                jobTitle: null,
+                isRetired: true,
+                retiredFromJobTitle: 'Engineering Director',
+                retirementPension: 791000,
+                relationships: [],
+                assets: [],
+                purchases: []
+            },
+            lifeLog: [],
+            snapshots: [],
+            _slotId: 'slot_1'
+        };
+
+        saveToSlot('slot_1', 'RetiredExec');
+        jest.spyOn(GameLogic, 'checkMortality').mockReturnValue({ isDead: false });
+
+        await ageUp();
+
+        expect(state.gameState.user.age).toBe(59);
+        const yearLog = state.gameState.lifeLog.find(l => l.age === 59);
+        expect(yearLog).toBeDefined();
+        const messages = yearLog.events.map(e => e.msg);
+        expect(messages.some(m => m.includes('pension') && m.includes('$791,000'))).toBe(true);
+        expect(messages.some(m => m.includes('Unemployed. Savings are dwindling.'))).toBe(false);
     });
 });

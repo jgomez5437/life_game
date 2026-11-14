@@ -9,8 +9,9 @@
  * prison time, and cause of death.
  */
 
-import { GRAD_SCHOOL_DEGREE_TITLES, PRO_SPORTS_LEAGUES, SKILL_TRACKS, CAREER_TRACKS, SPECIAL_CAREER_TRACKS } from './constants.js';
-import { BUSINESS_INDUSTRIES, HQ_TIERS } from '../features/business/businessTypes.js';
+import { harvestLifeProfile, classifyArchetype, formatMoneyCompact } from './logic/eulogyProfileLogic.js';
+
+export { harvestLifeProfile, classifyArchetype };
 
 // Simple 32-bit integer hash function (FNV-1a)
 function hashString(str) {
@@ -32,373 +33,6 @@ function createPRNG(seedNumber) {
         t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
         return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
-}
-
-/**
- * Format currency numbers for eulogy strings
- */
-function formatMoneyCompact(num) {
-    const abs = Math.abs(num);
-    if (abs >= 1000000000) {
-        return `$${(abs / 1000000000).toFixed(1).replace(/\.0$/, '')}B`;
-    }
-    if (abs >= 1000000) {
-        return `$${(abs / 1000000).toFixed(1).replace(/\.0$/, '')}M`;
-    }
-    if (abs >= 1000) {
-        return `$${(abs / 1000).toFixed(0)}k`;
-    }
-    return `$${abs.toLocaleString()}`;
-}
-
-/**
- * Extract comprehensive facts from user and lifeLog
- */
-export function harvestLifeProfile(user, lifeLog = [], cause = null) {
-    if (!user) user = {};
-    const name = user.username || user.name || 'This character';
-    const age = typeof user.age === 'number' ? user.age : (typeof user.ageAtDeath === 'number' ? user.ageAtDeath : 0);
-    const gender = (user.gender || 'male').toLowerCase();
-    const city = user.city || 'an unassuming town';
-    const country = user.country || 'the country';
-    const deathCause = cause || user.deathCause || user.causeOfDeath || 'Natural Causes';
-
-    // Pronouns & grammatical verb agreement
-    let pronouns = {
-        sub: 'he',
-        subCap: 'He',
-        obj: 'him',
-        pos: 'his',
-        posCap: 'His',
-        ref: 'himself',
-        wasWere: 'was',
-        hasHave: 'has',
-        s: 's'
-    };
-    if (gender === 'female') {
-        pronouns = {
-            sub: 'she',
-            subCap: 'She',
-            obj: 'her',
-            pos: 'her',
-            posCap: 'Her',
-            ref: 'herself',
-            wasWere: 'was',
-            hasHave: 'has',
-            s: 's'
-        };
-    } else if (gender === 'non-binary' || gender === 'other') {
-        pronouns = {
-            sub: 'they',
-            subCap: 'They',
-            obj: 'them',
-            pos: 'their',
-            posCap: 'Their',
-            ref: 'themselves',
-            wasWere: 'were',
-            hasHave: 'have',
-            s: ''
-        };
-    }
-
-    // Estate calculation
-    const assetValue = Array.isArray(user.assets) ? user.assets.reduce((sum, a) => sum + (Number(a.value) || 0), 0) : 0;
-    const companyCash = (user.hasBusiness && typeof user.compCash === 'number') ? user.compCash : 0;
-    const money = typeof user.money === 'number' ? user.money : 0;
-    const computedEstate = money + assetValue + companyCash;
-    const totalEstate = (computedEstate === 0 && typeof user.finalNetWorth === 'number') ? user.finalNetWorth : computedEstate;
-
-    let wealthTier = 'modest';
-    if (totalEstate < 0) wealthTier = 'debt';
-    else if (totalEstate < 15000) wealthTier = 'broke';
-    else if (totalEstate < 250000) wealthTier = 'modest';
-    else if (totalEstate < 2000000) wealthTier = 'wealthy';
-    else if (totalEstate < 20000000) wealthTier = 'multimillionaire';
-    else wealthTier = 'tycoon';
-
-    // Relationships & Family
-    const relationships = Array.isArray(user.relationships) ? user.relationships : [];
-    const children = relationships.filter(r => r.type === 'Son' || r.type === 'Daughter' || r.category === 'child');
-    const spouse = relationships.find(r => r.category === 'spouse' || ['Wife', 'Husband', 'Spouse'].includes(r.type));
-    const partner = relationships.find(r => r.category === 'partner');
-    const friends = relationships.filter(r => r.category === 'friend' || r.type === 'Friend' || r.type === 'Best Friend');
-    const enemies = relationships.filter(r => r.category === 'enemy' || r.type === 'Enemy');
-    const exes = relationships.filter(r => r.category === 'ex' || ['Ex-Spouse', 'Ex-Partner'].includes(r.type));
-    const pets = relationships.filter(r => r.category === 'pet' || ['Dog', 'Cat', 'Bird', 'Horse'].includes(r.type));
-    const livingParents = relationships.filter(r => (r.type === 'Mother' || r.type === 'Father' || r.category === 'parent') && !r.isDead && !r.deathCause);
-
-    // Life log scan
-    let divorcesCount = 0;
-    let marriagesCount = spouse ? 1 : 0;
-    let cheatedCount = 0;
-    let lotteryWins = 0;
-    let casinoWins = 0;
-    let crimesCommitted = 0;
-    let prisonEscapes = 0;
-    let plasticSurgeries = 0;
-    let droppedOut = false;
-    let collegeDegree = false;
-    let gradDegree = false;
-    let bankHeists = 0;
-    let murders = 0;
-    let vacationsCount = 0;
-
-    if (Array.isArray(lifeLog)) {
-        for (const logItem of lifeLog) {
-            if (!logItem || !Array.isArray(logItem.events)) continue;
-            for (const ev of logItem.events) {
-                const txt = (ev.msg || '').toLowerCase();
-                if (txt.includes('divorce')) divorcesCount++;
-                if (txt.includes('married') || txt.includes('wedding')) marriagesCount++;
-                if (txt.includes('cheat') || txt.includes('infidelity') || txt.includes('caught having an affair')) cheatedCount++;
-                if (txt.includes('lottery') && (txt.includes('won') || txt.includes('jackpot'))) lotteryWins++;
-                if (txt.includes('blackjack') && txt.includes('won')) casinoWins++;
-                if (txt.includes('arrested') || txt.includes('convicted') || txt.includes('guilty') || txt.includes('robbery') || txt.includes('murder')) crimesCommitted++;
-                if (txt.includes('escaped from prison')) prisonEscapes++;
-                if (txt.includes('plastic surgery') || txt.includes('cosmetic procedure')) plasticSurgeries++;
-                if (txt.includes('dropped out')) droppedOut = true;
-                if (txt.includes('bachelor') || txt.includes('graduated from university') || txt.includes('graduated from college')) collegeDegree = true;
-                if (txt.includes('medical school') || txt.includes('law school') || txt.includes('business school') || txt.includes('psychiatry') || txt.includes('ph.d')) gradDegree = true;
-                if (txt.includes('bank heist') && (txt.includes('escaped') || txt.includes('pulled off') || txt.includes('clean getaway'))) bankHeists++;
-                if (txt.includes('murder against') || txt.includes('committed murder')) murders++;
-                if (txt.includes('trip') || txt.includes('getaway') || txt.includes('vacation')) vacationsCount++;
-            }
-        }
-    }
-
-    // Careers & Jobs (normalize empty strings or 'unemployed' to null)
-    let jobTitle = user.jobTitle || user.occupation || null;
-    if (jobTitle && typeof jobTitle === 'string' && (jobTitle.trim().toLowerCase() === 'unemployed' || jobTitle.trim() === '')) {
-        jobTitle = null;
-    }
-    const careerTrack = user.careerTrack || null;
-    const inPrison = Boolean(user.inPrison);
-    const prisonYears = (user.prisonTotalSentence || 0);
-
-    // Education Specifics
-    const major = user.major ? String(user.major).trim() : null;
-    const highSchoolGraduated = Boolean(user.highSchoolGraduated);
-    const hasGED = Boolean(user.hasGED);
-    const highSchoolRetained = Boolean(user.highSchoolRetained);
-    const gradSchoolType = user.gradSchoolType || user.gradSchoolDegree || null;
-    const gradSchoolDegreeTitle = (gradSchoolType && GRAD_SCHOOL_DEGREE_TITLES && GRAD_SCHOOL_DEGREE_TITLES[gradSchoolType])
-        ? GRAD_SCHOOL_DEGREE_TITLES[gradSchoolType]
-        : (user.gradSchoolDegree ? String(user.gradSchoolDegree) : null);
-    const studentLoans = Number(user.studentLoans) || 0;
-
-    // Career Specifics
-    const careerLevel = user.careerLevel || 0;
-    const yearsInCareer = user.yearsInCareer || 0;
-    const yearsInRole = user.yearsInRole || 0;
-    const isRetired = Boolean(user.isRetired);
-    const retirementPension = Number(user.retirementPension) || 0;
-    const isMafia = user.careerTrack === 'mafia_syndicate';
-    const isProAthlete = user.careerTrack === 'pro_athlete';
-    const athleteSport = user.athleteSport || null;
-    const athleteLeagueName = (athleteSport && PRO_SPORTS_LEAGUES && PRO_SPORTS_LEAGUES[athleteSport]?.leagueName) || null;
-    const athleteRings = Number(user.athleteRings) || 0;
-    const athleteMvps = Number(user.athleteMvps) || 0;
-    const athleteCareerEarnings = Number(user.athleteCareerEarnings) || 0;
-
-    // Business Specifics
-    const businessName = user.companyName || user.business?.name || null;
-    const hasBusiness = Boolean(user.hasBusiness || businessName);
-    const industry = user.industry || null;
-    const industryName = (industry && BUSINESS_INDUSTRIES && BUSINESS_INDUSTRIES[industry]?.name) || null;
-    const hqTier = user.hqTier || null;
-    const hqName = (hqTier && HQ_TIERS && HQ_TIERS.find(h => h.id === hqTier)?.name) || null;
-    const employees = Number(user.employees) || 0;
-    const isPublic = Boolean(user.isPublic);
-    const compCash = Number(user.compCash) || 0;
-    const companyValuation = Number(user.businessValuation) || 0;
-
-    // Assets & Real Estate Specifics
-    const rawAssets = Array.isArray(user.assets) ? user.assets : [];
-    const propertyAssets = rawAssets.filter(a => a && a.category === 'property');
-    const rentalPropertiesCount = propertyAssets.filter(p => p.isRented || p.tenant).length;
-    const topProperty = propertyAssets.slice().sort((a, b) => (Number(b.value) || 0) - (Number(a.value) || 0))[0];
-    const topPropertyName = topProperty ? topProperty.name : null;
-
-    const vehicleAssets = rawAssets.filter(a => a && a.category === 'vehicle');
-    const topVehicle = vehicleAssets.slice().sort((a, b) => (Number(b.value) || 0) - (Number(a.value) || 0))[0];
-    const topVehicleName = topVehicle ? topVehicle.name : null;
-    const brokenVehiclesCount = vehicleAssets.filter(v => typeof v.condition === 'number' && v.condition < 25).length;
-
-    const jewelryAssets = rawAssets.filter(a => a && a.category === 'jewelry');
-    const topJewelry = jewelryAssets.slice().sort((a, b) => (Number(b.value) || 0) - (Number(a.value) || 0))[0];
-    const topJewelryName = topJewelry ? topJewelry.name : null;
-
-    let stockPortfolioValue = 0;
-    let ownedStockCount = 0;
-    if (user.investments && user.investments.stocks && user.investments.stockMarket) {
-        user.investments.stockMarket.forEach(stk => {
-            const h = user.investments.stocks[stk.symbol];
-            if (h && h.shares > 0) {
-                stockPortfolioValue += Math.round(h.shares * stk.price);
-                ownedStockCount++;
-            }
-        });
-    }
-    const savingsBalance = Number(user.investments?.savings) || 0;
-
-    // Lineage & Relocation
-    const pastLives = Array.isArray(user.pastLives) ? user.pastLives : [];
-    const generation = Number(user.generation) || (pastLives.length > 0 ? pastLives.length + 1 : 1);
-    const ancestorName = pastLives[0]?.name || null;
-    const relocationsCount = Number(user.relocationsCount) || 0;
-
-    // Named Social Circle
-    const childrenNames = children.map(c => c.name).filter(Boolean);
-    const sortedFriends = friends.slice().sort((a, b) => (b.status || 0) - (a.status || 0));
-    const bestFriendName = sortedFriends[0]?.name || null;
-    const archEnemyName = enemies[0]?.name || null;
-    const exName = exes[0]?.name || null;
-
-    // Skills & Instruments
-    const certifiedSkills = [];
-    const topInstruments = [];
-    const topSkills = [];
-    if (user.skills && typeof user.skills === 'object') {
-        SKILL_TRACKS.forEach(trk => {
-            const st = user.skills[trk.key];
-            if (!st) return;
-            const xp = Number(st.xp) || 0;
-            const cert = Boolean(st.certified || (Array.isArray(st.tiersCompleted) && st.tiersCompleted.includes(3)));
-            if (cert) {
-                certifiedSkills.push({ key: trk.key, name: trk.shortName || trk.name, certificateTitle: trk.certificateTitle });
-            }
-            if (trk.category === 'instruments' && (xp >= 30 || cert)) {
-                topInstruments.push({ key: trk.key, name: trk.shortName || trk.name, xp, certified: cert });
-            } else if (trk.category !== 'instruments' && (xp >= 40 || cert)) {
-                topSkills.push({ key: trk.key, name: trk.shortName || trk.name, xp, certified: cert });
-            }
-        });
-    }
-
-    // Prison & Underworld Detail
-    const facilityName = user.facilityName || null;
-    const prisonSecurity = user.prisonSecurity || null;
-    const cellmateName = user.cellmate?.name || null;
-    const prisonGang = user.prisonStats?.gang && user.prisonStats.gang !== 'None' ? user.prisonStats.gang : null;
-
-    // Lifestyle & Diet
-    const diet = user.diet || (user.hasBetterDiet ? 'balanced' : 'junk');
-    const gymMembership = Boolean(user.gymMembership);
-
-    return {
-        name,
-        age,
-        gender,
-        pronouns,
-        city,
-        country,
-        deathCause,
-        totalEstate,
-        wealthTier,
-        jobTitle,
-        careerTrack,
-        hasBusiness,
-        businessName,
-        childrenCount: children.length,
-        hasSpouse: Boolean(spouse),
-        spouseName: spouse ? spouse.name : null,
-        partnerName: partner ? partner.name : null,
-        partnerType: partner ? partner.type : null,
-        friendsCount: friends.length,
-        petsCount: pets.length,
-        marriagesCount,
-        divorcesCount,
-        cheatedCount,
-        inPrison,
-        prisonYears,
-        crimesCommitted: Math.max(crimesCommitted, Number(user.lifetimeCrimesCommitted) || 0),
-        prisonEscapes,
-        plasticSurgeries,
-        lotteryWins,
-        casinoWins,
-        droppedOut,
-        collegeDegree: collegeDegree || Boolean(user.universityGraduated),
-        gradDegree: gradDegree || Boolean(user.gradSchoolDegree),
-        looks: typeof user.looks === 'number' ? user.looks : 50,
-        smarts: typeof user.smarts === 'number' ? user.smarts : 50,
-        happiness: typeof user.happiness === 'number' ? user.happiness : 50,
-
-        // Specific nuanced dimensions
-        generation,
-        ancestorName,
-        relocationsCount,
-        major,
-        highSchoolGraduated,
-        hasGED,
-        highSchoolRetained,
-        gradSchoolType,
-        gradSchoolDegreeTitle,
-        studentLoans,
-        careerLevel,
-        yearsInCareer,
-        yearsInRole,
-        isRetired,
-        retirementPension,
-        isMafia,
-        isProAthlete,
-        athleteSport,
-        athleteLeagueName,
-        athleteRings,
-        athleteMvps,
-        athleteCareerEarnings,
-        industry,
-        industryName,
-        hqTier,
-        hqName,
-        employees,
-        isPublic,
-        compCash,
-        companyValuation,
-        propertiesCount: propertyAssets.length,
-        rentalPropertiesCount,
-        topPropertyName,
-        vehiclesCount: vehicleAssets.length,
-        topVehicleName,
-        brokenVehiclesCount,
-        jewelryCount: jewelryAssets.length,
-        topJewelryName,
-        stockPortfolioValue,
-        ownedStockCount,
-        savingsBalance,
-        childrenNames,
-        bestFriendName,
-        archEnemyName,
-        exName,
-        livingParentsCount: livingParents.length,
-        certifiedSkills,
-        topInstruments,
-        topSkills,
-        bankHeists,
-        murders,
-        facilityName,
-        prisonSecurity,
-        cellmateName,
-        prisonGang,
-        diet,
-        gymMembership,
-        vacationsCount
-    };
-}
-
-/**
- * Classify life archetype for thematic flavor
- */
-export function classifyArchetype(p) {
-    if (p.age < 18) return 'INNOCENT_YOUTH';
-    if (p.inPrison || p.prisonYears >= 5 || p.crimesCommitted >= 3 || p.prisonEscapes > 0) return 'CAREER_CRIMINAL';
-    if (p.wealthTier === 'tycoon' || p.wealthTier === 'multimillionaire' || (p.wealthTier === 'wealthy' && p.hasBusiness)) return 'CORPORATE_TYCOON';
-    if (p.divorcesCount >= 2 || p.marriagesCount >= 3 || p.cheatedCount >= 2) return 'SERIAL_ROMANTIC';
-    if (p.childrenCount >= 3 && p.marriagesCount >= 1 && p.divorcesCount === 0) return 'DEVOTED_FAMILY';
-    if (p.looks >= 85 && p.plasticSurgeries >= 2) return 'VAIN_SOCIALITE';
-    if (p.wealthTier === 'debt' || (p.wealthTier === 'broke' && (p.lotteryWins > 0 || p.casinoWins > 0))) return 'BROKE_DREAMER';
-    if (!p.jobTitle && p.age >= 20 && p.crimesCommitted === 0) return 'LOVABLE_SLACKER';
-    if (p.gradDegree || ['Doctor', 'Surgeon', 'Lawyer', 'Judge', 'Professor', 'Scientist'].some(j => (p.jobTitle || '').includes(j))) return 'SCHOLAR_PROFESSIONAL';
-    return 'ORDINARY_CITIZEN';
 }
 
 /**
@@ -437,16 +71,17 @@ export function generateProceduralEulogy(user, lifeLog = [], cause = null) {
 
     const {
         name, age, pronouns, city, country, totalEstate, wealthTier,
-        jobTitle, careerTrack, hasBusiness, businessName, childrenCount,
-        hasSpouse, spouseName, partnerName, partnerType, childrenNames,
+        jobTitle, formerJobTitle, isActiveJob, careerTrack, hasBusiness, businessName, childrenCount,
+        hasSpouse, spouseName, isWidowed, lateSpouseName, yearsMarried,
+        partnerName, partnerType, childrenNames,
         bestFriendName, archEnemyName, divorcesCount, marriagesCount,
         inPrison, prisonYears, crimesCommitted, prisonEscapes,
         plasticSurgeries, lotteryWins, casinoWins, major, hasGED,
         droppedOut, gradSchoolDegreeTitle, isRetired, retirementPension,
-        isMafia, isProAthlete, athleteSport, athleteLeagueName, athleteRings,
+        yearsInCareer, isMafia, isProAthlete, athleteSport, athleteLeagueName, athleteRings,
         athleteMvps, athleteCareerEarnings, industryName, hqName, employees,
         isPublic, propertiesCount, rentalPropertiesCount, topPropertyName,
-        topVehicleName, stockPortfolioValue, generation, ancestorName,
+        topVehicleName, stockPortfolioValue, savingsBalance, generation, ancestorName,
         relocationsCount, certifiedSkills, topInstruments, topSkills,
         facilityName, cellmateName, bankHeists
     } = profile;
@@ -607,20 +242,44 @@ export function generateProceduralEulogy(user, lifeLog = [], cause = null) {
                 `As the driving force behind ${businessName}, ${pronouns.sub} navigated the challenges of running an independent business with stubborn optimism.`
             ]);
         }
-    } else if (jobTitle) {
-        if (isRetired) {
+    } else if (isRetired && jobTitle) {
+        const yearsText = yearsInCareer > 1 ? `${yearsInCareer}-year ` : '';
+        if (retirementPension > 0) {
             sentence2 = pick([
-                `Following a celebrated ${yearsInCareer > 1 ? `${yearsInCareer}-year ` : ''}career as ${jobWithArt}, ${pronouns.sub} transitioned gracefully into retirement, enjoying a pension of ${formatMoneyCompact(retirementPension)} per year.`,
-                `After decades of faithful service as ${jobWithArt}, ${name} hung up ${pronouns.pos} boots, collecting an annual retirement pension of ${formatMoneyCompact(retirementPension)} and leaving behind an admired professional legacy.`,
-                `A fixture of ${pronouns.pos} workplace for many years, ${pronouns.sub} concluded a dedicated career as ${jobWithArt} to savor well-earned golden years of leisure.`
+                `Following a celebrated ${yearsText}career as ${jobWithArt}, ${pronouns.sub} transitioned gracefully into retirement, enjoying a pension of ${formatMoneyCompact(retirementPension)} per year.`,
+                `After decades of faithful service as ${jobWithArt}, ${name} stepped into a well-earned retirement, collecting an annual retirement pension of ${formatMoneyCompact(retirementPension)} and leaving behind an admired professional legacy.`,
+                `A respected fixture in ${pronouns.pos} field, ${pronouns.sub} concluded a dedicated ${yearsText}career as ${jobWithArt} to savor golden years supported by a ${formatMoneyCompact(retirementPension)} annual pension.`
             ]);
         } else {
             sentence2 = pick([
-                `In the workforce, ${name} carved out a dedicated career as ${jobWithArt}, known among colleagues for steadfast reliability and a signature dry wit.`,
-                `Spending decades as ${jobWithArt}, ${pronouns.sub} navigated professional duties with steady competence and a stubborn refusal to suffer workplace nonsense.`,
-                `Holding down a respected role as ${jobWithArt}, ${name} proved that consistent dedication and honest labor can weather any economic storm.`
+                `Following a dedicated ${yearsText}career as ${jobWithArt}, ${pronouns.sub} transitioned gracefully into retirement to savor well-earned golden years of leisure.`,
+                `After years of committed service as ${jobWithArt}, ${name} stepped back from the workforce, leaving behind an admired professional legacy.`
             ]);
         }
+    } else if (isRetired) {
+        if (retirementPension > 0) {
+            sentence2 = pick([
+                `After decades of dedicated work, ${name} transitioned into a well-earned retirement, enjoying a generous pension of ${formatMoneyCompact(retirementPension)} per year.`,
+                `Having earned a comfortable retirement after years in the workforce, ${pronouns.sub} spent ${pronouns.pos} golden years collecting an annual pension of ${formatMoneyCompact(retirementPension)}.`
+            ]);
+        } else {
+            sentence2 = pick([
+                `After years in the workforce, ${name} stepped gracefully into retirement to savor ${pronouns.pos} golden years at ${pronouns.pos} own pace.`,
+                `Closing out ${pronouns.pos} working chapter on ${pronouns.pos} own terms, ${pronouns.sub} spent ${pronouns.pos} retirement years enjoying hard-earned leisure.`
+            ]);
+        }
+    } else if (isActiveJob && jobTitle) {
+        sentence2 = pick([
+            `In the workforce, ${name} carved out a dedicated career as ${jobWithArt}, known among colleagues for steadfast reliability and a signature dry wit.`,
+            `Spending decades as ${jobWithArt}, ${pronouns.sub} navigated professional duties with steady competence and a stubborn refusal to suffer workplace nonsense.`,
+            `Holding down a respected role as ${jobWithArt}, ${name} proved that consistent dedication and honest labor can weather any economic storm.`
+        ]);
+    } else if (formerJobTitle || jobTitle) {
+        const prevRole = getJobWithArticle(formerJobTitle || jobTitle);
+        sentence2 = pick([
+            `Earlier in ${pronouns.pos} adult years, ${name} spent time working as ${prevRole} before eventually stepping away from traditional employment.`,
+            `Having once served as ${prevRole}, ${pronouns.sub} left a mark in the workforce before spending ${pronouns.pos} later chapters on ${pronouns.pos} own schedule.`
+        ]);
     } else {
         // STRICT GUARDRAIL FOR UNEMPLOYED: No fake job titles, no "honest labor"
         sentence2 = pick([
@@ -646,6 +305,11 @@ export function generateProceduralEulogy(user, lifeLog = [], cause = null) {
         socialExtra = `, while keeping a watchful eye on bitter adversary ${archEnemyName}`;
     }
 
+    const kidNoun = childrenCount === 1 ? 'child' : 'children';
+    const namedKids = childrenNames.slice(0, 2).join(' and ');
+    const kidsSuffix = childrenCount > 2 ? ` and their siblings` : '';
+    const kidsListText = namedKids ? ` (${namedKids}${kidsSuffix})` : '';
+
     if (divorcesCount >= 2 || marriagesCount >= 3) {
         sentence3 = pick([
             `Romantically, ${pronouns.pos} life resembled a high-stakes melodrama, weathering ${divorcesCount} tempestuous divorces while keeping local family attorneys gainfully employed for decades${socialExtra}.`,
@@ -653,24 +317,37 @@ export function generateProceduralEulogy(user, lifeLog = [], cause = null) {
             `Navigating love with grand romantic gestures and questionable judgment, ${name} cycled through ${divorcesCount} turbulent divorces and whirlwind courtships${socialExtra}.`
         ]);
     } else if (hasSpouse && spouseName && childrenCount >= 1) {
-        const namedKids = childrenNames.slice(0, 2).join(' and ');
-        const kidsSuffix = childrenCount > 2 ? ` and their siblings` : '';
+        const marriageDur = yearsMarried >= 10 ? ` across a ${yearsMarried}-year marriage` : '';
         sentence3 = pick([
-            `At home, ${pronouns.sub} shared life's journey with ${pronouns.pos} devoted spouse, ${spouseName}, together guiding ${childrenCount} children (${namedKids}${kidsSuffix}) through life's triumphs and kitchen chaos${socialExtra}.`,
-            `Anchored by a lasting marriage to ${spouseName}, ${name} took immense pride in raising ${childrenCount} children (${namedKids}${kidsSuffix})${socialExtra}.`,
-            `Domestic life with ${spouseName} remained ${pronouns.pos} emotional bedrock, as they navigated the joyful pandemonium of raising ${childrenCount} children together${socialExtra}.`
+            `At home, ${pronouns.sub} shared life's journey${marriageDur} with ${pronouns.pos} devoted spouse, ${spouseName}, together guiding ${childrenCount} ${kidNoun}${kidsListText} through life's triumphs and kitchen chaos${socialExtra}.`,
+            `Anchored by a lasting${yearsMarried >= 10 ? ` ${yearsMarried}-year` : ''} marriage to ${spouseName}, ${name} took immense pride in raising ${childrenCount} ${kidNoun}${kidsListText}${socialExtra}.`,
+            `Domestic life with ${spouseName} remained ${pronouns.pos} emotional bedrock, as they navigated the joyful pandemonium of raising ${childrenCount} ${kidNoun} together${socialExtra}.`
         ]);
     } else if (hasSpouse && spouseName) {
+        const marriageDur = yearsMarried >= 10 ? ` spanning ${yearsMarried} devoted years` : '';
         sentence3 = pick([
-            `At home, ${name} found enduring partnership alongside ${pronouns.pos} spouse, ${spouseName}${socialExtra}.`,
+            `At home, ${name} found enduring partnership${marriageDur} alongside ${pronouns.pos} spouse, ${spouseName}${socialExtra}.`,
             `Blessed with lasting marital harmony, ${pronouns.sub} and ${spouseName} stood by each other through every chapter of life with humor and devotion${socialExtra}.`,
-            `${pronouns.posCap} marriage to ${spouseName} remained a steadfast sanctuary, weathering life's storms with quiet trust and shared affection${socialExtra}.`
+            `${pronouns.posCap}${yearsMarried >= 10 ? ` ${yearsMarried}-year` : ''} marriage to ${spouseName} remained a steadfast sanctuary, weathering life's storms with quiet trust and shared affection${socialExtra}.`
+        ]);
+    } else if (isWidowed && lateSpouseName && childrenCount >= 1) {
+        const marriageYearsPhrase = yearsMarried >= 5 ? ` after ${yearsMarried} devoted years of marriage` : '';
+        sentence3 = pick([
+            `At home, ${name} shared a loving family life with ${pronouns.pos} late spouse, ${lateSpouseName}, raising ${childrenCount} ${kidNoun}${kidsListText} together before ${lateSpouseName}'s passing${marriageYearsPhrase}${socialExtra}.`,
+            `Anchored by ${pronouns.pos} marriage to ${lateSpouseName}${yearsMarried >= 5 ? ` (${yearsMarried} years together)` : ''}, ${pronouns.sub} poured heart and soul into raising ${childrenCount} ${kidNoun}${kidsListText} and carrying on ${pronouns.pos} family legacy after ${lateSpouseName} passed away${socialExtra}.`,
+            `Alongside ${pronouns.pos} cherished late spouse ${lateSpouseName}, ${name} built a warm household for ${childrenCount} ${kidNoun}${kidsListText}, honoring their shared${yearsMarried >= 5 ? ` ${yearsMarried}-year` : ''} bond even after ${lateSpouseName}'s passing${socialExtra}.`
+        ]);
+    } else if (isWidowed && lateSpouseName) {
+        const marriageYearsPhrase = yearsMarried >= 5 ? ` of ${yearsMarried} devoted years` : '';
+        sentence3 = pick([
+            `At home, ${name} shared an enduring marriage${marriageYearsPhrase} with ${pronouns.pos} late spouse, ${lateSpouseName}, cherishing their life together until ${lateSpouseName}'s passing${socialExtra}.`,
+            `Remembered for deep devotion to ${pronouns.pos} late spouse ${lateSpouseName}, ${pronouns.sub} treasured their${yearsMarried >= 5 ? ` ${yearsMarried}-year` : ''} partnership through every season of life${socialExtra}.`,
+            `Though ${lateSpouseName} passed before ${pronouns.obj}, ${name} carried the warmth of their${yearsMarried >= 5 ? ` ${yearsMarried}-year` : ''} marriage throughout ${pronouns.pos} remaining years${socialExtra}.`
         ]);
     } else if (partnerName && childrenCount >= 1) {
-        const namedKids = childrenNames.slice(0, 2).join(' and ');
         sentence3 = pick([
-            `Alongside ${partnerName}, ${pronouns.sub} nurtured a loving household, raising ${childrenCount} children (${namedKids}) with unwavering care and affection${socialExtra}.`,
-            `Sharing life with ${partnerName}, ${name} found true happiness in the full-contact sport of raising ${childrenCount} children (${namedKids})${socialExtra}.`
+            `Alongside ${partnerName}, ${pronouns.sub} nurtured a loving household, raising ${childrenCount} ${kidNoun}${kidsListText} with unwavering care and affection${socialExtra}.`,
+            `Sharing life with ${partnerName}, ${name} found true happiness in the full-contact sport of raising ${childrenCount} ${kidNoun}${kidsListText}${socialExtra}.`
         ]);
     } else if (partnerName) {
         sentence3 = pick([
@@ -678,12 +355,10 @@ export function generateProceduralEulogy(user, lifeLog = [], cause = null) {
             `In ${partnerName}, ${name} found a kindred spirit, enjoying companionship and warmth that brightened ${pronouns.pos} later years${socialExtra}.`
         ]);
     } else if (childrenCount >= 1) {
-        const namedKids = childrenNames.slice(0, 2).join(' and ');
-        const kidsSuffix = childrenCount > 2 ? ` and their siblings` : '';
         sentence3 = pick([
-            `A fiercely devoted single parent, ${pronouns.sub} poured every ounce of energy into raising ${childrenCount} children (${namedKids}${kidsSuffix}), managing domestic chaos with endless patience and strong coffee${socialExtra}.`,
-            `Family was ${pronouns.pos} true calling, dedicating decades to supporting ${childrenCount} children (${namedKids}${kidsSuffix}) with unconditional devotion${socialExtra}.`,
-            `Surrounded by a bustling household of ${childrenCount} children (${namedKids}${kidsSuffix}), ${name} embraced the exhaustion of parenthood as life's greatest privilege${socialExtra}.`
+            `A fiercely devoted single parent, ${pronouns.sub} poured every ounce of energy into raising ${childrenCount} ${kidNoun}${kidsListText}, managing domestic chaos with endless patience and strong coffee${socialExtra}.`,
+            `Family was ${pronouns.pos} true calling, dedicating decades to supporting ${childrenCount} ${kidNoun}${kidsListText} with unconditional devotion${socialExtra}.`,
+            `Surrounded by a bustling household of ${childrenCount} ${kidNoun}${kidsListText}, ${name} embraced the exhaustion of parenthood as life's greatest privilege${socialExtra}.`
         ]);
     } else if (bestFriendName && archEnemyName) {
         sentence3 = pick([
@@ -785,6 +460,34 @@ export function generateProceduralEulogy(user, lifeLog = [], cause = null) {
             `${pronouns.posCap} prized pride and joy remained ${pronouns.pos} beloved ${topVehicleName}, maintained with obsessive detail and driven with unmistakable swagger through the avenues of ${city}.`,
             `Few sights in ${city} were more iconic than ${name} cruising the boulevards behind the wheel of ${pronouns.pos} cherished ${topVehicleName}.`,
             `When leisure called, ${pronouns.sub} was happiest tuning the engine and polishing the chrome of ${pronouns.pos} ${topVehicleName}.`
+        ]);
+    } else if (wealthTier === 'tycoon') {
+        const assetHighlight = topPropertyName
+            ? `anchored by ${pronouns.pos} residence at ${topPropertyName}`
+            : (savingsBalance >= 1000000 ? `bolstered by ${formatMoneyCompact(savingsBalance)} in high-yield reserves` : `enjoying the pinnacle of financial independence`);
+        sentence4 = pick([
+            `Commanding an extraordinary ${wealthStr} fortune, ${name} lived in unmistakable affluence, ${assetHighlight} and moving effortlessly through the upper echelons of ${city}.`,
+            `Backed by a towering ${wealthStr} estate, ${pronouns.sub} enjoyed a life of rare executive luxury and generous hospitality, leaving an indelible financial footprint across ${city}.`,
+            `Amassing an enviable fortune of ${wealthStr}, ${name} paired shrewd wealth preservation with a taste for the finer things, ${assetHighlight}.`
+        ]);
+    } else if (wealthTier === 'multimillionaire') {
+        const propNote = topPropertyName ? `, unwinding at ${topPropertyName} after full days in ${city}` : '';
+        sentence4 = pick([
+            `Having amassed an impressive ${wealthStr} fortune, ${name} enjoyed true multimillionaire comfort, dining at ${city}'s finest tables without ever glancing at the check.`,
+            `Steered by disciplined financial instincts, ${pronouns.sub} built an enviable ${wealthStr} estate that afforded decades of prosperity and gracious living${propNote}.`,
+            `With ${wealthStr} in accumulated wealth, ${name} savored the rewards of long-term success, enjoying financial freedom and generous hospitality.`
+        ]);
+    } else if (wealthTier === 'wealthy') {
+        sentence4 = pick([
+            `Financially astute and comfortably prosperous, ${name} cultivated a thriving lifestyle in ${city} backed by a substantial ${wealthStr} estate.`,
+            `Through steady stewardship and smart saving, ${pronouns.sub} built a solid ${wealthStr} estate, enjoying the peace of mind that comes with genuine financial security.`,
+            `Well-established and comfortably affluent, ${name} enjoyed life's finer conveniences while stewarding an impressive estate of ${wealthStr}.`
+        ]);
+    } else if (wealthTier === 'broke') {
+        sentence4 = pick([
+            `Living simply and traveling light through ${city}, ${name} never placed much stock in accumulating luxuries, getting by on lean means and personal resourcefulness.`,
+            `Unfazed by material wealth, ${pronouns.sub} lived modestly from year to year, prioritizing simple daily joys over a large bank balance.`,
+            `Navigating ${city} with frugal practicality, ${name} valued lived experiences far above extravagant possessions.`
         ]);
     } else {
         sentence4 = pick([

@@ -266,7 +266,13 @@ export const continueAsChild = (childIndex, inheritedMoney) => {
         gender: parentState.gender || 'male',
         ageAtDeath: parentState.age || 0,
         causeOfDeath: parentState.deathCause || 'Natural Causes',
-        occupation: parentState.jobTitle || (parentState.hasBusiness ? `Founder of ${parentState.companyName}` : 'Unemployed'),
+        occupation: parentState.jobTitle
+            || (parentState.hasBusiness && parentState.companyName ? `Founder of ${parentState.companyName}` : null)
+            || (parentState.retiredFromJobTitle ? `${parentState.retiredFromJobTitle} (Retired)` : null)
+            || (parentState.isRetired && (parentState.peakJobTitle || parentState.lastJobTitle) ? `${parentState.peakJobTitle || parentState.lastJobTitle} (Retired)` : null)
+            || parentState.peakJobTitle
+            || parentState.lastJobTitle
+            || (parentState.isRetired ? 'Retired' : 'Unemployed'),
         finalNetWorth: parentTotalEstate,
         inheritedMoney: safeInheritedMoney,
         appearance: parentState.appearance || null,
