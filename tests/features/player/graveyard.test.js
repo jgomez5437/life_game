@@ -95,4 +95,15 @@ describe('Family Graveyard & Past Lives Suite', () => {
 
         spyShowModal.mockRestore();
     });
+
+    test('continueAsChild records retired occupation instead of Unemployed when retired parent dies', () => {
+        state.gameState.user.jobTitle = null;
+        state.gameState.user.isRetired = true;
+        state.gameState.user.retiredFromJobTitle = 'Engineering Director';
+
+        continueAsChild(0, 250000);
+
+        const ancestor = state.gameState.user.pastLives[0];
+        expect(ancestor.occupation).toBe('Engineering Director (Retired)');
+    });
 });

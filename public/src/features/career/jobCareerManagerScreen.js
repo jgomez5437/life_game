@@ -209,10 +209,25 @@ export function confirmRetire() {
 export function retire() {
     const user = state.gameState.user;
     const oldJob = user.jobTitle;
+    const oldTrack = user.careerTrack;
+    const oldLevel = user.careerLevel || 0;
+    const oldYears = user.yearsInCareer || 0;
     const pension = Math.floor(user.jobSalary * 0.66);
     
     user.isRetired = true;
     user.retirementPension = (user.retirementPension || 0) + pension;
+    if (oldJob) {
+        user.retiredFromJobTitle = oldJob;
+        user.peakJobTitle = oldJob;
+        user.lastJobTitle = oldJob;
+    }
+    if (oldTrack) {
+        user.retiredCareerTrack = oldTrack;
+        user.lastCareerTrack = oldTrack;
+    }
+    user.retiredCareerLevel = oldLevel;
+    user.retiredYearsInCareer = oldYears;
+    user.totalYearsWorked = (user.totalYearsWorked || 0) + oldYears;
     
     user.jobTitle = null;
     user.jobSalary = 0;
@@ -250,6 +265,16 @@ export function confirmQuitCareer() {
 export function quitCareer() {
     const user = state.gameState.user;
     const oldJob = user.jobTitle;
+    const oldTrack = user.careerTrack;
+    const oldYears = user.yearsInCareer || 0;
+    if (oldJob) {
+        user.lastJobTitle = oldJob;
+        user.peakJobTitle = user.peakJobTitle || oldJob;
+    }
+    if (oldTrack) {
+        user.lastCareerTrack = oldTrack;
+    }
+    user.totalYearsWorked = (user.totalYearsWorked || 0) + oldYears;
     user.jobTitle = null;
     user.jobSalary = 0;
     user.jobPerformance = 50;

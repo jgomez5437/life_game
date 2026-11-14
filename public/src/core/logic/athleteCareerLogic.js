@@ -229,6 +229,11 @@ export function attemptAthleteDraft(user, sportKey = 'football') {
         user.jobPerformance = 90;
         user.jobTitle = league.levels[startingLevel].title;
         user.jobSalary = scaledAnnual;
+        user.lastJobTitle = user.jobTitle;
+        if (!user.peakJobTitle || scaledAnnual >= (user.peakJobSalary || 0)) {
+            user.peakJobTitle = user.jobTitle;
+            user.peakJobSalary = scaledAnnual;
+        }
         user.hasSeenJobSalary = true;
         user.athleteContract = contract;
         user.money += scaledBonus;
@@ -296,6 +301,11 @@ export function attemptAthleteTryout(user, sportKey = 'football') {
         user.jobPerformance = 80;
         user.jobTitle = league.levels[0].title;
         user.jobSalary = scaledAnnual;
+        user.lastJobTitle = user.jobTitle;
+        if (!user.peakJobTitle || scaledAnnual >= (user.peakJobSalary || 0)) {
+            user.peakJobTitle = user.jobTitle;
+            user.peakJobSalary = scaledAnnual;
+        }
         user.hasSeenJobSalary = true;
         user.athleteContract = contract;
         user.athleteGamesThisYear = 0;

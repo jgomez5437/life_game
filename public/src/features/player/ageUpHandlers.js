@@ -90,6 +90,11 @@ export async function handleFinances(user) {
                         const nextSalary = GameLogic.calculateScaledSalary(nextLevel.salary, user.city);
                         user.jobTitle = nextLevel.title;
                         user.jobSalary = nextSalary;
+                        user.lastJobTitle = nextLevel.title;
+                        if (!user.peakJobTitle || nextSalary >= (user.peakJobSalary || 0)) {
+                            user.peakJobTitle = nextLevel.title;
+                            user.peakJobSalary = nextSalary;
+                        }
                         user.yearsInRole = 0;
                         GameLogic.adjustStat(user, 'happiness', 25);
                         addLog(`You've been promoted to ${nextLevel.title} in the Syndicate! Cut: ${Utils.formatMoney(user.jobSalary)}/yr. (+25 Happiness)`, 'major');
@@ -108,6 +113,18 @@ export async function handleFinances(user) {
             // Mandatory Age 42+ Retirement
             if ((user.age || 0) >= 42) {
                 addLog(`At age ${user.age}, you have hung up your cleats and officially retired from professional sports. What an incredible athletic career!`, 'major');
+                const retiredTitle = user.jobTitle || level.title;
+                user.retiredFromJobTitle = retiredTitle;
+                user.retiredCareerTrack = 'pro_athlete';
+                user.retiredCareerLevel = lvlIdx;
+                user.retiredYearsInCareer = user.yearsInCareer || 0;
+                user.lastJobTitle = retiredTitle;
+                user.lastCareerTrack = 'pro_athlete';
+                user.totalYearsWorked = (user.totalYearsWorked || 0) + (user.yearsInCareer || 0);
+                if (!user.peakJobTitle || (user.jobSalary || 0) >= (user.peakJobSalary || 0)) {
+                    user.peakJobTitle = retiredTitle;
+                    user.peakJobSalary = user.jobSalary || level.salary;
+                }
                 user.careerTrack = null;
                 user.careerLevel = 0;
                 user.jobTitle = null;
@@ -142,6 +159,11 @@ export async function handleFinances(user) {
 
                     if (user.athletePoorSeasons >= 2) {
                         addLog(`Due to repeated failure to report in playing shape, the ${league.leagueName} franchise has waived your contract. You are now a Free Agent.`, 'bad');
+                        const waivedTitle = user.jobTitle || level.title;
+                        user.lastJobTitle = waivedTitle;
+                        user.peakJobTitle = user.peakJobTitle || waivedTitle;
+                        user.lastCareerTrack = 'pro_athlete';
+                        user.totalYearsWorked = (user.totalYearsWorked || 0) + (user.yearsInCareer || 0);
                         user.careerTrack = null;
                         user.jobTitle = null;
                         user.jobSalary = 0;
@@ -191,6 +213,11 @@ export async function handleFinances(user) {
                 if (user.careerTrack === 'pro_athlete' && user.athleteContract.yearsRemaining <= 0) {
                     if ((user.health || 0) < 45 || user.athletePoorSeasons > 0) {
                         addLog(`Your contract expired and the team decided not to re-sign you due to health and conditioning concerns. You are now a Free Agent.`, 'bad');
+                        const expiredTitle = user.jobTitle || level.title;
+                        user.lastJobTitle = expiredTitle;
+                        user.peakJobTitle = user.peakJobTitle || expiredTitle;
+                        user.lastCareerTrack = 'pro_athlete';
+                        user.totalYearsWorked = (user.totalYearsWorked || 0) + (user.yearsInCareer || 0);
                         user.careerTrack = null;
                         user.jobTitle = null;
                         user.jobSalary = 0;
@@ -211,6 +238,11 @@ export async function handleFinances(user) {
                         const scaledNewSalary = GameLogic.calculateScaledSalary(newContract.annualSalary, user.city);
                         user.jobSalary = scaledNewSalary;
                         user.jobTitle = league.levels[targetLvl].title;
+                        user.lastJobTitle = user.jobTitle;
+                        if (!user.peakJobTitle || scaledNewSalary >= (user.peakJobSalary || 0)) {
+                            user.peakJobTitle = user.jobTitle;
+                            user.peakJobSalary = scaledNewSalary;
+                        }
                         user.athleteContract = newContract;
                         user.yearsInRole = 0;
 
@@ -266,6 +298,10 @@ export async function handleFinances(user) {
                             } else {
                                 GameLogic.adjustStat(user, 'happiness', -25);
                                 addLog(`Terminated from ${user.jobTitle} due to sustained poor performance. (-25 Happiness)`, 'bad');
+                                user.lastJobTitle = user.jobTitle;
+                                user.peakJobTitle = user.peakJobTitle || user.jobTitle;
+                                user.lastCareerTrack = user.careerTrack;
+                                user.totalYearsWorked = (user.totalYearsWorked || 0) + (user.yearsInCareer || 0);
                                 user.jobTitle = null; user.jobSalary = 0; user.jobPerformance = 50;
                                 user.careerTrack = null; user.careerLevel = 0; user.yearsInRole = 0; user.yearsInCareer = 0;
                                 user.consecutivePoorYears = 0; user.careerActionTaken = false; user.hasSeenJobSalary = false;
@@ -291,6 +327,11 @@ export async function handleFinances(user) {
                                 const nextSalary = GameLogic.calculateScaledSalary(nextLevel.salary, user.city);
                                 user.jobTitle  = nextLevel.title;
                                 user.jobSalary = Math.max(user.jobSalary, nextSalary);
+                                user.lastJobTitle = nextLevel.title;
+                                if (!user.peakJobTitle || user.jobSalary >= (user.peakJobSalary || 0)) {
+                                    user.peakJobTitle = nextLevel.title;
+                                    user.peakJobSalary = user.jobSalary;
+                                }
                                 user.yearsInRole = 0;
                                 user.jobPerformance = 60;
                                 GameLogic.adjustStat(user, 'happiness', 20);
@@ -320,6 +361,9 @@ export async function handleFinances(user) {
                 } else if (user.jobPerformance <= 20 && Math.random() < 0.4) {
                     GameLogic.adjustStat(user, 'happiness', -25);
                     addLog(`Your employer let you go from ${user.jobTitle} due to poor performance. (-25 Happiness)`, 'bad');
+                    user.lastJobTitle = user.jobTitle;
+                    user.peakJobTitle = user.peakJobTitle || user.jobTitle;
+                    user.totalYearsWorked = (user.totalYearsWorked || 0) + (user.yearsInCareer || 0);
                     user.jobTitle = null; user.jobSalary = 0; user.jobPerformance = 50; user.yearsInCareer = 0;
                     user.careerActionTaken = false; user.hasSeenJobSalary = false;
                 }
@@ -544,8 +588,12 @@ export function handleLifeEvents(user) {
         }
     } 
     // Adult Empty State
-    else if (!user.highSchoolRetained && !user.jobTitle && !user.hasBusiness && !user.universityEnrolled && user.age >= 18 && user.age < 65) {
-         addLog("Unemployed. Savings are dwindling.", 'bad');
+    else if (!user.highSchoolRetained && !user.jobTitle && !user.hasBusiness && !user.isRetired && !user.universityEnrolled && !user.gradSchoolEnrolled && !user.isStudent && !user.inPrison && user.age >= 18 && user.age < 65) {
+        const monthlyIn = GameLogic.calculateUserMonthlyIncome ? GameLogic.calculateUserMonthlyIncome(user) : 0;
+        const monthlyOut = GameLogic.calculateUserMonthlyOutflow ? GameLogic.calculateUserMonthlyOutflow(user) : 0;
+        if (monthlyIn <= monthlyOut) {
+            addLog("Unemployed. Savings are dwindling.", 'bad');
+        }
     }
 }
 
@@ -572,6 +620,25 @@ export function handleRelationships(user) {
         const deathCheck = GameLogic.checkMortality(rel.age, rel.health ?? 100);
         if (deathCheck.isDead) {
             rel.deathCause = deathCheck.cause;
+            rel.yearDied = user.age;
+
+            const isSpouseRel = rel.category === 'spouse' || ['Wife', 'Husband', 'Spouse'].includes(rel.type);
+            if (isSpouseRel) {
+                const marriedAge = typeof rel.marriedAtAge === 'number'
+                    ? rel.marriedAtAge
+                    : (typeof user.marriedAtAge === 'number' ? user.marriedAtAge : null);
+                if (typeof marriedAge === 'number') {
+                    rel.yearsMarried = Math.max(1, user.age - marriedAge);
+                }
+                user.lateSpouse = {
+                    name: rel.name,
+                    type: rel.type,
+                    deathAge: rel.age,
+                    deathCause: rel.deathCause,
+                    yearDied: user.age,
+                    ...(typeof rel.yearsMarried === 'number' ? { yearsMarried: rel.yearsMarried } : {})
+                };
+            }
 
             if (rel.type === 'Teacher' && (user.isStudent || (user.age >= 5 && user.age <= 18))) {
                 if (!state.gameState.pendingTeacherReplacements) {

@@ -81,6 +81,8 @@ export const confirmWeddingPlan = (personId, index) => {
     user.money -= tier.cost;
     person.category = 'spouse';
     person.type = person.gender === 'male' ? 'Husband' : 'Wife';
+    person.marriedAtAge = user.age;
+    user.marriedAtAge = user.age;
     person.status = Math.min(100, (person.status || 0) + 20);
     person.interactedThisYear = true;
 
