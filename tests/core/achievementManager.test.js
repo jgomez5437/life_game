@@ -1,15 +1,19 @@
 import { jest } from '@jest/globals';
 import { state } from '../../public/src/core/state.js';
-import { 
-    ACHIEVEMENTS_CATALOG, 
-    getUnlockedAchievements, 
-    getAchievementProgress, 
-    isAchievementUnlocked, 
-    unlockAchievement, 
-    checkPeriodicAchievements, 
+import {
+    ACHIEVEMENTS_CATALOG,
+    getUnlockedAchievements,
+    getAchievementProgress,
+    getSingleAchievementProgress,
+    isAchievementUnlocked,
+    unlockAchievement,
+    checkPeriodicAchievements,
     resetAchievements,
     AchievementManager
 } from '../../public/src/core/achievementManager.js';
+import { migrateState } from '../../public/src/core/stateMigration.js';
+import { attemptPrisonEscape } from '../../public/src/core/logic/crimePrisonLogic.js';
+import { generateLuxuryMatch } from '../../public/src/core/logic/npcGeneratorLogic.js';
 
 describe('AchievementManager Core Engine', () => {
 
@@ -43,12 +47,13 @@ describe('AchievementManager Core Engine', () => {
 
     afterEach(() => {
         resetAchievements();
+        jest.restoreAllMocks();
         jest.clearAllMocks();
     });
 
-    test('ACHIEVEMENTS_CATALOG contains exactly 15 achievements with valid properties', () => {
+    test('ACHIEVEMENTS_CATALOG contains 20 achievements with valid properties', () => {
         expect(ACHIEVEMENTS_CATALOG).toBeDefined();
-        expect(ACHIEVEMENTS_CATALOG.length).toBe(15);
+        expect(ACHIEVEMENTS_CATALOG.length).toBe(20);
 
         const uniqueIds = new Set();
         ACHIEVEMENTS_CATALOG.forEach(ach => {
@@ -69,7 +74,7 @@ describe('AchievementManager Core Engine', () => {
         });
     });
 
-    test('catalog contains the 15 required standard and wild achievements', () => {
+    test('catalog contains all 20 standard and wild achievements', () => {
         const expectedIds = [
             'centenarian',
             'unicorn_tycoon',
@@ -85,7 +90,12 @@ describe('AchievementManager Core Engine', () => {
             'clean_getaway',
             'dynasty_founder',
             'globe_trotter',
-            'near_death_experience'
+            'near_death_experience',
+            'hall_of_fame_goat',
+            'top_of_the_ladder',
+            'renaissance_master',
+            'full_house',
+            'yard_kingpin'
         ];
 
         const catalogIds = ACHIEVEMENTS_CATALOG.map(a => a.id);
@@ -93,14 +103,15 @@ describe('AchievementManager Core Engine', () => {
             expect(catalogIds).toContain(id);
         });
 
-        // Verify wild achievements are flagged
+        // Verify wild achievements are flagged (6 total including Yard Kingpin)
         const wildAchievements = ACHIEVEMENTS_CATALOG.filter(a => a.isWild);
-        expect(wildAchievements.length).toBe(5);
+        expect(wildAchievements.length).toBe(6);
         expect(wildAchievements.some(a => a.id === 'supermax_houdini')).toBe(true);
         expect(wildAchievements.some(a => a.id === 'junk_food_immortal')).toBe(true);
         expect(wildAchievements.some(a => a.id === 'gold_digger')).toBe(true);
         expect(wildAchievements.some(a => a.id === 'near_death_experience')).toBe(true);
         expect(wildAchievements.some(a => a.id === 'living_on_the_edge')).toBe(true);
+        expect(wildAchievements.some(a => a.id === 'yard_kingpin')).toBe(true);
     });
 
     test('getUnlockedAchievements and isAchievementUnlocked start empty and track unlocks', () => {
@@ -117,6 +128,23 @@ describe('AchievementManager Core Engine', () => {
         expect(unlocked.centenarian.characterName).toBe('Jane Explorer');
         expect(unlocked.centenarian.generation).toBe(1);
         expect(unlocked.centenarian.unlockedAt).toBeDefined();
+    });
+
+    test('getUnlockedAchievements performs additive union merge from gameState into localStorage', () => {
+        state.gameState.achievements = {
+            dynasty_founder: {
+                id: 'dynasty_founder',
+                unlocked: true,
+                unlockedAt: '2026-01-01T00:00:00.000Z',
+                characterName: 'Cloud Ancestor',
+                generation: 4
+            }
+        };
+
+        const merged = getUnlockedAchievements();
+        expect(merged.dynasty_founder?.unlocked).toBe(true);
+        const persisted = JSON.parse(localStorage.getItem('life_game_achievements'));
+        expect(persisted.dynasty_founder?.unlocked).toBe(true);
     });
 
     test('unlockAchievement is idempotent and avoids duplicate unlocks or logs', () => {
@@ -138,7 +166,7 @@ describe('AchievementManager Core Engine', () => {
 
     test('getAchievementProgress calculates correct unlockedCount and percentage', () => {
         expect(getAchievementProgress()).toEqual({
-            total: 15,
+            total: 20,
             unlockedCount: 0,
             percentage: 0
         });
@@ -148,9 +176,9 @@ describe('AchievementManager Core Engine', () => {
         unlockAchievement('mega_jackpot', state.gameState.user);
 
         const progress = getAchievementProgress();
-        expect(progress.total).toBe(15);
+        expect(progress.total).toBe(20);
         expect(progress.unlockedCount).toBe(3);
-        expect(progress.percentage).toBe(20); // 3 / 15 = 20%
+        expect(progress.percentage).toBe(15); // 3 / 20 = 15%
     });
 
     test('checkPeriodicAchievements unlocks centenarian when age >= 100', () => {
@@ -186,14 +214,14 @@ describe('AchievementManager Core Engine', () => {
         expect(isAchievementUnlocked('near_death_experience')).toBe(false);
     });
 
-    test('checkPeriodicAchievements unlocks real_estate_baron with >= 5 rented properties in assets or properties', () => {
+    test('checkPeriodicAchievements unlocks real_estate_baron with >= 5 rented properties', () => {
         const user = state.gameState.user;
         user.assets = [
             { id: 1, category: 'property', isRented: true, tenant: { name: 'Tenant 1' } },
             { id: 2, category: 'property', isRented: true, tenant: { name: 'Tenant 2' } },
             { id: 3, category: 'property', isRented: true, tenant: { name: 'Tenant 3' } },
             { id: 4, category: 'property', isRented: true, tenant: { name: 'Tenant 4' } },
-            { id: 5, category: 'property', isRented: false } // Only 4 rented
+            { id: 5, category: 'property', isRented: false }
         ];
 
         checkPeriodicAchievements(user);
@@ -206,15 +234,16 @@ describe('AchievementManager Core Engine', () => {
         expect(isAchievementUnlocked('real_estate_baron')).toBe(true);
     });
 
-    test('checkPeriodicAchievements unlocks diamond_hands when stock and savings investments >= 10M', () => {
+    test('checkPeriodicAchievements unlocks diamond_hands across user.savingsBalance and investments', () => {
         const user = state.gameState.user;
+        user.savingsBalance = 3000000;
         user.investments = {
-            savings: 4000000,
+            savings: 1000000,
             stocks: {
-                AAPL: { shares: 50000 }
+                AAPL: { shares: 40000 }
             },
             stockMarket: [
-                { symbol: 'AAPL', price: 150 } // 50,000 * 150 = 7.5M -> total 11.5M
+                { symbol: 'AAPL', price: 150 } // 6M stocks + 4M savings = 10M
             ]
         };
 
@@ -222,22 +251,43 @@ describe('AchievementManager Core Engine', () => {
         expect(isAchievementUnlocked('diamond_hands')).toBe(true);
     });
 
-    test('checkPeriodicAchievements unlocks junk_food_immortal when age >= 60 on junk diet', () => {
+    test('checkPeriodicAchievements unlocks unicorn_tycoon via real company valuation >= $1B or isPublic', () => {
         const user = state.gameState.user;
-        user.age = 59;
-        user.diet = 'junk';
+        user.hasBusiness = true;
+        user.compCash = 600000000;
+        user.businessHistory = [
+            { revenue: 50000000, profit: 15000000 },
+            { revenue: 50000000, profit: 15000000 },
+            { revenue: 50000000, profit: 15000000 },
+            { revenue: 50000000, profit: 15000000 }
+        ]; // 200M annual revenue * 3.0 + 60M profit * 2.0 + 600M cash = $1.32B
+
+        checkPeriodicAchievements(user);
+        expect(isAchievementUnlocked('unicorn_tycoon')).toBe(true);
+    });
+
+    test('checkPeriodicAchievements unlocks junk_food_immortal only if diet stayed on junk', () => {
+        const user = state.gameState.user;
+        user.age = 60;
+        user.diet = 'mediterranean';
+        user.everChangedFromJunkDiet = true;
+        user.junkFoodStreak = 0;
         checkPeriodicAchievements(user);
         expect(isAchievementUnlocked('junk_food_immortal')).toBe(false);
 
-        user.age = 60;
+        resetAchievements();
+        user.diet = 'junk';
+        user.hasBetterDiet = false;
+        user.everChangedFromJunkDiet = false;
+        user.junkFoodStreak = 42;
         checkPeriodicAchievements(user);
         expect(isAchievementUnlocked('junk_food_immortal')).toBe(true);
     });
 
-    test('checkPeriodicAchievements unlocks polymath_scholar with university, grad school, and smarts >= 95', () => {
+    test('checkPeriodicAchievements unlocks polymath_scholar with real universityGraduated & gradSchoolDegree schema', () => {
         const user = state.gameState.user;
-        user.hasDegree = true;
-        user.hasGradDegree = true;
+        user.universityGraduated = true;
+        user.gradSchoolDegree = 'Medical School (M.D.)';
         user.smarts = 94;
 
         checkPeriodicAchievements(user);
@@ -259,31 +309,138 @@ describe('AchievementManager Core Engine', () => {
         expect(isAchievementUnlocked('dynasty_founder')).toBe(true);
     });
 
-    test('checkPeriodicAchievements unlocks globe_trotter when relocations >= 3', () => {
+    test('checkPeriodicAchievements unlocks globe_trotter via relocationsCount or visitedCountries', () => {
         const user = state.gameState.user;
         user.relocationsCount = 2;
         checkPeriodicAchievements(user);
         expect(isAchievementUnlocked('globe_trotter')).toBe(false);
 
-        user.relocationsCount = 3;
+        user.visitedCountries = ['United States', 'Japan', 'France', 'Spain']; // 3 relocations
         checkPeriodicAchievements(user);
         expect(isAchievementUnlocked('globe_trotter')).toBe(true);
     });
 
-    test('checkPeriodicAchievements unlocks the_godfather when on mafia track with level >= 4 or title The Don', () => {
+    test('migrateState preserves relocationsCount, visitedCountries, junkFoodStreak, and everChangedFromJunkDiet', () => {
+        const migrated = migrateState({
+            user: {
+                username: 'Traveler',
+                age: 40,
+                country: 'Japan',
+                relocationsCount: 2,
+                visitedCountries: ['United States', 'Canada', 'Japan'],
+                junkFoodStreak: 22,
+                everChangedFromJunkDiet: false
+            }
+        });
+
+        expect(migrated.user.relocationsCount).toBe(2);
+        expect(migrated.user.visitedCountries).toEqual(['United States', 'Canada', 'Japan']);
+        expect(migrated.user.junkFoodStreak).toBe(22);
+        expect(migrated.user.everChangedFromJunkDiet).toBe(false);
+    });
+
+    test('attemptPrisonEscape only unlocks supermax_houdini from Maximum/Supermax security', () => {
+        jest.spyOn(Math, 'random').mockReturnValue(0.01); // force escape success
+
+        const minSecUser = {
+            ...state.gameState.user,
+            inPrison: true,
+            prisonSecurity: 'Minimum',
+            prisonStats: { guardRelation: 80, respect: 50 }
+        };
+        const minRes = attemptPrisonEscape(minSecUser, 'tunnel');
+        expect(minRes.escaped).toBe(true);
+        expect(isAchievementUnlocked('supermax_houdini')).toBe(false);
+
+        const maxSecUser = {
+            ...state.gameState.user,
+            inPrison: true,
+            prisonSecurity: 'Maximum',
+            prisonStats: { guardRelation: 80, respect: 50 }
+        };
+        const maxRes = attemptPrisonEscape(maxSecUser, 'tunnel');
+        expect(maxRes.escaped).toBe(true);
+        expect(isAchievementUnlocked('supermax_houdini')).toBe(true);
+    });
+
+    test('generateLuxuryMatch populates wealthTier and netWorth so wealthy spouses unlock gold_digger', () => {
+        const match = generateLuxuryMatch(state.gameState.user, { agePreset: '26-35', wealthTier: 'ultra_wealthy' });
+        expect(match.wealthTier).toBe('ultra_wealthy');
+        expect(match.netWorth).toBeGreaterThanOrEqual(5500000);
+
+        state.gameState.user.relationships = [{
+            ...match,
+            category: 'spouse',
+            type: 'Husband'
+        }];
+        checkPeriodicAchievements(state.gameState.user);
+        expect(isAchievementUnlocked('gold_digger')).toBe(true);
+    });
+
+    test('checkPeriodicAchievements unlocks the_godfather and top_of_the_ladder appropriately', () => {
         const user = state.gameState.user;
         user.careerTrack = 'mafia_syndicate';
-        user.careerLevel = 3; // Underboss
-        user.jobTitle = 'Underboss';
-
-        checkPeriodicAchievements(user);
-        expect(isAchievementUnlocked('the_godfather')).toBe(false);
-
-        user.careerLevel = 4; // The Don
+        user.careerLevel = 4;
         user.jobTitle = 'The Don';
 
         checkPeriodicAchievements(user);
         expect(isAchievementUnlocked('the_godfather')).toBe(true);
+        expect(isAchievementUnlocked('top_of_the_ladder')).toBe(false);
+
+        user.careerTrack = 'corporate_executive';
+        user.careerLevel = 4;
+        user.jobTitle = 'Chief Executive Officer';
+        checkPeriodicAchievements(user);
+        expect(isAchievementUnlocked('top_of_the_ladder')).toBe(true);
+    });
+
+    test('checkPeriodicAchievements unlocks hall_of_fame_goat, renaissance_master, full_house, and yard_kingpin', () => {
+        const user = state.gameState.user;
+        user.athleteRings = 3;
+        user.skills = {
+            coding: { xp: 100, certified: true },
+            cooking: { xp: 100, certified: false },
+            piano: { xp: 40, tiersCompleted: [1, 2, 3] }
+        };
+        user.relationships = [
+            { category: 'child', type: 'Son' },
+            { category: 'child', type: 'Daughter' },
+            { category: 'child', type: 'Son' },
+            { category: 'child', type: 'Daughter' },
+            { category: 'child', type: 'Son' }
+        ];
+        user.inPrison = true;
+        user.prisonStats = { respect: 92 };
+
+        checkPeriodicAchievements(user);
+        expect(isAchievementUnlocked('hall_of_fame_goat')).toBe(true);
+        expect(isAchievementUnlocked('renaissance_master')).toBe(true);
+        expect(isAchievementUnlocked('full_house')).toBe(true);
+        expect(isAchievementUnlocked('yard_kingpin')).toBe(true);
+    });
+
+    test('getSingleAchievementProgress returns accurate numeric progress for cumulative achievements', () => {
+        const user = state.gameState.user;
+        user.age = 50;
+        user.relationships = [{ category: 'child', type: 'Son' }, { category: 'child', type: 'Daughter' }];
+
+        const centProgress = getSingleAchievementProgress('centenarian', user);
+        expect(centProgress).toEqual({
+            current: 50,
+            target: 100,
+            percent: 50,
+            label: 'Age 50 / 100'
+        });
+
+        const familyProgress = getSingleAchievementProgress('full_house', user);
+        expect(familyProgress).toEqual({
+            current: 2,
+            target: 5,
+            percent: 40,
+            label: '2 / 5 Children'
+        });
+
+        expect(getSingleAchievementProgress('clean_getaway', user)).toBeNull();
     });
 
     test('resetAchievements clears localStorage and active gameState achievements', () => {
@@ -300,6 +457,7 @@ describe('AchievementManager Core Engine', () => {
         expect(AchievementManager.ACHIEVEMENTS_CATALOG).toBe(ACHIEVEMENTS_CATALOG);
         expect(typeof AchievementManager.getUnlockedAchievements).toBe('function');
         expect(typeof AchievementManager.getAchievementProgress).toBe('function');
+        expect(typeof AchievementManager.getSingleAchievementProgress).toBe('function');
         expect(typeof AchievementManager.isAchievementUnlocked).toBe('function');
         expect(typeof AchievementManager.unlockAchievement).toBe('function');
         expect(typeof AchievementManager.checkPeriodicAchievements).toBe('function');

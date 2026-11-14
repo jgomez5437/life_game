@@ -232,6 +232,9 @@ export function processQuarter() {
 }
 
 function finishQuarterTurnProcessing(user) {
+    if (user.isPublic || GameLogic.calculateCompanyValuation(user) >= 1000000000) {
+        unlockAchievement('unicorn_tycoon', user);
+    }
     if (user.companyQuarter > 4) {
         user.companyQuarter = 1;
         user.companyYear++;
@@ -520,6 +523,9 @@ export function sellBusiness() {
             if (isProcessingBusinessAction || !user || !user.hasBusiness) return;
             isProcessingBusinessAction = true;
             try {
+                if (valuation >= 1000000000 || user.isPublic) {
+                    unlockAchievement('unicorn_tycoon', user);
+                }
                 user.money = Math.min(MAX_PLAYER_MONEY, (user.money || 0) + playerPayout);
                 GameLogic.adjustStat(user, 'happiness', 30);
                 UI.updateHeader(user);
@@ -601,6 +607,9 @@ export function autoProcessBusinessQuarter(user) {
     }
     user.lastBusinessAge = user.age - 1;
     user.quartersProcessedThisAge = 4;
+    if (user.isPublic || GameLogic.calculateCompanyValuation(user) >= 1000000000) {
+        unlockAchievement('unicorn_tycoon', user);
+    }
 }
 
 function executeSingleAutoQuarter(user) {

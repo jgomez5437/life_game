@@ -250,6 +250,7 @@ export const ACTION_TO_MODULE = {
     openSettingsModal: 'settings',
     openAchievementsModal: 'achievements',
     filterAchievementsCategory: 'achievements',
+    dismissAchievementToast: 'achievements',
     triggerManualSave: 'settings',
     promptResetGame: 'settings',
     promptSignOut: 'settings',

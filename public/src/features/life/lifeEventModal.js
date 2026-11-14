@@ -6,6 +6,7 @@ import { saveGame } from '../../core/main.js';
 import { GameLogic } from '../../core/gameLogic.js';
 import { renderAvatar } from '../../ui/avatarRenderer.js';
 import { LIFE_EVENTS } from '../../core/eventManager.js';
+import { checkPeriodicAchievements } from '../../core/achievementManager.js';
 import { SoundManager } from '../../core/soundManager.js';
 
 function getOptionColorClasses(color, isDisabled) {
@@ -234,6 +235,7 @@ export const selectLifeEventChoice = (eventId, choiceId, targetNpcId) => {
         addLog(result.log, result.logType || 'neutral');
     }
 
+    checkPeriodicAchievements(user);
     UI.updateHeader(user);
 
     const outcomeBadges = buildOutcomeBadges(beforeSnapshot, user, targetNPC, result?.badges);

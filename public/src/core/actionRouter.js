@@ -53,7 +53,7 @@ import {
     openSlotsModal, confirmSlotsSpin, openSettingsModal, triggerManualSave, promptResetGame,
     promptSignOut, handleSignOut, toggleSettingSFX, toggleSettingCompact, toggleSettingBottomNav,
     toggleSettingTheme, openFeedbackModal, selectFeedbackCategory, submitFeedback, openAchievementsModal,
-    filterAchievementsCategory, renderStoreScreen, filterStoreCategory, previewPackDetails, buyPack,
+    filterAchievementsCategory, dismissAchievementToast, renderStoreScreen, filterStoreCategory, previewPackDetails, buyPack,
     restorePurchases, renderGodModeModal, maxGodModeStats, applyGodModeStats, openGodModeHubModal,
     renderGodModeAvatarModal, updateGodModeAvatarTrait, cycleGodModeTrait, randomizeGodModeAvatarTraits, saveGodModeAvatar,
     grantInstantHighSchool, grantInstantUniversityDegree, grantInstantGradDegree, renderInstantDiplomaHub, claimInstantUniversityMajor,
@@ -326,6 +326,7 @@ export const routeHandlers = {
   openSettingsModal,
   openAchievementsModal,
   filterAchievementsCategory,
+  dismissAchievementToast,
   triggerManualSave,
   promptResetGame,
   promptSignOut,
@@ -391,6 +392,7 @@ export const DEATH_ACTION_WHITELIST = new Set([
     'openTimeMachineModal',
     'executeTimeRewind',
     'showFullEulogy',
+    'dismissAchievementToast',
     'hideModal',
     'closeAllModals'
 ]);
@@ -422,6 +424,7 @@ export const FUNERAL_ACTION_WHITELIST = new Set([
     'demandTenantRentPayment',
     'forgiveTenantRent',
     'evictTenantFromEvent',
+    'dismissAchievementToast',
     'hideModal',
     'closeAllModals'
 ]);
@@ -456,10 +459,11 @@ document.addEventListener('click', (e) => {
 
         const action = actionElement.dataset.action;
 
-        // 1. Universal Modal Lock: If a modal is open, block any clicks originating outside the modal
+        // 1. Universal Modal Lock: If a modal is open, block any clicks originating outside the modal (except floating achievement toasts)
         if (typeof UI !== 'undefined' && typeof UI.isModalOpen === 'function' && UI.isModalOpen()) {
             const isInsideModal = !!actionElement.closest('#modal-overlay');
-            if (!isInsideModal) {
+            const isInsideToast = !!actionElement.closest('#achievement-toast-container');
+            if (!isInsideModal && !isInsideToast) {
                 // Drop click to prevent background screen switching
                 return;
             }

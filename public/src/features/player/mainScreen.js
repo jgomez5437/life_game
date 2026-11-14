@@ -75,6 +75,7 @@ export async function ageUp() {
                 }
             });
         }
+        checkPeriodicAchievements(user);
         saveToSlot();
         if (typeof saveGame === "function") saveGame(true);
         return;
@@ -296,9 +297,11 @@ export const continueAsChild = (childIndex, inheritedMoney) => {
     if (parentState.looks) childStats.looks = Math.min(100, Math.max(10, Math.floor(parentState.looks * 0.7 + Math.random() * 30)));
 
     // 1. Deep wipe and reconstruct user state
+    const inheritedCountry = parentState.country || 'United States';
     const newUserState = {
         username: selectedChild.name,
         gender: selectedChild.type === 'Son' ? 'male' : 'female',
+        country: inheritedCountry,
         city: parentState.city, // Inherits physical location
         age: selectedChild.age,
         money: safeInheritedMoney,
@@ -309,6 +312,12 @@ export const continueAsChild = (childIndex, inheritedMoney) => {
         generation: newGeneration,
         pastLives: updatedPastLives,
         purchases: parentState.purchases || [],
+        diet: 'junk',
+        hasBetterDiet: false,
+        junkFoodStreak: 0,
+        everChangedFromJunkDiet: false,
+        relocationsCount: 0,
+        visitedCountries: [inheritedCountry],
         
         // Reset dynamic flags
         isStudent: selectedChild.age >= 5 && selectedChild.age <= 18,
@@ -353,6 +362,8 @@ export const continueAsChild = (childIndex, inheritedMoney) => {
             { msg: inheritanceLogMsg, color: inheritanceLogColor }
         ]
     }];
+
+    checkPeriodicAchievements(newUserState);
 
     // Capture child's initial annual snapshot
     captureAnnualSnapshot(state.gameState);

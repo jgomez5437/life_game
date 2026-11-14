@@ -5,6 +5,7 @@ import { UI } from '../../ui/ui.js';
 import { Utils } from '../../ui/utils.js';
 import { MAJORS } from '../../core/constants.js';
 import { GRAD_SCHOOLS } from '../career/occupationScreen.js';
+import { checkPeriodicAchievements } from '../../core/achievementManager.js';
 
 /**
  * Checks if the user owns the Instant Diplomas store perk.
@@ -73,6 +74,7 @@ export function grantInstantUniversityDegree(major) {
         user.relationships = user.relationships.filter(r => r.category !== 'classmate');
     }
 
+    checkPeriodicAchievements(user);
     addLog(`Granted Instant Bachelor's Degree in ${chosenMajor}! Zero tuition debt incurred.`, 'good');
     if (typeof saveGame === "function") saveGame();
 
@@ -113,6 +115,7 @@ export function grantInstantGradDegree(schoolType) {
         user.relationships = user.relationships.filter(r => r.category !== 'classmate');
     }
 
+    checkPeriodicAchievements(user);
     addLog(`Granted Instant Graduate Degree from ${schoolType}! You are fully qualified for elite career tracks.`, 'good');
     if (typeof saveGame === "function") saveGame();
 

@@ -1,16 +1,19 @@
-import { ACHIEVEMENTS_CATALOG, getUnlockedAchievements, getAchievementProgress } from '../../core/achievementManager.js';
+import {
+    ACHIEVEMENTS_CATALOG,
+    getUnlockedAchievements,
+    getAchievementProgress,
+    getSingleAchievementProgress
+} from '../../core/achievementManager.js';
+import { state } from '../../core/state.js';
 import { UI } from '../../ui/ui.js';
 import { Utils } from '../../ui/utils.js';
 
 let _activeFilter = 'all';
 
-export function openAchievementsModal(filter = null) {
-    if (filter) {
-        _activeFilter = filter;
-    }
-    
+function renderAchievementsModalContent(replaceExisting = false) {
     const unlockedMap = getUnlockedAchievements();
     const progress = getAchievementProgress();
+    const user = state.gameState?.user;
 
     // Filter items
     let filteredList = ACHIEVEMENTS_CATALOG;
@@ -28,14 +31,22 @@ export function openAchievementsModal(filter = null) {
         all: ACHIEVEMENTS_CATALOG.length,
         unlocked: progress.unlockedCount,
         locked: progress.total - progress.unlockedCount,
-        wild: ACHIEVEMENTS_CATALOG.filter(a => a.isWild).length
+        wild: ACHIEVEMENTS_CATALOG.filter(a => a.isWild).length,
+        life: ACHIEVEMENTS_CATALOG.filter(a => a.category === 'life').length,
+        business: ACHIEVEMENTS_CATALOG.filter(a => a.category === 'business').length,
+        crime: ACHIEVEMENTS_CATALOG.filter(a => a.category === 'crime').length,
+        luck: ACHIEVEMENTS_CATALOG.filter(a => a.category === 'luck').length
     };
 
     const filterPills = [
         { id: 'all', label: `All (${counts.all})` },
         { id: 'unlocked', label: `Unlocked (${counts.unlocked})` },
         { id: 'locked', label: `Locked (${counts.locked})` },
-        { id: 'wild', label: `Wild (${counts.wild})` }
+        { id: 'wild', label: `Wild (${counts.wild})` },
+        { id: 'life', label: `Life (${counts.life})` },
+        { id: 'business', label: `Wealth (${counts.business})` },
+        { id: 'crime', label: `Crime (${counts.crime})` },
+        { id: 'luck', label: `Luck (${counts.luck})` }
     ];
 
     const cardsHtml = filteredList.length === 0 ? `
@@ -80,9 +91,22 @@ export function openAchievementsModal(filter = null) {
             `;
         }
 
+        const singleProgress = getSingleAchievementProgress(item.id, user);
+        const progressHtml = singleProgress ? `
+            <div class="mt-2 space-y-1">
+                <div class="flex justify-between items-center text-[10px] font-semibold text-slate-400">
+                    <span>${Utils.escapeHtml(singleProgress.label)}</span>
+                    <span class="text-amber-400">${singleProgress.percent}%</span>
+                </div>
+                <div class="w-full bg-slate-950 rounded-full h-1.5 overflow-hidden border border-slate-800">
+                    <div class="bg-amber-500/80 h-1.5 rounded-full transition-all duration-300" style="width: ${singleProgress.percent}%"></div>
+                </div>
+            </div>
+        ` : '';
+
         // Locked Card
         return `
-            <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800 text-slate-400 flex items-start gap-3 opacity-80 hover:opacity-100 transition">
+            <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800 text-slate-400 flex items-start gap-3 opacity-85 hover:opacity-100 transition">
                 <div class="w-11 h-11 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-500 text-lg shrink-0 mt-0.5">
                     <i class="fas fa-lock"></i>
                 </div>
@@ -101,6 +125,7 @@ export function openAchievementsModal(filter = null) {
                             ? `<span class="italic text-amber-400/80"><i class="fas fa-eye-slash mr-1"></i>Clue: ${Utils.escapeHtml(item.hint)}</span>` 
                             : Utils.escapeHtml(item.description)}
                     </p>
+                    ${progressHtml}
                 </div>
             </div>
         `;
@@ -154,7 +179,7 @@ export function openAchievementsModal(filter = null) {
     `;
 
     const overlay = document.getElementById('modal-overlay');
-    if (overlay && !overlay.classList.contains('hidden')) {
+    if (replaceExisting && overlay && !overlay.classList.contains('hidden')) {
         UI.replaceModalContent("Achievements & Trophies", html);
     } else {
         UI.showCustomModal({
@@ -165,8 +190,27 @@ export function openAchievementsModal(filter = null) {
     }
 }
 
+export function openAchievementsModal(filter = null) {
+    _activeFilter = filter || 'all';
+    renderAchievementsModalContent(false);
+}
+
 export function filterAchievementsCategory(filter) {
-    openAchievementsModal(filter);
+    _activeFilter = filter || 'all';
+    renderAchievementsModalContent(true);
+}
+
+export function dismissAchievementToast(toastId) {
+    if (typeof document === 'undefined') return;
+    if (toastId) {
+        const el = document.getElementById(String(toastId));
+        if (el) {
+            el.remove();
+            return;
+        }
+    }
+    const fallback = document.querySelector('.achievement-toast');
+    if (fallback) fallback.remove();
 }
 
 /**
@@ -179,11 +223,14 @@ export function showAchievementToast(achievement) {
     if (!toastContainer) {
         toastContainer = document.createElement('div');
         toastContainer.id = 'achievement-toast-container';
-        toastContainer.className = 'fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4';
+        toastContainer.className = 'fixed top-4 right-4 z-[100] flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4';
+        toastContainer.style.zIndex = '9999';
         document.body.appendChild(toastContainer);
     }
 
+    const toastId = `ach_toast_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
     const toastEl = document.createElement('div');
+    toastEl.id = toastId;
     toastEl.className = 'achievement-toast pointer-events-auto bg-slate-900/95 border-2 border-amber-400/80 p-3.5 rounded-xl shadow-2xl shadow-amber-950/60 text-white flex items-center gap-3 transform transition-all duration-300 translate-y-[-20px] opacity-0';
     toastEl.innerHTML = `
         <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center text-lg shrink-0">
@@ -194,7 +241,7 @@ export function showAchievementToast(achievement) {
             <div class="font-bold text-white text-xs truncate">${Utils.escapeHtml(achievement.title)}</div>
             <div class="text-[11px] text-slate-300 truncate">${Utils.escapeHtml(achievement.description)}</div>
         </div>
-        <button class="text-slate-400 hover:text-white text-xs p-1" onclick="this.parentElement.remove()">
+        <button type="button" class="text-slate-400 hover:text-white text-xs p-1" data-action="dismissAchievementToast" data-args="'${toastId}'" aria-label="Dismiss achievement toast">
             <i class="fas fa-times"></i>
         </button>
     `;

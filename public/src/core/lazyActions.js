@@ -289,6 +289,7 @@ export const submitFeedback = lazy('settings', 'submitFeedback');
 // Achievements
 export const openAchievementsModal = lazy('achievements', 'openAchievementsModal');
 export const filterAchievementsCategory = lazy('achievements', 'filterAchievementsCategory');
+export const dismissAchievementToast = lazy('achievements', 'dismissAchievementToast');
 
 // Store & Customization
 export const renderStoreScreen = lazy('store', 'renderStoreScreen');

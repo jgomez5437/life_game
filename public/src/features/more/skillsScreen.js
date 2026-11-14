@@ -6,6 +6,7 @@ import { UI } from '../../ui/ui.js';
 import { Utils } from '../../ui/utils.js';
 import { SKILL_TRACKS, CAREER_TRACKS, SPECIAL_CAREER_TRACKS } from '../../core/constants.js';
 import { saveToSlot } from '../../core/saveSlotManager.js';
+import { checkPeriodicAchievements } from '../../core/achievementManager.js';
 
 let _activeCategory = 'all'; // 'all' | 'in_progress' | 'general' | 'instruments' | 'sports'
 let _selectedSkillKey = null;
@@ -684,6 +685,7 @@ export function takeInstrumentLesson(skillKey) {
         return;
     }
 
+    checkPeriodicAchievements(user);
     addLog(res.message, 'good');
     UI.updateHeader(user);
     saveToSlot();
@@ -702,6 +704,7 @@ export function practiceSkill(skillKey) {
         return;
     }
 
+    checkPeriodicAchievements(user);
     addLog(res.message, 'good');
     UI.updateHeader(user);
     saveToSlot();
@@ -720,6 +723,7 @@ export function enrollSkillCourse(skillKey, tierNum) {
         return;
     }
 
+    checkPeriodicAchievements(user);
     addLog(res.message, res.certified ? 'major' : 'good');
     UI.updateHeader(user);
     saveToSlot();

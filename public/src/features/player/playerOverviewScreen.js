@@ -1,4 +1,5 @@
 import { state, hasPurchasedPack } from '../../core/state.js';
+import { getAchievementProgress } from '../../core/achievementManager.js';
 import { UI } from '../../ui/ui.js';
 import { Utils } from '../../ui/utils.js';
 import { GameLogic } from '../../core/gameLogic.js';
@@ -86,6 +87,7 @@ export function openPlayerOverviewModal() {
     const educationMilestones = GameLogic.getEducationMilestones(user);
     const educationString = GameLogic.formatEducationMilestones(user, ', ', 'No Formal Education');
     const currentEduStatus = GameLogic.getCurrentEducationStatus(user);
+    const achProgress = getAchievementProgress();
 
     const modalHtml = `
         <div class="space-y-4">
@@ -323,11 +325,20 @@ export function openPlayerOverviewModal() {
                     <span class="font-bold text-white">${properties.length} ${properties.length === 1 ? 'Property' : 'Properties'}</span>
                 </div>
 
-                <div class="flex justify-between items-center">
+                <div class="flex justify-between items-center border-b border-slate-700/60 pb-2">
                     <span class="text-slate-400 flex items-center gap-1.5 font-medium">
                         <i class="fas fa-car text-cyan-400"></i> Vehicles
                     </span>
                     <span class="font-bold text-white">${vehicles.length} ${vehicles.length === 1 ? 'Vehicle' : 'Vehicles'}</span>
+                </div>
+
+                <div data-action="openAchievementsModal" class="flex justify-between items-center cursor-pointer hover:text-amber-300 transition group" title="Open Achievements & Trophies">
+                    <span class="text-slate-400 group-hover:text-amber-300 flex items-center gap-1.5 font-medium transition">
+                        <i class="fas fa-trophy text-amber-400"></i> Achievements
+                    </span>
+                    <span class="font-bold text-amber-300 flex items-center gap-1.5">
+                        ${achProgress.unlockedCount} / ${achProgress.total} Unlocked (${achProgress.percentage}%) <i class="fas fa-chevron-right text-[10px]"></i>
+                    </span>
                 </div>
             </div>
         </div>
