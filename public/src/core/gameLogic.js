@@ -6327,6 +6327,7 @@ function initPrisonState(user, verdictResult) {
     const security = calculatePrisonSecurity(crime.category, crime.id, sentenceYears);
 
     user.inPrison = true;
+    user.everInPrison = true;
     user.prisonSentenceRemaining = sentenceYears;
     user.prisonTotalSentence = sentenceYears;
     user.prisonSecurity = security.level;
