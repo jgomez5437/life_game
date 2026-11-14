@@ -2,7 +2,14 @@ import { sql } from '@vercel/postgres';
 import { verifyAuth } from './lib/verifyAuth.js';
 import { checkRateLimit } from './lib/rateLimit.js';
 
-import { sanitizeEntitlements, injectVerifiedPurchases } from './lib/validation.js';
+import {
+    sanitizeEntitlements,
+    injectVerifiedPurchases,
+    checkPayloadSize,
+    validateInitialUserPayload
+} from './lib/validation.js';
+
+const MAX_LOGIN_PAYLOAD_BYTES = 64 * 1024;
 
 export default async function handler(request, response) {
     if (request.method !== 'POST') {
@@ -17,13 +24,31 @@ export default async function handler(request, response) {
         return response.status(401).json({ error: 'Authentication required' });
     }
 
-    // Enforce rate limiting: 10 logins / min per user
+    // Enforce rate limiting: 30 logins / min per user
     if (!checkRateLimit(request, response, 'login', null, auth0_id)) {
         return;
     }
 
-    const body = (typeof request.body === 'string' ? JSON.parse(request.body) : request.body) || {};
-    const { email, username, gender, country, city, relationships, appearance } = body;
+    const sizeCheck = checkPayloadSize(request, MAX_LOGIN_PAYLOAD_BYTES);
+    if (!sizeCheck.ok) {
+        return response.status(413).json({
+            error: `Payload too large: exceeds ${MAX_LOGIN_PAYLOAD_BYTES / 1024} KB limit`
+        });
+    }
+
+    let rawBody;
+    try {
+        rawBody = (typeof request.body === 'string' ? JSON.parse(request.body) : request.body) ?? {};
+    } catch (_) {
+        return response.status(400).json({ error: 'Invalid JSON request body' });
+    }
+
+    const validation = validateInitialUserPayload(rawBody);
+    if (!validation.ok) {
+        return response.status(400).json({ error: validation.error });
+    }
+
+    const { email, username, gender, country, city, relationships, appearance } = validation.data;
 
     try {
         const slotData = {
@@ -84,7 +109,11 @@ export default async function handler(request, response) {
             `;
             dbPurchases = purchaseResult.rows.map(row => row.pack_id);
         } catch (purchaseErr) {
-            console.warn('Could not query user_purchases on login:', purchaseErr.message);
+            if (purchaseErr?.code === '42P01') {
+                console.warn('user_purchases table does not exist yet on login.');
+            } else {
+                throw purchaseErr;
+            }
         }
 
         // 1. Check if user exists

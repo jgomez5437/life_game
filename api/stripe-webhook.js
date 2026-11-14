@@ -3,17 +3,79 @@ import Stripe from 'stripe';
 import { checkRateLimit } from './lib/rateLimit.js';
 import { getPackById } from './lib/validation.js';
 
+const MAX_WEBHOOK_BYTES = 128 * 1024;
+let purchaseSchemaPromise = null;
+
+async function ensurePurchaseSchema() {
+    if (!purchaseSchemaPromise) {
+        purchaseSchemaPromise = (async () => {
+            await sql`
+                CREATE TABLE IF NOT EXISTS user_purchases (
+                    id SERIAL PRIMARY KEY,
+                    auth0_id VARCHAR(255) NOT NULL,
+                    pack_id VARCHAR(100) NOT NULL,
+                    stripe_session_id VARCHAR(255) UNIQUE,
+                    amount_paid INT,
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+                );
+            `;
+            await sql`
+                CREATE INDEX IF NOT EXISTS idx_user_purchases_auth0 ON user_purchases (auth0_id);
+            `;
+        })().catch((err) => {
+            purchaseSchemaPromise = null;
+            throw err;
+        });
+    }
+    return purchaseSchemaPromise;
+}
+
 /**
- * Buffers the raw request body from the incoming stream.
+ * Buffers the raw request body from the incoming stream up to maxBytes.
  * Required because Vercel auto-parses JSON bodies, but Stripe
  * signature verification needs the raw string.
  */
-async function getRawBody(req) {
+async function getRawBody(req, maxBytes = MAX_WEBHOOK_BYTES) {
+    const contentLength = parseInt(req?.headers?.['content-length'], 10);
+    if (!isNaN(contentLength) && contentLength > maxBytes) {
+        const err = new Error('Webhook payload too large');
+        err.statusCode = 413;
+        throw err;
+    }
+
     return new Promise((resolve, reject) => {
         const chunks = [];
-        req.on('data', (chunk) => chunks.push(chunk));
-        req.on('end', () => resolve(Buffer.concat(chunks)));
-        req.on('error', reject);
+        let totalBytes = 0;
+        let settled = false;
+
+        req.on('data', (chunk) => {
+            if (settled) return;
+            const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+            totalBytes += buf.length;
+            if (totalBytes > maxBytes) {
+                settled = true;
+                if (typeof req.destroy === 'function') {
+                    req.destroy();
+                }
+                const err = new Error('Webhook payload too large');
+                err.statusCode = 413;
+                reject(err);
+                return;
+            }
+            chunks.push(buf);
+        });
+        req.on('end', () => {
+            if (!settled) {
+                settled = true;
+                resolve(Buffer.concat(chunks));
+            }
+        });
+        req.on('error', (err) => {
+            if (!settled) {
+                settled = true;
+                reject(err);
+            }
+        });
     });
 }
 
@@ -44,8 +106,11 @@ export default async function handler(request, response) {
       const rawBody = await getRawBody(request);
       event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
     } catch (err) {
+      if (err?.statusCode === 413) {
+        return response.status(413).json({ error: 'Webhook payload too large' });
+      }
       console.error('Webhook signature verification failed:', err.message);
-      return response.status(400).send(`Webhook Error: ${err.message}`);
+      return response.status(400).send('Webhook Error: Signature verification failed');
     }
 
     // 1. Checkout completed event: grant entitlement
@@ -92,20 +157,7 @@ export default async function handler(request, response) {
 
       // Ensure user_purchases table and index exist, then insert entitlement
       try {
-        await sql`
-          CREATE TABLE IF NOT EXISTS user_purchases (
-            id SERIAL PRIMARY KEY,
-            auth0_id VARCHAR(255) NOT NULL,
-            pack_id VARCHAR(100) NOT NULL,
-            stripe_session_id VARCHAR(255) UNIQUE,
-            amount_paid INT,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-          );
-        `;
-
-        await sql`
-          CREATE INDEX IF NOT EXISTS idx_user_purchases_auth0 ON user_purchases (auth0_id);
-        `;
+        await ensurePurchaseSchema();
 
         await sql`
           INSERT INTO user_purchases (auth0_id, pack_id, stripe_session_id, amount_paid)
@@ -114,6 +166,9 @@ export default async function handler(request, response) {
         `;
       } catch (dbErr) {
         console.error('Database write error during stripe-webhook:', dbErr.message);
+        if (process.env.POSTGRES_URL) {
+          return response.status(500).json({ error: 'Database persistence failed' });
+        }
       }
 
       return response.status(200).json({ received: true });
@@ -147,7 +202,9 @@ export default async function handler(request, response) {
           console.log(`[WEBHOOK] Refund processed: revoked pack '${metaPackId}' for user '${metaUserAuthId}' from charge metadata.`);
         } catch (dbErr) {
           console.error('[WEBHOOK] Database delete error on refund:', dbErr.message);
-          // Mark revoked so endpoint acknowledges the revocation attempt
+          if (process.env.POSTGRES_URL) {
+            return response.status(500).json({ error: 'Database revocation failed' });
+          }
           revoked = true;
         }
       } else if (charge.payment_intent) {
@@ -165,6 +222,9 @@ export default async function handler(request, response) {
           }
         } catch (lookupErr) {
           console.error('[WEBHOOK] Failed to look up checkout sessions for refunded charge:', lookupErr.message);
+          if (process.env.POSTGRES_URL) {
+            return response.status(500).json({ error: 'Refund revocation failed' });
+          }
         }
       }
 
@@ -195,6 +255,9 @@ export default async function handler(request, response) {
           console.warn(`[SECURITY ALERT] Dispute opened: revoked pack '${metaPackId}' for user '${metaUserAuthId}'.`);
         } catch (dbErr) {
           console.error('[WEBHOOK] Database delete error on dispute:', dbErr.message);
+          if (process.env.POSTGRES_URL) {
+            return response.status(500).json({ error: 'Database revocation failed' });
+          }
           revoked = true;
         }
       } else if (chargeId) {
@@ -225,6 +288,9 @@ export default async function handler(request, response) {
           }
         } catch (disputeErr) {
           console.error('[WEBHOOK] Failed to process dispute entitlement revocation:', disputeErr.message);
+          if (process.env.POSTGRES_URL && disputeErr?.code && !String(disputeErr.type || '').startsWith('Stripe')) {
+            return response.status(500).json({ error: 'Dispute revocation failed' });
+          }
         }
       }
 

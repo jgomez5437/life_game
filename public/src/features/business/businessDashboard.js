@@ -74,7 +74,7 @@ export function renderBusinessDashboard() {
     const lastEntry = user.businessHistory[user.businessHistory.length - 1];
     const lastEventBanner = (lastEntry && lastEntry.event)
         ? `<div class="bg-indigo-900/40 border border-indigo-500/40 rounded-xl p-3 mb-4 text-xs text-indigo-200 flex items-center justify-between">
-               <span class="flex items-center gap-2"><i class="fas fa-bolt text-yellow-400"></i> <strong>Last Qtr Event:</strong> ${lastEntry.event}</span>
+               <span class="flex items-center gap-2"><i class="fas fa-bolt text-yellow-400"></i> <strong>Last Qtr Event:</strong> ${Utils.escapeHtml(lastEntry.event)}</span>
                <span class="${lastEntry.profit >= 0 ? 'text-green-400' : 'text-red-400'} font-mono font-bold">${lastEntry.profit >= 0 ? '+' : ''}${Utils.formatMoney(lastEntry.profit)}</span>
            </div>`
         : '';

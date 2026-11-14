@@ -13,10 +13,10 @@ export default async function handler(request, response) {
   try {
     authUserId = await verifyAuth(request);
   } catch (error) {
-    return response.status(401).json({ error: error.message });
+    return response.status(401).json({ error: 'Unauthorized' });
   }
 
-  // Enforce rate limiting: 30 loads / min per authenticated user
+  // Enforce rate limiting: 60 loads / min per authenticated user
   if (!checkRateLimit(request, response, 'load', null, authUserId)) {
     return;
   }
@@ -44,7 +44,11 @@ export default async function handler(request, response) {
       `;
       dbPurchases = purchaseResult.rows.map(row => row.pack_id);
     } catch (purchaseErr) {
-      console.warn('Could not query user_purchases on load:', purchaseErr.message);
+      if (purchaseErr?.code === '42P01') {
+        console.warn('user_purchases table does not exist yet on load.');
+      } else {
+        throw purchaseErr;
+      }
     }
 
     if (userData.game_data) {

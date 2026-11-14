@@ -1095,15 +1095,16 @@ export function renderLifeDashboard(maybeGameState) {
 
     // Generate the Life Log HTML 
     const logHtml = (currentState.lifeLog || []).map(l => {
-        const isCurrentYear = l.age === user.age;
+        const safeAge = Number.isFinite(Number(l.age)) ? Math.floor(Number(l.age)) : 0;
+        const isCurrentYear = safeAge === user.age;
         const badgeClasses = isCurrentYear
             ? `active-age-badge bg-gradient-to-r from-indigo-600 to-blue-600 text-white border-indigo-400/80 shadow-md shadow-indigo-500/25`
             : `bg-slate-800 text-blue-100 border-slate-600 shadow-sm`;
         return `
-        <div class="${isCompact ? 'mb-2.5' : 'mb-4'} ${isCurrentYear ? 'current-age-log-card' : ''} group" data-log-age="${l.age}">
+        <div class="${isCompact ? 'mb-2.5' : 'mb-4'} ${isCurrentYear ? 'current-age-log-card' : ''} group" data-log-age="${safeAge}">
             <div class="flex items-center ${isCompact ? 'mb-1' : 'mb-2'}">
                 <div class="${badgeClasses} ${isCompact ? 'text-[9px] px-2 py-0.5' : 'text-[10px] px-3 py-1'} uppercase font-bold rounded-full border z-10 flex items-center">
-                    <span>Age ${l.age}</span>
+                    <span>Age ${safeAge}</span>
                     ${isCurrentYear ? '<span class="ml-1.5 text-[8px] tracking-widest opacity-90">• Now</span>' : ''}
                 </div>
                 <div class="h-px bg-gradient-to-r from-slate-700 to-transparent flex-grow ml-2"></div>
@@ -1111,7 +1112,8 @@ export function renderLifeDashboard(maybeGameState) {
 
             <div class="${isCompact ? 'pl-2.5 border-l border-slate-700/50 ml-2.5 space-y-0.5 pb-0' : 'pl-3.5 border-l border-slate-700/50 ml-3.5 space-y-1.5 pb-0.5'}">
                 ${(l.events || []).map(e => {
-                    const colorStr = e.color || '';
+                    const rawColor = typeof e.color === 'string' ? e.color : '';
+                    const colorStr = rawColor.replace(/[^a-zA-Z0-9_\-\s/]/g, '').trim();
                     const isGood = colorStr.includes('green') || colorStr.includes('emerald');
                     const isBad = colorStr.includes('red') || colorStr.includes('rose');
                     const isMajor = colorStr.includes('yellow') || colorStr.includes('amber');
@@ -1123,7 +1125,7 @@ export function renderLifeDashboard(maybeGameState) {
                                 ? 'bg-rose-400'
                                 : 'bg-slate-500';
                     return `
-                    <div class="flex items-start gap-2 ${e.color} ${isCompact ? 'text-xs py-0 leading-snug' : 'text-sm py-0.5'} transition-transform duration-200 hover:translate-x-1">
+                    <div class="flex items-start gap-2 ${colorStr} ${isCompact ? 'text-xs py-0 leading-snug' : 'text-sm py-0.5'} transition-transform duration-200 hover:translate-x-1">
                         <span class="timeline-dot ${dotClass}"></span>
                         <span class="flex-1">${Utils.escapeHtml(e.msg)}</span>
                     </div>

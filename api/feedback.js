@@ -5,18 +5,48 @@ import {
   validateFeedbackPayload,
   escapeEmailHtml,
   isValidEmail,
+  checkPayloadSize,
   MAX_FEEDBACK_PAYLOAD_BYTES
 } from './lib/validation.js';
 
 let testDbHandler = null;
 let testMailer = null;
+let feedbackSchemaPromise = null;
+
+function isTestEnv() {
+  return process.env.NODE_ENV !== 'production' || Boolean(process.env.JEST_WORKER_ID);
+}
 
 export function setTestFeedbackDb(fn) {
+  if (!isTestEnv()) return;
   testDbHandler = fn;
 }
 
 export function setTestFeedbackMailer(fn) {
+  if (!isTestEnv()) return;
   testMailer = fn;
+}
+
+async function ensureFeedbackSchema() {
+  if (!feedbackSchemaPromise) {
+    feedbackSchemaPromise = (async () => {
+      await sql`
+        CREATE TABLE IF NOT EXISTS user_feedback (
+          id SERIAL PRIMARY KEY,
+          auth0_id TEXT NOT NULL,
+          user_email TEXT,
+          category TEXT NOT NULL DEFAULT 'general',
+          message TEXT NOT NULL,
+          app_version TEXT,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+      `;
+    })().catch((err) => {
+      feedbackSchemaPromise = null;
+      throw err;
+    });
+  }
+  return feedbackSchemaPromise;
 }
 
 const CATEGORY_LABELS = {
@@ -26,26 +56,11 @@ const CATEGORY_LABELS = {
 };
 
 function checkFeedbackPayloadSize(request) {
-  const contentLength = parseInt(request.headers?.['content-length'], 10);
-  if (!isNaN(contentLength) && contentLength > 0) {
-    return contentLength <= MAX_FEEDBACK_PAYLOAD_BYTES;
-  }
-  if (request.body) {
-    try {
-      const estimated = Buffer.byteLength(
-        typeof request.body === 'string' ? request.body : JSON.stringify(request.body),
-        'utf8'
-      );
-      return estimated <= MAX_FEEDBACK_PAYLOAD_BYTES;
-    } catch (_) {
-      return true;
-    }
-  }
-  return true;
+  return checkPayloadSize(request, MAX_FEEDBACK_PAYLOAD_BYTES).ok;
 }
 
 async function persistFeedbackToDb({ authUserId, category, message, appVersion, clientEmail }) {
-  if (testDbHandler) {
+  if (testDbHandler && isTestEnv()) {
     return testDbHandler({ authUserId, category, message, appVersion, clientEmail });
   }
 
@@ -65,17 +80,7 @@ async function persistFeedbackToDb({ authUserId, category, message, appVersion, 
     console.warn('[Feedback] User email lookup skipped:', lookupErr.message);
   }
 
-  await sql`
-    CREATE TABLE IF NOT EXISTS user_feedback (
-      id SERIAL PRIMARY KEY,
-      auth0_id TEXT NOT NULL,
-      user_email TEXT,
-      category TEXT NOT NULL DEFAULT 'general',
-      message TEXT NOT NULL,
-      app_version TEXT,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-  `;
+  await ensureFeedbackSchema();
 
   const insertRes = await sql`
     INSERT INTO user_feedback (auth0_id, user_email, category, message, app_version)
@@ -144,7 +149,7 @@ async function sendFeedbackEmail({ authUserId, userEmail, category, message, app
     emailPayload.reply_to = userEmail;
   }
 
-  if (testMailer) {
+  if (testMailer && isTestEnv()) {
     return testMailer(emailPayload);
   }
 

@@ -18,12 +18,18 @@ export function isValidSlotId(slotId) {
   return false;
 }
 
+export const MAX_VALIDATION_DEPTH = 32;
+export const MAX_VALIDATION_NODES = 10000;
+
 /**
  * Recursively inspects an object for prototype pollution keys.
+ * Enforces depth and visited-node limits to prevent stack overflow DoS.
  */
-export function hasDangerousKeys(obj, visited = new Set()) {
+export function hasDangerousKeys(obj, visited = new Set(), depth = 0, state = { nodes: 0 }) {
   if (!obj || typeof obj !== 'object') return false;
+  if (depth > MAX_VALIDATION_DEPTH) return true;
   if (visited.has(obj)) return false;
+  if (++state.nodes > MAX_VALIDATION_NODES) return true;
   visited.add(obj);
 
   const dangerousProps = ['__proto__', 'constructor', 'prototype'];
@@ -49,7 +55,7 @@ export function hasDangerousKeys(obj, visited = new Set()) {
     }
     const val = obj[key];
     if (val && typeof val === 'object') {
-      if (hasDangerousKeys(val, visited)) {
+      if (hasDangerousKeys(val, visited, depth + 1, state)) {
         return true;
       }
     }
@@ -140,35 +146,103 @@ export const MAX_SAVE_PAYLOAD_BYTES = 512 * 1024;
 
 /**
  * Estimates the serialized byte size of the request body and rejects
- * payloads exceeding MAX_SAVE_PAYLOAD_BYTES.
+ * payloads exceeding maxBytes (default MAX_SAVE_PAYLOAD_BYTES).
  *
- * Checks Content-Length header first (fast path), then falls back to
- * JSON.stringify estimation if the header is missing or untrustworthy.
+ * Checks Content-Length header first as a fast rejection, and ALSO verifies
+ * actual request.body byte length when present to prevent header spoofing.
  *
  * @param {object} request - The incoming HTTP request object.
+ * @param {number} [maxBytes=MAX_SAVE_PAYLOAD_BYTES] - Maximum allowed byte size.
  * @returns {{ ok: boolean, size: number }} ok=false if payload exceeds limit.
  */
-export function checkPayloadSize(request) {
-  const maxBytes = MAX_SAVE_PAYLOAD_BYTES;
-
-  // Fast path: trust Content-Length header if present
-  const contentLength = parseInt(request.headers?.['content-length'], 10);
-  if (!isNaN(contentLength) && contentLength > 0) {
-    return { ok: contentLength <= maxBytes, size: contentLength };
+export function checkPayloadSize(request, maxBytes = MAX_SAVE_PAYLOAD_BYTES) {
+  const headerLen = parseInt(request?.headers?.['content-length'], 10);
+  const hasHeader = !isNaN(headerLen) && headerLen > 0;
+  if (hasHeader && headerLen > maxBytes) {
+    return { ok: false, size: headerLen };
   }
 
-  // Fallback: estimate from serialized body
-  if (request.body) {
+  let bodyLen = 0;
+  if (request?.body !== undefined && request?.body !== null) {
     try {
-      const estimated = Buffer.byteLength(JSON.stringify(request.body), 'utf8');
-      return { ok: estimated <= maxBytes, size: estimated };
+      const serialized = typeof request.body === 'string' ? request.body : JSON.stringify(request.body);
+      bodyLen = Buffer.byteLength(serialized, 'utf8');
+      if (bodyLen > maxBytes) {
+        return { ok: false, size: bodyLen };
+      }
     } catch (_) {
-      // If we can't serialize, allow it through — downstream validation will catch issues
-      return { ok: true, size: 0 };
+      return { ok: false, size: maxBytes + 1 };
     }
   }
 
-  return { ok: true, size: 0 };
+  return { ok: true, size: Math.max(hasHeader ? headerLen : 0, bodyLen) };
+}
+
+/**
+ * Validates initial player creation fields passed to POST /api/login.
+ * Returns { ok: true, data } or { ok: false, error }.
+ */
+export function validateInitialUserPayload(body) {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return { ok: false, error: 'Invalid request body: expected a JSON object' };
+  }
+  if (hasDangerousKeys(body)) {
+    return { ok: false, error: 'Security validation failed: forbidden keys detected in payload' };
+  }
+
+  const checkStr = (val, field, maxLen) => {
+    if (val === undefined || val === null) return { ok: true, val: null };
+    if (typeof val !== 'string') return { ok: false, error: `Invalid ${field}: expected string` };
+    const trimmed = val.trim();
+    if (trimmed.length > maxLen) return { ok: false, error: `Invalid ${field}: exceeds ${maxLen} characters` };
+    return { ok: true, val: trimmed };
+  };
+
+  const usernameRes = checkStr(body.username, 'username', 100);
+  if (!usernameRes.ok) return usernameRes;
+  const genderRes = checkStr(body.gender, 'gender', 20);
+  if (!genderRes.ok) return genderRes;
+  const countryRes = checkStr(body.country, 'country', 60);
+  if (!countryRes.ok) return countryRes;
+  const cityRes = checkStr(body.city, 'city', 60);
+  if (!cityRes.ok) return cityRes;
+
+  let email = null;
+  if (body.email !== undefined && body.email !== null && body.email !== '') {
+    if (typeof body.email !== 'string' || body.email.length > 254 || /[\r\n]/.test(body.email)) {
+      return { ok: false, error: 'Invalid email format' };
+    }
+    email = body.email.trim();
+  }
+
+  let relationships = [];
+  if (body.relationships !== undefined && body.relationships !== null) {
+    if (!Array.isArray(body.relationships) || body.relationships.length > 50) {
+      return { ok: false, error: 'Invalid relationships array' };
+    }
+    relationships = body.relationships;
+  }
+
+  let appearance = null;
+  if (body.appearance !== undefined && body.appearance !== null) {
+    if (typeof body.appearance !== 'object' || Array.isArray(body.appearance) || Object.keys(body.appearance).length > 30) {
+      return { ok: false, error: 'Invalid appearance object' };
+    }
+    appearance = body.appearance;
+  }
+
+  return {
+    ok: true,
+    data: {
+      email,
+      username: usernameRes.val || undefined,
+      gender: genderRes.val || undefined,
+      country: countryRes.val || 'United States',
+      city: cityRes.val || undefined,
+      relationships,
+      appearance
+    }
+  };
 }
 
 /**

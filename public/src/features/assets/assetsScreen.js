@@ -1761,7 +1761,7 @@ export const openHirePropertyManagerModal = () => {
 
             <div class="space-y-2 pt-2">
                 <button data-action="confirmHirePropertyManager" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-lg shadow-indigo-900/40">
-                    <i class="fas fa-handshake"></i> Hire ${_candidateManager.name} (10% Fee)
+                    <i class="fas fa-handshake"></i> Hire ${Utils.escapeHtml(_candidateManager.name)} (10% Fee)
                 </button>
                 <button data-action="hideModal" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-2.5 rounded-xl text-xs transition">
                     Cancel
@@ -1847,17 +1847,22 @@ export function getAnnualManagerReportHtml(report, isAgeUpFlow = true) {
         </div>
     `).join('') || '<div class="text-xs text-slate-400 italic text-center py-2">No active rentals collected this year.</div>';
 
-    const activityHtml = (report.activity || []).map(a => `
+    const activityHtml = (report.activity || []).map(a => {
+        const iconClass = String(a.icon || 'fa-info-circle').replace(/[^a-zA-Z0-9_\-\s]/g, '');
+        return `
         <div class="text-xs text-slate-300 flex items-start gap-2 bg-slate-900/50 p-2 rounded-lg border border-slate-800">
-            <i class="fas ${a.icon || 'fa-info-circle'} text-indigo-400 mt-0.5"></i>
+            <i class="fas ${iconClass || 'fa-info-circle'} text-indigo-400 mt-0.5"></i>
             <span>${Utils.escapeHtml(a.text)}</span>
         </div>
-    `).join('');
+    `;
+    }).join('');
 
     const repairs = report.repairs || [];
     const pendingRepairs = repairs.filter(r => r.status === 'pending');
 
     const repairsHtml = repairs.map(r => {
+        const safeRepairId = Utils.escapeHtml(r.id);
+        const safeIcon = String(r.icon || 'fa-wrench').replace(/[^a-zA-Z0-9_\-\s]/g, '') || 'fa-wrench';
         let actionContent = '';
         if (r.status === 'approved') {
             actionContent = `<span class="bg-green-900/60 text-green-300 border border-green-700 text-[10px] uppercase px-2 py-0.5 rounded font-bold"><i class="fas fa-check mr-1"></i>Approved (${Utils.formatMoney(r.cost)})</span>`;
@@ -1867,12 +1872,12 @@ export function getAnnualManagerReportHtml(report, isAgeUpFlow = true) {
             const canAfford = (user?.money || 0) >= r.cost;
             actionContent = `
                 <div class="flex items-center gap-2">
-                    <button data-action="approveManagerRepairAction" data-args="'${r.id}'"
+                    <button data-action="approveManagerRepairAction" data-args="'${safeRepairId}'"
                         ${canAfford ? '' : 'disabled'}
                         class="${canAfford ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-slate-700 opacity-50 cursor-not-allowed text-slate-400'} px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">
                         <i class="fas fa-wrench"></i> Approve (${Utils.formatMoney(r.cost)})
                     </button>
-                    <button data-action="declineManagerRepairAction" data-args="'${r.id}'"
+                    <button data-action="declineManagerRepairAction" data-args="'${safeRepairId}'"
                         class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-2.5 py-1.5 rounded-lg text-xs font-bold transition">
                         Decline
                     </button>
@@ -1885,7 +1890,7 @@ export function getAnnualManagerReportHtml(report, isAgeUpFlow = true) {
                 <div class="flex justify-between items-start">
                     <div>
                         <div class="font-bold text-white text-xs flex items-center gap-1.5">
-                            <i class="fas ${r.icon || 'fa-wrench'} text-amber-400"></i>
+                            <i class="fas ${safeIcon} text-amber-400"></i>
                             ${Utils.escapeHtml(r.type)}
                         </div>
                         <div class="text-[11px] text-slate-400">${Utils.escapeHtml(r.propertyName)} • Tenant: ${Utils.escapeHtml(r.tenantName)}</div>

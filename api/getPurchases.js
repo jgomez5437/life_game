@@ -11,10 +11,10 @@ export default async function handler(request, response) {
   try {
     authUserId = await verifyAuth(request);
   } catch (error) {
-    return response.status(401).json({ error: error.message });
+    return response.status(401).json({ error: 'Unauthorized' });
   }
 
-  // Enforce rate limiting: 30 requests / min per user
+  // Enforce rate limiting: 60 requests / min per user
   if (!checkRateLimit(request, response, 'getPurchases', null, authUserId)) {
     return;
   }
@@ -29,8 +29,10 @@ export default async function handler(request, response) {
     const purchases = result.rows.map(row => row.pack_id);
     return response.status(200).json({ purchases });
   } catch (error) {
+    if (error?.code === '42P01') {
+      return response.status(200).json({ purchases: [] });
+    }
     console.error('Database Error in getPurchases:', error);
-    // Return empty array gracefully if table doesn't exist yet
-    return response.status(200).json({ purchases: [] });
+    return response.status(500).json({ error: 'Failed to load purchases' });
   }
 }
