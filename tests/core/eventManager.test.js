@@ -453,6 +453,40 @@ describe('EventManager & Random Life Events Engine', () => {
                 expect(state.gameState.pendingEvents[0].eventId).toBe('child_major_approval');
             }
         });
+
+        test('grandchild_heirloom_gift fires at most once per life even with multiple adult children and keep_for_now', () => {
+            const user = state.gameState.user;
+            user.age = 68;
+            user.relationships = [
+                { id: 'c_1', name: 'Kid One', type: 'Son', category: 'child', age: 38, lifeStatus: 'Alive', status: 80 },
+                { id: 'c_2', name: 'Kid Two', type: 'Daughter', category: 'child', age: 35, lifeStatus: 'Alive', status: 80 },
+                { id: 'c_3', name: 'Kid Three', type: 'Son', category: 'child', age: 32, lifeStatus: 'Alive', status: 80 }
+            ];
+            state.gameState.completedEventsHistory = [];
+            state.gameState.pendingEvents = [];
+
+            const evt = LIFE_EVENTS.grandchild_heirloom_gift;
+            expect(evt.oncePerLife).toBe(true);
+            expect(evt.oncePerNpc).toBeFalsy();
+            expect(evt.condition(user, state.gameState)).toBe(true);
+            expect(EventManager.canTriggerEvent(evt, user, state.gameState, user.relationships[0])).toBe(true);
+
+            // Simulate first trigger & player choosing "keep_for_now"
+            const res = evt.resolve(user, user.relationships[0], 'keep_for_now');
+            expect(res.logType).toBe('neutral');
+            state.gameState.completedEventsHistory.push({
+                eventId: 'grandchild_heirloom_gift',
+                age: 68,
+                npcId: 'c_1'
+            });
+
+            // Subsequent years with remaining adult children must NEVER trigger again
+            user.age = 69;
+            expect(evt.condition(user, state.gameState)).toBe(false);
+            for (const child of user.relationships) {
+                expect(EventManager.canTriggerEvent(evt, user, state.gameState, child)).toBe(false);
+            }
+        });
     });
 
     describe('Life Event Modal Delta Badges UX', () => {

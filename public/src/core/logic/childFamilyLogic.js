@@ -1,4 +1,5 @@
 import { AvatarLogic } from '../avatarLogic.js';
+import { CAREER_TRACKS } from '../constants.js';
 import { isAlive } from './playerStatsLogic.js';
 import {
     getRandomFirstName,
@@ -329,3 +330,116 @@ export function processAdultChildrenMilestones(user, rng = Math.random) {
 
     return result;
 }
+
+/**
+ * Maps an NPC child's occupation and education fields into player-state fields
+ * for `continueAsChild`, preserving their exact NPC income, career track/level,
+ * university enrollment/graduation, major, and retirement status.
+ *
+ * @param {object} npc
+ * @returns {object}
+ */
+export function mapNpcOccupationAndEducationToUser(npc) {
+    const age = Number(npc?.age) || 0;
+    const occTitle = typeof npc?.occupation === 'string' ? npc.occupation.trim() : '';
+    const occType = npc?.occupationType || '';
+    const eduLevel = npc?.educationLevel || 'None';
+    const rawIncome = Math.max(0, Number(npc?.income) || 0);
+
+    let track = npc?.careerTrack
+        ? CAREER_TRACKS.find(t => t.key === npc.careerTrack) || null
+        : null;
+    let careerLevel = Number.isInteger(npc?.careerLevel) ? npc.careerLevel : 0;
+
+    if (!track && occType === 'job' && occTitle) {
+        for (const t of CAREER_TRACKS) {
+            const idx = t.levels.findIndex(l => l.title === occTitle);
+            if (idx !== -1) {
+                track = t;
+                careerLevel = idx;
+                break;
+            }
+        }
+    }
+    if (track) {
+        careerLevel = Math.max(0, Math.min(careerLevel, track.levels.length - 1));
+    }
+
+    const isUniversityStudent = occType === 'school' && occTitle.startsWith('University Student');
+    const matchUniMajor = occTitle.match(/^University Student \((.+)\)$/);
+    const resolvedMajor = (typeof npc?.schoolMajor === 'string' ? npc.schoolMajor.trim() : '')
+        || (matchUniMajor ? matchUniMajor[1].trim() : '');
+
+    const isUniversityGrad = !isUniversityStudent && (
+        eduLevel === 'University' ||
+        Boolean(npc?.schoolMajor) ||
+        Boolean(track?.reqDegree) ||
+        Boolean(track?.reqGrad)
+    );
+
+    const gradSchoolDegree = (!isUniversityStudent && track?.reqGrad) ? track.reqGrad : null;
+    const gradSchoolDegrees = gradSchoolDegree ? [gradSchoolDegree] : [];
+
+    const isMinorStudent = age >= 5 && age < 18;
+    const highSchoolGraduated = !isMinorStudent && (
+        age >= 18 ||
+        eduLevel === 'High School' ||
+        eduLevel === 'University' ||
+        isUniversityStudent ||
+        isUniversityGrad ||
+        occType === 'job' ||
+        occType === 'retired'
+    );
+
+    const universitySchoolYear = isUniversityStudent
+        ? Math.min(3, Math.max(0, (Number(npc?.schoolYear) || 1) - 1))
+        : (isUniversityGrad ? 4 : 0);
+
+    const isRetired = occType === 'retired' || occTitle === 'Retired';
+    const isEmployed = !isRetired && !isUniversityStudent && !isMinorStudent && (
+        occType === 'job' || (rawIncome > 0 && Boolean(occTitle) && occTitle !== 'Unemployed')
+    );
+
+    const jobTitle = isEmployed ? (occTitle || track?.levels[careerLevel]?.title || '') : '';
+    const jobSalary = isEmployed
+        ? (rawIncome > 0 ? rawIncome : (track?.levels[careerLevel]?.salary || 0))
+        : 0;
+    const retiredFromJobTitle = isRetired && track
+        ? (track.levels[careerLevel]?.title || null)
+        : null;
+
+    return {
+        isStudent: isMinorStudent || isUniversityStudent,
+        highSchoolGraduated,
+        hasGED: false,
+        highSchoolRetained: false,
+        schoolPerformance: 50,
+        schoolActions: 0,
+        universityEnrolled: isUniversityStudent,
+        universitySchoolYear,
+        universityGraduated: isUniversityGrad,
+        major: (isUniversityStudent || isUniversityGrad) ? resolvedMajor : '',
+        gradSchoolEnrolled: false,
+        gradSchoolType: null,
+        gradSchoolYear: 0,
+        gradSchoolDegree,
+        gradSchoolDegrees,
+        jobTitle,
+        jobSalary,
+        jobPerformance: isEmployed ? 65 : 50,
+        hasSeenJobSalary: isEmployed,
+        careerActionTaken: false,
+        consecutivePoorYears: 0,
+        careerTrack: isEmployed && track ? track.key : null,
+        careerLevel: isEmployed && track ? careerLevel : 0,
+        yearsInRole: 0,
+        yearsInCareer: isEmployed ? Math.max(1, careerLevel * 2) : 0,
+        lastJobTitle: jobTitle || retiredFromJobTitle || null,
+        peakJobTitle: jobTitle || retiredFromJobTitle || null,
+        peakJobSalary: jobSalary,
+        isRetired,
+        retirementPension: isRetired ? rawIncome : 0,
+        retiredFromJobTitle
+    };
+}
+

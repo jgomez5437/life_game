@@ -984,6 +984,63 @@ describe('Time Machine & Multi-Save Slots Engine', () => {
             expect(store.slots['slot_1'].data.user.propertyManager.hired).toBe(true);
             expect(store.slots['slot_1'].data.user.propertyManager.name).toBe('Morgan Blake');
         });
+
+        test('migrateState preserves education history, career history, and EventManager state while pruning unknown keys', () => {
+            const rawSave = {
+                user: {
+                    username: 'Persisted Heir',
+                    age: 68,
+                    lifeStatus: 'Store Manager',
+                    jobTitle: 'Store Manager',
+                    highSchoolGraduated: true,
+                    hasGED: false,
+                    gradSchoolDegree: 'Law School',
+                    gradSchoolDegrees: ['Law School'],
+                    lastJobTitle: 'Partner',
+                    peakJobTitle: 'Managing Partner',
+                    peakJobSalary: 280000,
+                    retiredFromJobTitle: 'Managing Partner',
+                    lifeEventFlags: {
+                        classmate_fight_choice: 'defuse',
+                        junkDietYears: 2,
+                        __proto__: { evil: true }
+                    },
+                    rogueInjectedKey: 'strip_me'
+                },
+                completedEventsHistory: [
+                    { eventId: 'grandchild_heirloom_gift', age: 65, npcId: 'child_1' },
+                    { badEntry: true }
+                ],
+                pendingEvents: [
+                    { eventId: 'elder_pickleball_championship', npcId: null },
+                    null
+                ],
+                unknownRootKey: 'strip_me_too'
+            };
+
+            const migrated = migrateState(rawSave);
+
+            expect(migrated.user.lifeStatus).toBe('Store Manager');
+            expect(migrated.user.highSchoolGraduated).toBe(true);
+            expect(migrated.user.hasGED).toBe(false);
+            expect(migrated.user.gradSchoolDegrees).toEqual(['Law School']);
+            expect(migrated.user.lastJobTitle).toBe('Partner');
+            expect(migrated.user.peakJobTitle).toBe('Managing Partner');
+            expect(migrated.user.peakJobSalary).toBe(280000);
+            expect(migrated.user.retiredFromJobTitle).toBe('Managing Partner');
+            expect(migrated.user.lifeEventFlags).toEqual({
+                classmate_fight_choice: 'defuse',
+                junkDietYears: 2
+            });
+            expect(migrated.user.rogueInjectedKey).toBeUndefined();
+            expect(migrated.unknownRootKey).toBeUndefined();
+            expect(migrated.completedEventsHistory).toEqual([
+                { eventId: 'grandchild_heirloom_gift', age: 65, npcId: 'child_1' }
+            ]);
+            expect(migrated.pendingEvents).toEqual([
+                { eventId: 'elder_pickleball_championship', npcId: null }
+            ]);
+        });
     });
 });
 

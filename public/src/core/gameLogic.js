@@ -176,6 +176,7 @@ export const GameLogic = {
     getLivingChildren: relationshipsNpc.getLivingChildren,
     getChildrenOfChild: relationshipsNpc.getChildrenOfChild,
     getSpouseOfChild: relationshipsNpc.getSpouseOfChild,
+    mapNpcOccupationAndEducationToUser: relationshipsNpc.mapNpcOccupationAndEducationToUser,
 
     // Business, Startups, Cashflow & Taxes
     calculatePromotionChance: businessFinance.calculatePromotionChance,

@@ -325,17 +325,27 @@ export const continueAsChild = (childIndex, inheritedMoney) => {
         visitedCountries: [inheritedCountry],
         ...(typeof inheritedMarriedAtAge === 'number' ? { marriedAtAge: inheritedMarriedAtAge } : {}),
         
-        // Reset dynamic flags
-        isStudent: selectedChild.age >= 5 && selectedChild.age <= 18,
-        universityEnrolled: false,
-        universitySchoolYear: 0,
-        universityGraduated: false,
-        major: '',
-        jobTitle: '',
-        jobSalary: 0,
-        jobPerformance: 50,
+        // Preserve heir's education, major, career, and retirement status from NPC state
+        ...(typeof GameLogic.mapNpcOccupationAndEducationToUser === 'function'
+            ? GameLogic.mapNpcOccupationAndEducationToUser(selectedChild)
+            : {
+                isStudent: selectedChild.age >= 5 && selectedChild.age <= 18,
+                universityEnrolled: false,
+                universitySchoolYear: 0,
+                universityGraduated: false,
+                major: '',
+                jobTitle: '',
+                jobSalary: 0,
+                jobPerformance: 50
+            }),
         hasBusiness: false,
         corporateDebt: { principal: 0, interestRate: 0.08, monthlyPayment: 0 },
+        studentLoans: 0,
+        monthlyLivingExpense: 0,
+        monthlyOutflow: 0,
+        hasSeenExpenseMsg: false,
+        skills: {},
+        lifeEventFlags: {},
         assets: [],
         diseases: [],
         isSick: false,
@@ -347,8 +357,14 @@ export const continueAsChild = (childIndex, inheritedMoney) => {
         isAlive: true
     };
 
-    // Calculate initial life status
+    // Calculate initial life status and monthly cashflow snapshot
     newUserState.lifeStatus = GameLogic.checkLifeStatus(newUserState);
+    if (typeof GameLogic.calculateUserMonthlyIncome === 'function') {
+        newUserState.monthlyIncome = GameLogic.calculateUserMonthlyIncome(newUserState);
+    }
+    if (typeof GameLogic.calculateUserMonthlyOutflow === 'function') {
+        newUserState.monthlyOutflow = GameLogic.calculateUserMonthlyOutflow(newUserState);
+    }
 
     // 2. Overwrite Single Source of Truth
     state.gameState.user = newUserState;
@@ -365,12 +381,33 @@ export const continueAsChild = (childIndex, inheritedMoney) => {
         : `Started your new life with a clean financial slate ($0 debt).`;
     const inheritanceLogColor = safeInheritedMoney > 0 ? "text-green-400" : "text-slate-300";
 
+    const initialLogEvents = [
+        { msg: `You took over the life of ${newUserState.username} following your parent's death.`, color: "text-blue-400 font-bold" },
+        { msg: inheritanceLogMsg, color: inheritanceLogColor }
+    ];
+    if (newUserState.jobTitle) {
+        const eduNote = newUserState.universityGraduated && newUserState.major
+            ? ` (Degree in ${newUserState.major})`
+            : '';
+        initialLogEvents.push({
+            msg: `Currently working as a ${newUserState.jobTitle} earning ${Utils.formatMoney(newUserState.jobSalary)}/yr${eduNote}.`,
+            color: "text-slate-300"
+        });
+    } else if (newUserState.universityEnrolled) {
+        initialLogEvents.push({
+            msg: `Currently enrolled in University studying ${newUserState.major || 'General Studies'}.`,
+            color: "text-slate-300"
+        });
+    } else if (newUserState.isRetired) {
+        initialLogEvents.push({
+            msg: `Currently retired with a ${Utils.formatMoney(newUserState.retirementPension)}/yr pension.`,
+            color: "text-slate-300"
+        });
+    }
+
     state.gameState.lifeLog = [{
         age: newUserState.age,
-        events: [
-            { msg: `You took over the life of ${newUserState.username} following your parent's death.`, color: "text-blue-400 font-bold" },
-            { msg: inheritanceLogMsg, color: inheritanceLogColor }
-        ]
+        events: initialLogEvents
     }];
 
     checkPeriodicAchievements(newUserState);
