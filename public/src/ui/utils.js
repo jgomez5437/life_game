@@ -1,4 +1,5 @@
 import { state } from '../core/state.js';
+import { formatShortScaleValue } from '../core/numberFormat.js';
 
 export const COUNTRIES_DATA = [
     {
@@ -193,11 +194,17 @@ export const Utils = {
         const city = customCity || (state.gameState && state.gameState.user && (state.gameState.user.city || state.gameState.user.country));
         const info = getCurrencyInfo(city);
         const amount = Math.round(num || 0);
-        const absFormatted = Math.abs(amount).toLocaleString('en-US');
+        const absVal = Math.abs(amount);
         const sign = amount < 0 ? '-' : '';
         const symbol = info.symbol || '$';
-        
         const formattedSymbol = /[A-Za-z]$/.test(symbol) ? `${symbol} ` : symbol;
+
+        const short = formatShortScaleValue(absVal, { minThreshold: 1e9, maxDecimals: 2 });
+        if (short !== null) {
+            return `${sign}${formattedSymbol}${short}`;
+        }
+
+        const absFormatted = absVal.toLocaleString('en-US');
         return `${sign}${formattedSymbol}${absFormatted}`;
     },
 
@@ -210,20 +217,15 @@ export const Utils = {
         const symbol = info.symbol || '$';
         const formattedSymbol = /[A-Za-z]$/.test(symbol) ? `${symbol} ` : symbol;
 
-        if (absVal >= 1000000000000) {
-            const formatted = parseFloat((absVal / 1000000000000).toFixed(2));
-            return `${sign}${formattedSymbol}${formatted}T`;
-        }
-        if (absVal >= 1000000000) {
-            const formatted = parseFloat((absVal / 1000000000).toFixed(2));
-            return `${sign}${formattedSymbol}${formatted}B`;
-        }
-        if (absVal >= 1000000) {
-            const formatted = parseFloat((absVal / 1000000).toFixed(2));
-            return `${sign}${formattedSymbol}${formatted}M`;
+        const shortLarge = formatShortScaleValue(absVal, { minThreshold: 1e6, maxDecimals: 2 });
+        if (shortLarge !== null) {
+            return `${sign}${formattedSymbol}${shortLarge}`;
         }
         if (absVal >= 100000) {
             const formatted = parseFloat((absVal / 1000).toFixed(1));
+            if (formatted >= 1000) {
+                return `${sign}${formattedSymbol}1M`;
+            }
             return `${sign}${formattedSymbol}${formatted}K`;
         }
         return Utils.formatMoney(num, customCity);

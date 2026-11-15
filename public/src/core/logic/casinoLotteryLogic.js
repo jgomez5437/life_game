@@ -93,7 +93,7 @@ export function playLotteryTicket(ticketTypeId, user) {
 
     if (ticketTypeId === 'mega' && prize.payout > 0 && prize.minRoll >= 0.998) {
         actualPayout = getMegaJackpotAmount(user);
-        actualTitle = `MEGA POWERBALL JACKPOT! Won $${actualPayout.toLocaleString()} GRAND PRIZE!`;
+        actualTitle = `MEGA POWERBALL JACKPOT! Won ${Utils.formatMoney(actualPayout)} GRAND PRIZE!`;
         user.megaJackpotAmount = BASE_MEGA_JACKPOT; // Reset to $20M base!
     }
 

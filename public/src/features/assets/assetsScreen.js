@@ -102,7 +102,7 @@ function getPropertyListHtml(assets) {
         const isRented = p.isRented && p.tenant;
         const monthlyRent = p.tenant?.monthlyRent || p.tenant?.rent || 0;
         const tenantBadge = isRented 
-            ? `<span class="bg-green-900/60 text-green-300 border border-green-700 text-[9px] uppercase px-1.5 py-0.5 rounded font-bold"><i class="fas fa-user-check text-[8px] mr-0.5"></i> Rented ($${monthlyRent.toLocaleString()}/mo)</span>`
+            ? `<span class="bg-green-900/60 text-green-300 border border-green-700 text-[9px] uppercase px-1.5 py-0.5 rounded font-bold"><i class="fas fa-user-check text-[8px] mr-0.5"></i> Rented (${Utils.formatMoney(monthlyRent)}/mo)</span>`
             : `<span class="bg-slate-700 text-slate-400 text-[9px] uppercase px-1.5 py-0.5 rounded font-bold">Vacant</span>`;
         
         const isManaged = isRented && isManagerHired;
@@ -111,7 +111,7 @@ function getPropertyListHtml(assets) {
             : '';
 
         const mortgageBadge = p.hasMortgage && p.mortgage && p.mortgage.principal > 0
-            ? `<span class="bg-amber-900/60 text-amber-300 border border-amber-700 text-[9px] uppercase px-1.5 py-0.5 rounded font-bold"><i class="fas fa-landmark text-[8px] mr-0.5"></i> Mortgage ($${Math.round(p.mortgage.monthlyPayment).toLocaleString()}/mo)</span>`
+            ? `<span class="bg-amber-900/60 text-amber-300 border border-amber-700 text-[9px] uppercase px-1.5 py-0.5 rounded font-bold"><i class="fas fa-landmark text-[8px] mr-0.5"></i> Mortgage (${Utils.formatMoney(Math.round(p.mortgage.monthlyPayment))}/mo)</span>`
             : `<span class="bg-blue-900/40 text-blue-300 text-[9px] uppercase px-1.5 py-0.5 rounded font-bold">Paid Off</span>`;
 
         return `

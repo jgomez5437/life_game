@@ -9,17 +9,16 @@
 
 import { GRAD_SCHOOL_DEGREE_TITLES, PRO_SPORTS_LEAGUES, SKILL_TRACKS } from '../constants.js';
 import { BUSINESS_INDUSTRIES, HQ_TIERS } from '../../features/business/businessTypes.js';
+import { formatShortScaleValue } from '../numberFormat.js';
 
 /**
  * Format currency numbers for eulogy strings
  */
 export function formatMoneyCompact(num) {
-    const abs = Math.abs(num);
-    if (abs >= 1000000000) {
-        return `$${(abs / 1000000000).toFixed(1).replace(/\.0$/, '')}B`;
-    }
-    if (abs >= 1000000) {
-        return `$${(abs / 1000000).toFixed(1).replace(/\.0$/, '')}M`;
+    const abs = Math.abs(num || 0);
+    const shortLarge = formatShortScaleValue(abs, { minThreshold: 1e6, maxDecimals: 1 });
+    if (shortLarge !== null) {
+        return `$${shortLarge}`;
     }
     if (abs >= 1000) {
         return `$${(abs / 1000).toFixed(0)}k`;

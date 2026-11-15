@@ -3,6 +3,7 @@ import { calculateTotalAutoLoanMonthlyOutflow } from './vehiclesJewelryLogic.js'
 import { getDietPlan, calculateActiveHealthCosts, calculateChildMonthlyOutflow } from './healthMortalityLogic.js';
 import { calculateTotalRentalIncome, PROPERTY_MANAGER_FEE_RATE, isPropertyManagerHired, calculatePropertyMonthlyOutflow } from './landlordTenantLogic.js';
 import { calculateSpousalIncomeContribution } from './npcGeneratorLogic.js';
+import { formatUsdBillionsPlus } from '../numberFormat.js';
 
 export function getMinRetireYears(userOrTrack) {
     const trackKey = typeof userOrTrack === 'string' ? userOrTrack : (userOrTrack?.careerTrack || '');
@@ -331,7 +332,7 @@ export function calculateFinancialBreakdown(user) {
         expenseItems.push({
             id: 'student_loans',
             label: 'Student Loan Repayment',
-            sublabel: user.isStudent ? 'Deferred while enrolled' : `$${studentLoanBalance.toLocaleString()} remaining`,
+            sublabel: user.isStudent ? 'Deferred while enrolled' : `${formatUsdBillionsPlus(studentLoanBalance)} remaining`,
             icon: 'fa-graduation-cap',
             color: 'text-rose-400',
             monthly: studentLoanMonthly,
@@ -453,7 +454,7 @@ export function calculateFinancialBreakdown(user) {
         {
             id: 'real_estate',
             label: 'Real Estate Value',
-            sublabel: `${properties.length} ${properties.length === 1 ? 'Property' : 'Properties'} (Equity: $${propEquity.toLocaleString()})`,
+            sublabel: `${properties.length} ${properties.length === 1 ? 'Property' : 'Properties'} (Equity: ${formatUsdBillionsPlus(propEquity)})`,
             icon: 'fa-building',
             color: 'text-amber-400',
             value: propGrossVal,
@@ -462,7 +463,7 @@ export function calculateFinancialBreakdown(user) {
         {
             id: 'vehicles',
             label: 'Vehicles Value',
-            sublabel: `${vehicles.length} ${vehicles.length === 1 ? 'Vehicle' : 'Vehicles'} (Equity: $${vehEquity.toLocaleString()})`,
+            sublabel: `${vehicles.length} ${vehicles.length === 1 ? 'Vehicle' : 'Vehicles'} (Equity: ${formatUsdBillionsPlus(vehEquity)})`,
             icon: 'fa-car',
             color: 'text-blue-400',
             value: vehGrossVal,
