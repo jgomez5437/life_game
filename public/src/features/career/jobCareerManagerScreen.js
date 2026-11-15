@@ -324,6 +324,11 @@ export function retire() {
     user.yearsInCareer = 0;
     user.consecutivePoorYears = 0;
     user.hasSeenJobSalary = false;
+    user.athleteContract = null;
+    user.athleteGamesThisYear = 0;
+    user.athleteEndorsementThisYear = false;
+    user.athletePoorSeasons = 0;
+    user.mafiaCrimesThisYear = 0;
     
     UI.hideModal();
     addLog(`Retired from your position as ${oldJob}. You will now receive a pension of ${Utils.formatMoney(pension)}/yr.`, 'major');
@@ -385,6 +390,11 @@ export function quitCareer() {
     user.yearsInCareer = 0;
     user.consecutivePoorYears = 0;
     user.hasSeenJobSalary = false;
+    user.athleteContract = null;
+    user.athleteGamesThisYear = 0;
+    user.athleteEndorsementThisYear = false;
+    user.athletePoorSeasons = 0;
+    user.mafiaCrimesThisYear = 0;
 
     UI.hideModal();
 

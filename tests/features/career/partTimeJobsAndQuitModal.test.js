@@ -15,10 +15,18 @@ import {
     openUniversityModal,
     openGradEnrollmentModal
 } from '../../../public/src/features/career/occupationScreen.js';
-import { applyForJob } from '../../../public/src/features/career/careerJobsScreen.js';
+import {
+    applyForJob,
+    applyForCareerTrack,
+    confirmJoinSpecialCareer,
+    renderCareerMarket,
+    openProSportsEntryModal,
+    enterProSportsDraft
+} from '../../../public/src/features/career/careerJobsScreen.js';
 import { ageUp } from '../../../public/src/features/player/mainScreen.js';
 import { saveToSlot } from '../../../public/src/core/saveSlotManager.js';
 import { harvestLifeProfile } from '../../../public/src/core/logic/eulogyProfileLogic.js';
+import { CAREER_BUSINESS_EVENTS } from '../../../public/src/core/events/careerBusinessEvents.js';
 
 async function waitForCondition(predicate, timeoutMs = 1500) {
     const start = Date.now();
@@ -463,6 +471,257 @@ describe('Part-Time Quit Modal Bugfix & Part-Time Raises', () => {
             expect(document.getElementById('modal-content').innerHTML).toContain('data-action="hideModal"');
             expect(document.getElementById('modal-content').innerHTML).not.toContain('data-action="closeModal"');
             UI.hideModal();
+        });
+    });
+
+    describe('Cross-System Audit: Interview Stack, Special Tracks, Prison, Relocation & Events', () => {
+        test('interview wrong answer + Close closes cleanly without reopening Job Interview from modal stack', async () => {
+            const user = state.gameState.user;
+            user.jobTitle = null;
+            const guardJob = PART_TIME_JOBS.find(j => j.title === 'Security Guard');
+            jest.spyOn(Math, 'random').mockReturnValue(0.0);
+
+            applyForJob(guardJob.title, guardJob.salary);
+            expect(document.getElementById('modal-title').textContent).toBe('Job Interview');
+
+            // Pick wrong option (0)
+            document.querySelectorAll('#modal-content button[data-action="answerInterview"]')[0].click();
+            await waitForCondition(() => document.getElementById('modal-title').textContent === 'Not Hired');
+
+            expect(document.getElementById('modal-title').textContent).toBe('Not Hired');
+            expect(user.money).toBe(1800); // $200 course deducted
+
+            // Clicking Close must close completely rather than popping stale Job Interview
+            document.querySelector('#modal-content button[data-action="hideModal"]').click();
+            await waitForCondition(() => !UI.isModalOpen());
+            expect(UI.isModalOpen()).toBe(false);
+            expect(document.getElementById('modal-overlay').classList.contains('hidden')).toBe(true);
+            expect(user.jobTitle).toBeNull();
+        });
+
+        test('interview wrong answer -> Try Again -> correct answer closes modal completely without popping Not Hired', async () => {
+            const user = state.gameState.user;
+            user.jobTitle = null;
+            const guardJob = PART_TIME_JOBS.find(j => j.title === 'Security Guard');
+            jest.spyOn(Math, 'random').mockReturnValue(0.0);
+
+            applyForJob(guardJob.title, guardJob.salary);
+
+            // Round 1: general[0] wrong answer (0)
+            document.querySelectorAll('#modal-content button[data-action="answerInterview"]')[0].click();
+            await waitForCondition(() => document.getElementById('modal-title').textContent === 'Not Hired');
+
+            // Click Try Again -> replaces Not Hired with general[1]
+            document.querySelector('#modal-content button[data-action="retryInterview"]').click();
+            await waitForCondition(() => document.getElementById('modal-title').textContent === 'Job Interview');
+
+            // Round 2: general[1] correct answer is index 2
+            document.querySelectorAll('#modal-content button[data-action="answerInterview"]')[2].click();
+            await waitForCondition(() => user.jobTitle === 'Security Guard');
+
+            expect(user.jobTitle).toBe('Security Guard');
+            expect(UI.isModalOpen()).toBe(false);
+            expect(document.getElementById('modal-overlay').classList.contains('hidden')).toBe(true);
+            expect(document.getElementById('modal-title').textContent).not.toBe('Not Hired');
+        });
+
+        test('quitCareer clears Mafia & Pro Athlete active contract state while preserving lifetime trophies for eulogy', async () => {
+            // 1. Mafia Syndicate quit
+            state.gameState.user = makePartTimeUser({
+                careerTrack: 'mafia_syndicate',
+                jobTitle: 'Made Man',
+                jobSalary: 150000,
+                yearsInCareer: 3,
+                mafiaCrimesThisYear: 2,
+                raiseRequestedThisYear: true
+            });
+            confirmQuitCareer();
+            expect(document.getElementById('modal-title').textContent).toBe('Leave Syndicate?');
+            document.querySelector('#modal-content button[data-action="quitCareer"]').click();
+            await waitForCondition(() => state.gameState.user.jobTitle === null);
+
+            expect(state.gameState.user.careerTrack).toBeNull();
+            expect(state.gameState.user.mafiaCrimesThisYear).toBe(0);
+            expect(state.gameState.user.totalYearsWorked).toBe(3);
+
+            // 2. Pro Athlete quit clears contract/season counters but keeps rings/MVPs/earnings
+            state.gameState.user = makePartTimeUser({
+                careerTrack: 'pro_athlete',
+                athleteSport: 'basketball',
+                jobTitle: 'League All-Star',
+                jobSalary: 28000000,
+                yearsInCareer: 5,
+                athleteContract: { team: 'Lakers', totalYears: 4, yearsRemaining: 2, annualSalary: 28000000 },
+                athleteGamesThisYear: 2,
+                athleteEndorsementThisYear: true,
+                athletePoorSeasons: 1,
+                athleteRings: 2,
+                athleteMvps: 1,
+                athleteCareerEarnings: 90000000
+            });
+            confirmQuitCareer();
+            expect(document.getElementById('modal-title').textContent).toBe('Leave Pro Contract?');
+            document.querySelector('#modal-content button[data-action="quitCareer"]').click();
+            await waitForCondition(() => state.gameState.user.jobTitle === null);
+
+            const athlete = state.gameState.user;
+            expect(athlete.careerTrack).toBeNull();
+            expect(athlete.athleteContract).toBeNull();
+            expect(athlete.athleteGamesThisYear).toBe(0);
+            expect(athlete.athleteEndorsementThisYear).toBe(false);
+            expect(athlete.athletePoorSeasons).toBe(0);
+            expect(athlete.athleteSport).toBe('basketball');
+            expect(athlete.athleteRings).toBe(2);
+            expect(athlete.athleteMvps).toBe(1);
+            expect(athlete.athleteCareerEarnings).toBe(90000000);
+        });
+
+        test('prison sentencing & felony probation fully clear jobSalary, careerTrack, raise flags, and Career Market Current badge', () => {
+            // Probation sentencing (sentenceYears === 0, felony)
+            const probUser = makePartTimeUser({
+                careerTrack: 'retail',
+                careerLevel: 2,
+                yearsInCareer: 4,
+                jobTitle: 'Team Lead',
+                jobSalary: 45000,
+                raiseRequestedThisYear: true
+            });
+            GameLogic.applySentencing(probUser, {
+                crime: { id: 'tax_evasion', name: 'Tax Evasion', category: 'white_collar' },
+                fine: 1000,
+                sentenceYears: 0
+            });
+            expect(probUser.jobTitle).toBeNull();
+            expect(probUser.jobSalary).toBe(0);
+            expect(probUser.salary).toBe(0);
+            expect(probUser.careerTrack).toBeNull();
+            expect(probUser.raiseRequestedThisYear).toBe(false);
+            expect(probUser.totalYearsWorked).toBe(4);
+            expect(probUser.lastJobTitle).toBe('Team Lead');
+
+            // Incarceration (sentenceYears > 0) clears careerTrack so Career Market no longer shows "Current"
+            state.gameState.user = makePartTimeUser({
+                careerTrack: 'software_eng',
+                careerLevel: 1,
+                yearsInCareer: 2,
+                jobTitle: 'Software Developer',
+                jobSalary: 72000,
+                raiseRequestedThisYear: true,
+                universityGraduated: true,
+                major: 'Computer Science'
+            });
+            const imprisonedUser = state.gameState.user;
+            GameLogic.applySentencing(imprisonedUser, {
+                crime: { id: 'gta', name: 'Grand Theft Auto', category: 'heist' },
+                fine: 2000,
+                sentenceYears: 2
+            });
+            expect(imprisonedUser.jobTitle).toBeNull();
+            expect(imprisonedUser.jobSalary).toBe(0);
+            expect(imprisonedUser.salary).toBe(0);
+            expect(imprisonedUser.careerTrack).toBeNull();
+            expect(imprisonedUser.raiseRequestedThisYear).toBe(false);
+            expect(imprisonedUser.totalYearsWorked).toBe(2);
+
+            // Simulate post-release check in Career Market
+            imprisonedUser.inPrison = false;
+            renderCareerMarket();
+            expect(document.getElementById('game-container').innerHTML).not.toContain('>Current<');
+        });
+
+        test('moveCountry and direct part-time -> Mafia/Pro Athlete transitions reset cross-track flags without losing tenure', () => {
+            const mover = makePartTimeUser({
+                careerTrack: 'pro_athlete',
+                jobTitle: 'Rookie Roster',
+                jobSalary: 795000,
+                raiseRequestedThisYear: true,
+                athleteContract: { totalYears: 2, yearsRemaining: 1 },
+                athleteGamesThisYear: 2,
+                athleteEndorsementThisYear: true,
+                athletePoorSeasons: 1,
+                mafiaCrimesThisYear: 1
+            });
+            const moveRes = GameLogic.moveCountry(mover, 'Japan', 'Tokyo');
+            expect(moveRes.success).toBe(true);
+            expect(mover.jobTitle).toBeNull();
+            expect(mover.jobSalary).toBe(0);
+            expect(mover.raiseRequestedThisYear).toBe(false);
+            expect(mover.athleteContract).toBeNull();
+            expect(mover.athleteGamesThisYear).toBe(0);
+            expect(mover.athleteEndorsementThisYear).toBe(false);
+            expect(mover.athletePoorSeasons).toBe(0);
+            expect(mover.mafiaCrimesThisYear).toBe(0);
+
+            // Switching directly from Part-Time -> Mafia Syndicate preserves tenure & clears stale flags
+            const switcher = state.gameState.user;
+            switcher.purchases = ['mafia_syndicate', 'athlete_career'];
+            switcher.yearsInCareer = 3;
+            switcher.consecutivePoorYears = 1;
+            switcher.raiseRequestedThisYear = true;
+            switcher.careerActionTaken = true;
+            confirmJoinSpecialCareer('mafia_syndicate');
+            expect(switcher.careerTrack).toBe('mafia_syndicate');
+            expect(switcher.totalYearsWorked).toBe(3);
+            expect(switcher.yearsInCareer).toBe(0);
+            expect(switcher.consecutivePoorYears).toBe(0);
+            expect(switcher.raiseRequestedThisYear).toBe(false);
+            expect(switcher.careerActionTaken).toBe(false);
+
+            // Switching directly from Mafia -> Pro Athlete draft preserves cumulative tenure & clears mafiaCrimesThisYear
+            switcher.yearsInCareer = 2;
+            switcher.mafiaCrimesThisYear = 2;
+            switcher.raiseRequestedThisYear = true;
+            jest.spyOn(Math, 'random').mockReturnValue(0.0);
+            const draftRes = GameLogic.attemptAthleteDraft(switcher, 'basketball');
+            expect(draftRes.success).toBe(true);
+            expect(switcher.totalYearsWorked).toBe(5);
+            expect(switcher.mafiaCrimesThisYear).toBe(0);
+            expect(switcher.raiseRequestedThisYear).toBe(false);
+        });
+
+        test('enterProSportsDraft keeps Combine out of stack when drafted and preserves Draft Results modal when undrafted', () => {
+            const user = state.gameState.user;
+            user.purchases = ['athlete_career'];
+            user.age = 20;
+            user.health = 95;
+            user.skills = { basketball: { xp: 80, level: 3 }, conditioning: { xp: 80, level: 3 } };
+
+            // 1. Undrafted path: Draft Results stays on top and returns to refreshed Combine when dismissed
+            jest.spyOn(Math, 'random').mockReturnValue(0.99);
+            openProSportsEntryModal('basketball');
+            enterProSportsDraft('basketball');
+            expect(document.getElementById('modal-title').textContent).toBe('Draft Results');
+            document.getElementById('modal-btn').click();
+            expect(document.getElementById('modal-title').textContent).toBe('Pro Sports Combine & Leagues');
+            expect(document.getElementById('modal-content').textContent).toContain('Draft Already Entered');
+            UI.hideModal();
+
+            // 2. Drafted path: dismissing Drafted modal closes completely instead of popping Combine back open
+            jest.spyOn(Math, 'random').mockReturnValue(0.0);
+            openProSportsEntryModal('football');
+            enterProSportsDraft('football');
+            expect(document.getElementById('modal-title').textContent).toBe('Drafted into Pro League!');
+            document.getElementById('modal-btn').click();
+            expect(UI.isModalOpen()).toBe(false);
+        });
+
+        test('career_headhunter_poach updates peakJobSalary and resets raiseRequestedThisYear when switching firms', () => {
+            const user = makePartTimeUser({
+                careerTrack: 'software_eng',
+                jobTitle: 'Software Developer',
+                jobSalary: 100000,
+                peakJobTitle: 'Software Developer',
+                peakJobSalary: 100000,
+                yearsInRole: 3,
+                raiseRequestedThisYear: true
+            });
+            const event = CAREER_BUSINESS_EVENTS.career_headhunter_poach;
+            event.resolve(user, null, 'take_signing_bonus');
+
+            expect(user.jobSalary).toBe(108000);
+            expect(user.peakJobSalary).toBe(108000);
+            expect(user.yearsInRole).toBe(0);
+            expect(user.raiseRequestedThisYear).toBe(false);
         });
     });
 });

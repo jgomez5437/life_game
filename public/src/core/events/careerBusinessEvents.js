@@ -146,6 +146,10 @@ export const CAREER_BUSINESS_EVENTS = {
             if (choiceId === "leverage_raise") {
                 const newSalary = Math.round(currentSal * 1.12);
                 user.jobSalary = newSalary;
+                if (!user.peakJobTitle || newSalary >= (user.peakJobSalary || 0)) {
+                    user.peakJobTitle = user.jobTitle;
+                    user.peakJobSalary = newSalary;
+                }
                 if (typeof user.jobPerformance === 'number') user.jobPerformance = Math.min(100, user.jobPerformance + 5);
                 GameLogic.adjustStat(user, 'happiness', 10);
                 return {
@@ -156,7 +160,12 @@ export const CAREER_BUSINESS_EVENTS = {
             } else if (choiceId === "take_signing_bonus") {
                 user.money = (user.money ?? 0) + 4000;
                 user.jobSalary = Math.round(currentSal * 1.08);
+                if (!user.peakJobTitle || user.jobSalary >= (user.peakJobSalary || 0)) {
+                    user.peakJobTitle = user.jobTitle;
+                    user.peakJobSalary = user.jobSalary;
+                }
                 user.yearsInRole = 0;
+                user.raiseRequestedThisYear = false;
                 GameLogic.adjustStat(user, 'happiness', 15);
                 return {
                     log: `You jumped to the rival firm with a $4,000 signing bonus and a raise to $${user.jobSalary.toLocaleString()}/yr!`,

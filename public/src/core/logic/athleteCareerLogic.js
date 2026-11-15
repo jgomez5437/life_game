@@ -221,11 +221,20 @@ export function attemptAthleteDraft(user, sportKey = 'football') {
         const scaledAnnual = calculateScaledSalary(contract.annualSalary, user.city);
         const scaledBonus = calculateScaledSalary(contract.signingBonus, user.city);
 
+        if (user.jobTitle && (user.yearsInCareer || 0) > 0) {
+            user.totalYearsWorked = (user.totalYearsWorked || 0) + (user.yearsInCareer || 0);
+        }
+        if (user.careerTrack && user.careerTrack !== 'pro_athlete') {
+            user.lastCareerTrack = user.careerTrack;
+        }
         user.careerTrack = 'pro_athlete';
         user.athleteSport = sportKey;
         user.careerLevel = startingLevel;
         user.yearsInRole = 0;
         user.yearsInCareer = 0;
+        user.consecutivePoorYears = 0;
+        user.careerActionTaken = false;
+        user.raiseRequestedThisYear = false;
         user.jobPerformance = 90;
         user.jobTitle = league.levels[startingLevel].title;
         user.jobSalary = scaledAnnual;
@@ -243,6 +252,7 @@ export function attemptAthleteDraft(user, sportKey = 'football') {
         user.athleteRings = user.athleteRings || 0;
         user.athleteMvps = user.athleteMvps || 0;
         user.athletePoorSeasons = 0;
+        user.mafiaCrimesThisYear = 0;
         adjustStat(user, 'happiness', 30);
 
         const roundLabel = draftRound === 'round1' ? '1st Round' : draftRound === 'round2' ? '2nd Round' : 'Late Round';
@@ -293,11 +303,20 @@ export function attemptAthleteTryout(user, sportKey = 'football') {
         const contract = generateAthleteContract(sportKey, 0, evaluation.prospectScore, false);
         const scaledAnnual = calculateScaledSalary(contract.annualSalary, user.city);
 
+        if (user.jobTitle && (user.yearsInCareer || 0) > 0) {
+            user.totalYearsWorked = (user.totalYearsWorked || 0) + (user.yearsInCareer || 0);
+        }
+        if (user.careerTrack && user.careerTrack !== 'pro_athlete') {
+            user.lastCareerTrack = user.careerTrack;
+        }
         user.careerTrack = 'pro_athlete';
         user.athleteSport = sportKey;
         user.careerLevel = 0;
         user.yearsInRole = 0;
         user.yearsInCareer = 0;
+        user.consecutivePoorYears = 0;
+        user.careerActionTaken = false;
+        user.raiseRequestedThisYear = false;
         user.jobPerformance = 80;
         user.jobTitle = league.levels[0].title;
         user.jobSalary = scaledAnnual;
@@ -313,6 +332,7 @@ export function attemptAthleteTryout(user, sportKey = 'football') {
         user.athleteRings = user.athleteRings || 0;
         user.athleteMvps = user.athleteMvps || 0;
         user.athletePoorSeasons = 0;
+        user.mafiaCrimesThisYear = 0;
         adjustStat(user, 'happiness', 20);
 
         return {

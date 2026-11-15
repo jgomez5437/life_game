@@ -114,6 +114,7 @@ export async function handleFinances(user) {
             }
             user.mafiaCrimesThisYear = 0;
             user.careerActionTaken = false;
+            user.raiseRequestedThisYear = false;
         } else if (user.careerTrack === 'pro_athlete') {
             const league = PRO_SPORTS_LEAGUES[user.athleteSport] || PRO_SPORTS_LEAGUES.football;
             const lvlIdx = user.careerLevel || 0;
@@ -137,13 +138,21 @@ export async function handleFinances(user) {
                 }
                 user.careerTrack = null;
                 user.careerLevel = 0;
+                user.yearsInRole = 0;
+                user.yearsInCareer = 0;
+                user.jobPerformance = 50;
+                user.consecutivePoorYears = 0;
+                user.careerActionTaken = false;
+                user.raiseRequestedThisYear = false;
+                user.hasSeenJobSalary = false;
                 user.jobTitle = null;
                 user.jobSalary = 0;
                 user.athleteContract = null;
-                if ((user.yearsInCareer || 0) >= 8) {
+                user.athletePoorSeasons = 0;
+                if ((user.retiredYearsInCareer || 0) >= 8) {
                     user.isRetired = true;
                     user.retirementPension = Math.round(level.salary * 0.15);
-                    addLog(`Your ${user.yearsInCareer} years of league service qualified you for an annual pension of ${Utils.formatMoney(user.retirementPension)}/yr.`, 'good');
+                    addLog(`Your ${user.retiredYearsInCareer} years of league service qualified you for an annual pension of ${Utils.formatMoney(user.retirementPension)}/yr.`, 'good');
                 }
             } else {
                 user.athleteContract = user.athleteContract || {
@@ -175,6 +184,14 @@ export async function handleFinances(user) {
                         user.lastCareerTrack = 'pro_athlete';
                         user.totalYearsWorked = (user.totalYearsWorked || 0) + (user.yearsInCareer || 0);
                         user.careerTrack = null;
+                        user.careerLevel = 0;
+                        user.yearsInRole = 0;
+                        user.yearsInCareer = 0;
+                        user.jobPerformance = 50;
+                        user.consecutivePoorYears = 0;
+                        user.careerActionTaken = false;
+                        user.raiseRequestedThisYear = false;
+                        user.hasSeenJobSalary = false;
                         user.jobTitle = null;
                         user.jobSalary = 0;
                         user.athleteContract = null;
@@ -229,9 +246,18 @@ export async function handleFinances(user) {
                         user.lastCareerTrack = 'pro_athlete';
                         user.totalYearsWorked = (user.totalYearsWorked || 0) + (user.yearsInCareer || 0);
                         user.careerTrack = null;
+                        user.careerLevel = 0;
+                        user.yearsInRole = 0;
+                        user.yearsInCareer = 0;
+                        user.jobPerformance = 50;
+                        user.consecutivePoorYears = 0;
+                        user.careerActionTaken = false;
+                        user.raiseRequestedThisYear = false;
+                        user.hasSeenJobSalary = false;
                         user.jobTitle = null;
                         user.jobSalary = 0;
                         user.athleteContract = null;
+                        user.athletePoorSeasons = 0;
                     } else {
                         // Extension negotiation
                         let targetLvl = lvlIdx;
@@ -273,6 +299,7 @@ export async function handleFinances(user) {
             user.athleteGamesThisYear = 0;
             user.athleteEndorsementThisYear = false;
             user.careerActionTaken = false;
+            user.raiseRequestedThisYear = false;
         } else {
             user.money += user.jobSalary;
             if (user.hasSeenJobSalary) {
@@ -314,7 +341,7 @@ export async function handleFinances(user) {
                                 user.totalYearsWorked = (user.totalYearsWorked || 0) + (user.yearsInCareer || 0);
                                 user.jobTitle = null; user.jobSalary = 0; user.jobPerformance = 50;
                                 user.careerTrack = null; user.careerLevel = 0; user.yearsInRole = 0; user.yearsInCareer = 0;
-                                user.consecutivePoorYears = 0; user.careerActionTaken = false; user.hasSeenJobSalary = false;
+                                user.consecutivePoorYears = 0; user.careerActionTaken = false; user.raiseRequestedThisYear = false; user.hasSeenJobSalary = false;
                             }
                         } else {
                             GameLogic.adjustStat(user, 'happiness', -5);
@@ -356,9 +383,11 @@ export async function handleFinances(user) {
                 addLog(`Your employer let you go from ${user.jobTitle} due to poor performance. (-25 Happiness)`, 'bad');
                 user.lastJobTitle = user.jobTitle;
                 user.peakJobTitle = user.peakJobTitle || user.jobTitle;
+                if (user.careerTrack) user.lastCareerTrack = user.careerTrack;
                 user.totalYearsWorked = (user.totalYearsWorked || 0) + (user.yearsInCareer || 0);
-                user.jobTitle = null; user.jobSalary = 0; user.jobPerformance = 50; user.yearsInCareer = 0;
-                user.careerActionTaken = false; user.hasSeenJobSalary = false;
+                user.jobTitle = null; user.jobSalary = 0; user.jobPerformance = 50;
+                user.careerTrack = null; user.careerLevel = 0; user.yearsInRole = 0; user.yearsInCareer = 0;
+                user.consecutivePoorYears = 0; user.careerActionTaken = false; user.raiseRequestedThisYear = false; user.hasSeenJobSalary = false;
             }
 
             if (user.jobTitle && !wasPromoted) {
