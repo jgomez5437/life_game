@@ -211,6 +211,7 @@ function _hireCareer(trackKey) {
     }
     user.jobPerformance       = 50;
     user.careerActionTaken    = false;
+    user.raiseRequestedThisYear = false;
     user.hasSeenJobSalary     = true;
     GameLogic.adjustStat(user, 'happiness', 15);
     const skillNote = bonuses.fastTracked
@@ -222,17 +223,22 @@ function _hireCareer(trackKey) {
 
 function _hirePartTime(title, salary) {
     const user = state.gameState.user;
-    user.jobTitle          = title;
-    user.jobSalary         = salary;
-    user.lastJobTitle      = title;
+    user.careerTrack          = null;
+    user.careerLevel          = 0;
+    user.yearsInRole          = 0;
+    user.consecutivePoorYears = 0;
+    user.jobTitle             = title;
+    user.jobSalary            = salary;
+    user.lastJobTitle         = title;
     if (!user.peakJobTitle || salary >= (user.peakJobSalary || 0)) {
         user.peakJobTitle = title;
         user.peakJobSalary = salary;
     }
-    user.jobPerformance    = 50;
-    user.yearsInCareer     = 0;
-    user.careerActionTaken = false;
-    user.hasSeenJobSalary  = true;
+    user.jobPerformance       = 50;
+    user.yearsInCareer        = 0;
+    user.careerActionTaken    = false;
+    user.raiseRequestedThisYear = false;
+    user.hasSeenJobSalary     = true;
     GameLogic.adjustStat(user, 'happiness', 10);
     addLog(`Hired as ${title}! Annual pay: ${Utils.formatMoney(salary)}. (+10 Happiness)`, 'good');
     UI.updateHeader(user);

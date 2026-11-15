@@ -198,6 +198,12 @@ export const GameLogic = {
     calculateUserMonthlyOutflow: businessFinance.calculateUserMonthlyOutflow,
     calculateFinancialBreakdown: businessFinance.calculateFinancialBreakdown,
     getMinRetireYears: businessFinance.getMinRetireYears,
+    PART_TIME_ANNUAL_HOURS: businessFinance.PART_TIME_ANNUAL_HOURS,
+    isPartTimeJob: businessFinance.isPartTimeJob,
+    formatHourlyWage: businessFinance.formatHourlyWage,
+    calculateAnnualRaise: businessFinance.calculateAnnualRaise,
+    getRaiseRequestTerms: businessFinance.getRaiseRequestTerms,
+    processRaiseRequest: businessFinance.processRaiseRequest,
 
     // Real Estate, Mortgages, Landlord & Property Manager
     PROPERTIES_FOR_SALE: realEstateLandlord.PROPERTIES_FOR_SALE,

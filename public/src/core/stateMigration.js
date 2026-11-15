@@ -259,6 +259,7 @@ export function migrateState(rawState) {
     const jobSalary = toNum(u.jobSalary || u.job_salary, 0, 0);
     const jobPerformance = toNum(u.jobPerformance, 50, 0, 100);
     const careerActionTaken = toNum(u.careerActionTaken || u.career_action_taken, 0, 0);
+    const raiseRequestedThisYear = u.raiseRequestedThisYear !== undefined ? toBool(u.raiseRequestedThisYear, false) : undefined;
     const careerTrack = u.careerTrack ? toStr(u.careerTrack, null) : null;
     const careerLevel = toNum(u.careerLevel, 0, 0);
     const yearsInRole = toNum(u.yearsInRole, 0, 0);
@@ -617,6 +618,7 @@ export function migrateState(rawState) {
         jobPerformance,
         hasSeenJobSalary,
         careerActionTaken,
+        ...(raiseRequestedThisYear !== undefined ? { raiseRequestedThisYear } : {}),
         careerTrack,
         careerLevel,
         yearsInRole,

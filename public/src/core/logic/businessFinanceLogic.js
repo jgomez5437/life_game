@@ -1,6 +1,8 @@
 import { Utils } from '../../ui/utils.js';
+import { PART_TIME_JOBS } from '../constants.js';
 import { HQ_TIERS, BUSINESS_INDUSTRIES, VC_INVESTOR_TYPES } from '../../features/business/businessTypes.js';
-import { clampStat, isAlive } from './playerStatsLogic.js';
+import { clampStat, isAlive, adjustStat } from './playerStatsLogic.js';
+import { getCareerSkillBonuses } from './educationSkillsLogic.js';
 export * from './cashflowTaxLogic.js';
 
 /**
@@ -311,5 +313,241 @@ export function launchIPO(user, floatEquity = 0.20) {
         floatEquity: float,
         payout: playerPayout,
         msg: `Historic IPO! ${user.companyName} listed publicly at ${Utils.formatMoney(valuation)} valuation. You floated ${Math.round(float * 100)}% equity for ${Utils.formatMoney(playerPayout)} cash payout!`
+    };
+}
+
+export const PART_TIME_ANNUAL_HOURS = 1040;
+
+export function isPartTimeJob(user) {
+    if (!user || !user.jobTitle) return false;
+    if (user.careerTrack === 'mafia_syndicate' || user.careerTrack === 'pro_athlete') return false;
+    if (!user.careerTrack) return true;
+    return PART_TIME_JOBS.some(j => j.title === user.jobTitle);
+}
+
+export function formatHourlyWage(annualSalary) {
+    const num = Number(annualSalary);
+    if (!isFinite(num) || num <= 0) return '$0.00';
+    return `$${(num / PART_TIME_ANNUAL_HOURS).toFixed(2)}`;
+}
+
+export function calculateAnnualRaise(user, opts = {}) {
+    const none = {
+        applied: false,
+        isPartTime: isPartTimeJob(user),
+        oldSalary: Number(user?.jobSalary) || 0,
+        newSalary: Number(user?.jobSalary) || 0,
+        raiseAmount: 0,
+        baseRate: 0,
+        meritRate: 0,
+        totalRate: 0,
+        totalPct: 0,
+        hasMerit: false,
+        happinessGain: 0,
+        logMessage: null
+    };
+
+    if (!user || !user.jobTitle) return none;
+    if (user.careerTrack === 'mafia_syndicate' || user.careerTrack === 'pro_athlete') return none;
+    const oldSalary = Number(user.jobSalary) || 0;
+    if (oldSalary <= 0 || opts.wasPromoted) return none;
+
+    const perf = clampStat(user.jobPerformance ?? 50, 50);
+    if (perf <= 20) return none;
+
+    const partTime = isPartTimeJob(user);
+
+    if (partTime) {
+        const baseRate = 0.01;
+        const meritRate = perf >= 90 ? 0.03 : (perf >= 75 ? 0.02 : 0);
+        const totalRate = baseRate + meritRate;
+        const raiseAmount = Math.max(100, Math.round(oldSalary * totalRate));
+        const newSalary = oldSalary + raiseAmount;
+        const totalPct = Math.round((raiseAmount / oldSalary) * 1000) / 10;
+        const happinessGain = meritRate > 0 ? 5 : 0;
+        const hourlyStr = `${formatHourlyWage(newSalary)}/hr`;
+        const logMessage = meritRate > 0
+            ? `Part-time raise (+${totalPct}%): Received a ${Utils.formatMoney(raiseAmount)}/yr merit & cost-of-living raise as ${user.jobTitle} (${Utils.formatMoney(newSalary)}/yr, ${hourlyStr}). (+${happinessGain} Happiness)`
+            : `Part-time annual raise (+${totalPct}%): Received a ${Utils.formatMoney(raiseAmount)}/yr cost-of-living raise as ${user.jobTitle} (${Utils.formatMoney(newSalary)}/yr, ${hourlyStr}).`;
+
+        return {
+            applied: true,
+            isPartTime: true,
+            oldSalary,
+            newSalary,
+            raiseAmount,
+            baseRate,
+            meritRate,
+            totalRate,
+            totalPct,
+            hasMerit: meritRate > 0,
+            happinessGain,
+            logMessage
+        };
+    }
+
+    const skillBonuses = opts.skillBonuses || getCareerSkillBonuses(user, user.careerTrack);
+    const baseRate = 0.02;
+    const meritRate = perf >= 80 ? (skillBonuses?.raiseRate || 0.05) : 0;
+    const totalRate = baseRate + meritRate;
+    const raiseAmount = Math.max(500, Math.floor(oldSalary * totalRate));
+    const newSalary = oldSalary + raiseAmount;
+    const totalPct = Math.round((raiseAmount / oldSalary) * 1000) / 10;
+    const happinessGain = meritRate > 0 ? 8 : 0;
+    const logMessage = meritRate > 0
+        ? `Outstanding performance! Received an annual raise (+${totalPct}%, +${Utils.formatMoney(raiseAmount)}) at ${user.jobTitle} to ${Utils.formatMoney(newSalary)}/yr. (+${happinessGain} Happiness)`
+        : `Annual cost-of-living raise (+${totalPct}%): Your salary as ${user.jobTitle} increased by ${Utils.formatMoney(raiseAmount)} to ${Utils.formatMoney(newSalary)}/yr.`;
+
+    return {
+        applied: true,
+        isPartTime: false,
+        oldSalary,
+        newSalary,
+        raiseAmount,
+        baseRate,
+        meritRate,
+        totalRate,
+        totalPct,
+        hasMerit: meritRate > 0,
+        happinessGain,
+        logMessage
+    };
+}
+
+export function getRaiseRequestTerms(user) {
+    if (!user || !user.jobTitle || user.careerTrack === 'mafia_syndicate' || user.careerTrack === 'pro_athlete') {
+        return { eligible: false, isPartTime: false, chance: 0, raiseRate: 0, raisePct: 0, raiseAmount: 0 };
+    }
+    const salary = Number(user.jobSalary) || 0;
+    if (salary <= 0) {
+        return { eligible: false, isPartTime: isPartTimeJob(user), chance: 0, raiseRate: 0, raisePct: 0, raiseAmount: 0 };
+    }
+
+    const partTime = isPartTimeJob(user);
+    const perf = clampStat(user.jobPerformance ?? 50, 50);
+    const smarts = clampStat(user.smarts ?? user.stats?.smarts ?? 50, 50);
+    const tenure = Math.max(0, Number(user.yearsInCareer) || 0);
+
+    let baseChance;
+    if (perf >= 90) {
+        baseChance = 0.85;
+    } else if (perf >= 75) {
+        baseChance = 0.65 + ((perf - 75) / 15) * 0.15;
+    } else if (perf >= 50) {
+        baseChance = 0.35 + ((perf - 50) / 25) * 0.25;
+    } else if (perf >= 30) {
+        baseChance = 0.15 + ((perf - 30) / 20) * 0.15;
+    } else {
+        baseChance = 0.10;
+    }
+
+    if (smarts >= 70) baseChance += 0.05;
+    baseChance += Math.min(0.10, tenure * 0.03);
+    const chance = Math.round(Math.max(0.10, Math.min(0.95, baseChance)) * 100) / 100;
+
+    let raiseRate;
+    let raiseAmount;
+    if (partTime) {
+        raiseRate = perf >= 80 ? 0.03 : 0.02;
+        raiseAmount = Math.max(150, Math.round(salary * raiseRate));
+    } else {
+        const skillBonuses = getCareerSkillBonuses(user, user.careerTrack);
+        raiseRate = perf >= 80 ? (skillBonuses?.raiseRate || 0.05) : 0.05;
+        raiseAmount = Math.max(1000, Math.round(salary * raiseRate));
+    }
+
+    const raisePct = Math.round(raiseRate * 100);
+    return {
+        eligible: !user.raiseRequestedThisYear,
+        isPartTime: partTime,
+        chance,
+        raiseRate,
+        raisePct,
+        raiseAmount
+    };
+}
+
+export function processRaiseRequest(user, roll = Math.random()) {
+    if (!user || !user.jobTitle) {
+        return { success: false, approved: false, message: 'You do not currently have a job.' };
+    }
+    if (!isAlive(user)) {
+        return { success: false, approved: false, message: 'Cannot request a raise while deceased.' };
+    }
+    if (user.careerTrack === 'mafia_syndicate' || user.careerTrack === 'pro_athlete') {
+        return { success: false, approved: false, message: 'Raises are not available for this special career.' };
+    }
+    if (user.raiseRequestedThisYear) {
+        return { success: false, approved: false, message: 'You have already requested a raise this year. Age up to ask again.' };
+    }
+
+    const terms = getRaiseRequestTerms(user);
+    if (terms.raiseAmount <= 0) {
+        return { success: false, approved: false, message: 'No active salary to raise.' };
+    }
+
+    user.raiseRequestedThisYear = true;
+    const approved = roll < terms.chance;
+
+    if (approved) {
+        const oldSalary = user.jobSalary;
+        user.jobSalary = oldSalary + terms.raiseAmount;
+        if (!user.peakJobTitle || user.jobSalary >= (user.peakJobSalary || 0)) {
+            user.peakJobTitle = user.jobTitle;
+            user.peakJobSalary = user.jobSalary;
+        }
+        const happyGain = terms.isPartTime ? 6 : 8;
+        adjustStat(user, 'happiness', happyGain);
+        const wageSuffix = terms.isPartTime ? ` (${formatHourlyWage(user.jobSalary)}/hr)` : '';
+        const logMessage = terms.isPartTime
+            ? `Asked for a part-time raise as ${user.jobTitle} and got +${terms.raisePct}% (+${Utils.formatMoney(terms.raiseAmount)}/yr)! New pay: ${Utils.formatMoney(user.jobSalary)}/yr${wageSuffix}. (+${happyGain} Happiness)`
+            : `Negotiated a +${terms.raisePct}% raise (+${Utils.formatMoney(terms.raiseAmount)}/yr) as ${user.jobTitle}! New salary: ${Utils.formatMoney(user.jobSalary)}/yr. (+${happyGain} Happiness)`;
+
+        return {
+            success: true,
+            approved: true,
+            isPartTime: terms.isPartTime,
+            oldSalary,
+            newSalary: user.jobSalary,
+            raiseAmount: terms.raiseAmount,
+            raisePct: terms.raisePct,
+            chance: terms.chance,
+            happinessDelta: happyGain,
+            perfDelta: 0,
+            logMessage,
+            message: terms.isPartTime
+                ? `Your supervisor approved a +${terms.raisePct}% (${Utils.formatMoney(terms.raiseAmount)}/yr) part-time raise! Your new pay is ${Utils.formatMoney(user.jobSalary)}/yr (${formatHourlyWage(user.jobSalary)}/hr).`
+                : `Your manager approved your +${terms.raisePct}% (${Utils.formatMoney(terms.raiseAmount)}/yr) raise! Your new salary is ${Utils.formatMoney(user.jobSalary)}/yr.`
+        };
+    }
+
+    const perf = clampStat(user.jobPerformance ?? 50, 50);
+    let perfDelta = 0;
+    if (perf < 40) {
+        const nextPerf = Math.max(0, perf - 5);
+        perfDelta = nextPerf - perf;
+        user.jobPerformance = nextPerf;
+    }
+    adjustStat(user, 'happiness', -3);
+
+    const logMessage = perfDelta < 0
+        ? `Asked for a raise at ${user.jobTitle} despite low performance and was denied. (-3 Happiness, ${perfDelta}% Performance)`
+        : `Asked for a raise at ${user.jobTitle}, but management turned it down for now. (-3 Happiness)`;
+
+    return {
+        success: true,
+        approved: false,
+        isPartTime: terms.isPartTime,
+        oldSalary: user.jobSalary,
+        newSalary: user.jobSalary,
+        raiseAmount: 0,
+        raisePct: terms.raisePct,
+        chance: terms.chance,
+        happinessDelta: -3,
+        perfDelta,
+        logMessage,
+        message: perfDelta < 0
+            ? `Your boss rejected your raise request and warned you to improve your ${perf}% performance first.`
+            : `Your manager turned down your raise request due to tight budgets, but encouraged you to keep up the effort.`
     };
 }

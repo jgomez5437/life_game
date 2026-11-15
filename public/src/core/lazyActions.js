@@ -44,6 +44,7 @@ export const renderAthleteManager = lazy('jobCareerManager', 'renderAthleteManag
 export const attemptAthleteAction = lazy('jobCareerManager', 'attemptAthleteAction');
 export const workHarderJob = lazy('jobCareerManager', 'workHarderJob');
 export const slackOffJob = lazy('jobCareerManager', 'slackOffJob');
+export const requestJobRaise = lazy('jobCareerManager', 'requestJobRaise');
 export const attemptMafiaCrime = lazy('jobCareerManager', 'attemptMafiaCrime');
 
 export const renderJobMarket = lazy('partTimeJobs', 'renderJobMarket');

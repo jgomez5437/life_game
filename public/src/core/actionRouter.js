@@ -12,7 +12,7 @@ import {
     applyForCareerTrack, joinSpecialCareer, confirmJoinSpecialCareer, openProSportsEntryModal, selectProSportTab,
     enterProSportsDraft, enterProSportsTryout, answerInterview, retryInterview, confirmQuitCareer,
     quitCareer, confirmRetire, retire, renderCareerManager, renderAthleteManager,
-    attemptAthleteAction, workHarderJob, slackOffJob, attemptMafiaCrime, renderJobMarket,
+    attemptAthleteAction, workHarderJob, slackOffJob, requestJobRaise, attemptMafiaCrime, renderJobMarket,
     renderEducation, workHarder, skipSchool, renderClassmates, attemptEnrollment,
     openGradEnrollmentModal, attemptGradEnrollment, renderGradSchoolMarket, openUniversityModal, renderActivities,
     selectGender, submitCharacter, cycleTrait, randomizeSection, randomizeAllTraits,
@@ -67,8 +67,7 @@ import {
 } from './lazyActions.js';
 
 const closeModal = () => {
-    document.getElementById('modal-overlay').classList.add('hidden');
-    document.getElementById('modal-overlay').classList.remove('flex');
+    UI.hideModal();
 };
 
 const showComingSoon = () => {
@@ -107,6 +106,7 @@ export const routeHandlers = {
   skipSchool,
   workHarderJob,
   slackOffJob,
+  requestJobRaise,
   login,
   logout,
   startGuestMode,
