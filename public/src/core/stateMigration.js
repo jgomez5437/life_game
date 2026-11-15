@@ -1,4 +1,18 @@
 import { state } from './state.js';
+import {
+    sanitizeLifeEventFlags,
+    sanitizeCompletedEventsHistory,
+    sanitizePendingEvents,
+    isValidSlotId,
+    isQuotaExceededError,
+    attemptStoreCompaction
+} from './stateMigrationHelpers.js';
+
+export {
+    isValidSlotId,
+    isQuotaExceededError,
+    attemptStoreCompaction
+};
 
 const MAX_STATE_DEPTH = 32;
 
@@ -167,11 +181,26 @@ export function migrateState(rawState) {
     const inPrison = toBool(u.inPrison, false);
 
     // Life Status validation
-    const validLifeStatuses = ["Baby", "Toddler", "Child", "Teen", "Young Adult", "Adult", "Senior", "Deceased", "Inmate"];
+    const validLifeStatuses = [
+        "Baby", "Toddler", "Child", "Teen", "Young Adult", "Adult", "Senior", "Deceased", "Inmate",
+        "Retired", "University Student", "University Graduate", "High School Graduate", "CEO & Founder", "Unemployed"
+    ];
     let lifeStatus = rawLifeStatus;
+    const preJobTitle = toStr(u.jobTitle || u.job_title, '');
+    const preGradType = u.gradSchoolType || u.grad_school_type ? toStr(u.gradSchoolType || u.grad_school_type, '') : '';
+    const preGradDeg = u.gradSchoolDegree || u.grad_school_degree ? toStr(u.gradSchoolDegree || u.grad_school_degree, '') : '';
+    const isCareerOrEduLifeStatus = Boolean(
+        lifeStatus && (
+            validLifeStatuses.includes(lifeStatus) ||
+            (preJobTitle && lifeStatus === preJobTitle) ||
+            (preGradType && lifeStatus === `${preGradType} Student`) ||
+            (preGradDeg && lifeStatus === `${preGradDeg} Graduate`) ||
+            lifeStatus.startsWith('Inmate')
+        )
+    );
     if (isDead) {
         lifeStatus = "Deceased";
-    } else if (!validLifeStatuses.includes(lifeStatus)) {
+    } else if (!isCareerOrEduLifeStatus) {
         if (inPrison) lifeStatus = "Inmate";
         else if (age < 3) lifeStatus = "Baby";
         else if (age < 5) lifeStatus = "Toddler";
@@ -190,6 +219,8 @@ export function migrateState(rawState) {
 
     // 2. Education
     const isStudent = toBool(u.isStudent || u.is_student, false);
+    const highSchoolGraduated = toBool(u.highSchoolGraduated || u.high_school_graduated, false);
+    const hasGED = toBool(u.hasGED, false);
     const universityEnrolled = toBool(u.universityEnrolled || u.university_enrolled, false);
     const universitySchoolYear = toNum(u.universitySchoolYear || u.university_school_year, 0, 0, 10);
     const universityGraduated = toBool(u.universityGraduated, false);
@@ -201,6 +232,9 @@ export function migrateState(rawState) {
     const gradSchoolType = u.gradSchoolType || u.grad_school_type ? toStr(u.gradSchoolType || u.grad_school_type, null) : null;
     const gradSchoolYear = toNum(u.gradSchoolYear || u.grad_school_year, 0, 0, 10);
     const gradSchoolDegree = u.gradSchoolDegree || u.grad_school_degree ? toStr(u.gradSchoolDegree || u.grad_school_degree, null) : null;
+    const gradSchoolDegrees = Array.isArray(u.gradSchoolDegrees)
+        ? Array.from(new Set(u.gradSchoolDegrees.map(d => toStr(d)).filter(Boolean)))
+        : (gradSchoolDegree ? [gradSchoolDegree] : undefined);
     const parentsTried = toBool(u.parentsTried || u.parents_tried, false);
     const skillActionsThisYear = toNum(u.skillActionsThisYear, 0, 0, 10);
     const instrumentPracticesThisYear = toNum(u.instrumentPracticesThisYear, 0, 0, 10);
@@ -231,6 +265,11 @@ export function migrateState(rawState) {
     const yearsInCareer = toNum(u.yearsInCareer, 0, 0);
     const isRetired = toBool(u.isRetired, false);
     const retirementPension = toNum(u.retirementPension, 0, 0);
+    const lastJobTitle = u.lastJobTitle ? toStr(u.lastJobTitle, null) : null;
+    const peakJobTitle = u.peakJobTitle ? toStr(u.peakJobTitle, null) : null;
+    const peakJobSalary = toNum(u.peakJobSalary, 0, 0);
+    const retiredFromJobTitle = u.retiredFromJobTitle ? toStr(u.retiredFromJobTitle, null) : null;
+    const lifeEventFlags = sanitizeLifeEventFlags(u.lifeEventFlags);
     const consecutivePoorYears = toNum(u.consecutivePoorYears, 0, 0);
     const monthlyOutflow = toNum(u.monthlyOutflow || u.monthly_outflow, 0, 0);
     const studentLoans = toNum(u.studentLoans || u.student_loans, 0, 0);
@@ -553,6 +592,8 @@ export function migrateState(rawState) {
         deathAge: isDead ? toNum(u.deathAge !== undefined ? u.deathAge : u.age, age, 0, 150) : null,
 
         isStudent,
+        highSchoolGraduated,
+        hasGED,
         universityEnrolled,
         universitySchoolYear,
         universityGraduated,
@@ -565,6 +606,7 @@ export function migrateState(rawState) {
         gradSchoolType,
         gradSchoolYear,
         gradSchoolDegree,
+        ...(gradSchoolDegrees !== undefined ? { gradSchoolDegrees } : {}),
         ...(u.skills !== undefined ? { skills } : {}),
         ...(u.skillActionsThisYear !== undefined ? { skillActionsThisYear } : {}),
         ...(u.instrumentPracticesThisYear !== undefined ? { instrumentPracticesThisYear } : {}),
@@ -581,6 +623,11 @@ export function migrateState(rawState) {
         yearsInCareer,
         isRetired,
         retirementPension,
+        ...(lastJobTitle ? { lastJobTitle } : {}),
+        ...(peakJobTitle ? { peakJobTitle } : {}),
+        ...(peakJobSalary > 0 ? { peakJobSalary } : {}),
+        ...(retiredFromJobTitle ? { retiredFromJobTitle } : {}),
+        ...(lifeEventFlags !== undefined ? { lifeEventFlags } : {}),
         consecutivePoorYears,
         monthlyOutflow,
         studentLoans,
@@ -714,83 +761,19 @@ export function migrateState(rawState) {
     const slotIdCandidate = rawState._slotId || rawState.slotId;
     const _slotId = isValidSlotId(slotIdCandidate) ? slotIdCandidate : 'slot_1';
 
+    // 14. Top-Level Event Manager state
+    const completedEventsHistory = sanitizeCompletedEventsHistory(rawState.completedEventsHistory);
+    const pendingEvents = sanitizePendingEvents(rawState.pendingEvents);
+
     return {
         user: migratedUser,
         lifeLog,
         snapshots,
         assets: migratedUser.assets,
         achievements,
-        _slotId
+        _slotId,
+        completedEventsHistory,
+        pendingEvents
     };
 }
-/**
- * Validates save slot identifier against allowed patterns.
- * Allowed: integer 0-9, string '0'-'9', 'slot_1' through 'slot_10', or timestamped 'slot_<10-15 digits>'.
- */
-export function isValidSlotId(slotId) {
-    if (slotId === null || slotId === undefined) return false;
-    if (typeof slotId === 'number') {
-        return Number.isInteger(slotId) && slotId >= 0 && slotId <= 9;
-    }
-    if (typeof slotId === 'string') {
-        const s = slotId.trim();
-        if (/^[0-9]$/.test(s)) return true;
-        if (/^slot_([1-9]|10|[0-9]{10,15})$/.test(s)) return true;
-    }
-    return false;
-}
-/**
- * Checks if an exception represents a browser storage quota exceeded error.
- */
-export function isQuotaExceededError(err) {
-    if (!err) return false;
-    return (
-        err.name === 'QuotaExceededError' ||
-        err.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
-        err.code === 22 ||
-        err.code === 1014 ||
-        err.number === -2147024882 ||
-        (typeof DOMException !== 'undefined' && err instanceof DOMException && (
-            err.code === 22 ||
-            err.code === 1014 ||
-            err.name === 'QuotaExceededError' ||
-            err.name === 'NS_ERROR_DOM_QUOTA_REACHED'
-        ))
-    );
-}
-/**
- * Attempts automated compaction of stored save slots when quota is exceeded.
- */
-export function attemptStoreCompaction(store) {
-    try {
-        // 1. Remove duplicate legacy keys
-        localStorage.removeItem('life_game_save');
-        localStorage.removeItem('startALife_saveData');
-    } catch (e) {}
-    if (!store || !store.slots) return false;
-    let compacted = false;
-    // 2. Prune snapshots in inactive slots down to 1
-    Object.keys(store.slots).forEach(slotId => {
-        if (slotId !== store.activeSlotId && Array.isArray(store.slots[slotId]?.data?.snapshots)) {
-            if (store.slots[slotId].data.snapshots.length > 1) {
-                store.slots[slotId].data.snapshots = store.slots[slotId].data.snapshots.slice(-1);
-                compacted = true;
-            }
-        }
-    });
-    // 3. Prune snapshots in active slot down to 1
-    if (store.slots[store.activeSlotId]?.data?.snapshots?.length > 1) {
-        store.slots[store.activeSlotId].data.snapshots = store.slots[store.activeSlotId].data.snapshots.slice(-1);
-        compacted = true;
-    }
-    // 4. Compact older lifeLog in inactive slots if still large (> 30 entries)
-    Object.keys(store.slots).forEach(slotId => {
-        if (slotId !== store.activeSlotId && Array.isArray(store.slots[slotId]?.data?.lifeLog)) {
-            if (store.slots[slotId].data.lifeLog.length > 30) {
-                store.slots[slotId].data.lifeLog = store.slots[slotId].data.lifeLog.slice(-30);
-                compacted = true;
-            }
-        }
-    });
-    return compacted;
-}
+

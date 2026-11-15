@@ -1,6 +1,7 @@
 import { GameLogic } from '../../public/src/core/gameLogic.js';
 import { state } from '../../public/src/core/state.js';
 import { continueAsChild } from '../../public/src/features/player/mainScreen.js';
+import { handleFinances } from '../../public/src/features/player/ageUpHandlers.js';
 
 describe('Inheritance & Estate Distribution Suite', () => {
 
@@ -167,6 +168,205 @@ describe('Inheritance & Estate Distribution Suite', () => {
         test('calculateSpousalLifeInsurance never returns negative values', () => {
             expect(GameLogic.calculateSpousalLifeInsurance(0.5, 0.5)).toBe(0);
             expect(GameLogic.calculateSpousalLifeInsurance(0.1, 0.5)).toBeGreaterThan(0);
+        });
+    });
+
+    describe('GameLogic.mapNpcOccupationAndEducationToUser', () => {
+        test('maps employed university graduate NPC with exact income and career track', () => {
+            const mapped = GameLogic.mapNpcOccupationAndEducationToUser({
+                name: 'Joshua Jr.',
+                age: 26,
+                educationLevel: 'University',
+                schoolMajor: 'Marketing',
+                occupation: 'Store Manager',
+                occupationType: 'job',
+                careerTrack: 'retail',
+                careerLevel: 3,
+                income: 65000
+            });
+
+            expect(mapped.highSchoolGraduated).toBe(true);
+            expect(mapped.universityGraduated).toBe(true);
+            expect(mapped.universityEnrolled).toBe(false);
+            expect(mapped.isStudent).toBe(false);
+            expect(mapped.major).toBe('Marketing');
+            expect(mapped.jobTitle).toBe('Store Manager');
+            expect(mapped.jobSalary).toBe(65000);
+            expect(mapped.careerTrack).toBe('retail');
+            expect(mapped.careerLevel).toBe(3);
+            expect(mapped.jobPerformance).toBe(65);
+            expect(mapped.hasSeenJobSalary).toBe(true);
+            expect(mapped.lastJobTitle).toBe('Store Manager');
+            expect(mapped.peakJobTitle).toBe('Store Manager');
+            expect(mapped.peakJobSalary).toBe(65000);
+            expect(mapped.isRetired).toBe(false);
+        });
+
+        test('maps enrolled university student NPC with 0-indexed universitySchoolYear', () => {
+            const mapped = GameLogic.mapNpcOccupationAndEducationToUser({
+                name: 'Maya',
+                age: 20,
+                educationLevel: 'High School',
+                schoolMajor: 'Computer Science',
+                schoolYear: 3,
+                occupation: 'University Student (Computer Science)',
+                occupationType: 'school',
+                income: 0
+            });
+
+            expect(mapped.isStudent).toBe(true);
+            expect(mapped.highSchoolGraduated).toBe(true);
+            expect(mapped.universityEnrolled).toBe(true);
+            expect(mapped.universityGraduated).toBe(false);
+            expect(mapped.universitySchoolYear).toBe(2);
+            expect(mapped.major).toBe('Computer Science');
+            expect(mapped.jobTitle).toBe('');
+            expect(mapped.jobSalary).toBe(0);
+        });
+
+        test('maps unemployed university graduate and infers gradSchoolDegree for law/medicine tracks', () => {
+            const unemployedGrad = GameLogic.mapNpcOccupationAndEducationToUser({
+                name: 'Eli',
+                age: 25,
+                educationLevel: 'University',
+                schoolMajor: 'Finance',
+                occupation: 'Unemployed',
+                occupationType: 'unemployed',
+                income: 0
+            });
+            expect(unemployedGrad.universityGraduated).toBe(true);
+            expect(unemployedGrad.major).toBe('Finance');
+            expect(unemployedGrad.jobTitle).toBe('');
+            expect(unemployedGrad.jobSalary).toBe(0);
+
+            const lawyerChild = GameLogic.mapNpcOccupationAndEducationToUser({
+                name: 'Clara',
+                age: 34,
+                educationLevel: 'University',
+                schoolMajor: 'Political Science',
+                occupation: 'Senior Associate',
+                occupationType: 'job',
+                careerTrack: 'law',
+                careerLevel: 2,
+                income: 185000
+            });
+            expect(lawyerChild.gradSchoolDegree).toBe('Law School');
+            expect(lawyerChild.gradSchoolDegrees).toEqual(['Law School']);
+            expect(lawyerChild.jobSalary).toBe(185000);
+        });
+
+        test('maps retired child and minor children (<18 and <5) accurately', () => {
+            const retired = GameLogic.mapNpcOccupationAndEducationToUser({
+                name: 'Arthur',
+                age: 68,
+                educationLevel: 'University',
+                schoolMajor: 'Business',
+                occupation: 'Retired',
+                occupationType: 'retired',
+                careerTrack: 'banking',
+                careerLevel: 3,
+                income: 42000
+            });
+            expect(retired.isRetired).toBe(true);
+            expect(retired.retirementPension).toBe(42000);
+            expect(retired.jobTitle).toBe('');
+            expect(retired.jobSalary).toBe(0);
+            expect(retired.retiredFromJobTitle).toBe('VP of Banking');
+
+            const teen = GameLogic.mapNpcOccupationAndEducationToUser({
+                name: 'Sam',
+                age: 14,
+                educationLevel: 'None',
+                occupation: 'High School Student',
+                occupationType: 'school',
+                income: 0
+            });
+            expect(teen.isStudent).toBe(true);
+            expect(teen.highSchoolGraduated).toBe(false);
+
+            const toddler = GameLogic.mapNpcOccupationAndEducationToUser({
+                name: 'Lily',
+                age: 3,
+                educationLevel: 'None',
+                occupation: 'None',
+                occupationType: 'none',
+                income: 0
+            });
+            expect(toddler.isStudent).toBe(false);
+            expect(toddler.highSchoolGraduated).toBe(false);
+        });
+    });
+
+    describe('continueAsChild Career, Education & Exact Income Preservation', () => {
+        test('Joshua Jr. keeps Store Manager job, Marketing degree, exact income, and positive cashflow on takeover', async () => {
+            state.gameState = {
+                user: {
+                    username: 'Joshua Sr.',
+                    gender: 'male',
+                    country: 'United States',
+                    city: 'New York',
+                    age: 74,
+                    money: 50000,
+                    deathCause: 'Old Age',
+                    generation: 1,
+                    pastLives: [],
+                    relationships: [
+                        {
+                            id: 'child_joshua_jr',
+                            name: 'Joshua Jr.',
+                            type: 'Son',
+                            category: 'child',
+                            gender: 'male',
+                            age: 29,
+                            lifeStatus: 'Alive',
+                            educationLevel: 'University',
+                            schoolMajor: 'Marketing',
+                            occupation: 'Store Manager',
+                            occupationType: 'job',
+                            careerTrack: 'retail',
+                            careerLevel: 3,
+                            income: 65000
+                        }
+                    ],
+                    assets: []
+                },
+                currentEulogy: 'A proud father.',
+                lifeLog: []
+            };
+
+            window.saveGame = () => {};
+
+            continueAsChild(0, 50000);
+
+            const newUser = state.gameState.user;
+            expect(newUser.username).toBe('Joshua Jr.');
+            expect(newUser.universityGraduated).toBe(true);
+            expect(newUser.highSchoolGraduated).toBe(true);
+            expect(newUser.major).toBe('Marketing');
+            expect(newUser.jobTitle).toBe('Store Manager');
+            // Preserves exact npc.income ($65,000), not re-scaled to New York city CoL
+            expect(newUser.jobSalary).toBe(65000);
+            expect(newUser.careerTrack).toBe('retail');
+            expect(newUser.careerLevel).toBe(3);
+            expect(newUser.lifeStatus).toBe('Store Manager');
+            expect(newUser.studentLoans).toBe(0);
+            expect(newUser.monthlyIncome).toBe(Math.floor(65000 / 12));
+            expect(newUser.monthlyOutflow).toBeGreaterThan(0);
+
+            const breakdown = GameLogic.calculateFinancialBreakdown(newUser);
+            expect(breakdown.cashflow.annualIncome).toBe(65000);
+            expect(breakdown.cashflow.netAnnual).toBeGreaterThan(0);
+
+            const logs = state.gameState.lifeLog[0].events;
+            expect(logs.some(e => e.msg.includes('Store Manager') && e.msg.includes('$65,000/yr') && e.msg.includes('Marketing'))).toBe(true);
+
+            // Subsequent annual financial processing should add money rather than trigger "Savings are dwindling."
+            const prevMoney = newUser.money;
+            newUser.age += 1;
+            await handleFinances(newUser);
+            expect(newUser.money).toBeGreaterThan(prevMoney);
+            const allLogMsgs = state.gameState.lifeLog.flatMap(entry => entry.events.map(e => e.msg));
+            expect(allLogMsgs.some(m => m.includes('Savings are dwindling'))).toBe(false);
         });
     });
 });

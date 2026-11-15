@@ -506,21 +506,19 @@ export const FAMILY_RELATIONSHIP_EVENTS = {
         maxAge: 110,
         probability: 0.28,
         priority: 40,
-        oncePerNpc: true,
+        oncePerLife: true,
         condition: (user, gameState) => {
             const history = gameState?.completedEventsHistory || [];
+            if (history.some(h => h.eventId === 'grandchild_heirloom_gift')) return false;
             return user.age >= 60 && (user.relationships || []).some(r =>
                 (r.category === 'child' || r.type === 'Son' || r.type === 'Daughter') &&
-                isLivingNPC(r) &&
-                !history.some(h => h.eventId === 'grandchild_heirloom_gift' && h.npcId === r.id)
+                isLivingNPC(r)
             );
         },
-        getTargetNPC: (user, gameState) => {
-            const history = gameState?.completedEventsHistory || [];
+        getTargetNPC: (user) => {
             const adultChildren = (user.relationships || []).filter(r =>
                 (r.category === 'child' || r.type === 'Son' || r.type === 'Daughter') &&
-                isLivingNPC(r) &&
-                !history.some(h => h.eventId === 'grandchild_heirloom_gift' && h.npcId === r.id)
+                isLivingNPC(r)
             );
             return adultChildren[Math.floor(Math.random() * adultChildren.length)] || null;
         },

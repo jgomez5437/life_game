@@ -618,7 +618,9 @@ export function generateNPCOccupation(age, city = null) {
             level = Math.min(level, track.levels.length - 1);
             const lvl = track.levels[level];
             const hasDegree = ['software_eng', 'graphic_design', 'education_track', 'nursing', 'banking', 'law', 'medicine'].includes(track.key);
-            const major = track.majors.length > 0 ? track.majors[0] : (hasDegree ? NPC_MAJORS[Math.floor(Math.random() * NPC_MAJORS.length)] : null);
+            const major = hasDegree
+                ? (track.majors.length > 0 ? track.majors[0] : NPC_MAJORS[Math.floor(Math.random() * NPC_MAJORS.length)])
+                : null;
             const income = city ? calculateScaledSalary(lvl.salary, city) : lvl.salary;
 
             return {
@@ -685,6 +687,7 @@ export function progressNPCOccupation(person, userAge) {
         person.schoolYear = 1;
         if (isClose) milestoneMessage = `${person.name} started High School!`;
     } else if (person.age === 18) {
+        person.educationLevel = 'High School';
         const roll = Math.random();
         if (roll < 0.55) {
             const major = NPC_MAJORS[Math.floor(Math.random() * NPC_MAJORS.length)];
