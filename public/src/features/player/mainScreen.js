@@ -296,11 +296,16 @@ export const continueAsChild = (childIndex, inheritedMoney) => {
     if (parentState.smarts) childStats.smarts = Math.min(100, Math.max(10, Math.floor(parentState.smarts * 0.7 + Math.random() * 30)));
     if (parentState.looks) childStats.looks = Math.min(100, Math.max(10, Math.floor(parentState.looks * 0.7 + Math.random() * 30)));
 
+    const inheritedSpouse = inheritedRelationships.find(r => r.category === 'spouse');
+    const inheritedMarriedAtAge = typeof selectedChild.marriedAtAge === 'number'
+        ? selectedChild.marriedAtAge
+        : (typeof inheritedSpouse?.marriedAtAge === 'number' ? inheritedSpouse.marriedAtAge : undefined);
+
     // 1. Deep wipe and reconstruct user state
     const inheritedCountry = parentState.country || 'United States';
     const newUserState = {
         username: selectedChild.name,
-        gender: selectedChild.type === 'Son' ? 'male' : 'female',
+        gender: selectedChild.gender || (selectedChild.type === 'Son' ? 'male' : 'female'),
         country: inheritedCountry,
         city: parentState.city, // Inherits physical location
         age: selectedChild.age,
@@ -318,6 +323,7 @@ export const continueAsChild = (childIndex, inheritedMoney) => {
         everChangedFromJunkDiet: false,
         relocationsCount: 0,
         visitedCountries: [inheritedCountry],
+        ...(typeof inheritedMarriedAtAge === 'number' ? { marriedAtAge: inheritedMarriedAtAge } : {}),
         
         // Reset dynamic flags
         isStudent: selectedChild.age >= 5 && selectedChild.age <= 18,
@@ -348,6 +354,10 @@ export const continueAsChild = (childIndex, inheritedMoney) => {
     state.gameState.user = newUserState;
     state.gameState.pastLives = updatedPastLives;
     state.gameState.snapshots = [];
+    state.gameState.pendingEvents = [];
+    state.gameState.completedEventsHistory = [];
+    state.gameState.pendingFunerals = [];
+    state.gameState.pendingTeacherReplacements = [];
     
     // 3. Purge and restart Life Log at child's chronological age
     const inheritanceLogMsg = safeInheritedMoney > 0

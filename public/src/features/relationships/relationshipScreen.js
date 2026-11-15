@@ -32,6 +32,37 @@ export const isDeadNPC = (person) => {
     return false;
 };
 
+const resolveFamilyContextLabel = (person, user, isLiving) => {
+    const rels = user?.relationships || [];
+    const deceasedFamily = user?.deceasedFamily || [];
+    if (person.category === 'child' || person.type === 'Son' || person.type === 'Daughter') {
+        if (person.spouseId) {
+            const spouse = rels.find(r => r.id === person.spouseId && isLiving(r));
+            if (spouse) return `Married to ${spouse.name}`;
+        }
+        if (person.isWidowed) return 'Widowed';
+    }
+    if (person.type === 'Son-in-Law' || person.type === 'Daughter-in-Law') {
+        if (person.spouseOfChildId) {
+            const linkedChild = rels.find(r => r.id === person.spouseOfChildId && isLiving(r));
+            if (linkedChild) return `Married to ${linkedChild.name}`;
+        }
+        const lateChildName = person.spouseOfChildName || deceasedFamily.find(d => d.id === person.spouseOfChildId)?.name;
+        if (person.isWidowed || lateChildName) {
+            return lateChildName ? `Widowed (Late ${lateChildName})` : 'Widowed';
+        }
+    }
+    if (person.type === 'Grandson' || person.type === 'Granddaughter') {
+        if (person.parentChildId) {
+            const parentChild = rels.find(r => r.id === person.parentChildId && isLiving(r));
+            if (parentChild) return `Child of ${parentChild.name}`;
+        }
+        const lateParentName = person.parentChildName || deceasedFamily.find(d => d.id === person.parentChildId)?.name;
+        if (lateParentName) return `Child of late ${lateParentName}`;
+    }
+    return '';
+};
+
 // --- ADD NEW RELATIONSHIP GLOBAL METHOD ---
 // Call this function when befriending someone at school, work, etc.
 export const addNewRelationship = (name, age, type, status, category = 'friend') => {
@@ -96,11 +127,24 @@ export const renderRelationships = () => {
 
     // Filter by category directly from state (excluding deceased NPCs)
     const isLiving = (r) => !isDeadNPC(r);
-    const family = user.relationships.filter(r => (r.category === 'family' || r.category === 'spouse' || r.category === 'child') && isLiving(r));
+    const getFamilySortRank = (r) => {
+        if (r.category === 'spouse' || ['Husband', 'Wife', 'Spouse'].includes(r.type)) return 0;
+        if (r.type === 'Mother' || r.type === 'Father') return 1;
+        if (r.category === 'child' || r.type === 'Son' || r.type === 'Daughter') return 2;
+        if (r.type === 'Son-in-Law' || r.type === 'Daughter-in-Law') return 3;
+        if (r.type === 'Grandson' || r.type === 'Granddaughter' || r.type === 'Grandchild') return 4;
+        if (r.type === 'Brother' || r.type === 'Sister') return 5;
+        return 6;
+    };
+    const family = user.relationships
+        .filter(r => (r.category === 'family' || r.category === 'spouse' || r.category === 'child') && isLiving(r))
+        .sort((a, b) => getFamilySortRank(a) - getFamilySortRank(b));
     const romance = user.relationships.filter(r => r.category === 'partner' && isLiving(r));
     const friends = user.relationships.filter(r => r.category === 'friend' && isLiving(r));
     const enemies = user.relationships.filter(r => r.category === 'enemy' && isLiving(r));
     const exes = user.relationships.filter(r => r.category === 'ex' && isLiving(r));
+
+    const getFamilyContextLabel = (person) => resolveFamilyContextLabel(person, user, isLiving);
 
     // --- HELPER: Generate Card HTML ---
     const getPersonCard = (person) => {
@@ -132,6 +176,8 @@ export const renderRelationships = () => {
             ? `<span class="seen-badge text-[9px] font-extrabold px-1.5 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-700/50 flex items-center gap-0.5" title="Interacted this year"><i class="fas fa-check text-[8px]"></i> Seen</span>`
             : '';
 
+        const familyContext = getFamilyContextLabel(person);
+
         return `
             <div data-action="renderPersonInteraction" data-args="&apos;${Utils.escapeHtml(person.id)}&apos;, &apos;renderRelationships&apos;" class="bg-slate-800 p-3 rounded-xl border border-slate-700 mb-3 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition flex items-center justify-between group">
                 <div class="flex items-center gap-4">
@@ -149,6 +195,7 @@ export const renderRelationships = () => {
                             ${seenBadge}
                         </div>
                         <div class="text-xs text-slate-400 font-medium">Age: ${person.age}${person.occupation ? ' • ' + Utils.escapeHtml(person.occupation) : ''}</div>
+                        ${familyContext ? `<div class="text-[11px] text-blue-300/80 font-medium mt-0.5">${Utils.escapeHtml(familyContext)}</div>` : ''}
                     </div>
                 </div>
 
@@ -351,6 +398,8 @@ export const renderPersonInteraction = (id, backAction = null) => {
     if (person.status < 30) barColor = 'bg-red-500';
     else if (person.status < 60) barColor = 'bg-yellow-500';
 
+    const interactionFamilyContext = resolveFamilyContextLabel(person, user, (r) => !isDeadNPC(r));
+
     UI.updateBottomNav('social');
     const container = document.getElementById('game-container');
     container.innerHTML = `
@@ -375,6 +424,7 @@ export const renderPersonInteraction = (id, backAction = null) => {
                     <i class="fas ${getOccupationIcon(person.occupationType)} text-xs"></i>
                     <span class="text-xs font-semibold text-slate-200">${Utils.escapeHtml(person.occupation || 'Unemployed')}</span>
                 </div>
+                ${interactionFamilyContext ? `<div class="text-xs text-blue-300/90 font-medium mt-2">${Utils.escapeHtml(interactionFamilyContext)}</div>` : ''}
             </div>
 
             <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-6 shadow-md">

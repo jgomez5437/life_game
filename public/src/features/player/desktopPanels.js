@@ -56,16 +56,18 @@ export function getEducationLabel(user) {
 
 export function getCircleSummary(user) {
     const rels = Array.isArray(user.relationships) ? user.relationships : [];
-    const spouse = rels.find(r => r.category === 'spouse' || r.type === 'Husband' || r.type === 'Wife');
-    const partner = rels.find(r => r.category === 'partner');
-    const children = rels.filter(r => r.type === 'Son' || r.type === 'Daughter' || r.category === 'child');
-    const friends = rels.filter(r => r.category === 'friend');
+    const isRelAlive = (r) => r && !r.isDead && r.lifeStatus !== 'Deceased' && r.isAlive !== false && !r.deathCause;
+    const spouse = rels.find(r => (r.category === 'spouse' || r.type === 'Husband' || r.type === 'Wife') && isRelAlive(r));
+    const partner = rels.find(r => r.category === 'partner' && isRelAlive(r));
+    const children = rels.filter(r => (r.type === 'Son' || r.type === 'Daughter' || r.category === 'child') && isRelAlive(r));
+    const grandchildren = rels.filter(r => (r.type === 'Grandson' || r.type === 'Granddaughter') && isRelAlive(r));
+    const friends = rels.filter(r => r.category === 'friend' && isRelAlive(r));
     let label;
     let icon;
     if (spouse) { label = `Married to ${spouse.name.split(' ')[0]}`; icon = 'fa-ring text-amber-400'; }
     else if (partner) { label = `Dating ${partner.name.split(' ')[0]}`; icon = 'fa-heart text-pink-400'; }
     else { label = 'Single'; icon = 'fa-user text-pink-400'; }
-    return { label, icon, total: rels.length, children: children.length, friends: friends.length };
+    return { label, icon, total: rels.length, children: children.length, grandchildren: grandchildren.length, friends: friends.length };
 }
 
 function safeBreakdown(user) {
@@ -135,6 +137,7 @@ export function renderProfilePanel(user) {
     const circle = getCircleSummary(user);
     const familyBits = [];
     if (circle.children > 0) familyBits.push(`${circle.children} ${circle.children === 1 ? 'kid' : 'kids'}`);
+    if (circle.grandchildren > 0) familyBits.push(`${circle.grandchildren} ${circle.grandchildren === 1 ? 'grandkid' : 'grandkids'}`);
     if (circle.friends > 0) familyBits.push(`${circle.friends} ${circle.friends === 1 ? 'friend' : 'friends'}`);
     const circleValue = familyBits.length ? `${circle.label} · ${familyBits.join(', ')}` : circle.label;
 

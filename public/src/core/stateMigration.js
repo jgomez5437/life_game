@@ -396,12 +396,7 @@ export function migrateState(rawState) {
             }
         }
 
-        const savings = toNum(
-            rawInv.savings !== undefined ? rawInv.savings : rawInv.savingsAccount?.balance,
-            0,
-            0
-        );
-
+        const savings = toNum(rawInv.savings !== undefined ? rawInv.savings : rawInv.savingsAccount?.balance, 0, 0);
         const stockMarket = Array.isArray(rawInv.stockMarket)
             ? rawInv.stockMarket
                 .filter(s => s && typeof s === 'object' && typeof s.symbol === 'string' && s.symbol.trim() !== '')
@@ -423,7 +418,6 @@ export function migrateState(rawState) {
                         : [toNum(s.price, 50, 1)]
                 }))
             : [];
-
         const blogPosts = Array.isArray(rawInv.blogPosts)
             ? rawInv.blogPosts
                 .filter(b => b && typeof b === 'object' && typeof b.symbol === 'string' && b.symbol.trim() !== '')
@@ -440,13 +434,7 @@ export function migrateState(rawState) {
                     age: toNum(b.age, age, 0, 150)
                 }))
             : [];
-
-        investments = {
-            savings,
-            stocks: normalizedStocks,
-            stockMarket,
-            blogPosts
-        };
+        investments = { savings, stocks: normalizedStocks, stockMarket, blogPosts };
     }
 
     // 8. Relationships
@@ -455,11 +443,22 @@ export function migrateState(rawState) {
             ...r,
             id: toStr(r.id, `rel_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`),
             name: toStr(r.name, 'Acquaintance'),
-            gender: ['male', 'female', 'non-binary'].includes(r.gender) ? r.gender : (['Wife', 'Mother', 'Sister', 'Daughter', 'Girlfriend'].includes(r.type) ? 'female' : 'male'),
+            gender: ['male', 'female', 'non-binary'].includes(r.gender) ? r.gender : (['Wife', 'Mother', 'Sister', 'Daughter', 'Girlfriend', 'Daughter-in-Law', 'Granddaughter', 'Sister-in-Law', 'Niece', 'Grandmother', 'Aunt'].includes(r.type) ? 'female' : 'male'),
             category: toStr(r.category, 'friend'),
             type: toStr(r.type, 'Friend'),
             age: toNum(r.age, 20, 0, 150),
-            status: toNum(r.status, 50, 0, 100)
+            status: toNum(r.status, 50, 0, 100),
+            ...(r.spouseId !== undefined ? { spouseId: r.spouseId ? toStr(r.spouseId) : null } : {}),
+            ...(r.spouseOfChildId !== undefined ? { spouseOfChildId: r.spouseOfChildId ? toStr(r.spouseOfChildId) : null } : {}),
+            ...(r.spouseOfChildName ? { spouseOfChildName: toStr(r.spouseOfChildName) } : {}),
+            ...(r.parentChildId !== undefined ? { parentChildId: r.parentChildId ? toStr(r.parentChildId) : null } : {}),
+            ...(r.parentChildName ? { parentChildName: toStr(r.parentChildName) } : {}),
+            ...(r.otherParentId !== undefined ? { otherParentId: r.otherParentId ? toStr(r.otherParentId) : null } : {}),
+            ...(r.neverMarries !== undefined ? { neverMarries: toBool(r.neverMarries, false) } : {}),
+            ...(r.bornOutOfWedlock !== undefined ? { bornOutOfWedlock: toBool(r.bornOutOfWedlock, false) } : {}),
+            ...(r.isWidowed !== undefined ? { isWidowed: toBool(r.isWidowed, false) } : {}),
+            ...(typeof r.marriedAtAge === 'number' ? { marriedAtAge: toNum(r.marriedAtAge, 20, 0, 150) } : {}),
+            ...(typeof r.justMarriedAtUserAge === 'number' ? { justMarriedAtUserAge: toNum(r.justMarriedAtUserAge, 0, 0, 150) } : {})
         }))
         : [];
     const hadUnfaithfulHookupThisYear = toBool(u.hadUnfaithfulHookupThisYear, false);

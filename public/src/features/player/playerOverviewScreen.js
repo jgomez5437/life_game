@@ -48,9 +48,11 @@ export function openPlayerOverviewModal() {
     // 5. Monthly Outflow Calculation
     const totalMonthlyOutflow = GameLogic.calculateUserMonthlyOutflow(user);
 
-    // 6. Children Count
+    // 6. Children & Grandchildren Count
     const children = (user.relationships || []).filter(r => r.category === 'child' || r.type === 'Son' || r.type === 'Daughter');
     const childCount = children.length;
+    const grandchildren = (user.relationships || []).filter(r => (r.type === 'Grandson' || r.type === 'Granddaughter') && GameLogic.isAlive(r));
+    const grandchildCount = grandchildren.length;
 
     // 7. Marital / Romance Status
     const spouse = (user.relationships || []).find(r => r.category === 'spouse' || r.type === 'Husband' || r.type === 'Wife');
@@ -317,6 +319,15 @@ export function openPlayerOverviewModal() {
                     </span>
                     <span class="font-bold text-white">${childCount} ${childCount === 1 ? 'Child' : 'Children'}</span>
                 </div>
+
+                ${grandchildCount > 0 ? `
+                    <div class="flex justify-between items-center border-b border-slate-700/60 pb-2">
+                        <span class="text-slate-400 flex items-center gap-1.5 font-medium">
+                            <i class="fas fa-child text-amber-400"></i> Grandchildren
+                        </span>
+                        <span class="font-bold text-white">${grandchildCount} ${grandchildCount === 1 ? 'Grandchild' : 'Grandchildren'}</span>
+                    </div>
+                ` : ''}
 
                 <div class="flex justify-between items-center border-b border-slate-700/60 pb-2">
                     <span class="text-slate-400 flex items-center gap-1.5 font-medium">

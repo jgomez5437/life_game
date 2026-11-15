@@ -132,6 +132,7 @@ export function harvestLifeProfile(user, lifeLog = [], cause = null) {
     const relationships = Array.isArray(user.relationships) ? user.relationships : [];
     const deceasedFamily = Array.isArray(user.deceasedFamily) ? user.deceasedFamily : [];
     const children = relationships.filter(r => r.type === 'Son' || r.type === 'Daughter' || r.category === 'child');
+    const grandchildren = relationships.filter(r => r.type === 'Grandson' || r.type === 'Granddaughter' || r.type === 'Grandchild');
     const spouse = relationships.find(r => (r.category === 'spouse' || ['Wife', 'Husband', 'Spouse'].includes(r.type)) && !r.isDead && !r.deathCause);
     const deadSpouseInRels = relationships.find(r => (r.category === 'spouse' || ['Wife', 'Husband', 'Spouse'].includes(r.type)) && (r.isDead || r.deathCause));
     const partner = relationships.find(r => r.category === 'partner');
@@ -438,6 +439,7 @@ export function harvestLifeProfile(user, lifeLog = [], cause = null) {
 
     // Named Social Circle
     const childrenNames = children.map(c => c.name).filter(Boolean);
+    const grandchildrenNames = grandchildren.map(g => g.name).filter(Boolean);
     const sortedFriends = friends.slice().sort((a, b) => (b.status || 0) - (a.status || 0));
     const bestFriendName = sortedFriends[0]?.name || null;
     const archEnemyName = enemies[0]?.name || null;
@@ -491,6 +493,7 @@ export function harvestLifeProfile(user, lifeLog = [], cause = null) {
         hasBusiness,
         businessName,
         childrenCount: children.length,
+        grandchildrenCount: grandchildren.length,
         hasSpouse: Boolean(spouse),
         spouseName: spouse ? spouse.name : null,
         isWidowed,
@@ -560,6 +563,7 @@ export function harvestLifeProfile(user, lifeLog = [], cause = null) {
         ownedStockCount,
         savingsBalance,
         childrenNames,
+        grandchildrenNames,
         bestFriendName,
         archEnemyName,
         exName,

@@ -659,6 +659,27 @@ export function handleRelationships(user) {
                 });
             }
 
+            if (rel.spouseOfChildId) {
+                const linkedChild = user.relationships.find(c => c && c.id === rel.spouseOfChildId);
+                if (linkedChild) {
+                    linkedChild.spouseId = null;
+                    linkedChild.isWidowed = true;
+                }
+            }
+
+            if (rel.category === 'child' || rel.type === 'Son' || rel.type === 'Daughter') {
+                user.relationships.forEach(other => {
+                    if (!other || other.id === rel.id) return;
+                    if (other.spouseOfChildId === rel.id) {
+                        other.isWidowed = true;
+                        other.spouseOfChildName = rel.name;
+                    }
+                    if (other.parentChildId === rel.id) {
+                        other.parentChildName = rel.name;
+                    }
+                });
+            }
+
             state.gameState.pendingFunerals.push(rel);
             
             // Remove them from active relationships immediately
@@ -685,6 +706,16 @@ export function handleRelationships(user) {
         
         // Reset interaction flag for next year
         rel.interactedThisYear = false;
+    }
+
+    // Adult children random marriage & grandchild birth progression
+    if (typeof GameLogic.processAdultChildrenMilestones === 'function') {
+        const milestoneRes = GameLogic.processAdultChildrenMilestones(user);
+        if (milestoneRes && Array.isArray(milestoneRes.events)) {
+            milestoneRes.events.forEach(ev => {
+                if (ev && ev.msg) addLog(ev.msg, ev.type || 'good');
+            });
+        }
     }
     
     // Reset global interaction flags
