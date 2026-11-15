@@ -315,6 +315,12 @@ export const selectLifeEventChoice = (eventId, choiceId, targetNpcId, selectElem
     `;
 
     UI.replaceModalContent('Event Outcome', outcomeHtml);
+    if (typeof document !== 'undefined') {
+        const closeBtn = document.getElementById('modal-close-btn');
+        if (closeBtn) {
+            closeBtn.onclick = () => finishLifeEvent();
+        }
+    }
 };
 
 export const finishLifeEvent = () => {

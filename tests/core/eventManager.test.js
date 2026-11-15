@@ -564,10 +564,11 @@ describe('EventManager & Random Life Events Engine', () => {
             state.gameState.pendingEvents = [{ eventId: 'child_major_approval', npcId: 'd_1' }];
 
             const showSpy = jest.spyOn(UI, 'showCustomModal').mockImplementation(({ content }) => {
-                document.body.innerHTML = `<div id="modal-overlay">${content}</div>`;
+                document.body.innerHTML = `<div id="modal-overlay"><button id="modal-close-btn"></button>${content}</div>`;
             });
             const replaceSpy = jest.spyOn(UI, 'replaceModalContent').mockImplementation(() => {});
             const headerSpy = jest.spyOn(UI, 'updateHeader').mockImplementation(() => {});
+            const hideSpy = jest.spyOn(UI, 'hideModal').mockImplementation(() => {});
 
             processNextLifeEvent();
             const selectEl = document.getElementById('life-event-major-select');
@@ -583,9 +584,16 @@ describe('EventManager & Random Life Events Engine', () => {
             expect(daughter.occupationType).toBe('school');
             expect(daughter.schoolYear).toBe(1);
 
+            const closeBtn = document.getElementById('modal-close-btn');
+            expect(typeof closeBtn.onclick).toBe('function');
+            closeBtn.click();
+            expect(state.gameState.pendingEvents).toEqual([]);
+            expect(hideSpy).toHaveBeenCalled();
+
             showSpy.mockRestore();
             replaceSpy.mockRestore();
             headerSpy.mockRestore();
+            hideSpy.mockRestore();
         });
     });
 });
