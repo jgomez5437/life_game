@@ -1,5 +1,6 @@
 import { jest } from '@jest/globals';
 import { state } from '../../public/src/core/state.js';
+import { MAJORS } from '../../public/src/core/constants.js';
 import { LIFE_EVENTS, EventManager } from '../../public/src/core/eventManager.js';
 import { GameLogic } from '../../public/src/core/gameLogic.js';
 import { UI } from '../../public/src/ui/ui.js';
@@ -150,18 +151,36 @@ describe('EventManager & Random Life Events Engine', () => {
     });
 
     describe('Scenario Resolutions & Consequence Math', () => {
-        test('child_major_approval resolves all choices safely with bounds clamping', () => {
+        test('child_major_approval resolves all choices safely with bounds clamping and updates university status', () => {
             const majorEvt = LIFE_EVENTS.child_major_approval;
             const user = state.gameState.user;
-            const child = { id: 'child_1', name: 'Emma', type: 'Daughter', age: 18, status: 60, proposedMajor: 'Art' };
+            const child = {
+                id: 'child_1', name: 'Emma', type: 'Daughter', age: 18, status: 60,
+                proposedMajor: 'Biology', occupation: 'High School Graduate', occupationType: 'school'
+            };
+
+            const rendered = majorEvt.render(user, child);
+            const suggestOpt = rendered.options.find(o => o.id === 'suggest_major');
+            expect(suggestOpt).toBeDefined();
+            expect(suggestOpt.selectConfig.options).toEqual(MAJORS);
 
             const approveRes = majorEvt.resolve(user, child, 'approve_dream');
             expect(approveRes.logType).toBe('good');
             expect(child.status).toBe(75);
+            expect(child.occupation).toBe('University Student (Biology)');
+            expect(child.schoolMajor).toBe('Biology');
+            expect(child.schoolYear).toBe(1);
+
+            const customRes = majorEvt.resolve(user, child, 'suggest_major', { selectedMajor: 'Business' });
+            expect(customRes.logType).toBe('good');
+            expect(child.proposedMajor).toBe('Business');
+            expect(child.schoolMajor).toBe('Business');
+            expect(child.occupation).toBe('University Student (Business)');
 
             const stemRes = majorEvt.resolve(user, child, 'suggest_stem');
             expect(stemRes.logType).toBe('good');
             expect(child.proposedMajor).toBe('Computer Science');
+            expect(child.occupation).toBe('University Student (Computer Science)');
 
             user.money = 20000;
             const fundRes = majorEvt.resolve(user, child, 'fund_tuition');
@@ -172,6 +191,22 @@ describe('EventManager & Random Life Events Engine', () => {
             const dismissRes = majorEvt.resolve(user, child, 'dismiss_child');
             expect(dismissRes.logType).toBe('bad');
             expect(child.status).toBe(85);
+        });
+
+        test('child_major_approval keeps original proposedMajor when child declines suggestion', () => {
+            const majorEvt = LIFE_EVENTS.child_major_approval;
+            const user = state.gameState.user;
+            const child = {
+                id: 'child_low_status', name: 'Mia', type: 'Daughter', age: 18, status: 30,
+                proposedMajor: 'Psychology', occupation: 'High School Graduate', occupationType: 'school'
+            };
+
+            const res = majorEvt.resolve(user, child, 'suggest_major', { selectedMajor: 'Business' });
+            expect(res.logType).toBe('bad');
+            expect(child.proposedMajor).toBe('Psychology');
+            expect(child.schoolMajor).toBe('Psychology');
+            expect(child.occupation).toBe('University Student (Psychology)');
+            expect(child.status).toBe(20);
         });
 
         test('classmate_fight resolves fight, tell_teacher, defuse, and walk_away', () => {
@@ -515,6 +550,50 @@ describe('EventManager & Random Life Events Engine', () => {
             replaceSpy.mockRestore();
             headerSpy.mockRestore();
             showSpy.mockRestore();
+        });
+
+        test('child_major_approval modal renders all MAJORS in select and enrolls child in user-chosen degree', () => {
+            const user = state.gameState.user;
+            user.age = 42;
+            const daughter = {
+                id: 'd_1', name: 'Chloe', type: 'Daughter', category: 'child',
+                age: 18, status: 75, lifeStatus: 'Alive',
+                proposedMajor: 'Biology', occupation: 'High School Graduate', occupationType: 'school'
+            };
+            user.relationships = [daughter];
+            state.gameState.pendingEvents = [{ eventId: 'child_major_approval', npcId: 'd_1' }];
+
+            const showSpy = jest.spyOn(UI, 'showCustomModal').mockImplementation(({ content }) => {
+                document.body.innerHTML = `<div id="modal-overlay"><button id="modal-close-btn"></button>${content}</div>`;
+            });
+            const replaceSpy = jest.spyOn(UI, 'replaceModalContent').mockImplementation(() => {});
+            const headerSpy = jest.spyOn(UI, 'updateHeader').mockImplementation(() => {});
+            const hideSpy = jest.spyOn(UI, 'hideModal').mockImplementation(() => {});
+
+            processNextLifeEvent();
+            const selectEl = document.getElementById('life-event-major-select');
+            expect(selectEl).not.toBeNull();
+            expect(Array.from(selectEl.options).map(o => o.value)).toEqual(MAJORS);
+
+            selectEl.value = 'Business';
+            selectLifeEventChoice('child_major_approval', 'suggest_major', 'd_1', 'life-event-major-select');
+
+            expect(daughter.proposedMajor).toBe('Business');
+            expect(daughter.schoolMajor).toBe('Business');
+            expect(daughter.occupation).toBe('University Student (Business)');
+            expect(daughter.occupationType).toBe('school');
+            expect(daughter.schoolYear).toBe(1);
+
+            const closeBtn = document.getElementById('modal-close-btn');
+            expect(typeof closeBtn.onclick).toBe('function');
+            closeBtn.click();
+            expect(state.gameState.pendingEvents).toEqual([]);
+            expect(hideSpy).toHaveBeenCalled();
+
+            showSpy.mockRestore();
+            replaceSpy.mockRestore();
+            headerSpy.mockRestore();
+            hideSpy.mockRestore();
         });
     });
 });

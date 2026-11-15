@@ -648,8 +648,9 @@ export function handleRelationships(user) {
         const rel = user.relationships[i];
         rel.age++;
         
-        // Progress NPC Occupation and check for milestones
-        const milestoneMsg = GameLogic.progressNPCOccupation(rel, user.age, user.city || null);
+        // Progress NPC Occupation and check for milestones (defer 18yo child awaiting major consultation)
+        const deferAge18Child = (rel.category === 'child' || rel.type === 'Son' || rel.type === 'Daughter') && rel.age === 18 && !rel.majorConsulted && user.age >= 30 && user.age <= 120 && !(state.gameState?.completedEventsHistory || []).some(h => h.eventId === 'child_major_approval' && h.npcId === rel.id);
+        const milestoneMsg = GameLogic.progressNPCOccupation(rel, user.age, user.city || null, Math.random, { deferAge18Child });
         if (milestoneMsg) {
             addLog(milestoneMsg, 'good');
         }

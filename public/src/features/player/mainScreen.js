@@ -110,6 +110,19 @@ export async function ageUp() {
     handleAppearanceAging(user);
     EventManager.evaluateAgeUpEvents(user, currentState);
 
+    // Fallback for any deferred 18yo child not queued for child_major_approval (e.g., twins in same year)
+    const pendingMajorNpcIds = new Set(
+        (currentState.pendingEvents || [])
+            .filter(p => p.eventId === 'child_major_approval' && p.npcId)
+            .map(p => p.npcId)
+    );
+    (user.relationships || []).forEach(rel => {
+        if (rel && rel.age === 18 && rel.occupation === 'High School Graduate' && !pendingMajorNpcIds.has(rel.id)) {
+            const msg = GameLogic.progressNPCOccupation(rel, user.age, user.city || null);
+            if (msg) addLog(msg, 'good');
+        }
+    });
+
     const infidelityDiscovery = GameLogic.checkAgeUpInfidelityDiscovery(user);
     if (infidelityDiscovery) {
         loadModule('relationships').then(m => {

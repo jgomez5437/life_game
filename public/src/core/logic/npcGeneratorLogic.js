@@ -7,6 +7,7 @@ import {
     isCloseRelationship,
     repairNPCOccupationMetadata,
     generateNPCOccupation,
+    enrollNPCInUniversity,
     progressNPCOccupation,
     calculateSpousalIncomeContribution
 } from './npcOccupationLogic.js';
@@ -18,6 +19,7 @@ export {
     isCloseRelationship,
     repairNPCOccupationMetadata,
     generateNPCOccupation,
+    enrollNPCInUniversity,
     progressNPCOccupation,
     calculateSpousalIncomeContribution
 };

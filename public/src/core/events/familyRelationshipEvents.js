@@ -1,4 +1,6 @@
 import { GameLogic } from '../gameLogic.js';
+import { MAJORS } from '../constants.js';
+import { enrollNPCInUniversity, progressNPCOccupation } from '../logic/npcOccupationLogic.js';
 import { getSkillXpSafe, getUserStat, isLivingNPC } from './eventHelpers.js';
 
 export const FAMILY_RELATIONSHIP_EVENTS = {
@@ -186,8 +188,8 @@ export const FAMILY_RELATIONSHIP_EVENTS = {
     child_major_approval: {
         id: "child_major_approval",
         category: "parenthood",
-        minAge: 32,
-        maxAge: 90,
+        minAge: 30,
+        maxAge: 120,
         probability: 1.0, // Guaranteed when child turns 18
         priority: 100,
         oncePerNpc: true,
@@ -212,7 +214,13 @@ export const FAMILY_RELATIONSHIP_EVENTS = {
         render: (user, targetNPC) => {
             const childName = targetNPC ? targetNPC.name : 'Your child';
             const childRelation = targetNPC ? targetNPC.type.toLowerCase() : 'child';
-            const proposedMajor = targetNPC?.proposedMajor || 'Art & Humanities';
+            if (targetNPC && !(typeof targetNPC.proposedMajor === 'string' && targetNPC.proposedMajor.trim())) {
+                targetNPC.proposedMajor = MAJORS[Math.floor(Math.random() * MAJORS.length)];
+            }
+            const proposedMajor = (typeof targetNPC?.proposedMajor === 'string' && targetNPC.proposedMajor.trim())
+                ? targetNPC.proposedMajor.trim()
+                : MAJORS[0];
+            const defaultSuggestion = MAJORS.find(m => m !== proposedMajor) || MAJORS[0];
             const userMoney = user.money ?? 0;
 
             return {
@@ -230,23 +238,22 @@ export const FAMILY_RELATIONSHIP_EVENTS = {
                         color: "emerald"
                     },
                     {
-                        id: "suggest_stem",
-                        title: "Suggest Computer Science & Tech",
-                        description: "Steer them toward high-demand tech careers",
-                        icon: "fa-laptop-code",
-                        color: "blue"
-                    },
-                    {
-                        id: "suggest_business",
-                        title: "Suggest Business & Finance",
-                        description: "Steer them toward executive commerce & management",
-                        icon: "fa-chart-line",
-                        color: "blue"
+                        id: "suggest_major",
+                        title: "Suggest Selected Degree",
+                        description: "Steer them toward the degree chosen above",
+                        icon: "fa-compass",
+                        color: "blue",
+                        selectConfig: {
+                            id: "life-event-major-select",
+                            label: "Choose Degree to Suggest",
+                            options: MAJORS,
+                            defaultValue: defaultSuggestion
+                        }
                     },
                     {
                         id: "fund_tuition",
                         title: "Gift $10,000 Tuition Assistance",
-                        description: "Cover college expenses out of pocket",
+                        description: `Cover college expenses for ${proposedMajor}`,
                         icon: "fa-graduation-cap",
                         color: "amber",
                         badge: "$10,000",
@@ -262,64 +269,76 @@ export const FAMILY_RELATIONSHIP_EVENTS = {
                 ]
             };
         },
-        resolve: (user, targetNPC, choiceId) => {
+        resolve: (user, targetNPC, choiceId, context = {}) => {
             const childName = targetNPC ? targetNPC.name : 'Your child';
-            const proposedMajor = targetNPC?.proposedMajor || 'Art & Humanities';
+            const proposedMajor = (typeof targetNPC?.proposedMajor === 'string' && targetNPC.proposedMajor.trim())
+                ? targetNPC.proposedMajor.trim()
+                : MAJORS[0];
 
             if (choiceId === "approve_dream") {
                 GameLogic.adjustStat(user, 'happiness', 10);
-                if (targetNPC && typeof targetNPC.status === 'number') targetNPC.status = Math.min(100, targetNPC.status + 15);
+                if (targetNPC) {
+                    enrollNPCInUniversity(targetNPC, proposedMajor);
+                    targetNPC.majorConsulted = true;
+                    if (typeof targetNPC.status === 'number') targetNPC.status = Math.min(100, targetNPC.status + 15);
+                }
                 return {
-                    log: `You gave ${childName} your blessing to pursue ${proposedMajor}. They beamed with gratitude!`,
+                    log: `You gave ${childName} your blessing to pursue ${proposedMajor}. They enrolled in University and beamed with gratitude!`,
                     logType: "good"
                 };
-            } else if (choiceId === "suggest_stem") {
+            } else if (choiceId === "suggest_major" || choiceId === "suggest_stem" || choiceId === "suggest_business") {
+                const rawSuggested = choiceId === "suggest_stem"
+                    ? 'Computer Science'
+                    : (choiceId === "suggest_business"
+                        ? 'Business'
+                        : (context?.selectedMajor || context?.selectedValue || MAJORS[0]));
+                const suggestedMajor = (typeof rawSuggested === 'string' && rawSuggested.trim())
+                    ? rawSuggested.trim()
+                    : MAJORS[0];
                 const childStatus = targetNPC?.status ?? 50;
+
                 if (childStatus >= 45) {
                     if (targetNPC) {
-                        targetNPC.proposedMajor = 'Computer Science';
+                        enrollNPCInUniversity(targetNPC, suggestedMajor);
+                        targetNPC.majorConsulted = true;
                         if (typeof targetNPC.status === 'number') targetNPC.status = Math.min(100, targetNPC.status + 10);
                     }
                     return {
-                        log: `${childName} respected your advice and decided to enroll in Computer Science!`,
+                        log: `${childName} respected your advice and enrolled in University studying ${suggestedMajor}!`,
                         logType: "good"
                     };
                 } else {
-                    if (targetNPC && typeof targetNPC.status === 'number') targetNPC.status = Math.max(0, targetNPC.status - 10);
-                    return {
-                        log: `${childName} felt you were being too controlling and insisted on their original choice.`,
-                        logType: "bad"
-                    };
-                }
-            } else if (choiceId === "suggest_business") {
-                const childStatus = targetNPC?.status ?? 50;
-                if (childStatus >= 45) {
                     if (targetNPC) {
-                        targetNPC.proposedMajor = 'Business Administration';
-                        if (typeof targetNPC.status === 'number') targetNPC.status = Math.min(100, targetNPC.status + 10);
+                        enrollNPCInUniversity(targetNPC, proposedMajor);
+                        targetNPC.majorConsulted = true;
+                        if (typeof targetNPC.status === 'number') targetNPC.status = Math.max(0, targetNPC.status - 10);
                     }
                     return {
-                        log: `${childName} agreed that a Business degree is versatile and updated their application!`,
-                        logType: "good"
-                    };
-                } else {
-                    if (targetNPC && typeof targetNPC.status === 'number') targetNPC.status = Math.max(0, targetNPC.status - 10);
-                    return {
-                        log: `${childName} rolled their eyes and declined your business suggestion.`,
+                        log: `${childName} felt you were being too controlling, declined ${suggestedMajor}, and enrolled in ${proposedMajor} instead.`,
                         logType: "bad"
                     };
                 }
             } else if (choiceId === "fund_tuition") {
                 user.money = Math.max(0, (user.money ?? 0) - 10000);
                 GameLogic.adjustStat(user, 'happiness', 20);
-                if (targetNPC && typeof targetNPC.status === 'number') targetNPC.status = Math.min(100, targetNPC.status + 30);
+                if (targetNPC) {
+                    enrollNPCInUniversity(targetNPC, proposedMajor);
+                    targetNPC.majorConsulted = true;
+                    if (typeof targetNPC.status === 'number') targetNPC.status = Math.min(100, targetNPC.status + 30);
+                }
                 return {
-                    log: `You gifted ${childName} $10,000 for their college tuition! Tears of joy filled their eyes.`,
+                    log: `You gifted ${childName} $10,000 for their ${proposedMajor} tuition! Tears of joy filled their eyes.`,
                     logType: "good"
                 };
             } else {
                 GameLogic.adjustStat(user, 'happiness', -5);
-                if (targetNPC && typeof targetNPC.status === 'number') targetNPC.status = Math.max(0, targetNPC.status - 15);
+                if (targetNPC) {
+                    targetNPC.majorConsulted = true;
+                    if (typeof targetNPC.status === 'number') targetNPC.status = Math.max(0, targetNPC.status - 15);
+                    if (targetNPC.occupation === 'High School Graduate' || targetNPC.occupation === 'High School Student') {
+                        progressNPCOccupation(targetNPC, user.age, user.city || null);
+                    }
+                }
                 return {
                     log: `You told ${childName} they are 18 and need to figure it out themselves. They walked away dejected.`,
                     logType: "bad"
