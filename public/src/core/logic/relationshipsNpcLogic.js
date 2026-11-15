@@ -500,6 +500,10 @@ export function inheritFamilyRelationships(parentRelationships, selectedChildId)
             if (r.income !== undefined) mapped.income = r.income;
             if (r.careerTrack !== undefined) mapped.careerTrack = r.careerTrack;
             if (r.careerLevel !== undefined) mapped.careerLevel = r.careerLevel;
+            if (r.lastCareerTrack !== undefined) mapped.lastCareerTrack = r.lastCareerTrack;
+            if (r.yearsInRole !== undefined) mapped.yearsInRole = r.yearsInRole;
+            if (r.wealthTier !== undefined) mapped.wealthTier = r.wealthTier;
+            if (r.netWorth !== undefined) mapped.netWorth = r.netWorth;
             if (r.educationLevel !== undefined) mapped.educationLevel = r.educationLevel;
             if (r.schoolMajor !== undefined) mapped.schoolMajor = r.schoolMajor;
             if (r.schoolYear !== undefined) mapped.schoolYear = r.schoolYear;

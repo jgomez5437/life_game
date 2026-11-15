@@ -188,7 +188,7 @@ export function processPrisonAgeUp(user) {
                 rel.age++; // People in social continue aging while player is in prison
 
                 // Progress NPC Occupation and check for milestone events
-                const milestoneMsg = progressNPCOccupation(rel, user.age);
+                const milestoneMsg = progressNPCOccupation(rel, user.age, user.city || null);
                 if (milestoneMsg) {
                     events.push(milestoneMsg);
                 }

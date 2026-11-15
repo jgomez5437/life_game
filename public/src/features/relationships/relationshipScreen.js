@@ -85,7 +85,7 @@ export const addNewRelationship = (name, age, type, status, category = 'friend')
 
     // Use crypto for unique IDs to prevent rendering collisions
     const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'rel_' + Date.now() + Math.floor(Math.random() * 1000);
-    const occ = GameLogic.generateNPCOccupation(age);
+    const occ = GameLogic.generateNPCOccupation(age, user.city || null);
     const newPerson = {
         id,
         name: name,
@@ -148,8 +148,10 @@ export const renderRelationships = () => {
 
     // --- HELPER: Generate Card HTML ---
     const getPersonCard = (person) => {
-        if (!person.occupation) {
-            Object.assign(person, GameLogic.generateNPCOccupation(person.age));
+        if (typeof GameLogic.repairNPCOccupationMetadata === 'function') {
+            GameLogic.repairNPCOccupationMetadata(person, user.city || null);
+        } else if (!person.occupation) {
+            Object.assign(person, GameLogic.generateNPCOccupation(person.age, user.city || null));
         }
 
         // A. Determine Wellness Bar Color
@@ -308,8 +310,10 @@ export const renderPersonInteraction = (id, backAction = null) => {
         return;
     }
 
-    if (!person.occupation) {
-        Object.assign(person, GameLogic.generateNPCOccupation(person.age));
+    if (typeof GameLogic.repairNPCOccupationMetadata === 'function') {
+        GameLogic.repairNPCOccupationMetadata(person, user.city || null);
+    } else if (!person.occupation) {
+        Object.assign(person, GameLogic.generateNPCOccupation(person.age, user.city || null));
     }
 
     let targetBackAction = backAction;

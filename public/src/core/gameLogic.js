@@ -130,6 +130,7 @@ export const GameLogic = {
 
     // Relationships, NPCs, Dating, Marriage, Inheritance & Relocation
     generateNPCOccupation: relationshipsNpc.generateNPCOccupation,
+    repairNPCOccupationMetadata: relationshipsNpc.repairNPCOccupationMetadata,
     progressNPCOccupation: relationshipsNpc.progressNPCOccupation,
     calculateSpousalIncomeContribution: relationshipsNpc.calculateSpousalIncomeContribution,
     calculateRelationshipDecay: relationshipsNpc.calculateRelationshipDecay,

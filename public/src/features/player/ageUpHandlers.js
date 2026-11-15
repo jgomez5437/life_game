@@ -493,7 +493,7 @@ export function refreshClassmates(user) {
     // Clear old classmates/teachers (non-friends)
     user.relationships = user.relationships.filter(r => r.category !== 'classmate');
     // Generate new cohort
-    const cohort = GameLogic.generateSchoolCohort(user.age);
+    const cohort = GameLogic.generateSchoolCohort(user.age, user.city || null);
     user.relationships.push(...cohort);
 }
 
@@ -649,7 +649,7 @@ export function handleRelationships(user) {
         rel.age++;
         
         // Progress NPC Occupation and check for milestones
-        const milestoneMsg = GameLogic.progressNPCOccupation(rel, user.age);
+        const milestoneMsg = GameLogic.progressNPCOccupation(rel, user.age, user.city || null);
         if (milestoneMsg) {
             addLog(milestoneMsg, 'good');
         }

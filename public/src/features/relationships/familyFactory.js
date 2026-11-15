@@ -10,7 +10,7 @@ export const FamilyFactory = (() => {
 
     // 3. Public API
     return {
-        generateFamily: (lastName) => {
+        generateFamily: (lastName, city = null) => {
             const family = [];
             
             // --- A. PARENT GENERATION ---
@@ -31,7 +31,7 @@ export const FamilyFactory = (() => {
             if (hasMother) {
                 const id = getUUID();
                 const age = getInt(18, 45);
-                const occ = GameLogic.generateNPCOccupation(age);
+                const occ = GameLogic.generateNPCOccupation(age, city);
                 family.push({
                     id,
                     name: `${getName('female')} ${lastName}`,
@@ -48,7 +48,7 @@ export const FamilyFactory = (() => {
             if (hasFather) {
                 const id = getUUID();
                 const age = getInt(18, 50);
-                const occ = GameLogic.generateNPCOccupation(age);
+                const occ = GameLogic.generateNPCOccupation(age, city);
                 family.push({
                     id,
                     name: `${getName('male')} ${lastName}`,
@@ -83,7 +83,7 @@ export const FamilyFactory = (() => {
                         const isMale = Math.random() > 0.5;
                         const id = getUUID();
                         const age = getInt(1, maxSiblingAge);
-                        const occ = GameLogic.generateNPCOccupation(age);
+                        const occ = GameLogic.generateNPCOccupation(age, city);
                         family.push({
                             id,
                             name: `${getName(isMale ? 'male' : 'female')} ${lastName}`,

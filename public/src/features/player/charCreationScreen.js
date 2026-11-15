@@ -636,7 +636,7 @@ export async function submitCharacter() {
     // === 1. GENERATE STARTING FAMILY ===
     let startingFamily = [];
     if (FamilyFactory) {
-        startingFamily = FamilyFactory.generateFamily(lastName);
+        startingFamily = FamilyFactory.generateFamily(lastName, city);
     } else {
         console.error("FamilyFactory is not loaded. Relationships array will be empty.");
     }
