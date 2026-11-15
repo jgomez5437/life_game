@@ -141,12 +141,12 @@ export function repairNPCOccupationMetadata(person, city = null) {
         return person;
     }
 
-    if (['Baby', 'Toddler', 'Elementary Student', 'Middle School Student', 'High School Student'].includes(rawOcc)) {
+    if (['Baby', 'Toddler', 'Elementary Student', 'Middle School Student', 'High School Student', 'High School Graduate'].includes(rawOcc)) {
         person.occupationType = 'school';
-        if (!person.educationLevel) {
+        if (!person.educationLevel || person.educationLevel === 'None') {
             if (rawOcc === 'Elementary Student') person.educationLevel = 'Elementary';
             else if (rawOcc === 'Middle School Student') person.educationLevel = 'Middle School';
-            else if (rawOcc === 'High School Student') person.educationLevel = 'High School';
+            else if (rawOcc === 'High School Student' || rawOcc === 'High School Graduate') person.educationLevel = 'High School';
             else person.educationLevel = 'None';
         }
         if (typeof person.income !== 'number') person.income = 0;
@@ -321,7 +321,27 @@ export function generateNPCOccupation(age, city = null) {
     };
 }
 
-export function progressNPCOccupation(person, userAge, city = null, rng = Math.random) {
+export function enrollNPCInUniversity(person, major) {
+    if (!person || typeof person !== 'object') return;
+    const trimmed = typeof major === 'string' ? major.trim() : '';
+    const resolvedMajor = trimmed || NPC_MAJORS[0];
+    const age = Number(person.age) || 18;
+    const wasAlreadyUni = typeof person.occupation === 'string' && person.occupation.startsWith('University Student');
+    person.occupation = `University Student (${resolvedMajor})`;
+    person.occupationType = 'school';
+    person.educationLevel = 'High School';
+    person.schoolMajor = resolvedMajor;
+    person.proposedMajor = resolvedMajor;
+    person.schoolYear = wasAlreadyUni
+        ? Math.max(1, Number(person.schoolYear) || (age - 17))
+        : Math.max(1, age - 17);
+    person.careerTrack = null;
+    person.careerLevel = 0;
+    person.yearsInRole = 0;
+    person.income = 0;
+}
+
+export function progressNPCOccupation(person, userAge, city = null, rng = Math.random, options = {}) {
     if (!person) return null;
 
     const hadMissingOcc = !person.occupation;
@@ -356,14 +376,20 @@ export function progressNPCOccupation(person, userAge, city = null, rng = Math.r
         if (isClose && age === 14) milestoneMessage = `${person.name} started High School!`;
     } else if (age >= 18 && age < 65 && person.occupationType === 'school' && (!person.occupation || !person.occupation.startsWith("University Student"))) {
         person.educationLevel = 'High School';
+        if (options?.deferAge18Child && age === 18) {
+            person.occupation = 'High School Graduate';
+            person.occupationType = 'school';
+            person.income = 0;
+            return null;
+        }
         const roll = rng();
         if (age <= 21 && roll < 0.55) {
-            const major = NPC_MAJORS[Math.floor(rng() * NPC_MAJORS.length)];
-            person.occupation = `University Student (${major})`;
-            person.occupationType = 'school';
-            person.schoolMajor = major;
+            const preferredMajor = typeof person.proposedMajor === 'string' && person.proposedMajor.trim()
+                ? person.proposedMajor.trim()
+                : null;
+            const major = preferredMajor || NPC_MAJORS[Math.floor(rng() * NPC_MAJORS.length)];
+            enrollNPCInUniversity(person, major);
             person.schoolYear = Math.max(1, age - 17);
-            person.income = 0;
             if (isClose) milestoneMessage = `${person.name} graduated High School and enrolled in University studying ${major}!`;
         } else if (roll < 0.85) {
             const entryTracks = getEntryLevelTracks();

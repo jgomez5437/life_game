@@ -161,8 +161,12 @@ export const processNextLifeEvent = () => {
             ? `<span class="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full ${isDisabled ? 'bg-slate-700/80 text-slate-400 border border-slate-600' : 'bg-black/25 text-white border border-white/20'} shrink-0">${Utils.escapeHtml(opt.badge)}</span>`
             : '';
 
-        return `
-            <button data-action="selectLifeEventChoice" data-args="'${Utils.escapeHtml(item.eventId)}', '${Utils.escapeHtml(opt.id)}', ${npcArg}" ${disabledAttr} class="w-full ${btnBgClass} font-bold py-3 px-4 rounded-xl flex items-center justify-between gap-2 transition group shadow-md text-left">
+        const selectCfg = opt.selectConfig;
+        const selectId = selectCfg?.id ? Utils.escapeHtml(selectCfg.id) : null;
+        const selectArg = selectId ? `, '${selectId}'` : '';
+
+        const btnHtml = `
+            <button data-action="selectLifeEventChoice" data-args="'${Utils.escapeHtml(item.eventId)}', '${Utils.escapeHtml(opt.id)}', ${npcArg}${selectArg}" ${disabledAttr} class="w-full ${btnBgClass} font-bold py-3 px-4 rounded-xl flex items-center justify-between gap-2 transition group shadow-md text-left">
                 <div class="flex items-center gap-3 min-w-0">
                     ${iconHtml}
                     <div class="min-w-0">
@@ -175,6 +179,26 @@ export const processNextLifeEvent = () => {
                     ${!isDisabled ? '<i class="fas fa-chevron-right text-xs opacity-70 group-hover:translate-x-1 transition"></i>' : ''}
                 </div>
             </button>
+        `;
+
+        if (!selectCfg || !Array.isArray(selectCfg.options) || !selectId) {
+            return btnHtml;
+        }
+
+        const selectOptionsHtml = selectCfg.options.map(val => {
+            const safeVal = Utils.escapeHtml(String(val));
+            const selectedAttr = val === selectCfg.defaultValue ? 'selected' : '';
+            return `<option value="${safeVal}" ${selectedAttr}>${safeVal}</option>`;
+        }).join('');
+
+        return `
+            <div class="w-full rounded-xl border border-slate-700/80 bg-slate-900/70 p-2.5 space-y-2 text-left">
+                ${selectCfg.label ? `<label for="${selectId}" class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 px-1">${Utils.escapeHtml(selectCfg.label)}</label>` : ''}
+                <select id="${selectId}" class="custom-select w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-xs sm:text-sm text-white outline-none focus:border-blue-500">
+                    ${selectOptionsHtml}
+                </select>
+                ${btnHtml}
+            </div>
         `;
     }).join('');
 
@@ -204,7 +228,7 @@ export const processNextLifeEvent = () => {
     });
 };
 
-export const selectLifeEventChoice = (eventId, choiceId, targetNpcId) => {
+export const selectLifeEventChoice = (eventId, choiceId, targetNpcId, selectElementId = null) => {
     const queue = state.gameState?.pendingEvents;
     if (!queue || queue.length === 0) {
         UI.hideModal();
@@ -228,8 +252,17 @@ export const selectLifeEventChoice = (eventId, choiceId, targetNpcId) => {
         targetNPC = evt.getTargetNPC(user, state.gameState);
     }
 
+    let selectedValue = null;
+    if (selectElementId && typeof document !== 'undefined') {
+        const selectEl = document.getElementById(selectElementId);
+        if (selectEl && typeof selectEl.value === 'string' && selectEl.value.trim()) {
+            selectedValue = selectEl.value.trim();
+        }
+    }
+
     const beforeSnapshot = captureOutcomeSnapshot(user, targetNPC);
-    const result = evt.resolve(user, targetNPC, choiceId);
+    const context = selectedValue ? { selectedValue, selectedMajor: selectedValue } : undefined;
+    const result = evt.resolve(user, targetNPC, choiceId, context);
 
     if (result?.log) {
         addLog(result.log, result.logType || 'neutral');

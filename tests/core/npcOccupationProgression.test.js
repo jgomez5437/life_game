@@ -250,6 +250,33 @@ describe('NPC Occupation Progression & Dating Metadata', () => {
             expect(stuckHs.occupation).not.toBe('High School Student');
         });
 
+        test('defers age-18 child enrollment until major consultation and graduates into suggested Business career', () => {
+            const daughter = {
+                id: 'child_deg_1', name: 'Sofia', age: 18, type: 'Daughter', category: 'child',
+                occupation: 'High School Student', occupationType: 'school', educationLevel: 'High School', schoolYear: 4
+            };
+            const deferMsg = GameLogic.progressNPCOccupation(daughter, 44, null, seqRng([0.0]), { deferAge18Child: true });
+            expect(deferMsg).toBeNull();
+            expect(daughter.occupation).toBe('High School Graduate');
+            expect(daughter.occupationType).toBe('school');
+
+            // User suggests Business and child accepts
+            GameLogic.enrollNPCInUniversity(daughter, 'Business');
+            expect(daughter.occupation).toBe('University Student (Business)');
+            expect(daughter.schoolMajor).toBe('Business');
+            expect(daughter.schoolYear).toBe(1);
+
+            // Advance years 19 -> 22
+            for (let yr = 19; yr <= 22; yr++) {
+                daughter.age = yr;
+                GameLogic.progressNPCOccupation(daughter, 44 + (yr - 18), null, seqRng([0.0]));
+            }
+            expect(daughter.educationLevel).toBe('University');
+            expect(daughter.occupationType).toBe('job');
+            expect(daughter.schoolMajor).toBe('Business');
+            expect(['banking', 'marketing_track']).toContain(daughter.careerTrack);
+        });
+
         test('promotes, switches careers, lays off (including LuxeMatch), and gives modest raises', () => {
             // Promotion
             const worker = {
