@@ -29,6 +29,7 @@ import {
     openBribeModal,
     showCourtArraignmentModal
 } from '../../public/src/features/more/crimeScreen.js';
+import { confirmQuitCareer } from '../../public/src/features/career/jobCareerManagerScreen.js';
 
 describe('Modal Header Exit Button & Interactive Navigation Suite', () => {
 
@@ -392,5 +393,36 @@ describe('Modal Header Exit Button & Interactive Navigation Suite', () => {
         expect(titleEl.textContent).not.toBe("Cheating Discovered!");
 
         randSpy.mockRestore();
+    });
+
+    test('confirmQuitCareer displays active top close button and inline Yes, Quit / Cancel buttons even after modals hide modal-actions', () => {
+        const overlay = document.getElementById('modal-overlay');
+        const titleEl = document.getElementById('modal-title');
+        const contentEl = document.getElementById('modal-content');
+        const closeBtn = document.getElementById('modal-close-btn');
+
+        // Simulate previous info modal (hides #modal-close-btn) and custom modal without confirmText (hides #modal-actions)
+        UI.showModal('Hired!', '<p>Accepted job</p>');
+        document.getElementById('modal-btn').click();
+        UI.showCustomModal({ title: 'Job Interview', content: '<p>Question</p>', showCloseBtn: false });
+        UI.hideModal();
+        expect(UI.isModalOpen()).toBe(false);
+
+        state.gameState.user.jobTitle = 'Security Guard';
+        state.gameState.user.jobSalary = 14560;
+        state.gameState.user.careerTrack = null;
+
+        confirmQuitCareer();
+
+        expect(overlay.classList.contains('hidden')).toBe(false);
+        expect(titleEl.textContent).toBe('Quit Job?');
+        expect(closeBtn.classList.contains('hidden')).toBe(false);
+        expect(contentEl.querySelector('[data-action="quitCareer"]')).not.toBeNull();
+        expect(contentEl.querySelector('[data-action="hideModal"]')).not.toBeNull();
+
+        closeBtn.click();
+        expect(overlay.classList.contains('hidden')).toBe(true);
+        expect(UI.isModalOpen()).toBe(false);
+        expect(state.gameState.user.jobTitle).toBe('Security Guard');
     });
 });

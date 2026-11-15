@@ -107,8 +107,31 @@ export function initPrisonState(user, verdictResult) {
         });
     }
 
+    if (user.jobTitle) {
+        user.lastJobTitle = user.jobTitle;
+        user.peakJobTitle = user.peakJobTitle || user.jobTitle;
+    }
+    if (user.careerTrack) {
+        user.lastCareerTrack = user.careerTrack;
+    }
+    user.totalYearsWorked = (user.totalYearsWorked || 0) + (user.yearsInCareer || 0);
     user.jobTitle = null;
+    user.jobSalary = 0;
     user.salary = 0;
+    user.jobPerformance = 50;
+    user.careerTrack = null;
+    user.careerLevel = 0;
+    user.yearsInRole = 0;
+    user.yearsInCareer = 0;
+    user.consecutivePoorYears = 0;
+    user.careerActionTaken = false;
+    user.raiseRequestedThisYear = false;
+    user.hasSeenJobSalary = false;
+    user.athleteContract = null;
+    user.athleteGamesThisYear = 0;
+    user.athleteEndorsementThisYear = false;
+    user.athletePoorSeasons = 0;
+    user.mafiaCrimesThisYear = 0;
     user.universityEnrolled = false;
     user.gradSchoolEnrolled = false;
     user.isStudent = false;

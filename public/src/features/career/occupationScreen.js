@@ -63,7 +63,7 @@ function renderUniversityModalContent(selectedMajor = null, isUpdate = false) {
             ${loanBtn}
             ${scholarBtn}
             ${parentBtn}
-            <button data-action="closeModal" class="w-full mt-2 py-2 text-slate-400 hover:text-white text-xs font-bold transition">Cancel</button>
+            <button data-action="hideModal" class="w-full mt-2 py-2 text-slate-400 hover:text-white text-xs font-bold transition">Cancel</button>
         </div>
     `;
 
@@ -210,7 +210,7 @@ function renderGradModalContent(schoolType, isUpdate = false) {
             ${loanBtn}
             ${scholarBtn}
             ${parentBtn}
-            <button data-action="closeModal" class="w-full mt-2 py-2 text-slate-400 hover:text-white text-xs font-bold transition">Cancel</button>
+            <button data-action="hideModal" class="w-full mt-2 py-2 text-slate-400 hover:text-white text-xs font-bold transition">Cancel</button>
         </div>
     `;
 
@@ -529,7 +529,7 @@ if (user.age < 15) {
                     <div>
                         <div class="text-[10px] uppercase font-extrabold tracking-wider text-orange-400">Part-Time Job</div>
                         <h3 class="font-bold text-white text-sm">${Utils.escapeHtml(user.jobTitle)}</h3>
-                        <div class="text-xs text-green-400 font-semibold">${Utils.formatMoney(user.jobSalary)}/yr</div>
+                        <div class="text-xs text-green-400 font-semibold">${GameLogic.formatHourlyWage ? GameLogic.formatHourlyWage(user.jobSalary) : `$${((Number(user.jobSalary) || 0) / 1040).toFixed(2)}`}/hr <span class="text-slate-400 font-normal">(${Utils.formatMoney(user.jobSalary)}/yr)</span></div>
                     </div>
                 </div>
                 <i class="fas fa-chevron-right text-slate-500 text-xs"></i>

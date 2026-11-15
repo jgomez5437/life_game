@@ -578,12 +578,18 @@ export function moveCountry(user, targetCountry, targetCity) {
         user.jobSalary = 0;
         user.jobPerformance = 50;
         user.careerActionTaken = false;
+        user.raiseRequestedThisYear = false;
         user.careerTrack = null;
         user.careerLevel = 0;
         user.yearsInRole = 0;
         user.yearsInCareer = 0;
         user.consecutivePoorYears = 0;
         user.hasSeenJobSalary = false;
+        user.athleteContract = null;
+        user.athleteGamesThisYear = 0;
+        user.athleteEndorsementThisYear = false;
+        user.athletePoorSeasons = 0;
+        user.mafiaCrimesThisYear = 0;
     }
 
     const jobMsg = hadJob ? ` You lost your job as ${oldJobTitle} and are now unemployed.` : '';

@@ -114,6 +114,7 @@ export async function handleFinances(user) {
             }
             user.mafiaCrimesThisYear = 0;
             user.careerActionTaken = false;
+            user.raiseRequestedThisYear = false;
         } else if (user.careerTrack === 'pro_athlete') {
             const league = PRO_SPORTS_LEAGUES[user.athleteSport] || PRO_SPORTS_LEAGUES.football;
             const lvlIdx = user.careerLevel || 0;
@@ -137,13 +138,21 @@ export async function handleFinances(user) {
                 }
                 user.careerTrack = null;
                 user.careerLevel = 0;
+                user.yearsInRole = 0;
+                user.yearsInCareer = 0;
+                user.jobPerformance = 50;
+                user.consecutivePoorYears = 0;
+                user.careerActionTaken = false;
+                user.raiseRequestedThisYear = false;
+                user.hasSeenJobSalary = false;
                 user.jobTitle = null;
                 user.jobSalary = 0;
                 user.athleteContract = null;
-                if ((user.yearsInCareer || 0) >= 8) {
+                user.athletePoorSeasons = 0;
+                if ((user.retiredYearsInCareer || 0) >= 8) {
                     user.isRetired = true;
                     user.retirementPension = Math.round(level.salary * 0.15);
-                    addLog(`Your ${user.yearsInCareer} years of league service qualified you for an annual pension of ${Utils.formatMoney(user.retirementPension)}/yr.`, 'good');
+                    addLog(`Your ${user.retiredYearsInCareer} years of league service qualified you for an annual pension of ${Utils.formatMoney(user.retirementPension)}/yr.`, 'good');
                 }
             } else {
                 user.athleteContract = user.athleteContract || {
@@ -175,6 +184,14 @@ export async function handleFinances(user) {
                         user.lastCareerTrack = 'pro_athlete';
                         user.totalYearsWorked = (user.totalYearsWorked || 0) + (user.yearsInCareer || 0);
                         user.careerTrack = null;
+                        user.careerLevel = 0;
+                        user.yearsInRole = 0;
+                        user.yearsInCareer = 0;
+                        user.jobPerformance = 50;
+                        user.consecutivePoorYears = 0;
+                        user.careerActionTaken = false;
+                        user.raiseRequestedThisYear = false;
+                        user.hasSeenJobSalary = false;
                         user.jobTitle = null;
                         user.jobSalary = 0;
                         user.athleteContract = null;
@@ -229,9 +246,18 @@ export async function handleFinances(user) {
                         user.lastCareerTrack = 'pro_athlete';
                         user.totalYearsWorked = (user.totalYearsWorked || 0) + (user.yearsInCareer || 0);
                         user.careerTrack = null;
+                        user.careerLevel = 0;
+                        user.yearsInRole = 0;
+                        user.yearsInCareer = 0;
+                        user.jobPerformance = 50;
+                        user.consecutivePoorYears = 0;
+                        user.careerActionTaken = false;
+                        user.raiseRequestedThisYear = false;
+                        user.hasSeenJobSalary = false;
                         user.jobTitle = null;
                         user.jobSalary = 0;
                         user.athleteContract = null;
+                        user.athletePoorSeasons = 0;
                     } else {
                         // Extension negotiation
                         let targetLvl = lvlIdx;
@@ -273,16 +299,17 @@ export async function handleFinances(user) {
             user.athleteGamesThisYear = 0;
             user.athleteEndorsementThisYear = false;
             user.careerActionTaken = false;
+            user.raiseRequestedThisYear = false;
         } else {
             user.money += user.jobSalary;
             if (user.hasSeenJobSalary) {
                 addLog(`Earned ${Utils.formatMoney(user.jobSalary)} as a ${user.jobTitle}.`, 'good');
             }
 
-            // Annual cost-of-living raise (~2%, silent)
-            user.jobSalary += Math.max(500, Math.floor(user.jobSalary * 0.02));
+            let wasPromoted = false;
+            let skillBonuses = null;
 
-            if (user.careerTrack) {
+            if (user.careerTrack && !GameLogic.isPartTimeJob(user)) {
                 // ── Career-track: promotion / demotion system ──────────────────
                 user.yearsInRole = (user.yearsInRole || 0) + 1;
                 const track = CAREER_TRACKS.find(t => t.key === user.careerTrack);
@@ -314,7 +341,7 @@ export async function handleFinances(user) {
                                 user.totalYearsWorked = (user.totalYearsWorked || 0) + (user.yearsInCareer || 0);
                                 user.jobTitle = null; user.jobSalary = 0; user.jobPerformance = 50;
                                 user.careerTrack = null; user.careerLevel = 0; user.yearsInRole = 0; user.yearsInCareer = 0;
-                                user.consecutivePoorYears = 0; user.careerActionTaken = false; user.hasSeenJobSalary = false;
+                                user.consecutivePoorYears = 0; user.careerActionTaken = false; user.raiseRequestedThisYear = false; user.hasSeenJobSalary = false;
                             }
                         } else {
                             GameLogic.adjustStat(user, 'happiness', -5);
@@ -322,9 +349,7 @@ export async function handleFinances(user) {
                         }
                     } else {
                         user.consecutivePoorYears = 0;
-                        let promoted = false;
-
-                        const skillBonuses = GameLogic.getCareerSkillBonuses
+                        skillBonuses = GameLogic.getCareerSkillBonuses
                             ? GameLogic.getCareerSkillBonuses(user, user.careerTrack)
                             : { promoBonus: 0, raiseRate: 0.05 };
 
@@ -347,37 +372,40 @@ export async function handleFinances(user) {
                                 GameLogic.adjustStat(user, 'happiness', 20);
                                 addLog(`Promoted to ${nextLevel.title}! New salary: ${Utils.formatMoney(user.jobSalary)}/yr. (+20 Happiness)`, 'major');
                                 SoundManager.play('milestone');
-                                promoted = true;
+                                wasPromoted = true;
                             }
-                        }
-
-                        // Performance raise if not promoted
-                        if (!promoted && user.jobPerformance >= 80) {
-                            const raiseRate = skillBonuses.raiseRate || 0.05;
-                            const perfBonus = Math.floor(user.jobSalary * raiseRate);
-                            user.jobSalary += perfBonus;
-                            GameLogic.adjustStat(user, 'happiness', 8);
-                            addLog(`Outstanding performance! Your salary increased to ${Utils.formatMoney(user.jobSalary)}/yr. (+8 Happiness)`, 'good');
                         }
                     }
                 }
-            } else {
-                // ── Part-time / legacy flat job ────────────────────────────────
-                if (user.jobPerformance >= 80) {
-                    const perfBonus = Math.floor(user.jobSalary * 0.05);
-                    user.jobSalary += perfBonus;
-                    GameLogic.adjustStat(user, 'happiness', 8);
-                    addLog(`Outstanding performance! Your salary increased to ${Utils.formatMoney(user.jobSalary)}/yr. (+8 Happiness)`, 'good');
-                } else if (user.jobPerformance <= 20 && Math.random() < 0.4) {
-                    GameLogic.adjustStat(user, 'happiness', -25);
-                    addLog(`Your employer let you go from ${user.jobTitle} due to poor performance. (-25 Happiness)`, 'bad');
-                    user.lastJobTitle = user.jobTitle;
-                    user.peakJobTitle = user.peakJobTitle || user.jobTitle;
-                    user.totalYearsWorked = (user.totalYearsWorked || 0) + (user.yearsInCareer || 0);
-                    user.jobTitle = null; user.jobSalary = 0; user.jobPerformance = 50; user.yearsInCareer = 0;
-                    user.careerActionTaken = false; user.hasSeenJobSalary = false;
+            } else if (user.jobPerformance <= 20 && Math.random() < 0.4) {
+                // ── Part-time / legacy flat job poor-performance dismissal ──────
+                GameLogic.adjustStat(user, 'happiness', -25);
+                addLog(`Your employer let you go from ${user.jobTitle} due to poor performance. (-25 Happiness)`, 'bad');
+                user.lastJobTitle = user.jobTitle;
+                user.peakJobTitle = user.peakJobTitle || user.jobTitle;
+                if (user.careerTrack) user.lastCareerTrack = user.careerTrack;
+                user.totalYearsWorked = (user.totalYearsWorked || 0) + (user.yearsInCareer || 0);
+                user.jobTitle = null; user.jobSalary = 0; user.jobPerformance = 50;
+                user.careerTrack = null; user.careerLevel = 0; user.yearsInRole = 0; user.yearsInCareer = 0;
+                user.consecutivePoorYears = 0; user.careerActionTaken = false; user.raiseRequestedThisYear = false; user.hasSeenJobSalary = false;
+            }
+
+            if (user.jobTitle && !wasPromoted) {
+                const raiseRes = GameLogic.calculateAnnualRaise(user, { wasPromoted, skillBonuses });
+                if (raiseRes.applied) {
+                    user.jobSalary = raiseRes.newSalary;
+                    if (!user.peakJobTitle || user.jobSalary >= (user.peakJobSalary || 0)) {
+                        user.peakJobTitle = user.jobTitle;
+                        user.peakJobSalary = user.jobSalary;
+                    }
+                    if (raiseRes.happinessGain > 0) {
+                        GameLogic.adjustStat(user, 'happiness', raiseRes.happinessGain);
+                    }
+                    addLog(raiseRes.logMessage, 'good');
                 }
             }
+
+            user.raiseRequestedThisYear = false;
         }
     }
 

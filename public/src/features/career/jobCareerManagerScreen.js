@@ -23,18 +23,19 @@ export function renderCareerManager() {
 
     const p = user.jobPerformance;
     const actionTaken = user.careerActionTaken;
-    
+    const isPartTime = GameLogic.isPartTimeJob ? GameLogic.isPartTimeJob(user) : !user.careerTrack;
+
     const minRetireYears = GameLogic.getMinRetireYears ? GameLogic.getMinRetireYears(user) : (user.careerTrack === 'military' ? 20 : (user.careerTrack === 'law_enforcement' ? 25 : 30));
     const currentYears = user.yearsInCareer || 0;
-    const canRetire = currentYears >= minRetireYears;
+    const canRetire = !isPartTime && currentYears >= minRetireYears;
 
     let barColor = 'bg-red-500';
     if (p > 75) barColor = 'bg-green-500';
     else if (p > 25) barColor = 'bg-yellow-500';
 
-    // Career track level info
-    let track = user.careerTrack ? CAREER_TRACKS.find(t => t.key === user.careerTrack) : null;
-    if (!track && user.careerTrack) track = SPECIAL_CAREER_TRACKS.find(t => t.key === user.careerTrack);
+    // Career track level info (careers only — never show promotion ladder for part-time roles)
+    let track = (!isPartTime && user.careerTrack) ? CAREER_TRACKS.find(t => t.key === user.careerTrack) : null;
+    if (!isPartTime && !track && user.careerTrack) track = SPECIAL_CAREER_TRACKS.find(t => t.key === user.careerTrack);
     const lvlIdx = user.careerLevel || 0;
     const level  = track?.levels[lvlIdx];
     const totalLevels = track?.levels.length || 1;
@@ -72,7 +73,41 @@ export function renderCareerManager() {
                 <div class="text-xs text-slate-400">${promoStatus}</div>
                 ${minYears !== null && hasNextLevel ? `<div class="text-xs text-slate-600 mt-1">${yearsInRole}/${minYears} years in role</div>` : ''}
             </div>`;
+    } else if (isPartTime) {
+        let raiseTierStatus;
+        if (p >= 90) {
+            raiseTierStatus = `<span class="text-green-400 font-bold"><i class="fas fa-arrow-up mr-1"></i>Top Performer — +4% Annual Raise (+1% COLA + 3% Merit)</span>`;
+        } else if (p >= 75) {
+            raiseTierStatus = `<span class="text-green-400 font-bold"><i class="fas fa-arrow-up mr-1"></i>Strong Performance — +3% Annual Raise (+1% COLA + 2% Merit)</span>`;
+        } else if (p > 20) {
+            raiseTierStatus = `<span class="text-slate-300">Steady Work — +1% Annual COLA Raise (Reach 75%+ for +3%)</span>`;
+        } else {
+            raiseTierStatus = `<span class="text-red-400 font-bold"><i class="fas fa-exclamation-triangle mr-1"></i>At Risk — No annual raise below 21% & risk of dismissal</span>`;
+        }
+
+        trackInfoHtml = `
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-4">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-xs font-bold text-orange-400 uppercase tracking-widest"><i class="fas fa-clock mr-1"></i>Part-Time Role</span>
+                    <span class="text-xs text-slate-400">${currentYears} ${currentYears === 1 ? 'Year' : 'Years'} Worked</span>
+                </div>
+                <div class="text-xs mb-1">${raiseTierStatus}</div>
+                <div class="text-[11px] text-slate-400">Part-time raises are smaller than full-time career raises (1% COLA + up to 3% merit).</div>
+            </div>`;
     }
+
+    const hourlyStr = GameLogic.formatHourlyWage
+        ? GameLogic.formatHourlyWage(user.jobSalary)
+        : `$${((Number(user.jobSalary) || 0) / 1040).toFixed(2)}`;
+    const salaryDisplayHtml = isPartTime
+        ? `${hourlyStr}/hr <span class="text-slate-400 font-normal">· ${Utils.formatMoney(user.jobSalary)} / year</span>`
+        : `${Utils.formatMoney(user.jobSalary)} / year`;
+
+    const raiseTerms = GameLogic.getRaiseRequestTerms
+        ? GameLogic.getRaiseRequestTerms(user)
+        : { eligible: !user.raiseRequestedThisYear, isPartTime, chance: 0.5, raisePct: isPartTime ? 2 : 5, raiseAmount: 0 };
+    const raiseTaken = Boolean(user.raiseRequestedThisYear) || !raiseTerms.eligible;
+    const raiseOddsPct = Math.round((raiseTerms.chance || 0) * 100);
 
     const actionClass = actionTaken
         ? "bg-slate-700 p-4 rounded-xl border border-slate-600 flex items-center justify-between opacity-50 cursor-not-allowed"
@@ -80,6 +115,28 @@ export function renderCareerManager() {
     const slackClass = actionTaken
         ? "bg-slate-700 p-4 rounded-xl border border-slate-600 flex items-center justify-between opacity-50 cursor-not-allowed"
         : "bg-slate-800 p-4 rounded-xl border border-slate-700 flex items-center justify-between hover:bg-red-900/20 hover:border-red-500/50 transition group cursor-pointer";
+    const raiseClass = raiseTaken
+        ? "bg-slate-700 p-4 rounded-xl border border-slate-600 flex items-center justify-between opacity-50 cursor-not-allowed"
+        : "bg-emerald-600 p-4 rounded-xl border border-emerald-500 flex items-center justify-between hover:bg-emerald-500 transition shadow-lg shadow-emerald-900/30 cursor-pointer";
+
+    const perfTip = isPartTime
+        ? 'Keep at 75%+ for +3% annual raises (90%+ for +4%). Below 21% skips raises & risks being let go.'
+        : 'Keep above 75% to unlock promotions & raises. Below 20% risks demotion.';
+    const retireHtml = !isPartTime ? `
+                <button ${!canRetire ? 'disabled' : 'data-action="confirmRetire"'} class="${!canRetire ? 'bg-slate-700 p-4 rounded-xl border border-slate-600 flex items-center justify-between opacity-50 cursor-not-allowed' : 'bg-amber-900/40 p-4 rounded-xl border border-amber-600/50 flex items-center justify-between hover:bg-amber-900/60 transition group'} mt-2">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-amber-900/50 flex items-center justify-center text-amber-400">
+                            <i class="fas fa-cocktail"></i>
+                        </div>
+                        <div class="text-left">
+                            <h3 class="font-bold ${!canRetire ? 'text-slate-400' : 'text-amber-400 group-hover:text-amber-300'}">Retire</h3>
+                            <div class="text-xs ${!canRetire ? 'text-slate-500' : 'text-amber-500/70'}">${!canRetire ? `Not Eligible - ${currentYears} / ${minRetireYears} Years` : 'Claim Pension & Stop Working'}</div>
+                        </div>
+                    </div>
+                    ${canRetire ? '<i class="fas fa-chevron-right text-amber-500"></i>' : ''}
+                </button>` : '';
+    const quitLabel = isPartTime ? 'Quit Job' : 'Quit Career';
+    const quitSubLabel = isPartTime ? 'Resign from part-time position' : 'Resign from position';
 
     UI.updateBottomNav('work');
     get('game-container').innerHTML = `
@@ -90,11 +147,11 @@ export function renderCareerManager() {
                 </button>
             </div>
             <div class="text-center mb-4">
-                <div class="w-16 h-16 rounded-full bg-blue-900/50 flex items-center justify-center text-blue-400 mx-auto mb-3 text-2xl">
-                    <i class="fas fa-briefcase"></i>
+                <div class="w-16 h-16 rounded-full ${isPartTime ? 'bg-orange-900/50 text-orange-400' : 'bg-blue-900/50 text-blue-400'} flex items-center justify-center mx-auto mb-3 text-2xl">
+                    <i class="fas ${isPartTime ? 'fa-clock' : 'fa-briefcase'}"></i>
                 </div>
                 <h2 class="text-2xl font-bold text-white">${Utils.escapeHtml(user.jobTitle)}</h2>
-                <p class="text-green-400 text-sm font-bold">${Utils.formatMoney(user.jobSalary)} / year</p>
+                <p class="text-green-400 text-sm font-bold">${salaryDisplayHtml}</p>
                 <p class="text-slate-500 text-xs mt-1">${actionTaken ? "Action Taken This Year" : "Actions Available"}</p>
             </div>
             ${trackInfoHtml}
@@ -106,7 +163,7 @@ export function renderCareerManager() {
                 <div class="w-full bg-slate-900 h-4 rounded-full overflow-hidden">
                     <div class="h-full ${barColor} transition-all duration-500" style="width: ${p}%"></div>
                 </div>
-                <div class="text-[10px] text-slate-600 mt-2">Keep above 75% to unlock promotions. Below 20% risks demotion.</div>
+                <div class="text-[10px] text-slate-600 mt-2">${perfTip}</div>
             </div>
             <div class="grid grid-cols-1 gap-3">
                 <button ${actionTaken ? 'disabled' : 'data-action="workHarderJob"'} class="${actionClass}">
@@ -133,26 +190,27 @@ export function renderCareerManager() {
                     </div>
                     <i class="fas fa-chevron-right text-slate-600"></i>
                 </button>
-                <button ${!canRetire ? 'disabled' : 'data-action="confirmRetire"'} class="${!canRetire ? 'bg-slate-700 p-4 rounded-xl border border-slate-600 flex items-center justify-between opacity-50 cursor-not-allowed' : 'bg-amber-900/40 p-4 rounded-xl border border-amber-600/50 flex items-center justify-between hover:bg-amber-900/60 transition group'} mt-2">
+                <button ${raiseTaken ? 'disabled' : 'data-action="requestJobRaise"'} class="${raiseClass}">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full bg-amber-900/50 flex items-center justify-center text-amber-400">
-                            <i class="fas fa-cocktail"></i>
+                        <div class="w-10 h-10 rounded-full ${raiseTaken ? 'bg-slate-800 text-slate-400' : 'bg-white/20 text-white'} flex items-center justify-center">
+                            <i class="fas fa-hand-holding-usd"></i>
                         </div>
                         <div class="text-left">
-                            <h3 class="font-bold ${!canRetire ? 'text-slate-400' : 'text-amber-400 group-hover:text-amber-300'}">Retire</h3>
-                            <div class="text-xs ${!canRetire ? 'text-slate-500' : 'text-amber-500/70'}">${!canRetire ? `Not Eligible - ${currentYears} / ${minRetireYears} Years` : 'Claim Pension & Stop Working'}</div>
+                            <h3 class="font-bold ${raiseTaken ? 'text-slate-300' : 'text-white'}">Request Raise</h3>
+                            <div class="text-xs ${raiseTaken ? 'text-slate-400' : 'text-emerald-100 font-medium'}">${raiseTaken ? 'Already requested this year' : `Ask for +${raiseTerms.raisePct}% pay (${raiseOddsPct}% chance)`}</div>
                         </div>
                     </div>
-                    ${canRetire ? '<i class="fas fa-chevron-right text-amber-500"></i>' : ''}
+                    ${raiseTaken ? '' : '<i class="fas fa-arrow-right text-white"></i>'}
                 </button>
+                ${retireHtml}
                 <button data-action="confirmQuitCareer" class="bg-red-900/50 p-4 rounded-xl border border-red-700 flex items-center justify-between hover:bg-red-900 transition group mt-4 mb-8">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-full bg-red-900/30 flex items-center justify-center text-red-400">
                             <i class="fas fa-door-open"></i>
                         </div>
                         <div class="text-left">
-                            <h3 class="font-bold text-white group-hover:text-red-300">Quit Career</h3>
-                            <div class="text-xs text-red-300">Resign from position</div>
+                            <h3 class="font-bold text-white group-hover:text-red-300">${quitLabel}</h3>
+                            <div class="text-xs text-red-300">${quitSubLabel}</div>
                         </div>
                     </div>
                     <i class="fas fa-chevron-right text-red-500"></i>
@@ -191,6 +249,32 @@ export function slackOffJob() {
     UI.updateHeader(user);
     renderCareerManager();
 }
+
+export function requestJobRaise() {
+    const user = state.gameState?.user;
+    if (!user || !user.jobTitle) return;
+
+    const res = GameLogic.processRaiseRequest(user);
+    if (!res.success) {
+        UI.showModal('Raise Unavailable', res.message || 'You cannot request a raise right now.');
+        return;
+    }
+
+    const logTone = res.approved ? 'good' : (res.perfDelta < 0 ? 'bad' : 'neutral');
+    addLog(res.logMessage, logTone);
+    UI.updateHeader(user);
+    renderCareerManager();
+    if (typeof saveGame === 'function') saveGame();
+
+    UI.showModal(
+        res.approved ? 'Raise Approved!' : 'Raise Request Denied',
+        `<div class="text-center space-y-2">
+            <div class="text-3xl">${res.approved ? '💵' : '📉'}</div>
+            <p class="text-white text-sm leading-relaxed">${Utils.escapeHtml(res.message)}</p>
+        </div>`
+    );
+}
+
 export function confirmRetire() {
     const user = state.gameState.user;
     const pension = Math.floor(user.jobSalary * 0.66);
@@ -233,12 +317,18 @@ export function retire() {
     user.jobSalary = 0;
     user.jobPerformance = 50;
     user.careerActionTaken = false;
+    user.raiseRequestedThisYear = false;
     user.careerTrack = null;
     user.careerLevel = 0;
     user.yearsInRole = 0;
     user.yearsInCareer = 0;
     user.consecutivePoorYears = 0;
     user.hasSeenJobSalary = false;
+    user.athleteContract = null;
+    user.athleteGamesThisYear = 0;
+    user.athleteEndorsementThisYear = false;
+    user.athletePoorSeasons = 0;
+    user.mafiaCrimesThisYear = 0;
     
     UI.hideModal();
     addLog(`Retired from your position as ${oldJob}. You will now receive a pension of ${Utils.formatMoney(pension)}/yr.`, 'major');
@@ -247,19 +337,33 @@ export function retire() {
 }
 
 export function confirmQuitCareer() {
-    const user = state.gameState.user;
-    const m = get('modal-overlay');
-    get('modal-title').innerText = "Quit Career?";
-    get('modal-content').innerHTML = `Are you sure you want to resign from your position as <strong>${Utils.escapeHtml(user.jobTitle)}</strong>? You will lose your steady income.`;
-    
-    get('modal-actions').innerHTML = `
-        <div class="grid grid-cols-2 gap-3">
-            <button data-action="quitCareer" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-lg">Yes, Quit</button>
-            <button data-action="closeModal" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-lg">Cancel</button>
-        </div>
-    `;
-    m.classList.remove('hidden');
-    m.classList.add('flex');
+    const user = state.gameState?.user;
+    if (!user || !user.jobTitle) return;
+
+    const isPartTime = GameLogic.isPartTimeJob ? GameLogic.isPartTimeJob(user) : !user.careerTrack;
+    const isMafia = user.careerTrack === 'mafia_syndicate';
+    const isAthlete = user.careerTrack === 'pro_athlete';
+
+    const modalTitle = isPartTime
+        ? 'Quit Job?'
+        : (isMafia ? 'Leave Syndicate?' : (isAthlete ? 'Leave Pro Contract?' : 'Quit Career?'));
+    const incomeNote = isMafia
+        ? 'Walking away from the family ends your syndicate cut.'
+        : (isAthlete ? 'You will forfeit the remainder of your active pro contract.' : 'You will lose your steady income.');
+
+    UI.showCustomModal({
+        title: modalTitle,
+        showCloseBtn: true,
+        content: `
+            <div class="text-center">
+                <p class="text-white mb-5">Are you sure you want to resign from your position as <strong>${Utils.escapeHtml(user.jobTitle)}</strong>? ${incomeNote}</p>
+                <div class="grid grid-cols-2 gap-3">
+                    <button data-action="quitCareer" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-lg transition cursor-pointer">Yes, Quit</button>
+                    <button data-action="hideModal" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-lg transition cursor-pointer">Cancel</button>
+                </div>
+            </div>
+        `
+    });
 }
 
 export function quitCareer() {
@@ -279,29 +383,37 @@ export function quitCareer() {
     user.jobSalary = 0;
     user.jobPerformance = 50;
     user.careerActionTaken = false;
+    user.raiseRequestedThisYear = false;
     user.careerTrack = null;
     user.careerLevel = 0;
     user.yearsInRole = 0;
     user.yearsInCareer = 0;
     user.consecutivePoorYears = 0;
     user.hasSeenJobSalary = false;
-    // Close Modal
-    const m = get('modal-overlay');
-    m.classList.add('hidden');
-    m.classList.remove('flex');
-    
+    user.athleteContract = null;
+    user.athleteGamesThisYear = 0;
+    user.athleteEndorsementThisYear = false;
+    user.athletePoorSeasons = 0;
+    user.mafiaCrimesThisYear = 0;
+
+    UI.hideModal();
+
     GameLogic.adjustStat(user, 'happiness', -5);
-    addLog(`Resigned from position as ${oldJob}. (-5 Happiness)`, 'major'); 
+    addLog(`Resigned from position as ${oldJob}. (-5 Happiness)`, 'major');
     UI.updateHeader(user);
-    
+    if (typeof saveGame === 'function') saveGame();
+
     renderActivities();
 }
 
 export function checkActionTaken() {
     const user = state.gameState.user;
     if (user.careerActionTaken) {
-        user.careerActionTaken = false
-    };
+        user.careerActionTaken = false;
+    }
+    if (user.raiseRequestedThisYear) {
+        user.raiseRequestedThisYear = false;
+    }
 }
 
 // --- MAFIA CRIME SYNDICATE SPECIFIC UI ---

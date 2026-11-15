@@ -39,6 +39,9 @@ function checkActionTaken(user) {
     if (user && user.careerActionTaken) {
         user.careerActionTaken = false;
     }
+    if (user && user.raiseRequestedThisYear) {
+        user.raiseRequestedThisYear = false;
+    }
     if (user && user.skillActionsThisYear) {
         user.skillActionsThisYear = 0;
     }

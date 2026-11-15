@@ -78,6 +78,7 @@ export const ACTION_TO_MODULE = {
     renderCareerManager: 'jobCareerManager',
     workHarderJob: 'jobCareerManager',
     slackOffJob: 'jobCareerManager',
+    requestJobRaise: 'jobCareerManager',
     confirmQuitCareer: 'jobCareerManager',
     quitCareer: 'jobCareerManager',
     confirmRetire: 'jobCareerManager',

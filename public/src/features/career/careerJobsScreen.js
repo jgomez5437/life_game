@@ -160,7 +160,7 @@ function _pickQuestion(category) {
     return pool[Math.floor(Math.random() * pool.length)];
 }
 
-function _showInterviewModal(question, jobLabel) {
+function _showInterviewModal(question, jobLabel, isRetry = false) {
     const letterLabels = ['A', 'B', 'C', 'D'];
     const answersHtml = question.options.map((opt, i) => `
         <button data-action="answerInterview" data-args="${i}"
@@ -170,7 +170,7 @@ function _showInterviewModal(question, jobLabel) {
         </button>
     `).join('');
 
-    UI.showCustomModal('Job Interview', `
+    const modalHtml = `
         <div>
             <p class="text-xs text-slate-400 uppercase font-bold mb-1 tracking-wider">Interviewing for</p>
             <p class="text-blue-300 font-semibold mb-4">${jobLabel}</p>
@@ -182,13 +182,25 @@ function _showInterviewModal(question, jobLabel) {
                 <i class="fas fa-times mr-1"></i> Walk Away from Interview
             </button>
         </div>
-    `, {
-        showCloseBtn: true
-    });
+    `;
+
+    if (isRetry && UI.isModalOpen()) {
+        UI.replaceModalContent('Job Interview', modalHtml);
+    } else {
+        UI.showCustomModal('Job Interview', modalHtml, {
+            showCloseBtn: true
+        });
+    }
 }
 
 function _hireCareer(trackKey) {
     const user = state.gameState.user;
+    if (user.jobTitle && (user.yearsInCareer || 0) > 0) {
+        user.totalYearsWorked = (user.totalYearsWorked || 0) + (user.yearsInCareer || 0);
+    }
+    if (user.careerTrack) {
+        user.lastCareerTrack = user.careerTrack;
+    }
     const track = CAREER_TRACKS.find(t => t.key === trackKey);
     const bonuses = GameLogic.getCareerSkillBonuses
         ? GameLogic.getCareerSkillBonuses(user, trackKey)
@@ -211,7 +223,13 @@ function _hireCareer(trackKey) {
     }
     user.jobPerformance       = 50;
     user.careerActionTaken    = false;
+    user.raiseRequestedThisYear = false;
     user.hasSeenJobSalary     = true;
+    user.athleteContract      = null;
+    user.athleteGamesThisYear = 0;
+    user.athleteEndorsementThisYear = false;
+    user.athletePoorSeasons   = 0;
+    user.mafiaCrimesThisYear  = 0;
     GameLogic.adjustStat(user, 'happiness', 15);
     const skillNote = bonuses.fastTracked
         ? ` Fast-tracked to Level 2 with +20% skill bonus!`
@@ -222,36 +240,52 @@ function _hireCareer(trackKey) {
 
 function _hirePartTime(title, salary) {
     const user = state.gameState.user;
-    user.jobTitle          = title;
-    user.jobSalary         = salary;
-    user.lastJobTitle      = title;
+    if (user.jobTitle && (user.yearsInCareer || 0) > 0) {
+        user.totalYearsWorked = (user.totalYearsWorked || 0) + (user.yearsInCareer || 0);
+    }
+    if (user.careerTrack) {
+        user.lastCareerTrack = user.careerTrack;
+    }
+    user.careerTrack          = null;
+    user.careerLevel          = 0;
+    user.yearsInRole          = 0;
+    user.consecutivePoorYears = 0;
+    user.jobTitle             = title;
+    user.jobSalary            = salary;
+    user.lastJobTitle         = title;
     if (!user.peakJobTitle || salary >= (user.peakJobSalary || 0)) {
         user.peakJobTitle = title;
         user.peakJobSalary = salary;
     }
-    user.jobPerformance    = 50;
-    user.yearsInCareer     = 0;
-    user.careerActionTaken = false;
-    user.hasSeenJobSalary  = true;
+    user.jobPerformance       = 50;
+    user.yearsInCareer        = 0;
+    user.careerActionTaken    = false;
+    user.raiseRequestedThisYear = false;
+    user.hasSeenJobSalary     = true;
+    user.athleteContract      = null;
+    user.athleteGamesThisYear = 0;
+    user.athleteEndorsementThisYear = false;
+    user.athletePoorSeasons   = 0;
+    user.mafiaCrimesThisYear  = 0;
     GameLogic.adjustStat(user, 'happiness', 10);
     addLog(`Hired as ${title}! Annual pay: ${Utils.formatMoney(salary)}. (+10 Happiness)`, 'good');
     UI.updateHeader(user);
 }
 
-function startCareerInterview(trackKey) {
+function startCareerInterview(trackKey, isRetry = false) {
     const track = CAREER_TRACKS.find(t => t.key === trackKey);
     const category = (!track.reqDegree && !track.reqGrad) ? 'general' : 'professional';
     const question = _pickQuestion(category);
     _pendingInterview.seenQuestions.push(question.idx);
     _pendingInterview.correctAnswer = question.correct;
-    _showInterviewModal(question, track.label);
+    _showInterviewModal(question, track.label, isRetry);
 }
 
-function startPartTimeInterview(title, salary) {
+function startPartTimeInterview(title, salary, isRetry = false) {
     const question = _pickQuestion('general');
     _pendingInterview.seenQuestions.push(question.idx);
     _pendingInterview.correctAnswer = question.correct;
-    _showInterviewModal(question, title);
+    _showInterviewModal(question, title, isRetry);
 }
 
 // ─── CAREER MARKET ───────────────────────────────────────────────────────────
@@ -410,7 +444,7 @@ export function answerInterview(answerIdx) {
             ? `You spent ${Utils.formatMoney(courseCost)} on an online course to sharpen your interview skills.`
             : 'You found a free online course to help prepare for your next attempt.';
 
-        UI.showCustomModal('Not Hired', `
+        const notHiredHtml = `
             <div class="text-center">
                 <div class="w-16 h-16 rounded-full bg-red-900/40 flex items-center justify-center mx-auto mb-4">
                     <i class="fas fa-times text-red-400 text-2xl"></i>
@@ -428,16 +462,22 @@ export function answerInterview(answerIdx) {
                     </button>
                 </div>
             </div>
-        `);
+        `;
+
+        if (UI.isModalOpen()) {
+            UI.replaceModalContent('Not Hired', notHiredHtml);
+        } else {
+            UI.showCustomModal('Not Hired', notHiredHtml);
+        }
     }
 }
 
 export function retryInterview() {
     if (!_pendingInterview) return;
     if (_pendingInterview.type === 'career') {
-        startCareerInterview(_pendingInterview.trackKey);
+        startCareerInterview(_pendingInterview.trackKey, true);
     } else {
-        startPartTimeInterview(_pendingInterview.title, _pendingInterview.salary);
+        startPartTimeInterview(_pendingInterview.title, _pendingInterview.salary, true);
     }
 }
 
@@ -526,10 +566,20 @@ export function confirmJoinSpecialCareer(trackKey) {
         return;
     }
 
+    if (user.jobTitle && (user.yearsInCareer || 0) > 0) {
+        user.totalYearsWorked = (user.totalYearsWorked || 0) + (user.yearsInCareer || 0);
+    }
+    if (user.careerTrack && user.careerTrack !== trackKey) {
+        user.lastCareerTrack = user.careerTrack;
+    }
+
     user.careerTrack = trackKey;
     user.careerLevel = 0;
     user.yearsInRole = 0;
     user.yearsInCareer = 0;
+    user.consecutivePoorYears = 0;
+    user.careerActionTaken = false;
+    user.raiseRequestedThisYear = false;
     user.jobPerformance = 100;
     const level = track.levels[0];
     user.jobTitle = level.title;
@@ -541,6 +591,10 @@ export function confirmJoinSpecialCareer(trackKey) {
     }
     user.hasSeenJobSalary = false;
     user.mafiaCrimesThisYear = 0;
+    user.athleteContract = null;
+    user.athleteGamesThisYear = 0;
+    user.athleteEndorsementThisYear = false;
+    user.athletePoorSeasons = 0;
 
     if (typeof saveGame === 'function') saveGame();
 
@@ -756,6 +810,7 @@ export function enterProSportsDraft(sportKey) {
     if (result.success && result.drafted) {
         addLog(result.message, 'major');
         SoundManager.play('milestone');
+        if (UI.isModalOpen()) UI.hideModal();
         UI.showModal("Drafted into Pro League!", `
             <div class="text-center space-y-3">
                 <div class="text-4xl">🏆</div>
@@ -780,6 +835,7 @@ export function enterProSportsDraft(sportKey) {
         renderActivities();
     } else {
         addLog(result.message, 'bad');
+        openProSportsEntryModal(sportKey);
         UI.showModal("Draft Results", `
             <div class="text-center space-y-3">
                 <div class="text-4xl">📋</div>
@@ -787,7 +843,6 @@ export function enterProSportsDraft(sportKey) {
                 <p class="text-xs text-slate-300">${result.message}</p>
             </div>
         `);
-        openProSportsEntryModal(sportKey);
     }
 }
 
@@ -800,6 +855,7 @@ export function enterProSportsTryout(sportKey) {
     if (result.success && result.signed) {
         addLog(result.message, 'major');
         SoundManager.play('milestone');
+        if (UI.isModalOpen()) UI.hideModal();
         UI.showModal("Pro Tryout Successful!", `
             <div class="text-center space-y-3">
                 <div class="text-4xl">⭐</div>
@@ -820,6 +876,7 @@ export function enterProSportsTryout(sportKey) {
         renderActivities();
     } else {
         addLog(result.message, 'bad');
+        openProSportsEntryModal(sportKey);
         UI.showModal("Tryout Feedback", `
             <div class="text-center space-y-3">
                 <div class="text-4xl">🏃</div>
@@ -827,6 +884,5 @@ export function enterProSportsTryout(sportKey) {
                 <p class="text-xs text-slate-300">${result.message}</p>
             </div>
         `);
-        openProSportsEntryModal(sportKey);
     }
 }
