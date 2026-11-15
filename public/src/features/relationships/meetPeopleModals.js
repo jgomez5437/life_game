@@ -455,9 +455,19 @@ export const selectDatingAppMatch = (profileId) => {
             status: Math.floor(Math.random() * 16) + 45,
             category: 'friend',
             occupation: matchedProfile.occupation,
+            ...(matchedProfile.occupationType ? { occupationType: matchedProfile.occupationType } : {}),
+            ...(matchedProfile.educationLevel ? { educationLevel: matchedProfile.educationLevel } : {}),
+            ...(matchedProfile.schoolMajor ? { schoolMajor: matchedProfile.schoolMajor } : {}),
+            ...(matchedProfile.schoolYear !== undefined ? { schoolYear: matchedProfile.schoolYear } : {}),
+            ...(matchedProfile.careerTrack ? { careerTrack: matchedProfile.careerTrack } : {}),
+            ...(matchedProfile.careerLevel !== undefined ? { careerLevel: matchedProfile.careerLevel } : {}),
+            ...(matchedProfile.income !== undefined ? { income: matchedProfile.income } : {}),
             appearance: matchedProfile.appearance,
             interactedThisYear: false
         };
+        if (typeof GameLogic.repairNPCOccupationMetadata === 'function') {
+            GameLogic.repairNPCOccupationMetadata(newRel, user.city || null);
+        }
         if (!user.relationships) user.relationships = [];
         user.relationships.push(newRel);
         addLog(`It's a Match! You matched with ${matchedProfile.name} on LoveSync.`, 'good');

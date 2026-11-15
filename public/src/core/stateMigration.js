@@ -7,6 +7,7 @@ import {
     isQuotaExceededError,
     attemptStoreCompaction
 } from './stateMigrationHelpers.js';
+import { repairNPCOccupationMetadata } from './logic/npcOccupationLogic.js';
 
 export {
     isValidSlotId,
@@ -478,28 +479,35 @@ export function migrateState(rawState) {
     }
 
     // 8. Relationships
+    const migratedCity = toStr(u.city, "New York");
     const relationships = Array.isArray(u.relationships)
-        ? u.relationships.filter(r => r && typeof r === 'object').map(r => ({
-            ...r,
-            id: toStr(r.id, `rel_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`),
-            name: toStr(r.name, 'Acquaintance'),
-            gender: ['male', 'female', 'non-binary'].includes(r.gender) ? r.gender : (['Wife', 'Mother', 'Sister', 'Daughter', 'Girlfriend', 'Daughter-in-Law', 'Granddaughter', 'Sister-in-Law', 'Niece', 'Grandmother', 'Aunt'].includes(r.type) ? 'female' : 'male'),
-            category: toStr(r.category, 'friend'),
-            type: toStr(r.type, 'Friend'),
-            age: toNum(r.age, 20, 0, 150),
-            status: toNum(r.status, 50, 0, 100),
-            ...(r.spouseId !== undefined ? { spouseId: r.spouseId ? toStr(r.spouseId) : null } : {}),
-            ...(r.spouseOfChildId !== undefined ? { spouseOfChildId: r.spouseOfChildId ? toStr(r.spouseOfChildId) : null } : {}),
-            ...(r.spouseOfChildName ? { spouseOfChildName: toStr(r.spouseOfChildName) } : {}),
-            ...(r.parentChildId !== undefined ? { parentChildId: r.parentChildId ? toStr(r.parentChildId) : null } : {}),
-            ...(r.parentChildName ? { parentChildName: toStr(r.parentChildName) } : {}),
-            ...(r.otherParentId !== undefined ? { otherParentId: r.otherParentId ? toStr(r.otherParentId) : null } : {}),
-            ...(r.neverMarries !== undefined ? { neverMarries: toBool(r.neverMarries, false) } : {}),
-            ...(r.bornOutOfWedlock !== undefined ? { bornOutOfWedlock: toBool(r.bornOutOfWedlock, false) } : {}),
-            ...(r.isWidowed !== undefined ? { isWidowed: toBool(r.isWidowed, false) } : {}),
-            ...(typeof r.marriedAtAge === 'number' ? { marriedAtAge: toNum(r.marriedAtAge, 20, 0, 150) } : {}),
-            ...(typeof r.justMarriedAtUserAge === 'number' ? { justMarriedAtUserAge: toNum(r.justMarriedAtUserAge, 0, 0, 150) } : {})
-        }))
+        ? u.relationships.filter(r => r && typeof r === 'object').map(r => {
+            const mappedRel = {
+                ...r,
+                id: toStr(r.id, `rel_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`),
+                name: toStr(r.name, 'Acquaintance'),
+                gender: ['male', 'female', 'non-binary'].includes(r.gender) ? r.gender : (['Wife', 'Mother', 'Sister', 'Daughter', 'Girlfriend', 'Daughter-in-Law', 'Granddaughter', 'Sister-in-Law', 'Niece', 'Grandmother', 'Aunt'].includes(r.type) ? 'female' : 'male'),
+                category: toStr(r.category, 'friend'),
+                type: toStr(r.type, 'Friend'),
+                age: toNum(r.age, 20, 0, 150),
+                status: toNum(r.status, 50, 0, 100),
+                ...(r.spouseId !== undefined ? { spouseId: r.spouseId ? toStr(r.spouseId) : null } : {}),
+                ...(r.spouseOfChildId !== undefined ? { spouseOfChildId: r.spouseOfChildId ? toStr(r.spouseOfChildId) : null } : {}),
+                ...(r.spouseOfChildName ? { spouseOfChildName: toStr(r.spouseOfChildName) } : {}),
+                ...(r.parentChildId !== undefined ? { parentChildId: r.parentChildId ? toStr(r.parentChildId) : null } : {}),
+                ...(r.parentChildName ? { parentChildName: toStr(r.parentChildName) } : {}),
+                ...(r.otherParentId !== undefined ? { otherParentId: r.otherParentId ? toStr(r.otherParentId) : null } : {}),
+                ...(r.neverMarries !== undefined ? { neverMarries: toBool(r.neverMarries, false) } : {}),
+                ...(r.bornOutOfWedlock !== undefined ? { bornOutOfWedlock: toBool(r.bornOutOfWedlock, false) } : {}),
+                ...(r.isWidowed !== undefined ? { isWidowed: toBool(r.isWidowed, false) } : {}),
+                ...(typeof r.marriedAtAge === 'number' ? { marriedAtAge: toNum(r.marriedAtAge, 20, 0, 150) } : {}),
+                ...(typeof r.justMarriedAtUserAge === 'number' ? { justMarriedAtUserAge: toNum(r.justMarriedAtUserAge, 0, 0, 150) } : {})
+            };
+            if (mappedRel.occupation && (!mappedRel.occupationType || typeof mappedRel.income !== 'number')) {
+                repairNPCOccupationMetadata(mappedRel, migratedCity);
+            }
+            return mappedRel;
+        })
         : [];
     const hadUnfaithfulHookupThisYear = toBool(u.hadUnfaithfulHookupThisYear, false);
     const isExpecting = toBool(u.isExpecting, false);

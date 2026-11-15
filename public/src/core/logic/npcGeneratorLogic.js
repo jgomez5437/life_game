@@ -1,5 +1,26 @@
 import { AvatarLogic } from '../avatarLogic.js';
 import { calculateScaledSalary } from './playerStatsLogic.js';
+import {
+    NPC_MAJORS,
+    NPC_CAREER_TRACKS,
+    LUXURY_TITLE_TO_TRACK,
+    isCloseRelationship,
+    repairNPCOccupationMetadata,
+    generateNPCOccupation,
+    progressNPCOccupation,
+    calculateSpousalIncomeContribution
+} from './npcOccupationLogic.js';
+
+export {
+    NPC_MAJORS,
+    NPC_CAREER_TRACKS,
+    LUXURY_TITLE_TO_TRACK,
+    isCloseRelationship,
+    repairNPCOccupationMetadata,
+    generateNPCOccupation,
+    progressNPCOccupation,
+    calculateSpousalIncomeContribution
+};
 
 export const FIRST_NAMES_MALE = ['James', 'John', 'Robert', 'Michael', 'William', 'David', 'Richard', 'Joseph', 'Thomas', 'Charles', 'Daniel', 'Matthew', 'Anthony', 'Mark', 'Donald', 'Steven', 'Paul', 'Andrew', 'Joshua', 'Kenneth'];
 export const FIRST_NAMES_FEMALE = ['Mary', 'Patricia', 'Jennifer', 'Linda', 'Elizabeth', 'Barbara', 'Susan', 'Jessica', 'Sarah', 'Karen', 'Nancy', 'Lisa', 'Betty', 'Margaret', 'Sandra', 'Ashley', 'Kimberly', 'Emily', 'Donna', 'Michelle'];
@@ -57,7 +78,7 @@ export function calculateNameChangeAcceptance(status, roll = Math.random()) {
  * @param {number} userAge 
  * @returns {Array} Array of relationship objects
  */
-export function generateSchoolCohort(userAge) {
+export function generateSchoolCohort(userAge, city = null) {
     const cohort = [];
     
     // Determine bounds
@@ -77,7 +98,7 @@ export function generateSchoolCohort(userAge) {
         const last = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
         const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'rel_' + Date.now() + Math.random().toString(36).substring(2, 9);
         const age = Math.floor(Math.random() * (classmateAgeMax - classmateAgeMin + 1)) + classmateAgeMin;
-        const occupationInfo = generateNPCOccupation(age);
+        const occupationInfo = generateNPCOccupation(age, city);
         cohort.push({
             id,
             name: `${first} ${last}`,
@@ -112,7 +133,7 @@ export function generateSchoolCohort(userAge) {
         appearance: AvatarLogic.generateRandomAppearance(teacherId, teacherGender),
         occupation: "Teacher",
         occupationType: "job",
-        income: 50000,
+        income: city ? calculateScaledSalary(50000, city) : 50000,
         careerTrack: "education_track",
         careerLevel: 0
     });
@@ -196,7 +217,7 @@ export function generateDatingProfiles(user, count = 3) {
         const first = getRandomFirstName(gender);
         const last = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
         const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'date_profile_' + Date.now() + '_' + i + '_' + Math.random().toString(36).substring(2, 6);
-        const occInfo = generateNPCOccupation(age);
+        const occInfo = generateNPCOccupation(age, user?.city || null);
 
         const shuffledHobbies = [...DATING_APP_HOBBIES].sort(() => Math.random() - 0.5);
         const hobbies = shuffledHobbies.slice(0, 2);
@@ -207,7 +228,8 @@ export function generateDatingProfiles(user, count = 3) {
             name: `${first} ${last}`,
             age,
             gender,
-            occupation: occInfo.occupation || 'Single',
+            ...occInfo,
+            occupation: occInfo.occupation || 'Unemployed',
             appearance: AvatarLogic.generateRandomAppearance(id, gender),
             bio,
             hobbies,
@@ -262,6 +284,7 @@ export function generateLuxuryMatch(user, { agePreset = '26-35', wealthTier = 'w
     const tierKey = LUXURY_CAREERS[wealthTier] ? wealthTier : 'wealthy';
     const careerPool = LUXURY_CAREERS[tierKey];
     const chosenCareer = careerPool[Math.floor(Math.random() * careerPool.length)];
+    const trackMeta = LUXURY_TITLE_TO_TRACK[chosenCareer.title] || null;
 
     let baseSalary = Math.floor(Math.random() * (chosenCareer.salaryRange[1] - chosenCareer.salaryRange[0] + 1)) + chosenCareer.salaryRange[0];
     if (user.city) {
@@ -290,6 +313,7 @@ export function generateLuxuryMatch(user, { agePreset = '26-35', wealthTier = 'w
         category: 'friend',
         occupation: chosenCareer.title,
         occupationType: 'job',
+        ...(trackMeta ? { careerTrack: trackMeta.careerTrack, careerLevel: trackMeta.careerLevel } : {}),
         income: baseSalary,
         wealthTier: tierKey,
         netWorth,
@@ -303,6 +327,7 @@ export function generateTargetedStranger(user, categoryPreference = 'friend') {
     const userAge = typeof user === 'number' ? user : (user.age || 18);
     const userGender = typeof user === 'number' ? 'male' : (user.gender || 'male');
     const attractionPref = typeof user === 'object' ? user.attractionPreference : null;
+    const userCity = typeof user === 'object' ? (user.city || null) : null;
 
     let gender;
     if (categoryPreference === 'romantic' || categoryPreference === 'date') {
@@ -318,7 +343,7 @@ export function generateTargetedStranger(user, categoryPreference = 'friend') {
     const first = getRandomFirstName(gender);
     const last = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
     const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'rel_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
-    const occupationInfo = generateNPCOccupation(age);
+    const occupationInfo = generateNPCOccupation(age, userCity);
 
     const isRomantic = categoryPreference === 'romantic' || categoryPreference === 'date';
     return {
@@ -394,390 +419,3 @@ export function attemptBefriend(status, isTeacher, roll = Math.random()) {
     return roll < chance;
 }
 
-export const NPC_MAJORS = [
-    "Psychology", "Computer Science", "English", "Education", "Marketing",
-    "Business", "Nursing", "Religious Studies", "Biology", "Graphic Design", "Chemistry",
-    "Political Science", "Criminal Justice", "Communications", "Pharmacy"
-];
-
-export const NPC_CAREER_TRACKS = [
-    {
-        key: 'retail', majors: ['Marketing', 'Business', 'Communications'],
-        levels: [
-            { title: 'Cashier', salary: 28000 },
-            { title: 'Sales Associate', salary: 34000 },
-            { title: 'Team Lead', salary: 45000 },
-            { title: 'Store Manager', salary: 65000 },
-            { title: 'District Manager', salary: 100000 }
-        ]
-    },
-    {
-        key: 'food_service', majors: [],
-        levels: [
-            { title: 'Line Cook', salary: 30000 },
-            { title: 'Cook', salary: 38000 },
-            { title: 'Sous Chef', salary: 52000 },
-            { title: 'Head Chef', salary: 75000 },
-            { title: 'Executive Chef', salary: 95000 }
-        ]
-    },
-    {
-        key: 'trades', majors: [],
-        levels: [
-            { title: 'Trade Helper', salary: 32000 },
-            { title: 'Apprentice', salary: 42000 },
-            { title: 'Journeyman', salary: 60000 },
-            { title: 'Foreman', salary: 78000 },
-            { title: 'Master Tradesperson', salary: 100000 }
-        ]
-    },
-    {
-        key: 'law_enforcement', majors: ['Criminal Justice'],
-        levels: [
-            { title: 'Patrol Officer', salary: 55000 },
-            { title: 'Detective', salary: 70000 },
-            { title: 'Sergeant', salary: 85000 },
-            { title: 'Lieutenant', salary: 100000 },
-            { title: 'Police Captain', salary: 120000 }
-        ]
-    },
-    {
-        key: 'fire_service', majors: [],
-        levels: [
-            { title: 'Firefighter', salary: 48000 },
-            { title: 'Driver/Engineer', salary: 62000 },
-            { title: 'Fire Lieutenant', salary: 76000 },
-            { title: 'Fire Captain', salary: 90000 },
-            { title: 'Fire Chief', salary: 105000 }
-        ]
-    },
-    {
-        key: 'logistics', majors: ['Business'],
-        levels: [
-            { title: 'Delivery Driver', salary: 35000 },
-            { title: 'Senior Driver', salary: 45000 },
-            { title: 'Dispatch Coordinator', salary: 60000 },
-            { title: 'Logistics Manager', salary: 82000 },
-            { title: 'VP of Logistics', salary: 110000 }
-        ]
-    },
-    {
-        key: 'software_eng', majors: ['Computer Science'],
-        levels: [
-            { title: 'Jr. Software Developer', salary: 50000 },
-            { title: 'Software Developer', salary: 72000 },
-            { title: 'Senior Developer', salary: 100000 },
-            { title: 'Lead Engineer', salary: 135000 },
-            { title: 'Engineering Director', salary: 175000 }
-        ]
-    },
-    {
-        key: 'graphic_design', majors: ['Graphic Design'],
-        levels: [
-            { title: 'Junior Designer', salary: 45000 },
-            { title: 'Graphic Designer', salary: 58000 },
-            { title: 'Senior Designer', salary: 75000 },
-            { title: 'Art Director', salary: 100000 },
-            { title: 'Creative Director', salary: 130000 }
-        ]
-    },
-    {
-        key: 'education_track', majors: ['Education', 'English'],
-        levels: [
-            { title: 'Teacher', salary: 40000 },
-            { title: 'Senior Teacher', salary: 52000 },
-            { title: 'Department Chair', salary: 70000 },
-            { title: 'Vice Principal', salary: 90000 },
-            { title: 'Principal', salary: 110000 }
-        ]
-    },
-    {
-        key: 'nursing', majors: ['Nursing', 'Biology'],
-        levels: [
-            { title: 'Registered Nurse', salary: 50000 },
-            { title: 'Charge Nurse', salary: 65000 },
-            { title: 'Nurse Manager', salary: 85000 },
-            { title: 'Director of Nursing', salary: 110000 },
-            { title: 'Chief Nursing Officer', salary: 150000 }
-        ]
-    },
-    {
-        key: 'banking', majors: ['Business', 'Marketing', 'Psychology'],
-        levels: [
-            { title: 'Bank Teller', salary: 42000 },
-            { title: 'Loan Officer', salary: 55000 },
-            { title: 'Branch Manager', salary: 80000 },
-            { title: 'VP of Banking', salary: 120000 },
-            { title: 'Chief Banking Officer', salary: 190000 }
-        ]
-    },
-    {
-        key: 'law', majors: ['Political Science'],
-        levels: [
-            { title: 'Law Clerk', salary: 70000 },
-            { title: 'Associate Attorney', salary: 100000 },
-            { title: 'Junior Partner', salary: 145000 },
-            { title: 'Senior Partner', salary: 200000 },
-            { title: 'Managing Partner', salary: 250000 }
-        ]
-    },
-    {
-        key: 'medicine', majors: ['Biology', 'Chemistry'],
-        levels: [
-            { title: 'Resident', salary: 65000 },
-            { title: 'Staff Physician', salary: 120000 },
-            { title: 'Attending Physician', salary: 200000 },
-            { title: 'Department Head', salary: 280000 },
-            { title: 'Chief of Medicine', salary: 350000 }
-        ]
-    }
-];
-
-export function generateNPCOccupation(age, city = null) {
-    if (age === undefined || age === null) age = 18;
-
-    if (age < 5) {
-        return {
-            occupation: age === 0 ? "Baby" : "Toddler",
-            occupationType: 'school',
-            educationLevel: 'None',
-            income: 0
-        };
-    }
-    if (age >= 5 && age <= 11) {
-        return {
-            occupation: "Elementary Student",
-            occupationType: 'school',
-            educationLevel: 'Elementary',
-            income: 0
-        };
-    }
-    if (age >= 12 && age <= 13) {
-        return {
-            occupation: "Middle School Student",
-            occupationType: 'school',
-            educationLevel: 'Middle School',
-            income: 0
-        };
-    }
-    if (age >= 14 && age <= 17) {
-        return {
-            occupation: "High School Student",
-            occupationType: 'school',
-            educationLevel: 'High School',
-            schoolYear: age - 13,
-            income: 0
-        };
-    }
-    if (age >= 18 && age <= 21) {
-        const roll = Math.random();
-        if (roll < 0.55) {
-            const major = NPC_MAJORS[Math.floor(Math.random() * NPC_MAJORS.length)];
-            return {
-                occupation: `University Student (${major})`,
-                occupationType: 'school',
-                educationLevel: 'High School',
-                schoolMajor: major,
-                schoolYear: Math.max(1, age - 17),
-                income: 0
-            };
-        } else if (roll < 0.85) {
-            const entryTracks = NPC_CAREER_TRACKS.filter(t => ['retail', 'food_service', 'trades', 'logistics'].includes(t.key));
-            const track = entryTracks[Math.floor(Math.random() * entryTracks.length)];
-            const lvl = track.levels[0];
-            const income = city ? calculateScaledSalary(lvl.salary, city) : lvl.salary;
-            return {
-                occupation: lvl.title,
-                occupationType: 'job',
-                careerTrack: track.key,
-                careerLevel: 0,
-                income,
-                educationLevel: 'High School'
-            };
-        } else {
-            return {
-                occupation: "Unemployed",
-                occupationType: 'unemployed',
-                educationLevel: 'High School',
-                income: 0
-            };
-        }
-    }
-    if (age >= 22 && age <= 64) {
-        const roll = Math.random();
-        if (roll < 0.85) {
-            const track = NPC_CAREER_TRACKS[Math.floor(Math.random() * NPC_CAREER_TRACKS.length)];
-            let level = 0;
-            if (age >= 45) {
-                level = Math.floor(Math.random() * 3) + 2;
-            } else if (age >= 32) {
-                level = Math.floor(Math.random() * 3) + 1;
-            } else {
-                level = Math.floor(Math.random() * 2);
-            }
-            level = Math.min(level, track.levels.length - 1);
-            const lvl = track.levels[level];
-            const hasDegree = ['software_eng', 'graphic_design', 'education_track', 'nursing', 'banking', 'law', 'medicine'].includes(track.key);
-            const major = hasDegree
-                ? (track.majors.length > 0 ? track.majors[0] : NPC_MAJORS[Math.floor(Math.random() * NPC_MAJORS.length)])
-                : null;
-            const income = city ? calculateScaledSalary(lvl.salary, city) : lvl.salary;
-
-            return {
-                occupation: lvl.title,
-                occupationType: 'job',
-                careerTrack: track.key,
-                careerLevel: level,
-                income,
-                educationLevel: hasDegree ? 'University' : 'High School',
-                schoolMajor: major
-            };
-        } else {
-            return {
-                occupation: "Unemployed",
-                occupationType: 'unemployed',
-                educationLevel: 'High School',
-                income: 0
-            };
-        }
-    }
-    // age >= 65
-    const baseRetirement = Math.floor(Math.random() * 20000) + 18000;
-    const income = city ? calculateScaledSalary(baseRetirement, city) : baseRetirement;
-    return {
-        occupation: "Retired",
-        occupationType: 'retired',
-        educationLevel: 'High School',
-        income
-    };
-}
-
-export function isCloseRelationship(person) {
-    if (!person) return false;
-    if (['spouse', 'partner', 'family', 'child'].includes(person.category)) return true;
-    if (['Brother', 'Sister', 'Son', 'Daughter', 'Mother', 'Father', 'Boyfriend', 'Girlfriend', 'Wife', 'Husband', 'Fiancé', 'Fiancée', 'Fiance'].includes(person.type)) return true;
-    return false;
-}
-
-export function progressNPCOccupation(person, userAge) {
-    if (!person) return null;
-
-    if (!person.occupation) {
-        Object.assign(person, generateNPCOccupation(person.age));
-        return null;
-    }
-
-    const isClose = isCloseRelationship(person);
-    let milestoneMessage = null;
-
-    if (person.age === 5) {
-        person.occupation = "Elementary Student";
-        person.occupationType = 'school';
-        person.educationLevel = 'Elementary';
-        if (isClose) milestoneMessage = `${person.name} started Elementary School!`;
-    } else if (person.age === 12) {
-        person.occupation = "Middle School Student";
-        person.occupationType = 'school';
-        person.educationLevel = 'Middle School';
-        if (isClose) milestoneMessage = `${person.name} started Middle School!`;
-    } else if (person.age === 14) {
-        person.occupation = "High School Student";
-        person.occupationType = 'school';
-        person.educationLevel = 'High School';
-        person.schoolYear = 1;
-        if (isClose) milestoneMessage = `${person.name} started High School!`;
-    } else if (person.age === 18) {
-        person.educationLevel = 'High School';
-        const roll = Math.random();
-        if (roll < 0.55) {
-            const major = NPC_MAJORS[Math.floor(Math.random() * NPC_MAJORS.length)];
-            person.occupation = `University Student (${major})`;
-            person.occupationType = 'school';
-            person.schoolMajor = major;
-            person.schoolYear = 1;
-            person.income = 0;
-            if (isClose) milestoneMessage = `${person.name} graduated High School and enrolled in University studying ${major}!`;
-        } else if (roll < 0.85) {
-            const entryTracks = NPC_CAREER_TRACKS.filter(t => ['retail', 'food_service', 'trades', 'logistics'].includes(t.key));
-            const track = entryTracks[Math.floor(Math.random() * entryTracks.length)];
-            const lvl = track.levels[0];
-            person.occupation = lvl.title;
-            person.occupationType = 'job';
-            person.careerTrack = track.key;
-            person.careerLevel = 0;
-            person.income = lvl.salary;
-            if (isClose) milestoneMessage = `${person.name} graduated High School and started working as a ${lvl.title}!`;
-        } else {
-            person.occupation = "Unemployed";
-            person.occupationType = 'unemployed';
-            person.income = 0;
-            if (isClose) milestoneMessage = `${person.name} finished High School and is currently unemployed.`;
-        }
-    } else if (person.occupationType === 'school' && person.occupation && person.occupation.startsWith("University Student")) {
-        person.schoolYear = (person.schoolYear || 1) + 1;
-        if (person.schoolYear > 4 || person.age >= 22) {
-            const major = person.schoolMajor;
-            let track = NPC_CAREER_TRACKS.find(t => t.majors.includes(major));
-            if (!track) {
-                track = NPC_CAREER_TRACKS[Math.floor(Math.random() * NPC_CAREER_TRACKS.length)];
-            }
-            const lvl = track.levels[0];
-            person.educationLevel = 'University';
-            person.occupation = lvl.title;
-            person.occupationType = 'job';
-            person.careerTrack = track.key;
-            person.careerLevel = 0;
-            person.income = lvl.salary;
-            if (isClose) milestoneMessage = `${person.name} graduated University with a degree in ${major || 'their major'} and got a job as a ${lvl.title}!`;
-        }
-    } else if (person.occupationType === 'job' && person.age < 65) {
-        const roll = Math.random();
-        const track = NPC_CAREER_TRACKS.find(t => t.key === person.careerTrack);
-        if (track && (person.careerLevel || 0) < track.levels.length - 1 && roll < 0.15) {
-            person.careerLevel = (person.careerLevel || 0) + 1;
-            const lvl = track.levels[person.careerLevel];
-            person.occupation = lvl.title;
-            person.income = lvl.salary;
-            if (isClose) milestoneMessage = `${person.name} was promoted to ${lvl.title}!`;
-        } else if (roll > 0.95) {
-            person.occupation = "Unemployed";
-            person.occupationType = 'unemployed';
-            person.income = 0;
-            if (isClose) milestoneMessage = `${person.name} became unemployed.`;
-        }
-    } else if (person.occupationType === 'unemployed' && person.age >= 18 && person.age < 65) {
-        if (Math.random() < 0.25) {
-            const track = NPC_CAREER_TRACKS[Math.floor(Math.random() * NPC_CAREER_TRACKS.length)];
-            const lvl = track.levels[0];
-            person.occupation = lvl.title;
-            person.occupationType = 'job';
-            person.careerTrack = track.key;
-            person.careerLevel = 0;
-            person.income = lvl.salary;
-            if (isClose) milestoneMessage = `${person.name} found a job as a ${lvl.title}!`;
-        }
-    } else if (person.age >= 65 && person.occupationType !== 'retired') {
-        person.occupation = "Retired";
-        person.occupationType = 'retired';
-        person.income = Math.floor((person.income || 40000) * 0.4) || 20000;
-        if (isClose) milestoneMessage = `${person.name} retired from their career!`;
-    }
-
-    return milestoneMessage;
-}
-
-export function calculateSpousalIncomeContribution(user) {
-    if (!user || !Array.isArray(user.relationships)) return { amount: 0, spouseName: null };
-    const spouse = user.relationships.find(r => r.category === 'spouse' || r.type === 'Wife' || r.type === 'Husband' || r.type === 'Spouse');
-    if (!spouse) return { amount: 0, spouseName: null };
-
-    if (!spouse.occupation) {
-        Object.assign(spouse, generateNPCOccupation(spouse.age));
-    }
-
-    if (spouse.income > 0) {
-        const amount = Math.floor(spouse.income * 0.50);
-        return { amount, spouseName: spouse.name, spouseJob: spouse.occupation };
-    }
-    return { amount: 0, spouseName: spouse.name, spouseJob: spouse.occupation };
-}
