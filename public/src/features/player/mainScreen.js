@@ -183,8 +183,8 @@ export function renderDeathScreen(user, cause) {
         }
     } else {
         const shares = [];
-        if (spouseShare > 0 && spouse) shares.push(`<span class="text-green-400 font-bold">+$${spouseShare.toLocaleString()}</span> to your spouse, ${Utils.escapeHtml(spouse.name)}`);
-        if (inheritancePerChild > 0) shares.push(`<span class="text-green-400 font-bold">+$${inheritancePerChild.toLocaleString()} each</span> to your ${children.length} children`);
+        if (spouseShare > 0 && spouse) shares.push(`<span class="text-green-400 font-bold">+${Utils.formatMoney(spouseShare)}</span> to your spouse, ${Utils.escapeHtml(spouse.name)}`);
+        if (inheritancePerChild > 0) shares.push(`<span class="text-green-400 font-bold">+${Utils.formatMoney(inheritancePerChild)} each</span> to your ${children.length} children`);
 
         if (shares.length > 0) {
             estateMessage = `<p class="text-slate-300 text-sm mb-4">Your estate went ${shares.join(' and ')}.</p>`;

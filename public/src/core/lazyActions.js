@@ -137,6 +137,7 @@ export const confirmGiftVehicle = lazy('assets', 'confirmGiftVehicle');
 // Shopping
 export const renderShoppingHub = lazy('goShopping', 'renderShoppingHub');
 export const renderVehicleDealer = lazy('goShopping', 'renderVehicleDealer');
+export const openVehicleDetailsModal = lazy('goShopping', 'openVehicleDetailsModal');
 export const buyVehicle = lazy('goShopping', 'buyVehicle');
 export const buyVehicleCash = lazy('goShopping', 'buyVehicleCash');
 export const buyVehicleLoan = lazy('goShopping', 'buyVehicleLoan');

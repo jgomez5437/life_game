@@ -134,6 +134,7 @@ export const ACTION_TO_MODULE = {
     confirmGiftVehicle: 'assets',
     renderShoppingHub: 'goShopping',
     renderVehicleDealer: 'goShopping',
+    openVehicleDetailsModal: 'goShopping',
     buyVehicle: 'goShopping',
     buyVehicleCash: 'goShopping',
     buyVehicleLoan: 'goShopping',

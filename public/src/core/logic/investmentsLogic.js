@@ -1,5 +1,6 @@
 import { state, addLog } from '../state.js';
 import { isAlive } from './playerStatsLogic.js';
+import { formatUsdBillionsPlus } from '../numberFormat.js';
 
 // --- INVESTMENTS & STOCK MARKET SYSTEM ---
 export const INITIAL_STOCKS = [
@@ -543,7 +544,7 @@ export function processInvestmentsAgeUp(user) {
         savingsInterest = Math.floor(user.investments.savings * 0.035);
         user.investments.savings += savingsInterest;
         if (savingsInterest > 0) {
-            addLog(`Your High-Yield Savings Account earned $${savingsInterest.toLocaleString()} in interest (3.5% APY).`, 'good');
+            addLog(`Your High-Yield Savings Account earned ${formatUsdBillionsPlus(savingsInterest)} in interest (3.5% APY).`, 'good');
         }
     }
 
@@ -584,7 +585,7 @@ export function processInvestmentsAgeUp(user) {
     });
 
     if (totalDividends > 0) {
-        addLog(`Received $${totalDividends.toLocaleString()} in cash dividends from your stock portfolio!`, 'good');
+        addLog(`Received ${formatUsdBillionsPlus(totalDividends)} in cash dividends from your stock portfolio!`, 'good');
     }
 
     // 3. Generate NEW blog posts for next year
@@ -606,7 +607,7 @@ export function buyStock(user, symbol, quantity) {
 
     const totalCost = Math.round(stock.price * sharesToBuy);
     if (user.money < totalCost) {
-        return { success: false, msg: `Insufficient funds. You need $${totalCost.toLocaleString()} to buy ${sharesToBuy} shares of ${symbol}.` };
+        return { success: false, msg: `Insufficient funds. You need ${formatUsdBillionsPlus(totalCost)} to buy ${sharesToBuy} shares of ${symbol}.` };
     }
 
     user.money -= totalCost;
@@ -619,7 +620,7 @@ export function buyStock(user, symbol, quantity) {
 
     return {
         success: true,
-        msg: `Successfully purchased ${sharesToBuy} shares of ${stock.name} (${symbol}) for $${totalCost.toLocaleString()}.`
+        msg: `Successfully purchased ${sharesToBuy} shares of ${stock.name} (${symbol}) for ${formatUsdBillionsPlus(totalCost)}.`
     };
 }
 
@@ -655,7 +656,7 @@ export function sellStock(user, symbol, quantity) {
 
     return {
         success: true,
-        msg: `Successfully sold ${sharesToSell} shares of ${stock.name} (${symbol}) for $${totalProceeds.toLocaleString()}.`
+        msg: `Successfully sold ${sharesToSell} shares of ${stock.name} (${symbol}) for ${formatUsdBillionsPlus(totalProceeds)}.`
     };
 }
 
@@ -676,7 +677,7 @@ export function depositSavings(user, amount) {
 
     return {
         success: true,
-        msg: `Deposited $${depositAmt.toLocaleString()} into High-Yield Savings.`
+        msg: `Deposited ${formatUsdBillionsPlus(depositAmt)} into High-Yield Savings.`
     };
 }
 
@@ -697,6 +698,6 @@ export function withdrawSavings(user, amount) {
 
     return {
         success: true,
-        msg: `Withdrew $${withdrawAmt.toLocaleString()} from High-Yield Savings.`
+        msg: `Withdrew ${formatUsdBillionsPlus(withdrawAmt)} from High-Yield Savings.`
     };
 }
