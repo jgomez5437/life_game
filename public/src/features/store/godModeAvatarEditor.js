@@ -87,8 +87,8 @@ export function renderGodModeAvatarModal(target = 'self', personId = null) {
         editorTargetName = user.username || user.name || 'Your Character';
     }
 
-    editorGender = targetObj.gender || (targetObj.type === 'Son' || targetObj.type === 'Father' || targetObj.type === 'Brother' || targetObj.type === 'Husband' ? 'male' : 'female');
-    editorAge = targetObj.age || 25;
+    editorGender = targetObj.gender || (['Son', 'Father', 'Brother', 'Husband', 'Son-in-Law', 'Grandson', 'Nephew', 'Brother-in-Law'].includes(targetObj.type) ? 'male' : 'female');
+    editorAge = targetObj.age ?? 25;
 
     const baseAppearance = targetObj.appearance || AvatarLogic.generateRandomAppearance(targetObj.id || 'godmode_' + Date.now(), editorGender);
     editorDraftAppearance = { ...baseAppearance };

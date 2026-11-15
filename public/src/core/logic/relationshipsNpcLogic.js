@@ -1,5 +1,6 @@
 import { isAlive } from './playerStatsLogic.js';
 export * from './npcGeneratorLogic.js';
+export * from './childFamilyLogic.js';
 
 /**
  * Calculates new relationship status after yearly decay.
@@ -27,7 +28,12 @@ export function calculateRelationshipDecay(currentStatus, interactedThisYear, ca
  * @returns {string|null} The new category if shifted, otherwise null
  */
 export function checkRelationshipCategoryShift(category, status, type) {
-    const familyTypes = ['Mother', 'Father', 'Brother', 'Sister', 'Son', 'Daughter', 'Child', 'Parent', 'Grandmother', 'Grandfather', 'Uncle', 'Aunt', 'Cousin', 'Niece', 'Nephew'];
+    const familyTypes = [
+        'Mother', 'Father', 'Brother', 'Sister', 'Son', 'Daughter', 'Child', 'Parent',
+        'Grandmother', 'Grandfather', 'Grandson', 'Granddaughter', 'Grandchild',
+        'Son-in-Law', 'Daughter-in-Law', 'Brother-in-Law', 'Sister-in-Law',
+        'Uncle', 'Aunt', 'Cousin', 'Niece', 'Nephew'
+    ];
     if (['family', 'spouse', 'child', 'classmate', 'partner', 'ex'].includes(category) || (type && familyTypes.includes(type))) {
         return null;
     }
@@ -415,10 +421,14 @@ export function calculatePregnancyChance(femaleAge, maleAgeOrRoll = undefined, r
 /**
  * Maps living family members from a deceased parent's state to the new child player.
  * Inherits:
- * - Surviving spouse -> Mother / Father
+ * - Surviving spouse of deceased parent -> Mother / Father
  * - Other children of parent -> Brother / Sister
  * - Deceased parent's siblings -> Uncle / Aunt
  * - Deceased parent's parents -> Grandfather / Grandmother
+ * - Selected child's spouse -> Husband / Wife
+ * - Selected child's children -> Son / Daughter
+ * - Siblings' children (other grandchildren) -> Nephew / Niece
+ * - Siblings' spouses (other in-laws) -> Brother-in-Law / Sister-in-Law
  * @param {Array} parentRelationships - Array of relationship objects from deceased parent
  * @param {string} selectedChildId - ID of the child becoming the new player character
  * @returns {Array} Array of relationship objects mapped for the new child player
@@ -426,14 +436,30 @@ export function calculatePregnancyChance(femaleAge, maleAgeOrRoll = undefined, r
 export function inheritFamilyRelationships(parentRelationships, selectedChildId) {
     if (!Array.isArray(parentRelationships)) return [];
 
+    const selectedChild = parentRelationships.find(r => r && r.id === selectedChildId) || null;
     const inherited = [];
 
     parentRelationships.forEach(r => {
         if (!r || r.id === selectedChildId) return;
 
         let newType = null;
+        let newCategory = 'family';
 
-        if (r.category === 'child' || r.type === 'Son' || r.type === 'Daughter') {
+        if (r.spouseOfChildId === selectedChildId || (selectedChild?.spouseId && r.id === selectedChild.spouseId)) {
+            const isMale = r.gender === 'male' || r.type === 'Son-in-Law';
+            newType = isMale ? 'Husband' : 'Wife';
+            newCategory = 'spouse';
+        } else if ((r.type === 'Grandson' || r.type === 'Granddaughter') && r.parentChildId === selectedChildId) {
+            const isMale = r.gender === 'male' || r.type === 'Grandson';
+            newType = isMale ? 'Son' : 'Daughter';
+            newCategory = 'child';
+        } else if (r.type === 'Grandson' || r.type === 'Granddaughter') {
+            const isMale = r.gender === 'male' || r.type === 'Grandson';
+            newType = isMale ? 'Nephew' : 'Niece';
+        } else if (r.type === 'Son-in-Law' || r.type === 'Daughter-in-Law') {
+            const isMale = r.gender === 'male' || r.type === 'Son-in-Law';
+            newType = isMale ? 'Brother-in-Law' : 'Sister-in-Law';
+        } else if (r.category === 'child' || r.type === 'Son' || r.type === 'Daughter') {
             const isMale = r.gender === 'male' || r.type === 'Son';
             newType = isMale ? 'Brother' : 'Sister';
         } else if (r.category === 'spouse' || r.type === 'Husband' || r.type === 'Wife') {
@@ -448,18 +474,37 @@ export function inheritFamilyRelationships(parentRelationships, selectedChildId)
         }
 
         if (newType) {
-            inherited.push({
+            const mapped = {
                 id: r.id,
                 name: r.name,
                 age: r.age,
-                gender: r.gender || (['Brother', 'Father', 'Uncle', 'Grandfather'].includes(newType) ? 'male' : 'female'),
+                gender: r.gender || (['Brother', 'Father', 'Uncle', 'Grandfather', 'Husband', 'Son', 'Nephew', 'Brother-in-Law'].includes(newType) ? 'male' : 'female'),
                 type: newType,
                 status: r.status !== undefined ? r.status : 80,
-                category: 'family',
+                category: newCategory,
                 appearance: r.appearance,
                 avatarVersion: r.avatarVersion || 0,
                 interactedThisYear: false
-            });
+            };
+
+            if (newCategory === 'spouse') {
+                const childMarriedAge = typeof selectedChild?.marriedAtAge === 'number'
+                    ? selectedChild.marriedAtAge
+                    : (typeof r.marriedAtAge === 'number' ? r.marriedAtAge : undefined);
+                if (typeof childMarriedAge === 'number') {
+                    mapped.marriedAtAge = childMarriedAge;
+                }
+            }
+            if (r.occupation !== undefined) mapped.occupation = r.occupation;
+            if (r.occupationType !== undefined) mapped.occupationType = r.occupationType;
+            if (r.income !== undefined) mapped.income = r.income;
+            if (r.careerTrack !== undefined) mapped.careerTrack = r.careerTrack;
+            if (r.careerLevel !== undefined) mapped.careerLevel = r.careerLevel;
+            if (r.educationLevel !== undefined) mapped.educationLevel = r.educationLevel;
+            if (r.schoolMajor !== undefined) mapped.schoolMajor = r.schoolMajor;
+            if (r.schoolYear !== undefined) mapped.schoolYear = r.schoolYear;
+
+            inherited.push(mapped);
         }
     });
 

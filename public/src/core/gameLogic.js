@@ -168,6 +168,14 @@ export const GameLogic = {
     getPartner: relationshipsNpc.getPartner,
     calculatePartnerRelocateAcceptance: relationshipsNpc.calculatePartnerRelocateAcceptance,
     breakUpWithPartner: relationshipsNpc.breakUpWithPartner,
+    calculateChildMarriageChance: relationshipsNpc.calculateChildMarriageChance,
+    createChildSpouseNPC: relationshipsNpc.createChildSpouseNPC,
+    calculateChildParenthoodChance: relationshipsNpc.calculateChildParenthoodChance,
+    createGrandchildNPC: relationshipsNpc.createGrandchildNPC,
+    processAdultChildrenMilestones: relationshipsNpc.processAdultChildrenMilestones,
+    getLivingChildren: relationshipsNpc.getLivingChildren,
+    getChildrenOfChild: relationshipsNpc.getChildrenOfChild,
+    getSpouseOfChild: relationshipsNpc.getSpouseOfChild,
 
     // Business, Startups, Cashflow & Taxes
     calculatePromotionChance: businessFinance.calculatePromotionChance,

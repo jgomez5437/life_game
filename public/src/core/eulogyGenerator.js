@@ -72,6 +72,7 @@ export function generateProceduralEulogy(user, lifeLog = [], cause = null) {
     const {
         name, age, pronouns, city, country, totalEstate, wealthTier,
         jobTitle, formerJobTitle, isActiveJob, careerTrack, hasBusiness, businessName, childrenCount,
+        grandchildrenCount = 0, grandchildrenNames = [],
         hasSpouse, spouseName, isWidowed, lateSpouseName, yearsMarried,
         partnerName, partnerType, childrenNames,
         bestFriendName, archEnemyName, divorcesCount, marriagesCount,
@@ -295,7 +296,11 @@ export function generateProceduralEulogy(user, lifeLog = [], cause = null) {
     // =========================================================================
     let sentence3 = '';
 
-    // Dynamic social sub-clause
+    // Dynamic social & grandparent sub-clause
+    const grandkidsText = grandchildrenCount > 0
+        ? `, later delighting in ${grandchildrenCount} grandchild${grandchildrenCount === 1 ? '' : 'ren'}`
+        : '';
+
     let socialExtra = '';
     if (bestFriendName && archEnemyName) {
         socialExtra = `, while always sharing close counsel with best friend ${bestFriendName} and fiercely warding off ${pronouns.pos} sworn rival, ${archEnemyName}`;
@@ -304,6 +309,7 @@ export function generateProceduralEulogy(user, lifeLog = [], cause = null) {
     } else if (archEnemyName) {
         socialExtra = `, while keeping a watchful eye on bitter adversary ${archEnemyName}`;
     }
+    const familyAndSocialExtra = `${grandkidsText}${socialExtra}`;
 
     const kidNoun = childrenCount === 1 ? 'child' : 'children';
     const namedKids = childrenNames.slice(0, 2).join(' and ');
@@ -312,53 +318,61 @@ export function generateProceduralEulogy(user, lifeLog = [], cause = null) {
 
     if (divorcesCount >= 2 || marriagesCount >= 3) {
         sentence3 = pick([
-            `Romantically, ${pronouns.pos} life resembled a high-stakes melodrama, weathering ${divorcesCount} tempestuous divorces while keeping local family attorneys gainfully employed for decades${socialExtra}.`,
-            `A hopeless romantic who never learned from past heartbreaks, ${pronouns.sub} marched down the aisle ${marriagesCount} separate times, leaving behind bewildered ex-spouses and unforgettable holiday dinners${socialExtra}.`,
-            `Navigating love with grand romantic gestures and questionable judgment, ${name} cycled through ${divorcesCount} turbulent divorces and whirlwind courtships${socialExtra}.`
+            `Romantically, ${pronouns.pos} life resembled a high-stakes melodrama, weathering ${divorcesCount} tempestuous divorces while keeping local family attorneys gainfully employed for decades${familyAndSocialExtra}.`,
+            `A hopeless romantic who never learned from past heartbreaks, ${pronouns.sub} marched down the aisle ${marriagesCount} separate times, leaving behind bewildered ex-spouses and unforgettable holiday dinners${familyAndSocialExtra}.`,
+            `Navigating love with grand romantic gestures and questionable judgment, ${name} cycled through ${divorcesCount} turbulent divorces and whirlwind courtships${familyAndSocialExtra}.`
         ]);
     } else if (hasSpouse && spouseName && childrenCount >= 1) {
         const marriageDur = yearsMarried >= 10 ? ` across a ${yearsMarried}-year marriage` : '';
         sentence3 = pick([
-            `At home, ${pronouns.sub} shared life's journey${marriageDur} with ${pronouns.pos} devoted spouse, ${spouseName}, together guiding ${childrenCount} ${kidNoun}${kidsListText} through life's triumphs and kitchen chaos${socialExtra}.`,
-            `Anchored by a lasting${yearsMarried >= 10 ? ` ${yearsMarried}-year` : ''} marriage to ${spouseName}, ${name} took immense pride in raising ${childrenCount} ${kidNoun}${kidsListText}${socialExtra}.`,
-            `Domestic life with ${spouseName} remained ${pronouns.pos} emotional bedrock, as they navigated the joyful pandemonium of raising ${childrenCount} ${kidNoun} together${socialExtra}.`
+            `At home, ${pronouns.sub} shared life's journey${marriageDur} with ${pronouns.pos} devoted spouse, ${spouseName}, together guiding ${childrenCount} ${kidNoun}${kidsListText} through life's triumphs and kitchen chaos${familyAndSocialExtra}.`,
+            `Anchored by a lasting${yearsMarried >= 10 ? ` ${yearsMarried}-year` : ''} marriage to ${spouseName}, ${name} took immense pride in raising ${childrenCount} ${kidNoun}${kidsListText}${familyAndSocialExtra}.`,
+            `Domestic life with ${spouseName} remained ${pronouns.pos} emotional bedrock, as they navigated the joyful pandemonium of raising ${childrenCount} ${kidNoun} together${familyAndSocialExtra}.`
         ]);
     } else if (hasSpouse && spouseName) {
         const marriageDur = yearsMarried >= 10 ? ` spanning ${yearsMarried} devoted years` : '';
         sentence3 = pick([
-            `At home, ${name} found enduring partnership${marriageDur} alongside ${pronouns.pos} spouse, ${spouseName}${socialExtra}.`,
-            `Blessed with lasting marital harmony, ${pronouns.sub} and ${spouseName} stood by each other through every chapter of life with humor and devotion${socialExtra}.`,
-            `${pronouns.posCap}${yearsMarried >= 10 ? ` ${yearsMarried}-year` : ''} marriage to ${spouseName} remained a steadfast sanctuary, weathering life's storms with quiet trust and shared affection${socialExtra}.`
+            `At home, ${name} found enduring partnership${marriageDur} alongside ${pronouns.pos} spouse, ${spouseName}${familyAndSocialExtra}.`,
+            `Blessed with lasting marital harmony, ${pronouns.sub} and ${spouseName} stood by each other through every chapter of life with humor and devotion${familyAndSocialExtra}.`,
+            `${pronouns.posCap}${yearsMarried >= 10 ? ` ${yearsMarried}-year` : ''} marriage to ${spouseName} remained a steadfast sanctuary, weathering life's storms with quiet trust and shared affection${familyAndSocialExtra}.`
         ]);
     } else if (isWidowed && lateSpouseName && childrenCount >= 1) {
         const marriageYearsPhrase = yearsMarried >= 5 ? ` after ${yearsMarried} devoted years of marriage` : '';
         sentence3 = pick([
-            `At home, ${name} shared a loving family life with ${pronouns.pos} late spouse, ${lateSpouseName}, raising ${childrenCount} ${kidNoun}${kidsListText} together before ${lateSpouseName}'s passing${marriageYearsPhrase}${socialExtra}.`,
-            `Anchored by ${pronouns.pos} marriage to ${lateSpouseName}${yearsMarried >= 5 ? ` (${yearsMarried} years together)` : ''}, ${pronouns.sub} poured heart and soul into raising ${childrenCount} ${kidNoun}${kidsListText} and carrying on ${pronouns.pos} family legacy after ${lateSpouseName} passed away${socialExtra}.`,
-            `Alongside ${pronouns.pos} cherished late spouse ${lateSpouseName}, ${name} built a warm household for ${childrenCount} ${kidNoun}${kidsListText}, honoring their shared${yearsMarried >= 5 ? ` ${yearsMarried}-year` : ''} bond even after ${lateSpouseName}'s passing${socialExtra}.`
+            `At home, ${name} shared a loving family life with ${pronouns.pos} late spouse, ${lateSpouseName}, raising ${childrenCount} ${kidNoun}${kidsListText} together before ${lateSpouseName}'s passing${marriageYearsPhrase}${familyAndSocialExtra}.`,
+            `Anchored by ${pronouns.pos} marriage to ${lateSpouseName}${yearsMarried >= 5 ? ` (${yearsMarried} years together)` : ''}, ${pronouns.sub} poured heart and soul into raising ${childrenCount} ${kidNoun}${kidsListText} and carrying on ${pronouns.pos} family legacy after ${lateSpouseName} passed away${familyAndSocialExtra}.`,
+            `Alongside ${pronouns.pos} cherished late spouse ${lateSpouseName}, ${name} built a warm household for ${childrenCount} ${kidNoun}${kidsListText}, honoring their shared${yearsMarried >= 5 ? ` ${yearsMarried}-year` : ''} bond even after ${lateSpouseName}'s passing${familyAndSocialExtra}.`
         ]);
     } else if (isWidowed && lateSpouseName) {
         const marriageYearsPhrase = yearsMarried >= 5 ? ` of ${yearsMarried} devoted years` : '';
         sentence3 = pick([
-            `At home, ${name} shared an enduring marriage${marriageYearsPhrase} with ${pronouns.pos} late spouse, ${lateSpouseName}, cherishing their life together until ${lateSpouseName}'s passing${socialExtra}.`,
-            `Remembered for deep devotion to ${pronouns.pos} late spouse ${lateSpouseName}, ${pronouns.sub} treasured their${yearsMarried >= 5 ? ` ${yearsMarried}-year` : ''} partnership through every season of life${socialExtra}.`,
-            `Though ${lateSpouseName} passed before ${pronouns.obj}, ${name} carried the warmth of their${yearsMarried >= 5 ? ` ${yearsMarried}-year` : ''} marriage throughout ${pronouns.pos} remaining years${socialExtra}.`
+            `At home, ${name} shared an enduring marriage${marriageYearsPhrase} with ${pronouns.pos} late spouse, ${lateSpouseName}, cherishing their life together until ${lateSpouseName}'s passing${familyAndSocialExtra}.`,
+            `Remembered for deep devotion to ${pronouns.pos} late spouse ${lateSpouseName}, ${pronouns.sub} treasured their${yearsMarried >= 5 ? ` ${yearsMarried}-year` : ''} partnership through every season of life${familyAndSocialExtra}.`,
+            `Though ${lateSpouseName} passed before ${pronouns.obj}, ${name} carried the warmth of their${yearsMarried >= 5 ? ` ${yearsMarried}-year` : ''} marriage throughout ${pronouns.pos} remaining years${familyAndSocialExtra}.`
         ]);
     } else if (partnerName && childrenCount >= 1) {
         sentence3 = pick([
-            `Alongside ${partnerName}, ${pronouns.sub} nurtured a loving household, raising ${childrenCount} ${kidNoun}${kidsListText} with unwavering care and affection${socialExtra}.`,
-            `Sharing life with ${partnerName}, ${name} found true happiness in the full-contact sport of raising ${childrenCount} ${kidNoun}${kidsListText}${socialExtra}.`
+            `Alongside ${partnerName}, ${pronouns.sub} nurtured a loving household, raising ${childrenCount} ${kidNoun}${kidsListText} with unwavering care and affection${familyAndSocialExtra}.`,
+            `Sharing life with ${partnerName}, ${name} found true happiness in the full-contact sport of raising ${childrenCount} ${kidNoun}${kidsListText}${familyAndSocialExtra}.`
         ]);
     } else if (partnerName) {
         sentence3 = pick([
-            `Outside of daily obligations, ${pronouns.pos} heart belonged to ${partnerName}, sharing an affectionate partnership filled with spontaneous adventures${socialExtra}.`,
-            `In ${partnerName}, ${name} found a kindred spirit, enjoying companionship and warmth that brightened ${pronouns.pos} later years${socialExtra}.`
+            `Outside of daily obligations, ${pronouns.pos} heart belonged to ${partnerName}, sharing an affectionate partnership filled with spontaneous adventures${familyAndSocialExtra}.`,
+            `In ${partnerName}, ${name} found a kindred spirit, enjoying companionship and warmth that brightened ${pronouns.pos} later years${familyAndSocialExtra}.`
         ]);
     } else if (childrenCount >= 1) {
         sentence3 = pick([
-            `A fiercely devoted single parent, ${pronouns.sub} poured every ounce of energy into raising ${childrenCount} ${kidNoun}${kidsListText}, managing domestic chaos with endless patience and strong coffee${socialExtra}.`,
-            `Family was ${pronouns.pos} true calling, dedicating decades to supporting ${childrenCount} ${kidNoun}${kidsListText} with unconditional devotion${socialExtra}.`,
-            `Surrounded by a bustling household of ${childrenCount} ${kidNoun}${kidsListText}, ${name} embraced the exhaustion of parenthood as life's greatest privilege${socialExtra}.`
+            `A fiercely devoted single parent, ${pronouns.sub} poured every ounce of energy into raising ${childrenCount} ${kidNoun}${kidsListText}, managing domestic chaos with endless patience and strong coffee${familyAndSocialExtra}.`,
+            `Family was ${pronouns.pos} true calling, dedicating decades to supporting ${childrenCount} ${kidNoun}${kidsListText} with unconditional devotion${familyAndSocialExtra}.`,
+            `Surrounded by a bustling household of ${childrenCount} ${kidNoun}${kidsListText}, ${name} embraced the exhaustion of parenthood as life's greatest privilege${familyAndSocialExtra}.`
+        ]);
+    } else if (grandchildrenCount >= 1) {
+        const gkNoun = grandchildrenCount === 1 ? 'grandchild' : 'grandchildren';
+        const namedGks = grandchildrenNames.slice(0, 2).join(' and ');
+        const gkListText = namedGks ? ` (${namedGks}${grandchildrenCount > 2 ? ' and more' : ''})` : '';
+        sentence3 = pick([
+            `In ${pronouns.pos} later chapters, ${name} found boundless joy as a doting grandparent to ${grandchildrenCount} ${gkNoun}${gkListText}${socialExtra}.`,
+            `Surrounded by the warmth of ${grandchildrenCount} cherished ${gkNoun}${gkListText}, ${pronouns.sub} poured endless affection and family stories into the next generation${socialExtra}.`
         ]);
     } else if (bestFriendName && archEnemyName) {
         sentence3 = pick([

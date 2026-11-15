@@ -371,11 +371,15 @@ const finishFuneralAndNext = (deceased) => {
     // Archive if family
     if (['family', 'spouse', 'child'].includes(deceased.category) || ['Wife', 'Husband', 'Spouse'].includes(deceased.type)) {
         if (!user.deceasedFamily) user.deceasedFamily = [];
-        const marriedAge = typeof deceased.marriedAtAge === 'number'
-            ? deceased.marriedAtAge
-            : (typeof user.marriedAtAge === 'number' ? user.marriedAtAge : null);
+        const isSpouse = deceased.category === 'spouse' || ['Wife', 'Husband', 'Spouse'].includes(deceased.type);
         const yearDied = deceased.yearDied || user.age;
-        const yearsMarried = deceased.yearsMarried ?? (typeof marriedAge === 'number' ? Math.max(1, yearDied - marriedAge) : undefined);
+        let yearsMarried;
+        if (isSpouse) {
+            const marriedAge = typeof deceased.marriedAtAge === 'number'
+                ? deceased.marriedAtAge
+                : (typeof user.marriedAtAge === 'number' ? user.marriedAtAge : null);
+            yearsMarried = deceased.yearsMarried ?? (typeof marriedAge === 'number' ? Math.max(1, yearDied - marriedAge) : undefined);
+        }
         user.deceasedFamily.push({
             id: deceased.id,
             name: deceased.name,

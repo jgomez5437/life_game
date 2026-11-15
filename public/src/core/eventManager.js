@@ -8,12 +8,14 @@
 import { ensureEventFlags } from './events/eventHelpers.js';
 import { YOUTH_SCHOOL_EVENTS } from './events/youthSchoolEvents.js';
 import { FAMILY_RELATIONSHIP_EVENTS } from './events/familyRelationshipEvents.js';
+import { ADULT_CHILDREN_EVENTS } from './events/adultChildrenEvents.js';
 import { CAREER_BUSINESS_EVENTS } from './events/careerBusinessEvents.js';
 import { LIFESTYLE_ASSET_EVENTS } from './events/lifestyleAssetEvents.js';
 
 export const LIFE_EVENTS = {
     ...YOUTH_SCHOOL_EVENTS,
     ...FAMILY_RELATIONSHIP_EVENTS,
+    ...ADULT_CHILDREN_EVENTS,
     ...CAREER_BUSINESS_EVENTS,
     ...LIFESTYLE_ASSET_EVENTS
 };

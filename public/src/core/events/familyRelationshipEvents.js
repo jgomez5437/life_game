@@ -583,6 +583,7 @@ export const FAMILY_RELATIONSHIP_EVENTS = {
             return (user.relationships || []).some(r =>
                 isLivingNPC(r) &&
                 ['spouse', 'partner', 'family', 'child'].includes(r.category) &&
+                (typeof r.age !== 'number' || r.age >= 6) &&
                 typeof r.status === 'number' &&
                 r.status < 35
             );
@@ -591,6 +592,7 @@ export const FAMILY_RELATIONSHIP_EVENTS = {
             const neglected = (user.relationships || []).filter(r =>
                 isLivingNPC(r) &&
                 ['spouse', 'partner', 'family', 'child'].includes(r.category) &&
+                (typeof r.age !== 'number' || r.age >= 6) &&
                 typeof r.status === 'number' &&
                 r.status < 35
             );
