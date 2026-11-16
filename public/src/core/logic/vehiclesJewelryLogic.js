@@ -128,11 +128,25 @@ export function calculateTradeInValue(vehicle) {
     };
 }
 
-export function simulateVehicleMarket() {
-    const marketForce = (Math.random() * 0.16) - 0.08;
-    
+export function simulateVehicleMarket(options = {}) {
+    const allowShock = options.allowShock !== false;
+    const rng = typeof options.rng === 'function' ? options.rng : Math.random;
+
+    let marketForce;
+    const shockRoll = allowShock ? rng() : 0.5;
+    if (allowShock && shockRoll < 0.025) {
+        // Rare auto market crash (-6.5% to -9.0%)
+        marketForce = -(0.065 + rng() * 0.025);
+    } else if (allowShock && shockRoll < 0.05) {
+        // Rare auto market inflation (+6.5% to +9.0%)
+        marketForce = 0.065 + rng() * 0.025;
+    } else {
+        // Typical annual market drift (-3.5% to +3.5%)
+        marketForce = (rng() * 0.07) - 0.035;
+    }
+
     VEHICLES_FOR_SALE.forEach(car => {
-        const individualVariance = (Math.random() * 0.04) - 0.02;
+        const individualVariance = (rng() * 0.04) - 0.02;
         const totalChangePercent = 1 + marketForce + individualVariance;
         
         let newPrice = Math.floor(car.price * totalChangePercent);

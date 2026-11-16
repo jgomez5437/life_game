@@ -509,6 +509,76 @@ describe('Feature: Property Manager', () => {
         // The queued lease_expiration event for the now-managed property should be purged
         expect(state.gameState.pendingTenantEvents.length).toBe(0);
     });
+
+    test('Property manager annual actions and repair decisions do not add entries to lifeLog', () => {
+        GameLogic.hirePropertyManager(mockUser);
+        state.gameState.lifeLog = [];
+
+        // Force lease renewal / replacement path
+        mockUser.assets[0].tenant.leaseYears = 1;
+        mockUser.assets[1].tenant.leaseYears = 1;
+
+        GameLogic.processRentalIncome(mockUser, state);
+        GameLogic.processTenantEvents(mockUser, state);
+
+        // Rent collection, renewals, and tenant placements should be in lastReport, not lifeLog
+        expect(mockUser.propertyManager.lastReport.properties.length).toBe(2);
+        expect(mockUser.propertyManager.lastReport.activity.length).toBe(2);
+        expect(state.gameState.lifeLog.length).toBe(0);
+
+        // Add pending repairs and test single approve, decline, and approve-all
+        mockUser.propertyManager.lastReport.repairs = [
+            {
+                id: 'r_log_1',
+                propertyId: mockUser.assets[0].id,
+                propertyName: mockUser.assets[0].name,
+                tenantName: 'Alice Cooper',
+                type: 'Plumbing Leak',
+                icon: 'fa-faucet',
+                desc: 'Leak under sink.',
+                cost: 500,
+                conditionLoss: 10,
+                conditionGain: 5,
+                status: 'pending'
+            },
+            {
+                id: 'r_log_2',
+                propertyId: mockUser.assets[1].id,
+                propertyName: mockUser.assets[1].name,
+                tenantName: 'Bob Martin',
+                type: 'HVAC Failure',
+                icon: 'fa-fan',
+                desc: 'AC broken.',
+                cost: 800,
+                conditionLoss: 10,
+                conditionGain: 5,
+                status: 'pending'
+            },
+            {
+                id: 'r_log_3',
+                propertyId: mockUser.assets[0].id,
+                propertyName: mockUser.assets[0].name,
+                tenantName: 'Alice Cooper',
+                type: 'Water Heater',
+                icon: 'fa-fire',
+                desc: 'Water heater failing.',
+                cost: 600,
+                conditionLoss: 10,
+                conditionGain: 5,
+                status: 'pending'
+            }
+        ];
+
+        approveManagerRepairAction('r_log_1');
+        declineManagerRepairAction('r_log_2');
+        approveAllManagerRepairsAction();
+
+        const savedRepairs = state.gameState.user.propertyManager.lastReport.repairs;
+        expect(savedRepairs[0].status).toBe('approved');
+        expect(savedRepairs[1].status).toBe('declined');
+        expect(savedRepairs[2].status).toBe('approved');
+        expect(state.gameState.lifeLog.length).toBe(0);
+    });
 });
 
 

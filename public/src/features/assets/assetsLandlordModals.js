@@ -607,7 +607,6 @@ export const approveManagerRepairAction = (repairId) => {
         UI.showModal("Repair Failed", result.reason);
         return;
     }
-    addLog(`Approved repair: ${result.repair.type} on ${result.propertyName} for ${Utils.formatMoney(result.repair.cost)}.`, 'good');
     captureAnnualSnapshot(state.gameState);
     saveGame();
     UI.updateHeader(user);
@@ -622,7 +621,6 @@ export const declineManagerRepairAction = (repairId) => {
         UI.showModal("Action Failed", result.reason);
         return;
     }
-    addLog(`Declined repair: ${result.repair.type} on ${result.propertyName}. Property condition dropped by ${result.repair.conditionLoss}%.`, 'bad');
     captureAnnualSnapshot(state.gameState);
     saveGame();
     UI.updateHeader(user);
@@ -636,18 +634,15 @@ export const approveAllManagerRepairsAction = () => {
     if (pending.length === 0) return;
 
     let approvedCount = 0;
-    let totalCost = 0;
     for (const r of pending) {
         const res = GameLogic.resolveManagerRepair(user, r.id, true);
         if (res.success) {
             approvedCount++;
-            totalCost += r.cost;
         } else {
             break;
         }
     }
     if (approvedCount > 0) {
-        addLog(`Approved ${approvedCount} property repair${approvedCount === 1 ? '' : 's'} for a total of ${Utils.formatMoney(totalCost)}.`, 'good');
         captureAnnualSnapshot(state.gameState);
         saveGame();
         UI.updateHeader(user);

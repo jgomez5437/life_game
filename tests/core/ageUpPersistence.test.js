@@ -345,4 +345,75 @@ describe('Age Up State Persistence & Refresh Protection', () => {
         expect(messages.some(m => m.includes('pension') && m.includes('$791,000'))).toBe(true);
         expect(messages.some(m => m.includes('Unemployed. Savings are dwindling.'))).toBe(false);
     });
+
+    test('Unemployed adult under age 65 with no job does not log Unemployed. Savings are dwindling. on ageUp', async () => {
+        state.gameState = {
+            user: {
+                username: 'JoblessJoe',
+                age: 29,
+                health: 95,
+                happiness: 80,
+                smarts: 75,
+                looks: 70,
+                money: 5000,
+                city: 'Chicago',
+                gender: 'male',
+                lifeStatus: 'Adult',
+                jobTitle: null,
+                isRetired: false,
+                relationships: [],
+                assets: [],
+                purchases: []
+            },
+            lifeLog: [],
+            snapshots: [],
+            _slotId: 'slot_1'
+        };
+
+        saveToSlot('slot_1', 'JoblessJoe');
+        jest.spyOn(GameLogic, 'checkMortality').mockReturnValue({ isDead: false });
+
+        await ageUp();
+
+        const yearLog = state.gameState.lifeLog.find(l => l.age === 30);
+        expect(yearLog).toBeDefined();
+        const messages = yearLog.events.map(e => e.msg);
+        expect(messages.some(m => m.includes('Unemployed. Savings are dwindling.'))).toBe(false);
+    });
+
+    test('handleMarket enforces 5-year cooldown on auto market crash and inflation logs', async () => {
+        const { handleMarket } = await import('../../public/src/features/player/ageUpHandlers.js');
+        state.gameState = {
+            user: {
+                username: 'DriverDan',
+                age: 25,
+                money: 10000,
+                assets: [],
+                lifeEventFlags: {}
+            },
+            lifeLog: []
+        };
+        const user = state.gameState.user;
+
+        const simSpy = jest.spyOn(GameLogic, 'simulateVehicleMarket').mockReturnValue(-0.08);
+
+        // Age 25: first crash logs and sets lastAutoMarketEventAge = 25
+        handleMarket(user);
+        expect(user.lifeEventFlags.lastAutoMarketEventAge).toBe(25);
+        expect(state.gameState.lifeLog[0].events.some(e => e.msg.includes('Auto market crash!'))).toBe(true);
+
+        // Ages 26..29: within 5-year cooldown -> allowShock: false and no log
+        user.age = 26;
+        handleMarket(user);
+        expect(simSpy).toHaveBeenLastCalledWith({ allowShock: false });
+        expect(state.gameState.lifeLog.find(l => l.age === 26)).toBeUndefined();
+
+        // Age 30: cooldown elapsed (30 - 25 >= 5) -> allowShock: true and inflation can log
+        simSpy.mockReturnValue(0.08);
+        user.age = 30;
+        handleMarket(user);
+        expect(simSpy).toHaveBeenLastCalledWith({ allowShock: true });
+        expect(user.lifeEventFlags.lastAutoMarketEventAge).toBe(30);
+        expect(state.gameState.lifeLog.find(l => l.age === 30).events.some(e => e.msg.includes('Inflation hits the auto market!'))).toBe(true);
+    });
 });

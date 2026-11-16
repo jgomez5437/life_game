@@ -211,6 +211,22 @@ describe('Vehicle System Revamp', () => {
         expect(user.assets[0].name).toBe('Honda Civic LX');
         expect(user.assets[1].name).toBe('Porsche 911 Carrera');
     });
+
+    test('simulateVehicleMarket produces gentle drift normally and rare crash/inflation shocks', () => {
+        const normalDrift = GameLogic.simulateVehicleMarket({ rng: () => 0.5 });
+        expect(normalDrift).toBeGreaterThanOrEqual(-0.035);
+        expect(normalDrift).toBeLessThanOrEqual(0.035);
+
+        const crashShock = GameLogic.simulateVehicleMarket({ rng: () => 0.01 });
+        expect(crashShock).toBeLessThan(-0.06);
+
+        const inflationShock = GameLogic.simulateVehicleMarket({ rng: () => 0.03 });
+        expect(inflationShock).toBeGreaterThan(0.06);
+
+        const suppressed = GameLogic.simulateVehicleMarket({ allowShock: false, rng: () => 0.0 });
+        expect(suppressed).toBeGreaterThanOrEqual(-0.035);
+        expect(suppressed).toBeLessThanOrEqual(0.035);
+    });
 });
 
 describe('More Options Revamp: Diets, Lottery & Suggestions', () => {
