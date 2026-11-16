@@ -283,8 +283,16 @@ export function migrateState(rawState) {
     const ceoSalary = toNum(u.ceoSalary, 0, 0);
     const industry = u.industry ? toStr(u.industry, null) : null;
     const compCash = toNum(u.compCash, 0, 0);
-    const companyYear = toNum(u.companyYear, 1, 1);
-    const companyQuarter = toNum(u.companyQuarter, 1, 1, 4);
+    const businessHistory = Array.isArray(u.businessHistory) ? u.businessHistory.filter(h => h && typeof h === 'object') : [];
+    const rawCompanyYear = toNum(u.companyYear, 1, 1);
+    const rawQ = Math.floor(Number(u.companyQuarter));
+    let companyYear = (hasBusiness && Number.isFinite(rawQ) && rawQ > 4) ? rawCompanyYear + Math.floor((rawQ - 1) / 4) : rawCompanyYear;
+    let companyQuarter = (hasBusiness && Number.isFinite(rawQ) && rawQ > 4) ? ((rawQ - 1) % 4) + 1 : toNum(u.companyQuarter, 1, 1, 4);
+    const lastHist = businessHistory[businessHistory.length - 1];
+    if (hasBusiness && companyQuarter === 4 && lastHist && Number(lastHist.year) === companyYear && Number(lastHist.quarter) === 4) {
+        companyQuarter = 1;
+        companyYear += 1;
+    }
     const employees = toNum(u.employees, 0, 0);
     const businessReputation = toNum(u.businessReputation, 0, 0, 100);
     const inventory = toNum(u.inventory, 0, 0);
@@ -324,7 +332,6 @@ export function migrateState(rawState) {
     const customerSatisfaction = toNum(u.customerSatisfaction, 75, 0, 100);
     const employeeMorale = toNum(u.employeeMorale, 80, 0, 100);
     const activeResearch = toArr(u.activeResearch, []);
-    const businessHistory = Array.isArray(u.businessHistory) ? u.businessHistory.filter(h => h && typeof h === 'object') : [];
     const businessUpgrades = toArr(u.businessUpgrades, []);
     const lastCompletedFiscalYearAge = (u.lastCompletedFiscalYearAge !== undefined && u.lastCompletedFiscalYearAge !== null)
         ? toNum(u.lastCompletedFiscalYearAge, 0, 0)

@@ -187,6 +187,8 @@ export const GameLogic = {
     getRemainingQuartersForAge: businessFinance.getRemainingQuartersForAge,
     calculateAutoQuarterCount: businessFinance.calculateAutoQuarterCount,
     resetBusinessQuarterTracking: businessFinance.resetBusinessQuarterTracking,
+    normalizeBusinessQuarterState: businessFinance.normalizeBusinessQuarterState,
+    advanceBusinessQuarter: businessFinance.advanceBusinessQuarter,
     ensureBusinessState: businessFinance.ensureBusinessState,
     calculateCompanyValuation: businessFinance.calculateCompanyValuation,
     MAX_COMPANY_VALUATION: businessFinance.MAX_COMPANY_VALUATION,
