@@ -167,11 +167,6 @@ export function processRentalIncome(user, stateRef) {
         }
     });
 
-    if (report && report.properties.length > 0) {
-        const count = report.properties.length;
-        addLog(`Property manager ${user.propertyManager.name} collected $${report.gross.toLocaleString()} in rent across ${count} ${count === 1 ? 'property' : 'properties'} (10% fee: $${report.fee.toLocaleString()}). You received $${report.net.toLocaleString()}.`, 'good');
-    }
-
     return totalCollectedThisYear;
 }
 
@@ -496,7 +491,6 @@ export function placeReplacementTenant(asset) {
 }
 
 export function processManagedTenant(user, asset, report) {
-    const pm = user.propertyManager;
     const tenant = asset.tenant;
 
     if (tenant.renewalPending) {
@@ -520,7 +514,6 @@ export function processManagedTenant(user, asset, report) {
                 tenant.repairNeglect = 0;
                 const text = `Renewed ${tenant.name}'s lease at ${asset.name} for ${years} year${years === 1 ? '' : 's'} at $${newRent.toLocaleString()}/mo (+5%).`;
                 report.activity.push({ type: 'renewal', icon: 'fa-file-signature', text });
-                addLog(`Property manager ${pm.name}: ${text}`, 'good');
                 return;
             }
             leaveReason = `${tenant.name} declined the 5% increase and moved out of ${asset.name}`;
@@ -533,7 +526,6 @@ export function processManagedTenant(user, asset, report) {
             ? `${leaveReason}. I placed a new tenant, ${newTenant.name}, at $${newTenant.monthlyRent.toLocaleString()}/mo (${newTenant.leaseYears}-yr lease).`
             : `${leaveReason}. The property is now vacant.`;
         report.activity.push({ type: 'new_tenant', icon: 'fa-user-plus', text });
-        addLog(`Property manager ${pm.name}: ${text}`, 'neutral');
         return;
     }
 

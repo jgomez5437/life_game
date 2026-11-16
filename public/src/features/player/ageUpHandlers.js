@@ -584,8 +584,15 @@ export function handleEducation(user) {
     }
 }
 
+const AUTO_MARKET_EVENT_COOLDOWN_YEARS = 5;
+
 export function handleMarket(user) {
-    const marketForce = GameLogic.simulateVehicleMarket();
+    const currentAge = user?.age || 0;
+    const lastMarketEventAge = user?.lifeEventFlags?.lastAutoMarketEventAge;
+    const cooldownElapsed = typeof lastMarketEventAge !== 'number'
+        || currentAge < lastMarketEventAge
+        || (currentAge - lastMarketEventAge) >= AUTO_MARKET_EVENT_COOLDOWN_YEARS;
+    const marketForce = GameLogic.simulateVehicleMarket({ allowShock: cooldownElapsed && currentAge > 15 });
     GameLogic.updateOwnedVehicles(user, marketForce);
     GameLogic.updateOwnedProperties(user);
     GameLogic.updateOwnedJewelry(user);
@@ -597,10 +604,16 @@ export function handleMarket(user) {
     user.lotteryTicketsBoughtThisYear = 0;
     GameLogic.rollOverMegaJackpot(user);
     
-    if (marketForce > 0.06 && user.age > 15) {
-        addLog("Inflation hits the auto market! Car prices are up.", "bad");
-    } else if (marketForce < -0.06 && user.age > 15) {
-        addLog("Auto market crash! Vehicle prices are down.", "good");
+    if (user.age > 15 && cooldownElapsed) {
+        if (marketForce > 0.06) {
+            addLog("Inflation hits the auto market! Car prices are up.", "bad");
+            if (!user.lifeEventFlags || typeof user.lifeEventFlags !== 'object') user.lifeEventFlags = {};
+            user.lifeEventFlags.lastAutoMarketEventAge = user.age;
+        } else if (marketForce < -0.06) {
+            addLog("Auto market crash! Vehicle prices are down.", "good");
+            if (!user.lifeEventFlags || typeof user.lifeEventFlags !== 'object') user.lifeEventFlags = {};
+            user.lifeEventFlags.lastAutoMarketEventAge = user.age;
+        }
     }
 }
 
@@ -623,14 +636,6 @@ export function handleLifeEvents(user) {
             const gift = Math.floor(Math.random() * 20) + 5;
             user.money += gift;
             addLog(`Found ${Utils.formatMoney(gift)} on the sidewalk!`, 'good');
-        }
-    } 
-    // Adult Empty State
-    else if (!user.highSchoolRetained && !user.jobTitle && !user.hasBusiness && !user.isRetired && !user.universityEnrolled && !user.gradSchoolEnrolled && !user.isStudent && !user.inPrison && user.age >= 18 && user.age < 65) {
-        const monthlyIn = GameLogic.calculateUserMonthlyIncome ? GameLogic.calculateUserMonthlyIncome(user) : 0;
-        const monthlyOut = GameLogic.calculateUserMonthlyOutflow ? GameLogic.calculateUserMonthlyOutflow(user) : 0;
-        if (monthlyIn <= monthlyOut) {
-            addLog("Unemployed. Savings are dwindling.", 'bad');
         }
     }
 }
