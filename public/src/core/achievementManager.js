@@ -266,86 +266,65 @@ export const ACHIEVEMENTS_CATALOG = [
     }
 ];
 
-const STORAGE_KEY = 'life_game_achievements';
+const LEGACY_STORAGE_KEY = 'life_game_achievements';
 const SLOTS_STORAGE_KEY = 'life_game_slots';
 
 /**
- * Loads all unlocked achievement records from localStorage and state using an additive union merge.
+ * Loads unlocked achievement records strictly for the active character in state.gameState.
  * Returns an object keyed by achievement ID: { [id]: { unlocked: true, unlockedAt, characterName, generation } }
  */
 export function getUnlockedAchievements() {
-    const localMap = {};
-    if (typeof localStorage !== 'undefined') {
-        try {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            if (raw) {
-                const parsed = JSON.parse(raw);
-                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-                    Object.assign(localMap, parsed);
-                }
-            }
-        } catch (e) {
-            console.warn('[AchievementManager] Error reading local achievements:', e);
-        }
+    if (!state.gameState) {
+        return {};
     }
-
-    const mergedMap = { ...localMap };
-    let localNeedsUpdate = false;
-
-    // Additive union merge with current active character state if present
-    if (state.gameState?.achievements && typeof state.gameState.achievements === 'object') {
-        for (const [id, record] of Object.entries(state.gameState.achievements)) {
-            if (record && record.unlocked && !mergedMap[id]?.unlocked) {
-                mergedMap[id] = record;
-                localNeedsUpdate = true;
-            }
-        }
+    if (!state.gameState.achievements || typeof state.gameState.achievements !== 'object' || Array.isArray(state.gameState.achievements)) {
+        state.gameState.achievements = {};
     }
-
-    if (localNeedsUpdate && typeof localStorage !== 'undefined') {
-        try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(mergedMap));
-        } catch (e) {
-            console.warn('[AchievementManager] Error syncing merged achievements to localStorage:', e);
-        }
-    }
-
-    if (state.gameState) {
-        state.gameState.achievements = { ...mergedMap };
-    }
-
-    return mergedMap;
+    return { ...state.gameState.achievements };
 }
 
 /**
- * Saves unlocked achievements mapping to localStorage, active gameState, and active save slot.
+ * Saves unlocked achievements mapping to active gameState and its active save slot.
  */
 function saveUnlockedAchievements(unlockedMap) {
-    if (typeof localStorage !== 'undefined') {
-        try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(unlockedMap));
-        } catch (e) {
-            console.warn('[AchievementManager] Error saving local achievements:', e);
-        }
+    const cleanMap = (unlockedMap && typeof unlockedMap === 'object' && !Array.isArray(unlockedMap))
+        ? { ...unlockedMap }
+        : {};
 
-        // Also persist directly to the active save slot so mid-turn unlocks survive immediate refresh
+    if (state.gameState) {
+        state.gameState.achievements = { ...cleanMap };
+    }
+
+    if (typeof localStorage !== 'undefined') {
+        // Persist directly to the active save slot so mid-turn unlocks survive immediate refresh
         try {
             const rawSlots = localStorage.getItem(SLOTS_STORAGE_KEY);
             if (rawSlots) {
                 const store = JSON.parse(rawSlots);
                 const slotId = state.gameState?._slotId || store?.activeSlotId;
                 if (store?.slots && slotId && store.slots[slotId]?.data) {
-                    store.slots[slotId].data.achievements = { ...unlockedMap };
+                    store.slots[slotId].data.achievements = { ...cleanMap };
                     localStorage.setItem(SLOTS_STORAGE_KEY, JSON.stringify(store));
                 }
             }
         } catch (e) {
             console.warn('[AchievementManager] Error syncing achievements to active save slot:', e);
         }
-    }
 
-    if (state.gameState) {
-        state.gameState.achievements = { ...unlockedMap };
+        if (!state.userAuthId) {
+            for (const key of ['life_game_save', Utils?.guestStorage?.SAVE_KEY].filter(Boolean)) {
+                try {
+                    const rawGuest = localStorage.getItem(key);
+                    if (rawGuest) {
+                        const parsed = JSON.parse(rawGuest);
+                        if (parsed && typeof parsed === 'object') {
+                            parsed.achievements = { ...cleanMap };
+                            localStorage.setItem(key, JSON.stringify(parsed));
+                        }
+                    }
+                } catch (e) {}
+            }
+        }
     }
 }
 
@@ -598,8 +577,7 @@ export function getSingleAchievementProgress(achievementId, user = state.gameSta
         case 'junk_food_immortal': {
             const onJunk = (user.diet || 'junk') === 'junk' && !user.hasBetterDiet && !user.everChangedFromJunkDiet;
             const streak = user.junkFoodStreak || 0;
-            const yearsAsAdult = Math.max(0, (user.age || 0) - 18);
-            const current = onJunk ? Math.max(streak, Math.min(42, yearsAsAdult)) : 0;
+            const current = onJunk ? Math.min(42, streak) : 0;
             return {
                 current,
                 target: 42,
@@ -689,7 +667,7 @@ export function checkPeriodicAchievements(user) {
 
     // 7. Junk Food Immortal (Age >= 60 continuously on Junk Food diet without changing)
     const isJunkDiet = (user.diet || 'junk') === 'junk' && !user.hasBetterDiet && !user.everChangedFromJunkDiet;
-    if (user.age >= 60 && ((user.junkFoodStreak || 0) >= 42 || isJunkDiet)) {
+    if (user.age >= 60 && isJunkDiet && (user.junkFoodStreak || 0) >= 42) {
         unlockAchievement('junk_food_immortal', user);
     }
 
@@ -751,7 +729,18 @@ export function checkPeriodicAchievements(user) {
 export function resetAchievements() {
     if (typeof localStorage !== 'undefined') {
         try {
-            localStorage.removeItem(STORAGE_KEY);
+            localStorage.removeItem(LEGACY_STORAGE_KEY);
+        } catch (e) {}
+        try {
+            const rawSlots = localStorage.getItem(SLOTS_STORAGE_KEY);
+            if (rawSlots) {
+                const store = JSON.parse(rawSlots);
+                const slotId = state.gameState?._slotId || store?.activeSlotId;
+                if (store?.slots && slotId && store.slots[slotId]?.data) {
+                    store.slots[slotId].data.achievements = {};
+                    localStorage.setItem(SLOTS_STORAGE_KEY, JSON.stringify(store));
+                }
+            }
         } catch (e) {}
     }
     if (state.gameState) {

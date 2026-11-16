@@ -97,6 +97,7 @@ export async function logout() {
         localStorage.removeItem('life_game_slots');
         localStorage.removeItem('life_game_save');
         localStorage.removeItem('life_game_purchases');
+        localStorage.removeItem('life_game_achievements');
     } catch (e) {}
     if (Utils && Utils.guestStorage && typeof Utils.guestStorage.clearSave === 'function') {
         Utils.guestStorage.clearSave();

@@ -14,6 +14,10 @@ import {
 import { migrateState } from '../../public/src/core/stateMigration.js';
 import { attemptPrisonEscape } from '../../public/src/core/logic/crimePrisonLogic.js';
 import { generateLuxuryMatch } from '../../public/src/core/logic/npcGeneratorLogic.js';
+import { continueAsChild } from '../../public/src/features/player/mainScreen.js';
+import { saveToSlot, loadSlot } from '../../public/src/core/saveSlotManager.js';
+import { resetGame, loadAndRenderGame } from '../../public/src/core/cloudSync.js';
+import { logout } from '../../public/src/auth/auth.js';
 
 describe('AchievementManager Core Engine', () => {
 
@@ -130,21 +134,30 @@ describe('AchievementManager Core Engine', () => {
         expect(unlocked.centenarian.unlockedAt).toBeDefined();
     });
 
-    test('getUnlockedAchievements performs additive union merge from gameState into localStorage', () => {
-        state.gameState.achievements = {
-            dynasty_founder: {
-                id: 'dynasty_founder',
+    test('getUnlockedAchievements reads strictly from state.gameState and ignores stale global localStorage', () => {
+        localStorage.setItem('life_game_achievements', JSON.stringify({
+            centenarian: {
+                id: 'centenarian',
                 unlocked: true,
                 unlockedAt: '2026-01-01T00:00:00.000Z',
-                characterName: 'Cloud Ancestor',
-                generation: 4
+                characterName: 'Charles Johnson',
+                generation: 1
             }
-        };
+        }));
 
-        const merged = getUnlockedAchievements();
-        expect(merged.dynasty_founder?.unlocked).toBe(true);
-        const persisted = JSON.parse(localStorage.getItem('life_game_achievements'));
-        expect(persisted.dynasty_founder?.unlocked).toBe(true);
+        state.gameState._slotId = 'slot_1';
+        saveToSlot('slot_1', 'Richard');
+
+        expect(getUnlockedAchievements()).toEqual({});
+        expect(isAchievementUnlocked('centenarian')).toBe(false);
+        expect(state.gameState.achievements).toEqual({});
+
+        expect(unlockAchievement('centenarian', state.gameState.user)).toBe(true);
+        const slotStore = JSON.parse(localStorage.getItem('life_game_slots'));
+        expect(slotStore.slots.slot_1.data.achievements.centenarian?.characterName).toBe('Jane Explorer');
+        // Does not write new unlocks back to global life_game_achievements
+        const globalRaw = JSON.parse(localStorage.getItem('life_game_achievements'));
+        expect(globalRaw.centenarian.characterName).toBe('Charles Johnson');
     });
 
     test('unlockAchievement is idempotent and avoids duplicate unlocks or logs', () => {
@@ -266,7 +279,7 @@ describe('AchievementManager Core Engine', () => {
         expect(isAchievementUnlocked('unicorn_tycoon')).toBe(true);
     });
 
-    test('checkPeriodicAchievements unlocks junk_food_immortal only if diet stayed on junk', () => {
+    test('checkPeriodicAchievements unlocks junk_food_immortal only if diet stayed on junk for 42+ years', () => {
         const user = state.gameState.user;
         user.age = 60;
         user.diet = 'mediterranean';
@@ -274,6 +287,15 @@ describe('AchievementManager Core Engine', () => {
         user.junkFoodStreak = 0;
         checkPeriodicAchievements(user);
         expect(isAchievementUnlocked('junk_food_immortal')).toBe(false);
+
+        // E.g. continuing as an older child on junk diet without 42 adult years on junk food
+        user.diet = 'junk';
+        user.hasBetterDiet = false;
+        user.everChangedFromJunkDiet = false;
+        user.junkFoodStreak = 15;
+        checkPeriodicAchievements(user);
+        expect(isAchievementUnlocked('junk_food_immortal')).toBe(false);
+        expect(getSingleAchievementProgress('junk_food_immortal', user).current).toBe(15);
 
         resetAchievements();
         user.diet = 'junk';
@@ -443,14 +465,88 @@ describe('AchievementManager Core Engine', () => {
         expect(getSingleAchievementProgress('clean_getaway', user)).toBeNull();
     });
 
-    test('resetAchievements clears localStorage and active gameState achievements', () => {
+    test('resetAchievements clears legacy localStorage, active slot, and active gameState achievements', () => {
+        localStorage.setItem('life_game_achievements', JSON.stringify({ centenarian: { unlocked: true } }));
+        state.gameState._slotId = 'slot_1';
+        saveToSlot('slot_1', 'Jane Explorer');
         unlockAchievement('centenarian', state.gameState.user);
         expect(isAchievementUnlocked('centenarian')).toBe(true);
 
         resetAchievements();
+        expect(localStorage.getItem('life_game_achievements')).toBeNull();
         expect(isAchievementUnlocked('centenarian')).toBe(false);
         expect(getUnlockedAchievements()).toEqual({});
         expect(state.gameState.achievements).toEqual({});
+        const store = JSON.parse(localStorage.getItem('life_game_slots'));
+        expect(store.slots.slot_1.data.achievements).toEqual({});
+    });
+
+    test('continueAsChild resets Trophy Room to 0/20 for child and credits dynasty_founder at Gen 3+ to child', () => {
+        state.gameState._slotId = 'slot_1';
+        state.gameState.user.username = 'Charles Johnson';
+        state.gameState.user.generation = 2;
+        state.gameState.user.age = 75;
+        state.gameState.user.relationships = [
+            { id: 'child_1', name: 'Richard Johnson', age: 31, type: 'Son', gender: 'male', category: 'child', status: 90 }
+        ];
+
+        unlockAchievement('centenarian', state.gameState.user);
+        unlockAchievement('unicorn_tycoon', state.gameState.user);
+        expect(getAchievementProgress().unlockedCount).toBe(2);
+
+        continueAsChild(0, 50000);
+
+        expect(state.gameState.user.username).toBe('Richard Johnson');
+        expect(state.gameState.user.generation).toBe(3);
+        expect(isAchievementUnlocked('centenarian')).toBe(false);
+        expect(isAchievementUnlocked('unicorn_tycoon')).toBe(false);
+        // Gen 3 child immediately earns dynasty_founder credited to Richard, not Charles
+        const unlocked = getUnlockedAchievements();
+        expect(Object.keys(unlocked)).toEqual(['dynasty_founder']);
+        expect(unlocked.dynasty_founder.characterName).toBe('Richard Johnson');
+    });
+
+    test('save slots and new lives isolate achievements per character without cross-life leakage', () => {
+        state.gameState._slotId = 'slot_1';
+        state.gameState.user.username = 'Charles Johnson';
+        unlockAchievement('centenarian', state.gameState.user);
+        unlockAchievement('mega_jackpot', state.gameState.user);
+        saveToSlot('slot_1', 'Charles Johnson');
+        expect(getAchievementProgress().unlockedCount).toBe(2);
+
+        // Start a brand-new life ("Richard") in a new slot
+        state.gameState = null;
+        loadAndRenderGame({ username: 'Richard', city: 'New York', country: 'United States', gender: 'male' });
+        state.gameState._slotId = 'slot_2';
+        saveToSlot('slot_2', 'Richard');
+
+        expect(getAchievementProgress().unlockedCount).toBe(0);
+        expect(getUnlockedAchievements()).toEqual({});
+
+        // Richard can genuinely earn the same achievements himself, credited to Richard
+        expect(unlockAchievement('centenarian', state.gameState.user)).toBe(true);
+        expect(getUnlockedAchievements().centenarian.characterName).toBe('Richard');
+        saveToSlot('slot_2', 'Richard');
+
+        // Switching back to Charles Johnson's slot preserves Charles's 2/20 cleanly
+        loadSlot('slot_1');
+        expect(state.gameState.user.username).toBe('Charles Johnson');
+        expect(getAchievementProgress().unlockedCount).toBe(2);
+        expect(getUnlockedAchievements().centenarian.characterName).toBe('Charles Johnson');
+        expect(getUnlockedAchievements().mega_jackpot.characterName).toBe('Charles Johnson');
+    });
+
+    test('resetGame and logout clear any legacy life_game_achievements key', async () => {
+        localStorage.setItem('life_game_achievements', JSON.stringify({ centenarian: { unlocked: true } }));
+        state.userAuthId = null;
+        await resetGame();
+        expect(localStorage.getItem('life_game_achievements')).toBeNull();
+
+        localStorage.setItem('life_game_achievements', JSON.stringify({ centenarian: { unlocked: true } }));
+        state.auth0Client = { logout: jest.fn().mockResolvedValue(undefined) };
+        await logout();
+        expect(localStorage.getItem('life_game_achievements')).toBeNull();
+        state.auth0Client = null;
     });
 
     test('AchievementManager exports all expected functions', () => {

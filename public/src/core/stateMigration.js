@@ -764,7 +764,11 @@ export function migrateState(rawState) {
     let achievements = {};
     const rawAch = rawState.achievements || rawUser.achievements;
     if (rawAch && typeof rawAch === 'object' && !Array.isArray(rawAch)) {
-        achievements = { ...rawAch };
+        for (const [id, rec] of Object.entries(rawAch)) {
+            if (rec && typeof rec === 'object' && !Array.isArray(rec)) {
+                achievements[id] = { ...rec };
+            }
+        }
     }
 
     // 13. Top-Level _slotId
