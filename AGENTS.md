@@ -65,9 +65,10 @@ npm run build
 
 ### 3.2 Declarative Event Delegation & Lazy Loading
 1. **No Inline Handlers**: UI HTML templates must never use `onclick="..."`. Always use `data-action="actionName"` and optional JSON `data-args='{"id": 123}'` (or `data-id`, `data-type`, etc.).
-2. **Module Preloading (`public/src/core/moduleLoader.js`)**:
+2. **Module Preloading & Recovery ([`public/src/core/moduleLoader.js`](file:///home/antigravity/jgomez5437/life_game/public/src/core/moduleLoader.js), [`public/src/core/moduleRecovery.js`](file:///home/antigravity/jgomez5437/life_game/public/src/core/moduleRecovery.js))**:
    - `MODULE_REGISTRY` maps module keys to dynamic `import()` factories across Tier 1 (Immediate), Tier 2 (Idle Preload), and Tier 3 (On-Demand Lazy).
    - `ACTION_TO_MODULE` maps `data-action` names to `MODULE_REGISTRY` keys so hovering/focusing a button preloads its chunk before the click completes.
+   - `moduleRecovery.js` diagnoses dynamic chunk load errors (offline vs. stale deployment), flushes saves and auto-reloads once on stale builds, and intercepts `vite:preloadError`.
 3. **Action Dispatch (`public/src/core/main.js` / `actionRouter.js`)**:
    - Global click listener intercepts `[data-action]`, checks navigation locks (`isAlive`, `pendingFuneral`, `prison.inPrison`), parses `data-args`, and invokes `routeHandlers[action](args, targetElement, event)`.
 
