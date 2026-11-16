@@ -299,6 +299,8 @@ export const openBulkPropertyMaintenanceModal = () => {
     const breakdownHtml = restore.items.map(item => {
         const maintItem = maintainMap.get(item.propertyId);
         const condColor = item.condition < 40 ? 'text-red-400' : item.condition < 75 ? 'text-yellow-400' : 'text-green-400';
+        const isCooldownMaint = item.actionType === 'maintenance' && item.optionName && item.optionName.includes('Cooldown');
+        const restoreLabel = isCooldownMaint ? 'Max Maint' : '100% Restore';
         return `
             <div class="bg-slate-900 p-3 rounded-lg border border-slate-700/80 text-xs space-y-1">
                 <div class="flex justify-between items-center gap-2">
@@ -307,7 +309,7 @@ export const openBulkPropertyMaintenanceModal = () => {
                 </div>
                 <div class="flex justify-between items-center text-[11px] text-slate-400">
                     <span>Maint: ${maintItem ? `<span class="text-blue-300 font-semibold">${Utils.formatMoney(maintItem.cost)}</span>` : 'At cap'}</span>
-                    <span>100% Restore: <span class="text-emerald-300 font-semibold">${Utils.formatMoney(item.cost)}</span> <span class="text-slate-500">(${Utils.escapeHtml(item.optionName)})</span></span>
+                    <span>${restoreLabel}: <span class="text-emerald-300 font-semibold">${Utils.formatMoney(item.cost)}</span> <span class="text-slate-500">(${Utils.escapeHtml(item.optionName)})</span></span>
                 </div>
             </div>
         `;
@@ -427,7 +429,7 @@ export const confirmBulkPropertyMaintenance = (mode = 'maintain') => {
 
     captureAnnualSnapshot(state.gameState);
     saveGame();
-    UI.updateHeader(user);
+    UI.updateHeader(state.gameState?.user || user);
     renderAssets();
 
     const valueDetail = result.totalValueIncrease > 0

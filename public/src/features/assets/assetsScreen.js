@@ -261,12 +261,15 @@ export function renderAssets() {
                 </button>
             `;
         } else {
+            const hasCooldown = bulkSummary.restore.skippedCooldownCount > 0;
+            const statusText = hasCooldown ? 'Renovation Cooldown' : '100% Pristine';
+            const titleText = hasCooldown ? 'Properties Maintained (At Cap)' : 'All Properties Maintained';
             bulkPropertyMaintenanceBtnHtml = `
                 <button disabled class="w-full mb-3 bg-slate-800/80 text-slate-500 font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-between border border-slate-700/60 cursor-not-allowed">
                     <span class="flex items-center gap-2">
-                        <i class="fas fa-check-circle text-emerald-500/60"></i> All Properties Maintained
+                        <i class="fas ${hasCooldown ? 'fa-clock text-amber-400/80' : 'fa-check-circle text-emerald-500/60'}"></i> ${titleText}
                     </span>
-                    <span class="text-[11px]">100% Pristine</span>
+                    <span class="text-[11px]">${statusText}</span>
                 </button>
             `;
         }

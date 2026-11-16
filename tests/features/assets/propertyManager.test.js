@@ -652,7 +652,32 @@ describe('Feature: Property Manager', () => {
         expect(document.getElementById('modal-title').textContent).toBe('Properties Restored!');
         expect(document.getElementById('game-container').innerHTML).toContain('All Properties Maintained');
     });
+
+    test('renderAssets shows Renovation Cooldown when properties are at cap on annual cooldown, and router maps bulk actions', async () => {
+        mockUser.assets.forEach(a => {
+            a.condition = 90;
+            a.maxCondition = 90;
+            a.renovatedThisYear = true;
+            a.lastRenovationAge = mockUser.age;
+        });
+
+        renderAssets();
+        const container = document.getElementById('game-container');
+        expect(container.innerHTML).toContain('Properties Maintained (At Cap)');
+        expect(container.innerHTML).toContain('Renovation Cooldown');
+        expect(container.innerHTML).not.toContain('100% Pristine');
+
+        const { routeHandlers, parseActionArgs } = await import('../../../public/src/core/actionRouter.js');
+        const { ACTION_TO_MODULE } = await import('../../../public/src/core/moduleLoader.js');
+        expect(typeof routeHandlers.openBulkPropertyMaintenanceModal).toBe('function');
+        expect(typeof routeHandlers.confirmBulkPropertyMaintenance).toBe('function');
+        expect(ACTION_TO_MODULE.openBulkPropertyMaintenanceModal).toBe('assets');
+        expect(ACTION_TO_MODULE.confirmBulkPropertyMaintenance).toBe('assets');
+        expect(parseActionArgs("'maintain'")).toEqual(['maintain']);
+        expect(parseActionArgs("'restore'")).toEqual(['restore']);
+    });
 });
+
 
 
 
