@@ -390,6 +390,7 @@ export const continueAsChild = (childIndex, inheritedMoney) => {
     state.gameState.completedEventsHistory = [];
     state.gameState.pendingFunerals = [];
     state.gameState.pendingTeacherReplacements = [];
+    state.gameState.achievements = {};
     
     // 3. Purge and restart Life Log at child's chronological age
     const inheritanceLogMsg = safeInheritedMoney > 0
