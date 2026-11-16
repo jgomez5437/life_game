@@ -13,34 +13,43 @@ const get = id => document.getElementById(id);
 // ─── SETUP SCREEN ─────────────────────────────────────────────────────────────
 
 export function renderBusinessSetup() {
+    const user = state.gameState?.user || {};
+    const playerCash = Number(user.money) || 0;
+
     const supplierCards = SUPPLIERS.map(s => `
-        <div id="sup-${s.id}" class="supplier-card cursor-pointer border border-slate-600 p-3 rounded-lg flex items-center justify-between hover:bg-slate-700 transition"
+        <div id="sup-${s.id}" class="supplier-card cursor-pointer border border-slate-600 p-3 rounded-lg flex flex-col justify-between hover:bg-slate-700 transition"
              data-action="selectSupplier" data-args="&apos;${s.id}&apos;">
-            <div>
+            <div class="flex items-center justify-between gap-2 mb-1">
                 <div class="font-bold text-white text-sm">${s.name}</div>
-                <div class="text-xs text-slate-400">${s.costMod}× cost &mdash; Quality ${s.quality}%</div>
+                <span class="text-[10px] font-bold ${s.id === 'cheap' ? 'text-yellow-400' : s.id === 'premium' ? 'text-blue-400' : 'text-slate-400'}">
+                    ${s.id === 'cheap' ? 'Budget' : s.id === 'premium' ? 'Premium' : 'Balanced'}
+                </span>
             </div>
-            <div class="text-xs ${s.id === 'cheap' ? 'text-yellow-400' : s.id === 'premium' ? 'text-blue-400' : 'text-slate-400'}">
-                ${s.id === 'cheap' ? 'Budget Choice' : s.id === 'premium' ? 'Top Quality' : 'Balanced'}
-            </div>
+            <div class="text-xs text-slate-400">${s.costMod}× cost &bull; Quality ${s.quality}%</div>
         </div>
     `).join('');
 
     UI.updateBottomNav('work');
     get('game-container').innerHTML = `
-        <div class="fade-in max-w-xl mx-auto pb-10">
+        <div class="fade-in max-w-3xl mx-auto pb-10">
             <button data-action="renderActivities" class="mb-4 text-slate-400 hover:text-white text-xs flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition border border-slate-700/50">
                 <i class="fas fa-arrow-left"></i> Cancel
             </button>
 
             <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-xl">
-                <div class="flex items-center gap-3 mb-4">
-                    <div class="w-10 h-10 rounded-lg bg-indigo-600/30 border border-indigo-500/50 flex items-center justify-center text-indigo-400 text-lg">
-                        <i class="fas fa-rocket"></i>
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-indigo-600/30 border border-indigo-500/50 flex items-center justify-center text-indigo-400 text-lg">
+                            <i class="fas fa-rocket"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-2xl font-bold text-white">Incorporate Startup</h2>
+                            <div class="text-xs text-slate-400">Launch your entrepreneurial empire</div>
+                        </div>
                     </div>
-                    <div>
-                        <h2 class="text-2xl font-bold text-white">Incorporate Startup</h2>
-                        <div class="text-xs text-slate-400">Launch your entrepreneurial empire</div>
+                    <div class="bg-slate-900/80 border border-slate-700 rounded-lg px-3 py-1.5 text-right">
+                        <div class="text-[10px] uppercase text-slate-400 font-bold">Available Personal Cash</div>
+                        <div class="text-sm font-bold text-emerald-400 font-mono">${Utils.formatMoney(playerCash)}</div>
                     </div>
                 </div>
 
@@ -50,27 +59,36 @@ export function renderBusinessSetup() {
                        placeholder="e.g. Apex Dynamics, CloudScale Inc...">
 
                 <label class="block text-sm font-bold mb-2 text-slate-300">Select Industry & Business Model</label>
-                <div class="space-y-3 mb-6 max-h-96 overflow-y-auto pr-1">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
                     ${Object.keys(BUSINESS_INDUSTRIES).map(key => {
                         const ind = BUSINESS_INDUSTRIES[key];
+                        const canAfford = playerCash >= ind.startupCost;
+                        const shortfall = Math.max(0, ind.startupCost - playerCash);
                         return `
-                            <div class="industry-card cursor-pointer border border-slate-600 p-4 rounded-lg flex items-start hover:bg-slate-700 transition"
+                            <div class="industry-card cursor-pointer border border-slate-600 p-3.5 rounded-xl flex flex-col justify-between hover:bg-slate-700 transition"
                                  data-action="selectIndustry" data-args="&apos;${key}&apos;" id="ind-${key}">
-                                <div class="w-12 h-12 bg-slate-900 rounded-lg flex items-center justify-center text-blue-400 mr-4 shrink-0 mt-1">
-                                    <i class="fas ${ind.icon} text-xl"></i>
+                                <div>
+                                    <div class="flex items-start gap-3 mb-2">
+                                        <div class="w-10 h-10 bg-slate-900 rounded-lg flex items-center justify-center text-blue-400 shrink-0">
+                                            <i class="fas ${ind.icon} text-lg"></i>
+                                        </div>
+                                        <div class="min-w-0 grow">
+                                            <div class="flex justify-between items-start gap-1">
+                                                <div class="font-bold text-white text-sm leading-tight">${ind.name}</div>
+                                                <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-slate-900 text-indigo-300 border border-indigo-500/30 shrink-0">
+                                                    ${ind.modelType}
+                                                </span>
+                                            </div>
+                                            <div class="text-xs text-slate-400 mt-1 line-clamp-2">${ind.description}</div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="grow">
-                                    <div class="flex justify-between items-center">
-                                        <div class="font-bold text-white">${ind.name}</div>
-                                        <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-slate-900 text-indigo-300 border border-indigo-500/30">
-                                            ${ind.modelType}
-                                        </span>
-                                    </div>
-                                    <div class="text-xs text-slate-400 mt-1">${ind.description}</div>
-                                    <div class="flex justify-between text-xs font-bold mt-2">
-                                        <span class="text-green-400">Capital Req: ${Utils.formatMoney(ind.startupCost)}</span>
-                                        <span class="text-indigo-300">Valuation: ${ind.valuationMultiple}x ARR</span>
-                                    </div>
+                                <div class="flex items-center justify-between gap-2 text-xs font-bold pt-2 border-t border-slate-700/70">
+                                    <span class="${canAfford ? 'text-green-400' : 'text-rose-400'}">Capital: ${Utils.formatCompactMoney(ind.startupCost)}</span>
+                                    <span class="text-indigo-300">${ind.valuationMultiple}x ARR</span>
+                                    <span class="text-[10px] px-1.5 py-0.5 rounded ${canAfford ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-500/30' : 'bg-rose-950/60 text-rose-300 border border-rose-500/30'}">
+                                        ${canAfford ? 'Affordable' : `Need ${Utils.formatCompactMoney(shortfall)}`}
+                                    </span>
                                 </div>
                             </div>
                         `;
@@ -78,14 +96,14 @@ export function renderBusinessSetup() {
                 </div>
 
                 <label class="block text-sm font-bold mb-2 text-slate-300">Primary Logistics & Supplier Partner</label>
-                <div class="space-y-2 mb-6">${supplierCards}</div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-6">${supplierCards}</div>
 
-                <div class="bg-blue-900/20 border border-blue-500/30 p-3 rounded-lg mb-6 text-sm text-blue-200 flex items-center gap-2">
+                <div class="bg-blue-900/20 border border-blue-500/30 p-3 rounded-lg mb-6 text-xs sm:text-sm text-blue-200 flex items-center gap-2">
                     <i class="fas fa-info-circle text-blue-400"></i>
                     <span>Requires personal savings to incorporate. You will start as 100% Equity Owner in a Humble Garage.</span>
                 </div>
 
-                <button data-action="initBusiness" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-4 rounded-xl text-lg shadow-lg">
+                <button data-action="initBusiness" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-4 rounded-xl text-lg shadow-lg transition cursor-pointer">
                     Launch Venture &rarr;
                 </button>
             </div>
@@ -188,6 +206,6 @@ export function initBusiness() {
     GameLogic.adjustStat(user, 'happiness', 15);
     UI.updateHeader(user);
 
-    addLog(`Founded ${name} (${ind.name})! Invested ${Utils.formatMoney(ind.startupCost)}. (+15 Happiness)`, 'good');
+    addLog(`Founded ${finalCompanyName} (${ind.name})! Invested ${Utils.formatMoney(ind.startupCost)}. (+15 Happiness)`, 'good');
     renderBusinessDashboard();
 }

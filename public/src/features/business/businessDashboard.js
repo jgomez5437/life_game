@@ -11,6 +11,7 @@ import { unlockAchievement } from '../../core/achievementManager.js';
 import { SoundManager } from '../../core/soundManager.js';
 import {
     BUSINESS_UPGRADES,
+    computeQuarterlyForecast,
     renderTabOverview,
     renderTabOperations,
     renderTabMarketing,
@@ -51,24 +52,92 @@ export function renderBusinessDashboard() {
     const hq = HQ_TIERS.find(h => h.id === user.hqTier) || HQ_TIERS[0];
     const valuation = GameLogic.calculateCompanyValuation(user);
     const overhead = GameLogic.calculateBusinessOverhead(user);
+    const forecast = computeQuarterlyForecast(user);
+    const quarterCheck = GameLogic.canProcessBusinessQuarter(user);
+    const remainingQuarters = GameLogic.getRemainingQuartersForAge(user);
+    const isFiscalDone = !quarterCheck.allowed;
+    const lowCash = forecast.totalExpenses > (user.compCash || 0);
+    const vcOffers = user.isPublic ? [] : GameLogic.calculateVCInvestorOffers(user);
+    const canIPO = !user.isPublic && valuation >= 25000000 && (user.equityOwned || 0) >= 0.20;
+    const opsAlert = lowCash || (user.employees || 0) >= hq.maxEmployees;
 
-    // Dynamic Tab Navigation Bar
+    // Dynamic Tab Navigation Bar with Contextual Badges
     const tabs = [
-        { id: 'overview',   name: 'HQ Overview',   icon: 'fa-landmark' },
-        { id: 'operations', name: 'Operations',    icon: 'fa-industry' },
+        { id: 'overview',   name: 'HQ Overview',    icon: 'fa-landmark' },
+        { id: 'operations', name: 'Operations',     icon: 'fa-industry', badge: opsAlert ? '!' : null, badgeTone: lowCash ? 'bg-rose-500 text-white' : 'bg-amber-500 text-slate-950' },
         { id: 'marketing',  name: 'Sales & Growth', icon: 'fa-bullhorn' },
-        { id: 'hr',         name: 'HR & Culture',  icon: 'fa-users' },
-        { id: 'finance',    name: 'Finance & VC',  icon: 'fa-coins' }
+        { id: 'hr',         name: 'HR & Culture',   icon: 'fa-users' },
+        { id: 'finance',    name: 'Finance & VC',   icon: 'fa-coins',    badge: canIPO ? 'IPO' : (vcOffers.length > 0 ? String(vcOffers.length) : null), badgeTone: canIPO ? 'bg-emerald-500 text-slate-950' : 'bg-indigo-500 text-white' }
     ];
 
     const tabNavHtml = `
-        <div id="business-tab-nav" class="flex border-b border-slate-700 mb-6 space-x-1 overflow-x-auto pb-1 touch-pan-x overscroll-contain select-none">
+        <div id="business-tab-nav" class="flex border-b border-slate-700 mb-5 space-x-1 overflow-x-auto pb-1 touch-pan-x overscroll-contain select-none">
             ${tabs.map(t => `
                 <button data-action="setBusinessTab" data-args="&apos;${t.id}&apos;"
                         class="px-4 py-2.5 rounded-t-lg font-bold text-xs flex items-center gap-2 whitespace-nowrap transition ${activeBusinessTab === t.id ? 'bg-indigo-600 text-white border-b-2 border-indigo-400 font-extrabold shadow-sm' : 'bg-slate-800/60 text-slate-400 hover:text-white hover:bg-slate-700'}">
-                    <i class="fas ${t.icon}"></i> ${t.name}
+                    <i class="fas ${t.icon}"></i>
+                    <span>${t.name}</span>
+                    ${t.badge ? `<span class="text-[9px] px-1.5 py-0.5 rounded-full font-extrabold leading-none ${t.badgeTone}">${t.badge}</span>` : ''}
                 </button>
             `).join('')}
+        </div>
+    `;
+
+    // Quarter Stepper (Q1..Q4)
+    const stepperHtml = [1, 2, 3, 4].map(q => {
+        const isDone = isFiscalDone || q < user.companyQuarter;
+        const isCurrent = !isFiscalDone && q === user.companyQuarter;
+        const cls = isDone
+            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+            : (isCurrent
+                ? 'bg-indigo-600 text-white border-indigo-400 shadow-sm'
+                : 'bg-slate-900/70 text-slate-500 border-slate-700');
+        return `
+            <span class="px-2 py-0.5 rounded-md border text-[11px] font-bold font-mono flex items-center gap-1 ${cls}">
+                ${isDone ? '<i class="fas fa-check text-[9px]"></i>' : ''}Q${q}
+            </span>
+        `;
+    }).join('');
+
+    const primaryCtaHtml = !isFiscalDone
+        ? `<button id="btn-process-quarter" data-action="processQuarter"
+                   class="w-full sm:w-auto px-5 py-2.5 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-lg flex items-center justify-center gap-2 whitespace-nowrap transition cursor-pointer">
+               <i class="fas fa-play"></i> Run Q${user.companyQuarter}
+           </button>`
+        : `<button id="btn-age-up-business" data-action="ageUp"
+                   class="w-full sm:w-auto px-5 py-2.5 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 shadow-lg flex items-center justify-center gap-2 whitespace-nowrap transition cursor-pointer">
+               <i class="fas fa-arrow-up"></i> Age Up to ${(user.age || 0) + 1}
+           </button>`;
+
+    const execBarHtml = `
+        <div id="business-exec-bar" class="bg-slate-800 border border-slate-700 rounded-xl p-3.5 mb-4 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mr-1">Fiscal Year ${user.companyYear}</span>
+                <div class="flex items-center gap-1">${stepperHtml}</div>
+                <span class="text-[11px] font-semibold ${isFiscalDone ? 'text-amber-300' : 'text-slate-400'} ml-1">
+                    ${isFiscalDone ? 'Fiscal Year Complete — Age Up to Continue' : `${remainingQuarters} Qtr${remainingQuarters === 1 ? '' : 's'} left at Age ${user.age ?? '—'}`}
+                </span>
+            </div>
+            <div class="flex flex-wrap sm:flex-nowrap items-center justify-between md:justify-end gap-3 sm:gap-4">
+                <div class="flex items-center gap-3 text-xs">
+                    <div>
+                        <div class="text-[9px] uppercase text-slate-400 font-bold">Est. Rev</div>
+                        <div id="exec-proj-rev" class="text-xs sm:text-sm font-bold font-mono text-green-400">${Utils.formatCompactMoney(forecast.estRev)}</div>
+                    </div>
+                    <div>
+                        <div class="text-[9px] uppercase text-slate-400 font-bold">Est. Costs</div>
+                        <div id="exec-proj-expenses" class="text-xs sm:text-sm font-bold font-mono text-rose-400">-${Utils.formatCompactMoney(forecast.totalExpenses)}</div>
+                    </div>
+                    <div>
+                        <div class="text-[9px] uppercase text-slate-400 font-bold">Est. Net</div>
+                        <div id="exec-proj-profit" class="text-xs sm:text-sm font-bold font-mono ${forecast.estProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${forecast.estProfit >= 0 ? '+' : ''}${Utils.formatCompactMoney(forecast.estProfit)}</div>
+                    </div>
+                </div>
+                <span id="exec-low-cash-warn" class="${lowCash ? '' : 'hidden'} text-[10px] font-bold px-2 py-1 rounded bg-rose-950/60 text-rose-300 border border-rose-500/40 whitespace-nowrap">
+                    <i class="fas fa-triangle-exclamation mr-1"></i>Low Cash
+                </span>
+                ${primaryCtaHtml}
+            </div>
         </div>
     `;
 
@@ -112,22 +181,30 @@ export function renderBusinessDashboard() {
                             <span class="text-xs font-normal px-2 py-0.5 rounded bg-indigo-900/60 text-indigo-300 border border-indigo-500/30 flex-shrink-0">
                                 Y${user.companyYear} Q${user.companyQuarter}
                             </span>
+                            <span class="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${user.isPublic ? 'bg-emerald-900/60 text-emerald-300 border border-emerald-500/30' : 'bg-slate-900 text-slate-300 border border-slate-700'} flex-shrink-0">
+                                ${user.isPublic ? 'Public' : 'Private'}
+                            </span>
                         </h1>
                         <div class="text-xs text-slate-400 truncate">${ind.name} &bull; ${hq.name}</div>
                     </div>
                 </div>
                 <div class="flex items-center gap-4 flex-shrink-0 ml-auto">
                     <div class="text-right">
-                        <div class="text-[10px] uppercase text-slate-400 font-bold tracking-wider">Company Treasury</div>
+                        <div class="text-[10px] uppercase text-slate-400 font-bold tracking-wider">Treasury</div>
                         <div class="text-base sm:text-lg font-bold text-green-400 font-mono" title="${Utils.formatMoney(user.compCash)}">${Utils.formatCompactMoney(user.compCash)}</div>
                     </div>
                     <div class="text-right">
-                        <div class="text-[10px] uppercase text-slate-400 font-bold tracking-wider">Est. Valuation</div>
+                        <div class="text-[10px] uppercase text-slate-400 font-bold tracking-wider">Valuation</div>
                         <div class="text-base sm:text-lg font-bold text-indigo-300 font-mono" title="${Utils.formatMoney(valuation)}">${Utils.formatCompactMoney(valuation)}</div>
+                    </div>
+                    <div class="text-right hidden sm:block">
+                        <div class="text-[10px] uppercase text-slate-400 font-bold tracking-wider">Personal</div>
+                        <div class="text-base sm:text-lg font-bold text-slate-200 font-mono" title="${Utils.formatMoney(user.money)}">${Utils.formatCompactMoney(user.money || 0)}</div>
                     </div>
                 </div>
             </div>
 
+            ${execBarHtml}
             ${lastEventBanner}
             ${tabNavHtml}
             ${contentHtml}
@@ -143,6 +220,9 @@ export function renderBusinessDashboard() {
 // ─── PROCESS QUARTER (MANUAL TURN) ───────────────────────────────────────────
 
 export function processQuarter() {
+    if (isProcessingBusinessAction) return;
+    if (typeof UI.isModalOpen === 'function' && UI.isModalOpen()) return;
+
     const user = state.gameState.user;
     if (!user || !user.hasBusiness) return;
 
@@ -152,107 +232,89 @@ export function processQuarter() {
         return;
     }
 
-    GameLogic.ensureBusinessState(user);
+    isProcessingBusinessAction = true;
+    try {
+        GameLogic.ensureBusinessState(user);
+        const f = computeQuarterlyForecast(user);
+        if (f.totalExpenses > user.compCash) {
+            UI.showModal('Bankruptcy Risk', 'Company has insufficient funds in company cash to pay quarterly expenses! Lower production or adjust salaries.');
+            return;
+        }
 
-    const indKey = user.industry || 'tech_saas';
-    const ind = BUSINESS_INDUSTRIES[indKey] || BUSINESS_INDUSTRIES.tech_saas;
-    const hq = HQ_TIERS.find(h => h.id === user.hqTier) || HQ_TIERS[0];
-    const supplier = SUPPLIERS.find(s => s.id === user.supplierId) || SUPPLIERS[1];
-    const overhead = GameLogic.calculateBusinessOverhead(user);
+        const activeEvent = Math.random() < 0.25
+            ? BUSINESS_DECISION_EVENTS[Math.floor(Math.random() * BUSINESS_DECISION_EVENTS.length)]
+            : null;
+        const { revenue, profit } = settleBusinessQuarterFinances(user, f, f.totalExpenses, f.ceoWages);
 
-    const maxProduction = Math.floor(user.employees * ind.capacityPerEmployee * hq.capacityBonus);
-    const effectiveProd = Math.min(user.productionTarget, maxProduction);
-
-    const prodCost = effectiveProd * (ind.unitCost * supplier.costMod);
-    const empWages = user.employees * user.salaryOffer * 3;
-    const ceoWages = user.ceoSalary * 3;
-    const totalExpenses = prodCost + empWages + ceoWages + overhead.totalQuarterly;
-
-    if (totalExpenses > user.compCash) {
-        UI.showModal('Bankruptcy Risk', 'Company has insufficient funds in company cash to pay quarterly expenses! Lower production or adjust salaries.');
-        return;
-    }
-
-    user.compCash = Math.min(GameLogic.MAX_COMPANY_CASH || 999999999999999, Math.max(0, user.compCash - totalExpenses));
-    user.money    = Math.min(GameLogic.MAX_PLAYER_MONEY || 999999999999999, (user.money || 0) + ceoWages);
-
-    // Check random decision event
-    let activeEvent = null;
-    if (Math.random() < 0.25) {
-        const randIndex = Math.floor(Math.random() * BUSINESS_DECISION_EVENTS.length);
-        activeEvent = BUSINESS_DECISION_EVENTS[randIndex];
-    }
-
-    // Revenue calculations
-    const priceRatio = user.sellingPrice > 0 ? ind.unitPrice / user.sellingPrice : 1;
-    const priceFactor = Math.pow(priceRatio, 1.4);
-    const repFactor = 0.5 + (user.businessReputation / 100);
-    const volatility = 1 + ((Math.random() - 0.5) * ind.volatility * 2);
-
-    let mktBoost = 1.0;
-    if (user.marketingLevels) {
-        MARKETING_CHANNELS.forEach(ch => {
-            const lvl = user.marketingLevels[ch.id] || 0;
-            mktBoost += ch.demandBoost * lvl;
+        // Atomically advance quarter BEFORE any async/modal UI so saves never persist Q5
+        const turnMeta = GameLogic.advanceBusinessQuarter(user);
+        user.businessHistory.push({
+            year: turnMeta.executedYear,
+            quarter: turnMeta.executedQuarter,
+            profit,
+            revenue,
+            event: activeEvent ? activeEvent.name : null
         });
-    }
 
-    const actualDemand = Math.floor(ind.baseDemand * repFactor * priceFactor * volatility * mktBoost);
-    const available = user.inventory + effectiveProd;
-    const sold = Math.min(available, actualDemand);
-
-    const maxInventory = ind.baseDemand * (user.businessUpgrades.includes('warehouse') ? 4 : 2);
-    user.inventory = Math.min(available - sold, maxInventory);
-
-    const revenue = sold * user.sellingPrice;
-    user.compCash = Math.min(GameLogic.MAX_COMPANY_CASH || 999999999999999, user.compCash + revenue);
-    const profit = revenue - totalExpenses;
-
-    user.businessHistory.push({
-        year: user.companyYear,
-        quarter: user.companyQuarter,
-        profit,
-        revenue,
-        event: activeEvent ? activeEvent.name : null
-    });
-
-    const isFiscalYearEnding = user.companyQuarter === 4;
-    GameLogic.recordBusinessQuarterProcessed(user, isFiscalYearEnding);
-
-    user.companyQuarter++;
-
-    // Trigger Decision Event modal if fired
-    if (activeEvent) {
-        showDecisionEventModal(activeEvent, () => {
-            finishQuarterTurnProcessing(user);
-        });
-    } else {
-        finishQuarterTurnProcessing(user);
+        if (activeEvent) {
+            showDecisionEventModal(activeEvent, () => finishQuarterTurnProcessing(user, turnMeta));
+        } else {
+            finishQuarterTurnProcessing(user, turnMeta);
+        }
+    } finally {
+        isProcessingBusinessAction = false;
     }
 }
 
-function finishQuarterTurnProcessing(user) {
+function finishQuarterTurnProcessing(user, turnMeta = null) {
+    GameLogic.normalizeBusinessQuarterState(user);
     if (user.isPublic || GameLogic.calculateCompanyValuation(user) >= 1000000000) {
         unlockAchievement('unicorn_tycoon', user);
     }
-    if (user.companyQuarter > 4) {
-        user.companyQuarter = 1;
-        user.companyYear++;
-        const annualRevenue = user.businessHistory.slice(-4).reduce((s, q) => s + q.revenue, 0);
-        addLog(`${user.companyName} fiscal year complete. Annual Revenue: ${Utils.formatMoney(annualRevenue)}.`, 'major');
-        UI.showModal(
-            'Annual Fiscal Report',
-            `<div class="text-sm space-y-2">
-                <p>Fiscal Year complete! You must age up to start the next fiscal year.</p>
-                <div class="flex justify-between border-t border-slate-700 pt-2"><span class="text-slate-400">Annual Revenue</span><span class="text-green-400 font-bold">${Utils.formatMoney(annualRevenue)}</span></div>
-                <div class="flex justify-between"><span class="text-slate-400">Company Treasury</span><span class="font-bold text-white">${Utils.formatMoney(user.compCash)}</span></div>
-                <div class="flex justify-between"><span class="text-slate-400">Personal Bank</span><span class="font-bold text-white">${Utils.formatMoney(user.money)}</span></div>
-             </div>`,
-            () => renderLifeDashboard(state.gameState)
-        );
+    UI.updateHeader(user);
+
+    const lastQ = user.businessHistory[user.businessHistory.length - 1];
+    const executedYear = turnMeta?.executedYear ?? lastQ?.year ?? user.companyYear;
+    const executedQuarter = turnMeta?.executedQuarter ?? lastQ?.quarter ?? 1;
+    const isFiscalEnd = Boolean(turnMeta ? turnMeta.isFiscalYearEnding : executedQuarter >= 4);
+
+    if (typeof saveGame === 'function') saveGame();
+
+    if (isFiscalEnd) {
+        const recentQuarters = user.businessHistory.slice(-4);
+        const annualRevenue = recentQuarters.reduce((s, q) => s + (q.revenue || 0), 0);
+        const annualProfit = recentQuarters.reduce((s, q) => s + (q.profit || 0), 0);
+        addLog(`${user.companyName} Year ${executedYear} fiscal year complete. Annual Revenue: ${Utils.formatMoney(annualRevenue)}.`, 'major');
+        const reportHtml = `
+            <div class="text-sm space-y-2">
+                <p class="text-slate-300">Fiscal Year ${executedYear} complete! Age up to start Fiscal Year ${user.companyYear} operations.</p>
+                <div class="flex justify-between border-t border-slate-700 pt-2"><span class="text-slate-400">Annual Revenue</span><span class="text-green-400 font-bold font-mono">${Utils.formatMoney(annualRevenue)}</span></div>
+                <div class="flex justify-between"><span class="text-slate-400">Annual Net Profit</span><span class="font-bold font-mono ${annualProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${annualProfit >= 0 ? '+' : ''}${Utils.formatMoney(annualProfit)}</span></div>
+                <div class="flex justify-between"><span class="text-slate-400">Company Treasury</span><span class="font-bold text-white font-mono">${Utils.formatMoney(user.compCash)}</span></div>
+                <div class="flex justify-between"><span class="text-slate-400">Personal Bank</span><span class="font-bold text-white font-mono">${Utils.formatMoney(user.money)}</span></div>
+            </div>
+        `;
+        if (typeof UI.showCustomModal === 'function') {
+            UI.showCustomModal({
+                title: `Annual Fiscal Report (Year ${executedYear})`,
+                content: reportHtml,
+                confirmText: 'Back to Life Log',
+                cancelText: 'Stay in Office',
+                onConfirm: () => renderLifeDashboard(state.gameState),
+                onClose: () => renderBusinessDashboard(),
+                showCloseBtn: false
+            });
+        } else {
+            UI.showModal(
+                'Annual Fiscal Report',
+                reportHtml,
+                () => renderLifeDashboard(state.gameState)
+            );
+        }
     } else {
-        const lastQ = user.businessHistory[user.businessHistory.length - 1];
-        addLog(`${user.companyName} Q${user.companyQuarter - 1}: Revenue ${Utils.formatMoney(lastQ.revenue)}, Profit ${Utils.formatMoney(lastQ.profit)}.`, lastQ.profit >= 0 ? 'good' : 'bad');
+        if (lastQ) {
+            addLog(`${user.companyName} Y${executedYear} Q${executedQuarter}: Revenue ${Utils.formatMoney(lastQ.revenue)}, Profit ${Utils.formatMoney(lastQ.profit)}.`, lastQ.profit >= 0 ? 'good' : 'bad');
+        }
         renderBusinessDashboard();
     }
 }
@@ -295,6 +357,8 @@ export function chooseEventChoice(indexStr) {
     const index = parseInt(indexStr, 10);
     const choices = window._activeEventChoices;
     const onComplete = window._activeEventOnComplete;
+    window._activeEventChoices = null;
+    window._activeEventOnComplete = null;
 
     if (choices && choices[index]) {
         const choice = choices[index];
@@ -498,7 +562,8 @@ export function layoffEmployee() {
         return;
     }
 
-    const severance = Math.floor(ind.baseSalary * 1.5);
+    const hasHrPerks = Array.isArray(user.businessUpgrades) && user.businessUpgrades.includes('hr_perks');
+    const severance = Math.floor(ind.baseSalary * (hasHrPerks ? 0.75 : 1.5));
     user.compCash = Math.max(0, user.compCash - severance);
     user.employees--;
     user.employeeMorale = Math.max(0, user.employeeMorale - 10);
@@ -605,71 +670,62 @@ export function autoProcessBusinessQuarter(user) {
     for (let i = 0; i < count; i++) {
         executeSingleAutoQuarter(user);
     }
-    user.lastBusinessAge = user.age - 1;
-    user.quartersProcessedThisAge = 4;
+    if (Number.isFinite(user.age)) {
+        user.lastBusinessAge = user.age - 1;
+        user.quartersProcessedThisAge = 4;
+        user.lastCompletedFiscalYearAge = user.age - 1;
+    }
+    GameLogic.normalizeBusinessQuarterState(user);
     if (user.isPublic || GameLogic.calculateCompanyValuation(user) >= 1000000000) {
         unlockAchievement('unicorn_tycoon', user);
     }
 }
 
-function executeSingleAutoQuarter(user) {
-    const indKey = user.industry || 'tech_saas';
-    const ind = BUSINESS_INDUSTRIES[indKey] || BUSINESS_INDUSTRIES.tech_saas;
-    const hq = HQ_TIERS.find(h => h.id === user.hqTier) || HQ_TIERS[0];
-    const supplier = SUPPLIERS.find(s => s.id === user.supplierId) || SUPPLIERS[1];
-    const overhead = GameLogic.calculateBusinessOverhead(user);
-
-    const maxProduction = Math.floor(user.employees * ind.capacityPerEmployee * hq.capacityBonus);
-    const effectiveProd = Math.min(user.productionTarget, maxProduction);
-
-    const prodCost = effectiveProd * (ind.unitCost * supplier.costMod);
-    const empWages = user.employees * user.salaryOffer * 3;
-    const ceoWages = (user.ceoSalary || 0) * 3;
-    const operatingExpenses = prodCost + empWages + overhead.totalQuarterly;
-
-    // Ensure CEO salary cannot exceed available company funds
-    const cashBeforeCEO = Math.max(0, (user.compCash || 0) - operatingExpenses);
-    const payableCeoWages = Math.min(ceoWages, cashBeforeCEO);
-    const totalExpenses = operatingExpenses + payableCeoWages;
-
+function settleBusinessQuarterFinances(user, f, totalExpenses, payableCeoWages) {
     user.compCash = Math.min(GameLogic.MAX_COMPANY_CASH || 999999999999999, Math.max(0, user.compCash - totalExpenses));
-    user.money   = Math.min(GameLogic.MAX_PLAYER_MONEY || 999999999999999, (user.money || 0) + payableCeoWages);
+    user.money    = Math.min(GameLogic.MAX_PLAYER_MONEY || 999999999999999, (user.money || 0) + payableCeoWages);
 
-    const priceRatio = user.sellingPrice > 0 ? ind.unitPrice / user.sellingPrice : 1;
-    const priceFactor = Math.pow(priceRatio, 1.4);
+    const upgrades = Array.isArray(user.businessUpgrades) ? user.businessUpgrades : [];
+    const priceFactor = Math.pow(f.priceRatio, 1.4);
     const repFactor = 0.5 + (user.businessReputation / 100);
-    const volatility = 1 + ((Math.random() - 0.5) * ind.volatility * 2);
+    const volatility = 1 + ((Math.random() - 0.5) * f.ind.volatility * 2);
 
     let mktBoost = 1.0;
     if (user.marketingLevels) {
-        MARKETING_CHANNELS.forEach(ch => {
-            const lvl = user.marketingLevels[ch.id] || 0;
-            mktBoost += ch.demandBoost * lvl;
-        });
+        MARKETING_CHANNELS.forEach(ch => { mktBoost += ch.demandBoost * (user.marketingLevels[ch.id] || 0); });
     }
+    if (upgrades.includes('rd_lab')) mktBoost += 0.40;
 
-    const actualDemand = Math.floor(ind.baseDemand * repFactor * priceFactor * volatility * mktBoost);
-    const available = user.inventory + effectiveProd;
+    const actualDemand = Math.floor(f.ind.baseDemand * repFactor * priceFactor * volatility * mktBoost);
+    const available = user.inventory + f.effectiveProd;
     const sold = Math.min(available, actualDemand);
-
-    const maxInventory = ind.baseDemand * (user.businessUpgrades.includes('warehouse') ? 4 : 2);
-    user.inventory = Math.min(available - sold, maxInventory);
+    user.inventory = Math.min(available - sold, f.maxInventory);
 
     const revenue = sold * user.sellingPrice;
     user.compCash = Math.min(GameLogic.MAX_COMPANY_CASH || 999999999999999, user.compCash + revenue);
-    const profit = revenue - totalExpenses;
+    return { revenue, profit: revenue - totalExpenses };
+}
 
-    user.businessHistory.push({
-        year: user.companyYear,
-        quarter: user.companyQuarter,
-        profit,
-        revenue,
-        event: null
-    });
+function executeSingleAutoQuarter(user) {
+    const f = computeQuarterlyForecast(user);
+    const operatingExpenses = f.prodCost + f.empWages + f.overhead.totalQuarterly;
 
-    user.companyQuarter++;
-    if (user.companyQuarter > 4) {
+    // Ensure CEO salary cannot exceed available company funds
+    const cashBeforeCEO = Math.max(0, (user.compCash || 0) - operatingExpenses);
+    const payableCeoWages = Math.min(f.ceoWages, cashBeforeCEO);
+    const totalExpenses = operatingExpenses + payableCeoWages;
+
+    const { revenue, profit } = settleBusinessQuarterFinances(user, f, totalExpenses, payableCeoWages);
+
+    GameLogic.normalizeBusinessQuarterState(user);
+    const executedYear = user.companyYear;
+    const executedQuarter = user.companyQuarter;
+    user.businessHistory.push({ year: executedYear, quarter: executedQuarter, profit, revenue, event: null });
+
+    if (executedQuarter >= 4) {
         user.companyQuarter = 1;
-        user.companyYear++;
+        user.companyYear = executedYear + 1;
+    } else {
+        user.companyQuarter = executedQuarter + 1;
     }
 }

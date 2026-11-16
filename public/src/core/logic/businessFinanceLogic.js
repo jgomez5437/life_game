@@ -124,8 +124,79 @@ export function resetBusinessQuarterTracking(user) {
     return user;
 }
 
+/**
+ * Normalizes companyYear and companyQuarter to valid bounds (1..4) and repairs
+ * legacy desyncs where Q4 already completed for the current companyYear without wrapping.
+ * @param {object} user
+ * @returns {object}
+ */
+export function normalizeBusinessQuarterState(user) {
+    if (!user || !user.hasBusiness) return user;
+
+    let year = Math.floor(Number(user.companyYear));
+    if (!Number.isFinite(year) || year < 1) year = 1;
+
+    let quarter = Math.floor(Number(user.companyQuarter));
+    if (!Number.isFinite(quarter) || quarter < 1) {
+        quarter = 1;
+    } else if (quarter > 4) {
+        year += Math.floor((quarter - 1) / 4);
+        quarter = ((quarter - 1) % 4) + 1;
+    }
+
+    const history = Array.isArray(user.businessHistory) ? user.businessHistory : [];
+    const lastEntry = history.length > 0 ? history[history.length - 1] : null;
+    if (
+        quarter === 4 &&
+        lastEntry &&
+        Number(lastEntry.year) === year &&
+        Number(lastEntry.quarter) === 4
+    ) {
+        quarter = 1;
+        year += 1;
+    }
+
+    user.companyYear = year;
+    user.companyQuarter = quarter;
+    return user;
+}
+
+/**
+ * Atomically records and advances the company's fiscal quarter (always keeping companyQuarter in 1..4).
+ * Returns the year & quarter that were just executed and whether the fiscal year closed.
+ * @param {object} user
+ * @returns {{ executedYear: number, executedQuarter: number, isFiscalYearEnding: boolean } | null}
+ */
+export function advanceBusinessQuarter(user) {
+    if (!user || !user.hasBusiness) return null;
+    normalizeBusinessQuarterState(user);
+
+    const executedYear = user.companyYear;
+    const executedQuarter = user.companyQuarter;
+    const quartersThisAge = user.lastBusinessAge === user.age ? (user.quartersProcessedThisAge || 0) : 0;
+    const isFiscalYearEnding = executedQuarter >= 4 || (quartersThisAge + 1) >= 4;
+
+    recordBusinessQuarterProcessed(user, isFiscalYearEnding);
+
+    if (isFiscalYearEnding) {
+        user.companyQuarter = 1;
+        user.companyYear = executedYear + 1;
+    } else {
+        user.companyQuarter = executedQuarter + 1;
+        user.companyYear = executedYear;
+    }
+
+    return {
+        executedYear,
+        executedQuarter,
+        isFiscalYearEnding
+    };
+}
+
 export function ensureBusinessState(user) {
     if (!user || !user.hasBusiness) return;
+
+    normalizeBusinessQuarterState(user);
 
     if (typeof user.isPublic !== 'boolean') user.isPublic = false;
     if (!user.hqTier) user.hqTier = 'garage';
