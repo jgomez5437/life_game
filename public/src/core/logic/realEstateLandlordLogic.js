@@ -314,6 +314,241 @@ export function renovateProperty(user, propertyId, optionId) {
     };
 }
 
+export function getBulkPropertyMaintenanceSummary(user) {
+    const empty = {
+        totalProperties: 0,
+        userMoney: user?.money || 0,
+        maintain: { items: [], count: 0, totalCost: 0, canAfford: true },
+        restore: {
+            items: [],
+            count: 0,
+            maintenanceCount: 0,
+            renovationCount: 0,
+            skippedCooldownCount: 0,
+            totalCost: 0,
+            totalValueIncrease: 0,
+            canAfford: true
+        }
+    };
+    if (!user || !Array.isArray(user.assets)) return empty;
+
+    const properties = user.assets.filter(a => a && a.category === 'property');
+    const userMoney = typeof user.money === 'number' && Number.isFinite(user.money) ? user.money : 0;
+
+    const maintainItems = [];
+    let maintainTotalCost = 0;
+
+    const restoreItems = [];
+    let restoreTotalCost = 0;
+    let restoreValueIncrease = 0;
+    let restoreMaintenanceCount = 0;
+    let restoreRenovationCount = 0;
+    let skippedCooldownCount = 0;
+
+    for (const prop of properties) {
+        const condition = prop.condition === undefined ? 100 : prop.condition;
+        const maxCondition = prop.maxCondition === undefined ? 100 : prop.maxCondition;
+
+        if (condition < maxCondition) {
+            const cost = calculateMaintenanceCost(prop);
+            maintainItems.push({
+                propertyId: prop.id,
+                propertyName: prop.name,
+                condition,
+                maxCondition,
+                actionType: 'maintenance',
+                cost
+            });
+            maintainTotalCost += cost;
+        }
+
+        const isPristine = condition >= 100 && maxCondition >= 100;
+        if (isPristine) continue;
+
+        const isRenovatedThisYear = Boolean(
+            prop.renovatedThisYear || (user.age !== undefined && prop.lastRenovationAge === user.age)
+        );
+
+        if (maxCondition >= 100) {
+            const cost = calculateMaintenanceCost(prop);
+            restoreItems.push({
+                propertyId: prop.id,
+                propertyName: prop.name,
+                condition,
+                maxCondition,
+                actionType: 'maintenance',
+                optionId: null,
+                optionName: 'Routine Maintenance',
+                cost,
+                estimatedValueIncrease: 0
+            });
+            restoreTotalCost += cost;
+            restoreMaintenanceCount++;
+        } else if (!isRenovatedThisYear) {
+            const options = calculateRenovationOptions(prop);
+            let targetOptionId = 'full';
+            if (maxCondition + 10 >= 100 && condition + 20 >= 100) {
+                targetOptionId = 'minor';
+            } else if (maxCondition + 25 >= 100 && condition + 50 >= 100) {
+                targetOptionId = 'major';
+            }
+            const opt = options.find(o => o.id === targetOptionId) || options[options.length - 1];
+            if (opt) {
+                const newMax = opt.id === 'full' ? 100 : Math.min(100, maxCondition + opt.maxCondGain);
+                const newCond = opt.id === 'full' ? 100 : Math.min(newMax, condition + opt.condGain);
+                const actualRestored = Math.max(0, newCond - condition) + Math.max(0, newMax - maxCondition);
+                const maxPotential = (opt.condGain || 0) + (opt.maxCondGain || 0);
+                const ratio = maxPotential > 0 ? Math.min(1.0, actualRestored / maxPotential) : 0;
+                const estValueIncrease = Math.floor((prop.value || 0) * opt.valueBoostRatio * ratio);
+
+                restoreItems.push({
+                    propertyId: prop.id,
+                    propertyName: prop.name,
+                    condition,
+                    maxCondition,
+                    actionType: 'renovation',
+                    optionId: opt.id,
+                    optionName: opt.name,
+                    cost: opt.cost,
+                    estimatedValueIncrease: estValueIncrease
+                });
+                restoreTotalCost += opt.cost;
+                restoreValueIncrease += estValueIncrease;
+                restoreRenovationCount++;
+            }
+        } else {
+            skippedCooldownCount++;
+            if (condition < maxCondition) {
+                const cost = calculateMaintenanceCost(prop);
+                restoreItems.push({
+                    propertyId: prop.id,
+                    propertyName: prop.name,
+                    condition,
+                    maxCondition,
+                    actionType: 'maintenance',
+                    optionId: null,
+                    optionName: 'Routine Maintenance (Renovation Cooldown)',
+                    cost,
+                    estimatedValueIncrease: 0
+                });
+                restoreTotalCost += cost;
+                restoreMaintenanceCount++;
+            }
+        }
+    }
+
+    return {
+        totalProperties: properties.length,
+        userMoney,
+        maintain: {
+            items: maintainItems,
+            count: maintainItems.length,
+            totalCost: maintainTotalCost,
+            canAfford: userMoney >= maintainTotalCost
+        },
+        restore: {
+            items: restoreItems,
+            count: restoreItems.length,
+            maintenanceCount: restoreMaintenanceCount,
+            renovationCount: restoreRenovationCount,
+            skippedCooldownCount,
+            totalCost: restoreTotalCost,
+            totalValueIncrease: restoreValueIncrease,
+            canAfford: userMoney >= restoreTotalCost
+        }
+    };
+}
+
+export function performBulkPropertyMaintenance(user, mode = 'maintain') {
+    if (!user || !Array.isArray(user.assets)) return { success: false, reason: "No assets found." };
+    if (!isAlive(user)) return { success: false, reason: "Cannot repair or maintain properties while dead or at 0 HP." };
+    if (mode !== 'maintain' && mode !== 'restore') {
+        return { success: false, reason: "Invalid bulk maintenance mode." };
+    }
+
+    const summary = getBulkPropertyMaintenanceSummary(user);
+    const plan = mode === 'restore' ? summary.restore : summary.maintain;
+
+    if (plan.count === 0) {
+        return {
+            success: false,
+            reason: mode === 'restore'
+                ? "All eligible properties are already in pristine condition or on renovation cooldown."
+                : "All properties are already in peak maintained condition."
+        };
+    }
+
+    const availableMoney = typeof user.money === 'number' && Number.isFinite(user.money) ? user.money : 0;
+    if (availableMoney < plan.totalCost) {
+        return {
+            success: false,
+            reason: `Insufficient funds. Total cost is $${plan.totalCost.toLocaleString()}, but you only have $${Math.max(0, availableMoney).toLocaleString()}.`,
+            requiredCost: plan.totalCost,
+            availableMoney
+        };
+    }
+
+    let totalCost = 0;
+    let totalValueIncrease = 0;
+    let maintainedCount = 0;
+    let renovatedCount = 0;
+    const updatedProperties = [];
+
+    for (const item of plan.items) {
+        let res;
+        if (item.actionType === 'renovation') {
+            res = renovateProperty(user, item.propertyId, item.optionId);
+            if (res.success) {
+                renovatedCount++;
+                totalCost += res.cost;
+                totalValueIncrease += res.valueIncrease || 0;
+                updatedProperties.push({
+                    propertyId: item.propertyId,
+                    propertyName: res.propertyName,
+                    actionType: 'renovation',
+                    optionName: res.optionName,
+                    cost: res.cost,
+                    newCondition: res.newCondition,
+                    newMaxCondition: res.newMaxCondition,
+                    valueIncrease: res.valueIncrease || 0
+                });
+            }
+        } else {
+            res = performPropertyMaintenance(user, item.propertyId);
+            if (res.success) {
+                maintainedCount++;
+                totalCost += res.cost;
+                updatedProperties.push({
+                    propertyId: item.propertyId,
+                    propertyName: res.propertyName,
+                    actionType: 'maintenance',
+                    optionName: 'Routine Maintenance',
+                    cost: res.cost,
+                    newCondition: res.restoredCondition,
+                    newMaxCondition: res.maxCondition,
+                    valueIncrease: 0
+                });
+            }
+        }
+
+        if (!res || !res.success) {
+            return { success: false, reason: res?.reason || "Failed to complete bulk maintenance." };
+        }
+    }
+
+    return {
+        success: true,
+        mode,
+        totalCost,
+        totalValueIncrease,
+        maintainedCount,
+        renovatedCount,
+        skippedCooldownCount: mode === 'restore' ? summary.restore.skippedCooldownCount : 0,
+        updatedCount: updatedProperties.length,
+        updatedProperties
+    };
+}
+
 export function calculatePropertySaleTiers(property) {
     if (!property || !property.value) return [];
     const val = property.value;

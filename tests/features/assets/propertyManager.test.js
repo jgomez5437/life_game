@@ -13,7 +13,10 @@ import {
     approveAllManagerRepairsAction,
     dismissManagerReportAction,
     getAnnualManagerReportHtml,
-    processNextTenantDefaultEvent
+    processNextTenantDefaultEvent,
+    renderAssets,
+    openBulkPropertyMaintenanceModal,
+    confirmBulkPropertyMaintenance
 } from '../../../public/src/features/assets/assetsScreen.js';
 
 describe('Feature: Property Manager', () => {
@@ -579,6 +582,77 @@ describe('Feature: Property Manager', () => {
         expect(savedRepairs[2].status).toBe('approved');
         expect(state.gameState.lifeLog.length).toBe(0);
     });
+
+    test('renderAssets shows Repair & Maintain All Properties button when properties need work and disables when pristine', () => {
+        renderAssets();
+        const container = document.getElementById('game-container');
+        expect(container.innerHTML).toContain('data-action="openBulkPropertyMaintenanceModal"');
+        expect(container.innerHTML).toContain('Repair &amp; Maintain All Properties (3)');
+
+        // Make all properties pristine
+        mockUser.assets.forEach(a => {
+            a.condition = 100;
+            a.maxCondition = 100;
+        });
+
+        renderAssets();
+        expect(container.innerHTML).not.toContain('data-action="openBulkPropertyMaintenanceModal"');
+        expect(container.innerHTML).toContain('All Properties Maintained');
+    });
+
+    test('openBulkPropertyMaintenanceModal displays both routine maintenance and full restore costs and gates affordability', () => {
+        // mockUser properties:
+        // prop_rented_1: 200k, 90/100 -> maint 1500
+        // prop_rented_2: 300k, 85/100 -> maint 2250
+        // prop_vacant:   400k, 80/100 -> maint 3000
+        // Total maintain = 6750; Total restore (since all maxCondition === 100) = 6750
+        mockUser.assets[1].maxCondition = 95; // 300k minor -> 9000 -> restore total = 1500 + 9000 + 3000 = 13500
+        mockUser.money = 8000; // Enough for maintain (6750), NOT enough for restore (13500)
+
+        openBulkPropertyMaintenanceModal();
+
+        const modalTitle = document.getElementById('modal-title').textContent;
+        const modalContent = document.getElementById('modal-content');
+        expect(modalTitle).toContain('Repair & Maintain All Properties');
+        expect(modalContent.innerHTML).toContain('$6,750');
+        expect(modalContent.innerHTML).toContain('$13,500');
+
+        const maintainBtn = modalContent.querySelector('[data-args="\'maintain\'"]');
+        const restoreBtn = modalContent.querySelector('[data-args="\'restore\'"]');
+        expect(maintainBtn).not.toBeNull();
+        expect(restoreBtn).not.toBeNull();
+        expect(maintainBtn.hasAttribute('disabled')).toBe(false);
+        expect(restoreBtn.hasAttribute('disabled')).toBe(true);
+        expect(restoreBtn.textContent).toContain('Insufficient Funds');
+    });
+
+    test('confirmBulkPropertyMaintenance executes maintain and restore modes, updates money, conditions, logs, and re-renders', () => {
+        mockUser.assets[1].maxCondition = 95;
+        mockUser.money = 25000;
+
+        // 1. Confirm routine maintenance
+        openBulkPropertyMaintenanceModal();
+        confirmBulkPropertyMaintenance('maintain');
+
+        let activeUser = state.gameState.user;
+        expect(activeUser.money).toBe(25000 - 6750);
+        expect(activeUser.assets[0].condition).toBe(100);
+        expect(activeUser.assets[1].condition).toBe(95);
+        expect(activeUser.assets[2].condition).toBe(100);
+        expect(document.getElementById('modal-title').textContent).toBe('Maintenance Completed!');
+
+        // 2. Now only prop_rented_2 needs restore (95/95 -> minor 9000)
+        openBulkPropertyMaintenanceModal();
+        confirmBulkPropertyMaintenance('restore');
+
+        activeUser = state.gameState.user;
+        expect(activeUser.money).toBe(25000 - 6750 - 9000);
+        expect(activeUser.assets[1].condition).toBe(100);
+        expect(activeUser.assets[1].maxCondition).toBe(100);
+        expect(document.getElementById('modal-title').textContent).toBe('Properties Restored!');
+        expect(document.getElementById('game-container').innerHTML).toContain('All Properties Maintained');
+    });
 });
+
 
 
