@@ -555,19 +555,9 @@ export function lazy(moduleKey, exportName) {
 
         const loadOpts = retryCount > 0 ? { maxRetries: 1, baseDelayMs: 200 } : {};
 
+        let mod;
         try {
-            const mod = await loadModule(moduleKey, loadOpts);
-            clearTimeout(timeoutId);
-            if (didShowLoading) {
-                _activeLoadingCount = Math.max(0, _activeLoadingCount - 1);
-            }
-            hideSubtleLoading();
-            const fn = mod[exportName];
-            if (typeof fn !== 'function') {
-                console.error(`[ModuleLoader] "${exportName}" is not a function in module "${moduleKey}"`);
-                return undefined;
-            }
-            return fn(...args);
+            mod = await loadModule(moduleKey, loadOpts);
         } catch (err) {
             clearTimeout(timeoutId);
             if (didShowLoading) {
@@ -582,10 +572,54 @@ export function lazy(moduleKey, exportName) {
             });
             throw err;
         }
+
+        clearTimeout(timeoutId);
+        if (didShowLoading) {
+            _activeLoadingCount = Math.max(0, _activeLoadingCount - 1);
+        }
+        hideSubtleLoading();
+
+        const fn = mod[exportName];
+        if (typeof fn !== 'function') {
+            console.error(`[ModuleLoader] "${exportName}" is not a function in module "${moduleKey}"`);
+            return undefined;
+        }
+        return fn(...args);
     };
     return function(...args) {
         return invokeLazy(0, ...args);
     };
+}
+
+/**
+ * Loads a module dynamically and routes any chunk/network failure through smart recovery
+ * (auto-refresh once on stale deployments, or tailored recovery modal with retry).
+ * @param {string} moduleKey
+ * @param {Function} [onLoaded]
+ * @param {Object} [options]
+ * @returns {Promise<any>}
+ */
+export function loadModuleWithRecovery(moduleKey, onLoaded, options = {}) {
+    const attempt = async (retryCount = 0) => {
+        const loadOpts = retryCount > 0 ? { maxRetries: 1, baseDelayMs: 200, ...options } : options;
+        let mod;
+        try {
+            mod = await loadModule(moduleKey, loadOpts);
+        } catch (err) {
+            await handleModuleLoadFailure({
+                moduleKey,
+                onRetry: () => attempt(retryCount + 1),
+                error: err,
+                retryCount
+            });
+            return null;
+        }
+        if (typeof onLoaded === 'function') {
+            return await onLoaded(mod);
+        }
+        return mod;
+    };
+    return attempt(0);
 }
 
 /**
@@ -729,6 +763,7 @@ export const ModuleLoader = {
     ACTION_TO_MODULE,
     isModuleLoaded,
     loadModule,
+    loadModuleWithRecovery,
     loadWithRetry,
     preloadModule,
     lazy,

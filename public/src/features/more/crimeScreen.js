@@ -2,7 +2,7 @@ import { GameLogic } from '../../core/gameLogic.js';
 import { state } from '../../core/state.js';
 import { saveGame } from '../../core/main.js';
 import { renderLifeDashboard, addLog } from '../player/mainScreen.js';
-import { loadModule } from '../../core/moduleLoader.js';
+import { loadModuleWithRecovery } from '../../core/moduleLoader.js';
 import { UI } from '../../ui/ui.js';
 import { Utils } from '../../ui/utils.js';
 import { unlockAchievement } from '../../core/achievementManager.js';
@@ -14,7 +14,7 @@ export function returnFromCrimeOrArrest(user) {
     const activeUser = user || state.gameState?.user;
     UI.closeAllModals();
     if (activeUser && activeUser.careerTrack === 'mafia_syndicate') {
-        loadModule('jobCareerManager').then(m => {
+        loadModuleWithRecovery('jobCareerManager', m => {
             if (m && typeof m.renderCareerManager === 'function') m.renderCareerManager();
         });
     } else {
@@ -26,11 +26,11 @@ export function finishCourtSentencing() {
     const user = state.gameState?.user;
     UI.closeAllModals();
     if (user && user.inPrison) {
-        loadModule('prison').then(m => {
+        loadModuleWithRecovery('prison', m => {
             if (m && typeof m.renderPrisonDashboard === 'function') m.renderPrisonDashboard();
         });
     } else if (user && user.careerTrack === 'mafia_syndicate') {
-        loadModule('jobCareerManager').then(m => {
+        loadModuleWithRecovery('jobCareerManager', m => {
             if (m && typeof m.renderCareerManager === 'function') m.renderCareerManager();
         });
     } else {
@@ -45,7 +45,7 @@ export function renderCrimeDashboard() {
 
     if (age < 12) {
         UI.showModal("Too Young", "You must be at least 12 years old to engage in mischief or crime.");
-        loadModule('more').then(m => {
+        loadModuleWithRecovery('more', m => {
             if (m && typeof m.renderMoreDashboard === 'function') m.renderMoreDashboard();
         });
         return;

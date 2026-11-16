@@ -9,7 +9,7 @@ import { renderAvatar } from '../../ui/avatarRenderer.js';
 import { captureAnnualSnapshot } from '../../core/timeMachine.js';
 import { saveToSlot } from '../../core/saveSlotManager.js';
 import { EulogyGenerator } from '../../core/eulogyGenerator.js';
-import { loadModule, preloadForContext } from '../../core/moduleLoader.js';
+import { loadModuleWithRecovery, preloadForContext } from '../../core/moduleLoader.js';
 import { checkPeriodicAchievements } from '../../core/achievementManager.js';
 import { EventManager } from '../../core/eventManager.js';
 import { SoundManager } from '../../core/soundManager.js';
@@ -70,7 +70,7 @@ export async function ageUp() {
             renderLifeDashboard();
         } else {
             addLog(prisonRes.message, 'neutral');
-            loadModule('prison').then(m => {
+            loadModuleWithRecovery('prison', m => {
                 if (prisonRes.newCellmate) {
                     m.renderNewCellmateModal(prisonRes.newCellmate);
                 } else {
@@ -125,7 +125,7 @@ export async function ageUp() {
 
     const infidelityDiscovery = GameLogic.checkAgeUpInfidelityDiscovery(user);
     if (infidelityDiscovery) {
-        loadModule('relationships').then(m => {
+        loadModuleWithRecovery('relationships', m => {
             if (m && typeof m.renderAgeUpCheatingDiscoveredModal === 'function') {
                 m.renderAgeUpCheatingDiscoveredModal(infidelityDiscovery);
             }
@@ -146,7 +146,7 @@ export async function ageUp() {
     checkPeriodicAchievements(user);
 
     // Process tenant default popups first, then funerals, then render dashboard
-    loadModule('assets').then(m => {
+    loadModuleWithRecovery('assets', m => {
         if (m && typeof m.processNextTenantDefaultEvent === 'function') {
             m.processNextTenantDefaultEvent();
         }
@@ -456,7 +456,7 @@ export function renderLifeDashboard(maybeGameState) {
 
     // Guard 2: Pending funerals check -> Lock to funeral screen
     if (currentState.pendingFunerals && currentState.pendingFunerals.length > 0) {
-        loadModule('funeral').then(m => {
+        loadModuleWithRecovery('funeral', m => {
             if (m && typeof m.processNextFuneral === 'function') {
                 m.processNextFuneral();
             }
@@ -466,7 +466,7 @@ export function renderLifeDashboard(maybeGameState) {
 
     // Guard 3: Pending teacher replacements check -> Lock to teacher replacement screen
     if (currentState.pendingTeacherReplacements && currentState.pendingTeacherReplacements.length > 0) {
-        loadModule('funeral').then(m => {
+        loadModuleWithRecovery('funeral', m => {
             if (m && typeof m.processNextTeacherReplacement === 'function') {
                 m.processNextTeacherReplacement();
             }
@@ -476,7 +476,7 @@ export function renderLifeDashboard(maybeGameState) {
 
     // Guard 4: Pending random life events check -> Lock to life event modal
     if (currentState.pendingEvents && currentState.pendingEvents.length > 0) {
-        loadModule('lifeEvents').then(m => {
+        loadModuleWithRecovery('lifeEvents', m => {
             if (m && typeof m.processNextLifeEvent === 'function') {
                 m.processNextLifeEvent();
             }
@@ -485,7 +485,7 @@ export function renderLifeDashboard(maybeGameState) {
     }
 
     if (user && user.inPrison) {
-        loadModule('prison').then(m => {
+        loadModuleWithRecovery('prison', m => {
             if (m && typeof m.renderPrisonDashboard === 'function') {
                 m.renderPrisonDashboard();
             }
@@ -731,7 +731,7 @@ export function renderLifeDashboard(maybeGameState) {
             cancelText: 'Dismiss',
             showCloseBtn: true,
             onConfirm: () => {
-                loadModule('more').then(m => {
+                loadModuleWithRecovery('more', m => {
                     if (m && typeof m.visitDoctor === 'function') {
                         m.visitDoctor();
                     }

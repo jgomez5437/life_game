@@ -2,7 +2,7 @@ import { login, logout } from '../auth/auth.js';
 import { startGuestMode } from '../auth/loginScreen.js';
 import { state } from './state.js';
 import { UI } from '../ui/ui.js';
-import { loadModule } from './moduleLoader.js';
+import { loadModuleWithRecovery } from './moduleLoader.js';
 import { resetGame } from './cloudSync.js';
 import {
     processQuarter, enterBusinessMode, hireEmployee, layoffEmployee, sellBusiness,
@@ -489,7 +489,7 @@ document.addEventListener('click', (e) => {
             if (!FUNERAL_ACTION_WHITELIST.has(action)) {
                 console.warn(`[Navigation Lock] Blocked action "${action}" while prompt is pending.`);
                 if (hasPendingFunerals || hasPendingTeachers) {
-                    loadModule('funeral').then(m => {
+                    loadModuleWithRecovery('funeral', m => {
                         if (hasPendingFunerals && m && typeof m.processNextFuneral === 'function') {
                             m.processNextFuneral();
                         } else if (hasPendingTeachers && m && typeof m.processNextTeacherReplacement === 'function') {
@@ -497,7 +497,7 @@ document.addEventListener('click', (e) => {
                         }
                     });
                 } else if (hasPendingLifeEvents) {
-                    loadModule('lifeEvents').then(m => {
+                    loadModuleWithRecovery('lifeEvents', m => {
                         if (m && typeof m.processNextLifeEvent === 'function') {
                             m.processNextLifeEvent();
                         }

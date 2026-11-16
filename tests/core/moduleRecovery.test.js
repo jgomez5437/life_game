@@ -18,6 +18,7 @@ import {
 import {
     MODULE_REGISTRY,
     lazy,
+    loadModuleWithRecovery,
     preloadForContext,
     isModuleLoaded,
     _resetLoaderForTesting
@@ -294,5 +295,59 @@ describe('Module Recovery & Stale Chunk Handling', () => {
 
         expect(isModuleLoaded('more')).toBe(true);
         MODULE_REGISTRY.more = originalMore;
+    });
+
+    test('lazy proxy does not show Connection Error when the loaded feature function itself throws', async () => {
+        const originalFactory = MODULE_REGISTRY.crime;
+        MODULE_REGISTRY.crime = jest.fn().mockResolvedValue({
+            renderCrimeDashboard: () => { throw new Error('UI render bug'); }
+        });
+
+        const crimeProxy = lazy('crime', 'renderCrimeDashboard');
+        await expect(crimeProxy()).rejects.toThrow('UI render bug');
+
+        const overlay = document.getElementById('modal-overlay');
+        expect(overlay.classList.contains('hidden')).toBe(true);
+        MODULE_REGISTRY.crime = originalFactory;
+    });
+
+    test('loadModuleWithRecovery invokes recovery modal on load failure and runs callback after retry succeeds', async () => {
+        const originalFactory = MODULE_REGISTRY.funeral;
+        let shouldFail = true;
+        MODULE_REGISTRY.funeral = jest.fn().mockImplementation(() => {
+            if (shouldFail) return Promise.reject(new Error('Offline'));
+            return Promise.resolve({ processNextFuneral: jest.fn().mockReturnValue('done') });
+        });
+        global.fetch = jest.fn().mockRejectedValue(new TypeError('Offline'));
+
+        const cb = jest.fn(m => m.processNextFuneral());
+        const res = await loadModuleWithRecovery('funeral', cb, { maxRetries: 0 });
+        expect(res).toBeNull();
+        expect(cb).not.toHaveBeenCalled();
+
+        const retryBtn = document.getElementById('module-error-retry-btn');
+        expect(retryBtn).not.toBeNull();
+
+        shouldFail = false;
+        retryBtn.click();
+        await new Promise(resolve => setTimeout(resolve, 20));
+        expect(cb).toHaveBeenCalledTimes(1);
+
+        MODULE_REGISTRY.funeral = originalFactory;
+    });
+
+    test('online event does not auto-retry if another modal replaced the error modal', () => {
+        const retrySpy = jest.fn();
+        showModuleLoadError({
+            moduleKey: 'more',
+            onRetry: retrySpy,
+            reason: 'offline',
+            retryCount: 0
+        });
+
+        // Simulate another modal replacing modal-actions content
+        document.getElementById('modal-actions').innerHTML = '<button id="modal-btn">Dismiss</button>';
+        window.dispatchEvent(new Event('online'));
+        expect(retrySpy).not.toHaveBeenCalled();
     });
 });

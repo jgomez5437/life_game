@@ -357,7 +357,7 @@ export function showModuleLoadError({ moduleKey, onRetry, error, reason = 'offli
 
         if (!isUpdateIssue && typeof window !== 'undefined' && typeof onRetry === 'function') {
             _onlineRetryHandler = () => {
-                if (!overlay.classList.contains('hidden')) {
+                if (!overlay.classList.contains('hidden') && document.getElementById('module-error-retry-btn')) {
                     hideModuleLoadError();
                     Promise.resolve(onRetry()).catch(() => {});
                 }
