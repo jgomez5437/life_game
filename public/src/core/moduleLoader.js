@@ -1,3 +1,15 @@
+import {
+    formatModuleName,
+    showModuleLoadError,
+    hideModuleLoadError,
+    handleModuleLoadFailure,
+    attachVitePreloadErrorHandler,
+    detachVitePreloadErrorHandler,
+    _resetRecoveryForTesting
+} from './moduleRecovery.js';
+
+export { formatModuleName, showModuleLoadError, hideModuleLoadError };
+
 /**
  * Module Loader & Background Preloading Engine
  * 
@@ -399,52 +411,6 @@ export function isModuleLoaded(moduleKey) {
 }
 
 /**
- * Friendly display name formatter for module keys.
- * @param {string} moduleKey 
- * @returns {string}
- */
-export function formatModuleName(moduleKey) {
-    if (!moduleKey) return 'Feature';
-    const names = {
-        charCreation: 'Character Creation',
-        mainScreen: 'Main Screen',
-        playerOverview: 'Player Overview',
-        relationships: 'Relationships',
-        manageEducation: 'Education',
-        instantDiploma: 'Instant Diploma',
-        careerJobs: 'Careers & Jobs',
-        jobCareerManager: 'Career Manager',
-        partTimeJobs: 'Part-Time Jobs',
-        occupation: 'Occupation',
-        assets: 'Assets',
-        goShopping: 'Shopping',
-        saveSlotManager: 'Save Slot Manager',
-        timeMachine: 'Time Machine',
-        businessDashboard: 'Business Dashboard',
-        createBusiness: 'Create Business',
-        investments: 'Investments',
-        romance: 'Romance',
-        funeral: 'Funeral',
-        store: 'Store',
-        godModeAvatar: 'God Mode Avatar',
-        vipLounge: 'VIP Lounge',
-        more: 'Activities',
-        skills: 'Skills & Workshops',
-        settings: 'Settings',
-        achievements: 'Achievements & Trophies',
-        graveyard: 'Graveyard',
-        casino: 'Casino',
-        crime: 'Crime',
-        prison: 'Prison'
-    };
-    if (names[moduleKey]) return names[moduleKey];
-    return moduleKey
-        .replace(/([A-Z])/g, ' $1')
-        .replace(/^./, str => str.toUpperCase())
-        .trim();
-}
-
-/**
  * Executes an import factory with exponential backoff retries.
  * @param {Function} importFactory 
  * @param {number} maxRetries 
@@ -465,86 +431,6 @@ export async function loadWithRetry(importFactory, maxRetries = 3, baseDelayMs =
         }
     }
     throw lastError;
-}
-
-/**
- * Displays a user-friendly error modal with a "Retry" button when module loading fails.
- * @param {Object} options 
- * @param {string} options.moduleKey 
- * @param {Function} [options.onRetry] 
- * @param {Error} [options.error] 
- */
-export function showModuleLoadError({ moduleKey, onRetry, error }) {
-    if (typeof document === 'undefined') return;
-
-    const overlay = document.getElementById('modal-overlay');
-    const title = document.getElementById('modal-title');
-    const content = document.getElementById('modal-content');
-    const actions = document.getElementById('modal-actions');
-
-    const friendlyName = formatModuleName(moduleKey);
-
-    if (overlay && title && content && actions) {
-        title.innerHTML = `<i class="fas fa-wifi text-red-400 mr-2"></i> Connection Error`;
-        title.classList.remove('hidden');
-
-        content.innerHTML = `
-            <div class="text-center py-2">
-                <div class="w-12 h-12 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center mx-auto mb-3 border border-red-500/20">
-                    <i class="fas fa-exclamation-triangle text-xl"></i>
-                </div>
-                <p class="text-white font-semibold mb-1">Failed to load ${friendlyName}</p>
-                <p class="text-slate-400 text-xs leading-relaxed">
-                    A network error occurred while loading this feature. Please check your internet connection and try again.
-                </p>
-            </div>
-        `;
-
-        actions.innerHTML = `
-            <div class="w-full grid grid-cols-2 gap-2">
-                <button id="module-error-dismiss-btn" class="w-full border border-slate-700 text-slate-300 font-bold py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 transition text-sm">
-                    Dismiss
-                </button>
-                <button id="module-error-retry-btn" class="w-full btn-primary text-white font-bold py-2.5 rounded-xl text-sm flex items-center justify-center gap-1.5 shadow-lg shadow-blue-500/20">
-                    <i class="fas fa-redo-alt text-xs"></i> Retry
-                </button>
-            </div>
-        `;
-        actions.classList.remove('hidden');
-
-        const retryBtn = document.getElementById('module-error-retry-btn');
-        const dismissBtn = document.getElementById('module-error-dismiss-btn');
-
-        if (retryBtn) {
-            retryBtn.onclick = () => {
-                hideModuleLoadError();
-                if (typeof onRetry === 'function') {
-                    onRetry();
-                }
-            };
-        }
-
-        if (dismissBtn) {
-            dismissBtn.onclick = () => {
-                hideModuleLoadError();
-            };
-        }
-
-        overlay.classList.remove('hidden');
-        overlay.classList.add('flex');
-    }
-}
-
-/**
- * Hides the module load error modal.
- */
-export function hideModuleLoadError() {
-    if (typeof document === 'undefined') return;
-    const overlay = document.getElementById('modal-overlay');
-    if (overlay) {
-        overlay.classList.add('hidden');
-        overlay.classList.remove('flex');
-    }
 }
 
 /**
@@ -643,13 +529,13 @@ function hideSubtleLoading() {
 /**
  * Creates a lazy function proxy that resolves the module on invocation.
  * Shows a subtle loading bar only if the chunk fetch takes longer than 300ms.
- * Displays a recovery error modal with a "Retry" button if chunk loading fails.
+ * Routes failures through smart diagnosis (auto-refresh once on stale deploy, or tailored modal).
  * @param {string} moduleKey 
  * @param {string} exportName 
  * @returns {Function}
  */
 export function lazy(moduleKey, exportName) {
-    const lazyProxy = async function(...args) {
+    const invokeLazy = async function(retryCount, ...args) {
         if (isModuleLoaded(moduleKey)) {
             const entry = _moduleCache.get(moduleKey);
             const fn = entry.module[exportName];
@@ -667,34 +553,73 @@ export function lazy(moduleKey, exportName) {
             showSubtleLoading();
         }, 300);
 
+        const loadOpts = retryCount > 0 ? { maxRetries: 1, baseDelayMs: 200 } : {};
+
+        let mod;
         try {
-            const mod = await loadModule(moduleKey);
-            clearTimeout(timeoutId);
-            if (didShowLoading) {
-                _activeLoadingCount = Math.max(0, _activeLoadingCount - 1);
-            }
-            hideSubtleLoading();
-            const fn = mod[exportName];
-            if (typeof fn !== 'function') {
-                console.error(`[ModuleLoader] "${exportName}" is not a function in module "${moduleKey}"`);
-                return undefined;
-            }
-            return fn(...args);
+            mod = await loadModule(moduleKey, loadOpts);
         } catch (err) {
             clearTimeout(timeoutId);
             if (didShowLoading) {
                 _activeLoadingCount = Math.max(0, _activeLoadingCount - 1);
             }
             hideSubtleLoading();
-            showModuleLoadError({
+            await handleModuleLoadFailure({
                 moduleKey,
-                onRetry: () => lazyProxy(...args),
-                error: err
+                onRetry: () => invokeLazy(retryCount + 1, ...args),
+                error: err,
+                retryCount
             });
             throw err;
         }
+
+        clearTimeout(timeoutId);
+        if (didShowLoading) {
+            _activeLoadingCount = Math.max(0, _activeLoadingCount - 1);
+        }
+        hideSubtleLoading();
+
+        const fn = mod[exportName];
+        if (typeof fn !== 'function') {
+            console.error(`[ModuleLoader] "${exportName}" is not a function in module "${moduleKey}"`);
+            return undefined;
+        }
+        return fn(...args);
     };
-    return lazyProxy;
+    return function(...args) {
+        return invokeLazy(0, ...args);
+    };
+}
+
+/**
+ * Loads a module dynamically and routes any chunk/network failure through smart recovery
+ * (auto-refresh once on stale deployments, or tailored recovery modal with retry).
+ * @param {string} moduleKey
+ * @param {Function} [onLoaded]
+ * @param {Object} [options]
+ * @returns {Promise<any>}
+ */
+export function loadModuleWithRecovery(moduleKey, onLoaded, options = {}) {
+    const attempt = async (retryCount = 0) => {
+        const loadOpts = retryCount > 0 ? { maxRetries: 1, baseDelayMs: 200, ...options } : options;
+        let mod;
+        try {
+            mod = await loadModule(moduleKey, loadOpts);
+        } catch (err) {
+            await handleModuleLoadFailure({
+                moduleKey,
+                onRetry: () => attempt(retryCount + 1),
+                error: err,
+                retryCount
+            });
+            return null;
+        }
+        if (typeof onLoaded === 'function') {
+            return await onLoaded(mod);
+        }
+        return mod;
+    };
+    return attempt(0);
 }
 
 /**
@@ -746,8 +671,7 @@ function processNextPreload(delayBetweenMs) {
 
 /**
  * Context-aware preloader: inspects current player status and preloads
- * only the most probable next modules in paced background intervals.
- * Conservative to prevent downloading large parts of the app prematurely.
+ * high-probability context modules plus core bottom-nav tabs in paced background intervals.
  * @param {object} gameState 
  */
 export function preloadForContext(gameState) {
@@ -770,16 +694,26 @@ export function preloadForContext(gameState) {
         }
     }
 
+    // Core bottom-nav tabs so mobile players returning after idle sessions
+    // already have primary navigation screens cached in memory
+    const coreNavModules = ['more', 'assets', 'relationships', 'occupation'];
+    for (const key of coreNavModules) {
+        if (!prioritizedModules.includes(key)) {
+            prioritizedModules.push(key);
+        }
+    }
+
     if (prioritizedModules.length > 0) {
         preloadModulesPaced(prioritizedModules, 800);
     }
 }
 
 /**
- * Attaches hover / intent preloading listeners on desktop devices.
+ * Attaches hover / intent preloading listeners on desktop devices and Vite preload error recovery.
  * Gives a 100-300ms preloading head start before user clicks a button.
  */
 export function attachIntentPreloaders() {
+    attachVitePreloadErrorHandler();
     if (_intentPreloadersAttached || typeof document === 'undefined') return;
     _intentPreloadersAttached = true;
 
@@ -804,7 +738,7 @@ export function attachIntentPreloaders() {
 }
 
 /**
- * Detaches hover intent listeners.
+ * Detaches hover intent and Vite preload error listeners.
  */
 export function detachIntentPreloaders() {
     if (typeof document !== 'undefined' && _intentHandler) {
@@ -812,15 +746,16 @@ export function detachIntentPreloaders() {
         _intentHandler = null;
     }
     _intentPreloadersAttached = false;
+    detachVitePreloadErrorHandler();
 }
 
 /**
- * Testing helper: resets internal cache and queues.
+ * Testing helper: resets internal cache, queues, and recovery state.
  */
 export function _resetLoaderForTesting() {
     clearModuleCache();
     detachIntentPreloaders();
-    hideModuleLoadError();
+    _resetRecoveryForTesting();
 }
 
 export const ModuleLoader = {
@@ -828,6 +763,7 @@ export const ModuleLoader = {
     ACTION_TO_MODULE,
     isModuleLoaded,
     loadModule,
+    loadModuleWithRecovery,
     loadWithRetry,
     preloadModule,
     lazy,

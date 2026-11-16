@@ -5,7 +5,7 @@ import { Utils } from '../../ui/utils.js';
 import { CAREER_TRACKS, SPECIAL_CAREER_TRACKS, PRO_SPORTS_LEAGUES } from '../../core/constants.js';
 import { saveGame } from '../../core/main.js';
 import { GameLogic } from '../../core/gameLogic.js';
-import { loadModule } from '../../core/moduleLoader.js';
+import { loadModuleWithRecovery } from '../../core/moduleLoader.js';
 import { UI } from '../../ui/ui.js';
 
 const get = id => document.getElementById(id);
@@ -531,7 +531,7 @@ export function attemptMafiaCrime(type) {
         renderCareerManager();
     } else if (result.arrested) {
         addLog(result.message, 'bad');
-        loadModule('crime').then(m => {
+        loadModuleWithRecovery('crime', m => {
             if (m && typeof m.showArrestModal === 'function') {
                 m.showArrestModal(user.pendingTrial.crime);
             }
