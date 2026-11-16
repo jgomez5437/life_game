@@ -691,3 +691,168 @@ describe('Tenant Lifecycle and Event Handling (H-17)', () => {
         expect(user.money).toBe(5000);
     });
 });
+
+describe('Bulk Property Repair & Maintenance Pure Logic', () => {
+    test('getBulkPropertyMaintenanceSummary computes maintain and optimal restore costs across mixed properties', () => {
+        const user = {
+            age: 35,
+            money: 100000,
+            assets: [
+                { id: 'v1', category: 'vehicle', name: 'Car', value: 25000, condition: 50 },
+                // Pristine -> skipped
+                { id: 'p_pristine', category: 'property', name: 'Pristine Loft', value: 200000, condition: 100, maxCondition: 100 },
+                // maxCondition === 100, condition < 100 -> routine maintenance in both modes
+                { id: 'p_maint_only', category: 'property', name: 'City Studio', value: 200000, condition: 92, maxCondition: 100 },
+                // maxCondition >= 90 & condition >= 80 -> routine maint in maintain mode, minor renovation (3%) in restore mode
+                { id: 'p_minor', category: 'property', name: 'Suburban Townhouse', value: 300000, condition: 88, maxCondition: 95 },
+                // maxCondition < 75 -> routine maint in maintain mode, full renovation (18%) in restore mode
+                { id: 'p_full', category: 'property', name: 'Vintage House', value: 400000, condition: 50, maxCondition: 70 }
+            ]
+        };
+
+        const summary = GameLogic.getBulkPropertyMaintenanceSummary(user);
+
+        expect(summary.totalProperties).toBe(4);
+        // Maintain: 200k*0.0075 (1500) + 300k*0.0075 (2250) + 400k*0.0075 (3000) = 6750
+        expect(summary.maintain.count).toBe(3);
+        expect(summary.maintain.totalCost).toBe(6750);
+        expect(summary.maintain.canAfford).toBe(true);
+
+        // Restore: p_maint_only (1500 maint) + p_minor (9000 minor) + p_full (72000 full) = 82500
+        expect(summary.restore.count).toBe(3);
+        expect(summary.restore.maintenanceCount).toBe(1);
+        expect(summary.restore.renovationCount).toBe(2);
+        expect(summary.restore.totalCost).toBe(82500);
+        expect(summary.restore.totalValueIncrease).toBeGreaterThan(0);
+        expect(summary.restore.canAfford).toBe(true);
+    });
+
+    test('getBulkPropertyMaintenanceSummary handles renovation cooldown fallback to routine maintenance', () => {
+        const user = {
+            age: 40,
+            money: 50000,
+            assets: [
+                {
+                    id: 'p_cd_dirty',
+                    category: 'property',
+                    name: 'Cooldown Condo',
+                    value: 200000,
+                    condition: 70,
+                    maxCondition: 90,
+                    renovatedThisYear: true,
+                    lastRenovationAge: 40
+                },
+                {
+                    id: 'p_cd_at_cap',
+                    category: 'property',
+                    name: 'Cooldown Townhouse',
+                    value: 200000,
+                    condition: 90,
+                    maxCondition: 90,
+                    renovatedThisYear: true,
+                    lastRenovationAge: 40
+                }
+            ]
+        };
+
+        const summary = GameLogic.getBulkPropertyMaintenanceSummary(user);
+        expect(summary.maintain.count).toBe(1);
+        expect(summary.maintain.totalCost).toBe(1500);
+
+        // Restore falls back to routine maintenance for p_cd_dirty and skips p_cd_at_cap
+        expect(summary.restore.count).toBe(1);
+        expect(summary.restore.maintenanceCount).toBe(1);
+        expect(summary.restore.renovationCount).toBe(0);
+        expect(summary.restore.skippedCooldownCount).toBe(2);
+        expect(summary.restore.totalCost).toBe(1500);
+    });
+
+    test('performBulkPropertyMaintenance in maintain mode restores all properties to maxCondition without triggering renovation cooldown', () => {
+        const user = {
+            age: 35,
+            money: 10000,
+            assets: [
+                { id: 'p1', category: 'property', name: 'Studio', value: 200000, condition: 80, maxCondition: 95 },
+                { id: 'p2', category: 'property', name: 'House', value: 400000, condition: 70, maxCondition: 90 }
+            ]
+        };
+
+        const res = GameLogic.performBulkPropertyMaintenance(user, 'maintain');
+        expect(res.success).toBe(true);
+        expect(res.maintainedCount).toBe(2);
+        expect(res.renovatedCount).toBe(0);
+        expect(res.totalCost).toBe(1500 + 3000);
+        expect(user.money).toBe(10000 - 4500);
+        expect(user.assets[0].condition).toBe(95);
+        expect(user.assets[0].maxCondition).toBe(95);
+        expect(user.assets[0].renovatedThisYear).toBeUndefined();
+        expect(user.assets[1].condition).toBe(90);
+        expect(user.assets[1].maxCondition).toBe(90);
+    });
+
+    test('performBulkPropertyMaintenance in restore mode brings properties to 100/100 and increases values', () => {
+        const user = {
+            age: 35,
+            money: 150000,
+            assets: [
+                { id: 'p1', category: 'property', name: 'Loft', value: 200000, condition: 90, maxCondition: 100 },
+                { id: 'p2', category: 'property', name: 'Townhouse', value: 300000, condition: 85, maxCondition: 94 },
+                { id: 'p3', category: 'property', name: 'Villa', value: 500000, condition: 60, maxCondition: 80 }
+            ]
+        };
+
+        // p1: maint $1,500 -> 100/100
+        // p2: minor $9,000 -> 100/100 (+10 cap, +20 cond)
+        // p3: major $40,000 -> 100/100 (+25 cap >= 100, +50 cond >= 100)
+        const res = GameLogic.performBulkPropertyMaintenance(user, 'restore');
+        expect(res.success).toBe(true);
+        expect(res.maintainedCount).toBe(1);
+        expect(res.renovatedCount).toBe(2);
+        expect(res.totalCost).toBe(1500 + 9000 + 40000);
+        expect(res.totalValueIncrease).toBeGreaterThan(0);
+        expect(user.money).toBe(150000 - 50500);
+
+        for (const prop of user.assets) {
+            expect(prop.condition).toBe(100);
+            expect(prop.maxCondition).toBe(100);
+        }
+        expect(user.assets[1].renovatedThisYear).toBe(true);
+        expect(user.assets[2].renovatedThisYear).toBe(true);
+    });
+
+    test('performBulkPropertyMaintenance atomically rejects insufficient funds without partial updates', () => {
+        const user = {
+            age: 35,
+            money: 2000, // Enough for p1 ($1,500) alone, not for p1 + p2 ($4,500)
+            assets: [
+                { id: 'p1', category: 'property', name: 'Studio', value: 200000, condition: 80, maxCondition: 95 },
+                { id: 'p2', category: 'property', name: 'House', value: 400000, condition: 70, maxCondition: 90 }
+            ]
+        };
+
+        const res = GameLogic.performBulkPropertyMaintenance(user, 'maintain');
+        expect(res.success).toBe(false);
+        expect(res.reason).toMatch(/insufficient funds/i);
+        expect(user.money).toBe(2000);
+        expect(user.assets[0].condition).toBe(80);
+        expect(user.assets[1].condition).toBe(70);
+    });
+
+    test('performBulkPropertyMaintenance rejects deceased or 0 HP users', () => {
+        const deadUser = {
+            health: 0,
+            lifeStatus: 'Deceased',
+            money: 100000,
+            assets: [
+                { id: 'p1', category: 'property', name: 'House', value: 200000, condition: 70, maxCondition: 90 }
+            ]
+        };
+
+        const res = GameLogic.performBulkPropertyMaintenance(deadUser, 'maintain');
+        expect(res.success).toBe(false);
+        expect(res.reason).toMatch(/dead or at 0 HP/i);
+        expect(deadUser.money).toBe(100000);
+        expect(deadUser.assets[0].condition).toBe(70);
+    });
+});
+

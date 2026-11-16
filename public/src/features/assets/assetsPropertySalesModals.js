@@ -271,6 +271,178 @@ export const doPropertyRenovation = (id, optionId) => {
     }
 };
 
+export const openBulkPropertyMaintenanceModal = () => {
+    const user = state.gameState?.user;
+    if (!user) return;
+
+    const summary = GameLogic.getBulkPropertyMaintenanceSummary(user);
+    if (summary.totalProperties === 0) {
+        UI.showModal("No Properties", "You don't own any properties to repair or maintain.");
+        return;
+    }
+
+    const { maintain, restore } = summary;
+    if (maintain.count === 0 && restore.count === 0) {
+        if (restore.skippedCooldownCount > 0) {
+            UI.showModal(
+                "Renovation Cooldown Active",
+                "All of your properties are already maintained at their current max condition, and any remaining properties were already renovated this year."
+            );
+        } else {
+            UI.showModal("All Properties Pristine", "All of your properties are already at 100% condition and 100% max capacity!");
+        }
+        return;
+    }
+
+    const maintainMap = new Map(maintain.items.map(item => [item.propertyId, item]));
+
+    const breakdownHtml = restore.items.map(item => {
+        const maintItem = maintainMap.get(item.propertyId);
+        const condColor = item.condition < 40 ? 'text-red-400' : item.condition < 75 ? 'text-yellow-400' : 'text-green-400';
+        const isCooldownMaint = item.actionType === 'maintenance' && item.optionName && item.optionName.includes('Cooldown');
+        const restoreLabel = isCooldownMaint ? 'Max Maint' : '100% Restore';
+        return `
+            <div class="bg-slate-900 p-3 rounded-lg border border-slate-700/80 text-xs space-y-1">
+                <div class="flex justify-between items-center gap-2">
+                    <span class="font-bold text-white truncate">${Utils.escapeHtml(item.propertyName)}</span>
+                    <span class="${condColor} font-bold shrink-0">${item.condition}% <span class="text-slate-400 font-normal">/ ${item.maxCondition}% max</span></span>
+                </div>
+                <div class="flex justify-between items-center text-[11px] text-slate-400">
+                    <span>Maint: ${maintItem ? `<span class="text-blue-300 font-semibold">${Utils.formatMoney(maintItem.cost)}</span>` : 'At cap'}</span>
+                    <span>${restoreLabel}: <span class="text-emerald-300 font-semibold">${Utils.formatMoney(item.cost)}</span> <span class="text-slate-500">(${Utils.escapeHtml(item.optionName)})</span></span>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    const canConfirmMaintain = maintain.count > 0 && maintain.canAfford;
+    const canConfirmRestore = restore.count > 0 && restore.canAfford;
+
+    let maintainBtnTitle = `Routine Maintenance All (${maintain.count} ${maintain.count === 1 ? 'Property' : 'Properties'})`;
+    let maintainBtnCost = Utils.formatMoney(maintain.totalCost);
+    if (maintain.count === 0) {
+        maintainBtnTitle = 'Routine Maintenance All — Already at Max Cap';
+        maintainBtnCost = '$0';
+    } else if (!maintain.canAfford) {
+        maintainBtnTitle = 'Routine Maintenance All — Insufficient Funds';
+    }
+
+    let restoreBtnTitle = `Full Restore / Renovate All to 100% (${restore.count} ${restore.count === 1 ? 'Property' : 'Properties'})`;
+    let restoreBtnCost = Utils.formatMoney(restore.totalCost);
+    if (restore.count === 0) {
+        restoreBtnTitle = 'Full Restore All — On Annual Cooldown';
+        restoreBtnCost = '$0';
+    } else if (!restore.canAfford) {
+        restoreBtnTitle = 'Full Restore / Renovate All — Insufficient Funds';
+    }
+
+    const restoreBreakdownParts = [];
+    if (restore.maintenanceCount > 0) restoreBreakdownParts.push(`${restore.maintenanceCount} routine maint`);
+    if (restore.renovationCount > 0) restoreBreakdownParts.push(`${restore.renovationCount} renovation${restore.renovationCount === 1 ? '' : 's'}`);
+    if (restore.totalValueIncrease > 0) restoreBreakdownParts.push(`Est. +${Utils.formatMoney(restore.totalValueIncrease)} value`);
+
+    const cooldownNoticeHtml = restore.skippedCooldownCount > 0 ? `
+        <div class="bg-amber-950/50 border border-amber-700/60 text-amber-200 text-[11px] px-3 py-2 rounded-lg flex items-start gap-2">
+            <i class="fas fa-info-circle mt-0.5 text-amber-400"></i>
+            <span>${restore.skippedCooldownCount} ${restore.skippedCooldownCount === 1 ? 'property was' : 'properties were'} already renovated this year and cannot be renovated again until next year.</span>
+        </div>
+    ` : '';
+
+    const modalHtml = `
+        <div class="space-y-4">
+            <div class="bg-slate-900 p-3.5 rounded-xl border border-slate-700 flex items-center justify-between text-xs">
+                <span class="text-slate-400 font-bold uppercase">Your Available Cash</span>
+                <span class="text-green-400 font-extrabold text-base">${Utils.formatMoney(summary.userMoney)}</span>
+            </div>
+
+            <div class="space-y-2 max-h-48 overflow-y-auto pr-1">
+                ${breakdownHtml}
+            </div>
+
+            ${cooldownNoticeHtml}
+
+            <div class="space-y-2.5 pt-1">
+                <button data-action="confirmBulkPropertyMaintenance" data-args="'maintain'"
+                    ${canConfirmMaintain ? '' : 'disabled'}
+                    class="w-full ${canConfirmMaintain ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed'} p-3 rounded-xl text-left transition">
+                    <div class="flex items-center justify-between gap-2 text-xs font-bold">
+                        <span class="flex items-center gap-2"><i class="fas fa-wrench"></i> ${maintainBtnTitle}</span>
+                        <span class="shrink-0">${maintainBtnCost}</span>
+                    </div>
+                    <div class="text-[11px] ${canConfirmMaintain ? 'text-blue-100' : 'text-slate-500'} mt-1">
+                        Restores each property's condition up to its current max condition cap.
+                    </div>
+                </button>
+
+                <button data-action="confirmBulkPropertyMaintenance" data-args="'restore'"
+                    ${canConfirmRestore ? '' : 'disabled'}
+                    class="w-full ${canConfirmRestore ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed'} p-3 rounded-xl text-left transition">
+                    <div class="flex items-center justify-between gap-2 text-xs font-bold">
+                        <span class="flex items-center gap-2"><i class="fas fa-hammer"></i> ${restoreBtnTitle}</span>
+                        <span class="shrink-0">${restoreBtnCost}</span>
+                    </div>
+                    <div class="text-[11px] ${canConfirmRestore ? 'text-emerald-100' : 'text-slate-500'} mt-1">
+                        ${restoreBreakdownParts.length > 0 ? restoreBreakdownParts.join(' • ') : 'Restores eligible properties to 100% condition & 100% max cap.'}
+                    </div>
+                </button>
+
+                <button data-action="hideModal" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-2.5 rounded-xl text-xs transition">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    `;
+
+    UI.showCustomModal({
+        title: 'Repair & Maintain All Properties',
+        content: modalHtml,
+        showCloseBtn: true
+    });
+};
+
+export const confirmBulkPropertyMaintenance = (mode = 'maintain') => {
+    const user = state.gameState?.user;
+    if (!user) return;
+
+    const result = GameLogic.performBulkPropertyMaintenance(user, mode);
+    if (!result.success) {
+        UI.showModal("Bulk Repair Failed", result.reason);
+        return;
+    }
+
+    UI.hideModal();
+
+    if (mode === 'restore') {
+        const valueNote = result.totalValueIncrease > 0
+            ? ` Property values increased by ${Utils.formatMoney(result.totalValueIncrease)}!`
+            : '';
+        addLog(
+            `Restored ${result.updatedCount} ${result.updatedCount === 1 ? 'property' : 'properties'} (${result.maintainedCount} maintained, ${result.renovatedCount} renovated) for ${Utils.formatMoney(result.totalCost)}.${valueNote}`,
+            result.renovatedCount > 0 ? 'major' : 'good'
+        );
+    } else {
+        addLog(
+            `Performed routine maintenance on ${result.maintainedCount} ${result.maintainedCount === 1 ? 'property' : 'properties'} for ${Utils.formatMoney(result.totalCost)}.`,
+            'good'
+        );
+    }
+
+    captureAnnualSnapshot(state.gameState);
+    saveGame();
+    UI.updateHeader(state.gameState?.user || user);
+    renderAssets();
+
+    const valueDetail = result.totalValueIncrease > 0
+        ? ` Total property value increased by ${Utils.formatMoney(result.totalValueIncrease)}.`
+        : '';
+    const title = mode === 'restore' ? 'Properties Restored!' : 'Maintenance Completed!';
+    const summaryText = mode === 'restore'
+        ? `Successfully updated ${result.updatedCount} ${result.updatedCount === 1 ? 'property' : 'properties'} (${result.maintainedCount} routine maintenance, ${result.renovatedCount} renovations) for ${Utils.formatMoney(result.totalCost)}.${valueDetail}`
+        : `Completed routine maintenance on ${result.maintainedCount} ${result.maintainedCount === 1 ? 'property' : 'properties'} for ${Utils.formatMoney(result.totalCost)}.`;
+
+    UI.showModal(title, summaryText);
+};
+
 export const payOffMortgage = (id) => {
     const user = state.gameState.user;
     const property = (user.assets || []).find(a => a.id === id);

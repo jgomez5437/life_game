@@ -222,6 +222,8 @@ export const GameLogic = {
     performPropertyMaintenance: realEstateLandlord.performPropertyMaintenance,
     calculateRenovationOptions: realEstateLandlord.calculateRenovationOptions,
     renovateProperty: realEstateLandlord.renovateProperty,
+    getBulkPropertyMaintenanceSummary: realEstateLandlord.getBulkPropertyMaintenanceSummary,
+    performBulkPropertyMaintenance: realEstateLandlord.performBulkPropertyMaintenance,
     calculateTotalRentalIncome: realEstateLandlord.calculateTotalRentalIncome,
     generateTenantApplicants: realEstateLandlord.generateTenantApplicants,
     acceptTenantLease: realEstateLandlord.acceptTenantLease,

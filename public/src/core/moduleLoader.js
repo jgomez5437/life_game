@@ -114,6 +114,8 @@ export const ACTION_TO_MODULE = {
     acceptBuyerOffer: 'assets',
     doPropertyMaintenance: 'assets',
     doPropertyRenovation: 'assets',
+    openBulkPropertyMaintenanceModal: 'assets',
+    confirmBulkPropertyMaintenance: 'assets',
     openTenantScreening: 'assets',
     acceptTenantLease: 'assets',
     evictTenantAction: 'assets',
